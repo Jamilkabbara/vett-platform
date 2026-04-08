@@ -9,6 +9,7 @@ import {
   CardNumberElement,
   CardExpiryElement,
   CardCvcElement,
+  PaymentRequestButtonElement,
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
@@ -68,12 +69,85 @@ const PaymentForm = ({
   const [promoMessage, setPromoMessage] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
   const [discountedPrice, setDiscountedPrice] = useState(totalCost);
+  const [paymentRequest, setPaymentRequest] = useState<any>(null);
+  const [canMakeExpressPayment, setCanMakeExpressPayment] = useState(false);
+
+  // Set up Apple Pay / Google Pay via Stripe Payment Request
+  useEffect(() => {
+    if (!stripe || discountedPrice <= 0) return;
+
+    const amountInCents = Math.round(discountedPrice * 100);
+
+    const pr = stripe.paymentRequest({
+      country: 'US',
+      currency: 'usd',
+      total: {
+        label: `Vettit Mission — ${respondentCount} Respondents`,
+        amount: amountInCents,
+      },
+      requestPayerName: false,
+      requestPayerEmail: false,
+    });
+
+    pr.canMakePayment().then((result) => {
+      if (result) {
+        setPaymentRequest(pr);
+        setCanMakeExpressPayment(true);
+      }
+    });
+
+    pr.on('paymentmethod', async (event) => {
+      setIsProcessing(true);
+      setStage('processing');
+      const toastId = toast.loading('Processing payment...');
+
+      try {
+        const { clientSecret, paymentIntentId } = await api.post('/api/payments/create-intent', { missionId });
+
+        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
+          clientSecret,
+          { payment_method: event.paymentMethod.id },
+          { handleActions: false }
+        );
+
+        if (confirmError) {
+          event.complete('fail');
+          throw new Error(confirmError.message || 'Payment failed');
+        }
+
+        if (paymentIntent?.status === 'requires_action') {
+          const { error: actionError } = await stripe.confirmCardPayment(clientSecret);
+          if (actionError) {
+            event.complete('fail');
+            throw new Error(actionError.message || 'Payment authentication failed');
+          }
+        }
+
+        event.complete('success');
+        await api.post('/api/payments/confirm', { missionId, paymentIntentId });
+
+        setStage('success');
+        toast.success('Mission Launched!', { id: toastId });
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        onClose();
+        navigate(`/mission-success?respondents=${respondentCount}&total=${discountedPrice.toFixed(2)}`);
+      } catch (err: any) {
+        event.complete('fail');
+        setIsProcessing(false);
+        setStage('payment');
+        toast.error(err.message || 'Payment failed. Please try again.', { id: toastId });
+      }
+    });
+
+    return () => { pr.off('paymentmethod'); };
+  }, [stripe, discountedPrice, respondentCount, missionId]);
 
   const handleApplyPromo = () => {
     if (promoCode.toUpperCase() === 'VETT100') {
       setPromoApplied(true);
       setDiscountedPrice(0);
       setPromoMessage('✅ Code Applied: 100% OFF');
+      setCanMakeExpressPayment(false); // hide express payment when free
     } else {
       setPromoApplied(false);
       setDiscountedPrice(totalCost);
@@ -116,7 +190,7 @@ const PaymentForm = ({
     }
   }, [isOpen, totalCost]);
 
-  const handlePayment = async () => {
+  const handleCardPayment = async () => {
     setIsProcessing(true);
     setStage('processing');
     const toastId = toast.loading('Processing secure payment...');
@@ -133,19 +207,16 @@ const PaymentForm = ({
         return;
       }
 
-      // Real Stripe payment
       if (!stripe || !elements || !missionId) {
         throw new Error('Payment system not ready. Please try again.');
       }
 
       // 1. Create payment intent on backend
-      const { clientSecret, paymentIntentId } = await api.post('/api/payments/create-intent', {
-        missionId,
-      });
+      const { clientSecret, paymentIntentId } = await api.post('/api/payments/create-intent', { missionId });
 
-      // 2. Confirm payment with Stripe
+      // 2. Confirm card payment
       const cardNumberElement = elements.getElement(CardNumberElement);
-      if (!cardNumberElement) throw new Error('Card details not found');
+      if (!cardNumberElement) throw new Error('Please enter your card details');
 
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: { card: cardNumberElement },
@@ -154,7 +225,7 @@ const PaymentForm = ({
       if (stripeError) throw new Error(stripeError.message || 'Payment failed');
       if (paymentIntent?.status !== 'succeeded') throw new Error('Payment not completed');
 
-      // 3. Confirm with backend (launches Pollfish + sends emails)
+      // 3. Confirm with backend
       await api.post('/api/payments/confirm', { missionId, paymentIntentId });
 
       setStage('success');
@@ -244,8 +315,9 @@ const PaymentForm = ({
               </div>
 
               <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pb-6">
+
                 {/* Price summary */}
-                <div className="bg-gray-700/30 rounded-lg p-4 mb-6">
+                <div className="bg-gray-700/30 rounded-lg p-4 mb-5">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-white/70">
                       {respondentCount} Respondents × ${(totalCost / respondentCount).toFixed(2)}
@@ -259,37 +331,66 @@ const PaymentForm = ({
                   </div>
                 </div>
 
-                {/* Stripe Card Elements */}
-                    <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-                      <div>
-                        <label className="block text-xs sm:text-sm text-white/70 mb-1.5 sm:mb-2">Card Number</label>
-                        <div className="relative px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
-                          <CardNumberElement options={CARD_ELEMENT_STYLE} />
-                          <CreditCard className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40 pointer-events-none" />
-                        </div>
+                {/* Apple Pay / Google Pay — shown automatically if available on device */}
+                {canMakeExpressPayment && paymentRequest && discountedPrice > 0 && (
+                  <>
+                    <div className="mb-4">
+                      <PaymentRequestButtonElement
+                        options={{
+                          paymentRequest,
+                          style: {
+                            paymentRequestButton: {
+                              type: 'buy',
+                              theme: 'dark',
+                              height: '48px',
+                            },
+                          },
+                        }}
+                      />
+                    </div>
+                    <div className="relative mb-5">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-white/20" />
                       </div>
-
-                      <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                        <div>
-                          <label className="block text-xs sm:text-sm text-white/70 mb-1.5 sm:mb-2">MM / YY</label>
-                          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
-                            <CardExpiryElement options={CARD_ELEMENT_STYLE} />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-xs sm:text-sm text-white/70 mb-1.5 sm:mb-2">CVC</label>
-                          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
-                            <CardCvcElement options={CARD_ELEMENT_STYLE} />
-                          </div>
-                        </div>
+                      <div className="relative flex justify-center text-xs">
+                        <span className="px-3 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white/50">
+                          or pay with card
+                        </span>
                       </div>
                     </div>
                   </>
                 )}
 
+                {/* Card form — always shown as fallback */}
+                {discountedPrice > 0 && (
+                  <div className="space-y-3 sm:space-y-4 mb-5">
+                    <div>
+                      <label className="block text-xs sm:text-sm text-white/70 mb-1.5">Card Number</label>
+                      <div className="relative px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
+                        <CardNumberElement options={CARD_ELEMENT_STYLE} />
+                        <CreditCard className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40 pointer-events-none" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs sm:text-sm text-white/70 mb-1.5">MM / YY</label>
+                        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
+                          <CardExpiryElement options={CARD_ELEMENT_STYLE} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs sm:text-sm text-white/70 mb-1.5">CVC</label>
+                        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
+                          <CardCvcElement options={CARD_ELEMENT_STYLE} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Promo Code */}
-                <div className="mb-4 sm:mb-6 w-full">
-                  <label className="block text-xs sm:text-sm text-white/70 mb-1.5 sm:mb-2">Discount Code</label>
+                <div className="mb-5 w-full">
+                  <label className="block text-xs sm:text-sm text-white/70 mb-1.5">Discount Code</label>
                   <div className="flex gap-2 w-full">
                     <input
                       type="text"
@@ -297,18 +398,18 @@ const PaymentForm = ({
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                       onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
-                      className="flex-1 min-w-0 px-2 sm:px-3 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-xs sm:text-sm"
+                      className="flex-1 min-w-0 px-3 py-2.5 bg-gray-700/30 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-sm"
                     />
                     <button
                       onClick={handleApplyPromo}
                       disabled={!promoCode.trim()}
-                      className="px-3 sm:px-6 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-xs sm:text-sm flex-shrink-0"
+                      className="px-4 sm:px-6 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex-shrink-0"
                     >
                       Apply
                     </button>
                   </div>
                   {promoMessage && (
-                    <p className={`text-xs sm:text-sm mt-2 ${promoApplied ? 'text-green-400' : 'text-red-400'}`}>
+                    <p className={`text-xs mt-2 ${promoApplied ? 'text-green-400' : 'text-red-400'}`}>
                       {promoMessage}
                     </p>
                   )}
@@ -316,7 +417,7 @@ const PaymentForm = ({
 
                 {/* Pay Button */}
                 <button
-                  onClick={handlePayment}
+                  onClick={handleCardPayment}
                   disabled={isProcessing}
                   className={`w-full py-3 sm:py-4 rounded-lg font-bold text-base sm:text-lg transition-all ${
                     !isProcessing
@@ -324,14 +425,14 @@ const PaymentForm = ({
                       : 'bg-gray-700/30 text-white/40 cursor-not-allowed'
                   }`}
                 >
-                  {discountedPrice === 0 ? 'Start Mission (Free)' : `Pay $${discountedPrice.toFixed(2)}`}
+                  {discountedPrice === 0 ? 'Launch Mission (Free)' : `Pay $${discountedPrice.toFixed(2)}`}
                 </button>
               </div>
 
-              <div className="flex-shrink-0 p-3 sm:p-6 pt-3 sm:pt-4 border-t border-white/10">
+              <div className="flex-shrink-0 p-3 sm:p-6 pt-3 border-t border-white/10">
                 <div className="flex items-center justify-center gap-2 text-[10px] sm:text-xs text-white/50">
                   <Lock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="text-center">Payments processed securely via Stripe. All major cards accepted.</span>
+                  <span className="text-center">Secured by Stripe. Apple Pay &amp; Google Pay supported where available.</span>
                 </div>
               </div>
             </motion.div>
