@@ -20,7 +20,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/apiClient';
 import { calculatePricing } from '../utils/pricingEngine';
 import { calculateTimeEstimate } from '../utils/timeEstimation';
-import { generateSurvey } from '../services/aiService';
 
 interface MissionData {
   id?: string;
@@ -505,81 +504,6 @@ export const DashboardPage = () => {
     return { parsedRespondentCount, parsedTargeting };
   };
 
-  const generateSmartQuestion = (context: string, targetingCities: string[] = []): Question => {
-    const lowerContext = context.toLowerCase();
-    const smartSubject = getSmartSubject(context);
-
-    if (targetingCities.length > 0) {
-      const cityName = targetingCities[0].split(',')[0];
-      return {
-        id: '1',
-        text: `Do you currently live in ${cityName}?`,
-        type: 'single_choice',
-        options: ['Yes', 'No'],
-        aiRefined: true,
-        isScreening: false,
-        qualifyingAnswer: 'Yes'
-      };
-    }
-
-    if (lowerContext.includes('pizza') || lowerContext.includes('food') || lowerContext.includes('restaurant')) {
-      return {
-        id: '1',
-        text: 'Are you interested in trying new food products?',
-        type: 'single_choice',
-        options: ['Yes', 'No', 'Maybe'],
-        aiRefined: true,
-        isScreening: false,
-        qualifyingAnswer: 'Yes'
-      };
-    }
-
-    if (lowerContext.includes('app') || lowerContext.includes('tech') || lowerContext.includes('software') || lowerContext.includes('saas')) {
-      return {
-        id: '1',
-        text: 'How often do you use productivity tools like this?',
-        type: 'single_choice',
-        options: ['Daily', 'Weekly', 'Monthly', 'Rarely', 'Never'],
-        aiRefined: true,
-        isScreening: false,
-        qualifyingAnswer: 'Daily'
-      };
-    }
-
-    if (lowerContext.includes('dog') || lowerContext.includes('pet')) {
-      return {
-        id: '1',
-        text: 'Do you own a dog?',
-        type: 'single_choice',
-        options: ['Yes', 'No'],
-        aiRefined: true,
-        isScreening: false,
-        qualifyingAnswer: 'Yes'
-      };
-    }
-
-    if (lowerContext.includes('car') || lowerContext.includes('vehicle') || lowerContext.includes('automotive')) {
-      return {
-        id: '1',
-        text: 'Do you own a car?',
-        type: 'single_choice',
-        options: ['Yes', 'No'],
-        aiRefined: true,
-        isScreening: false,
-        qualifyingAnswer: 'Yes'
-      };
-    }
-
-    return {
-      id: '1',
-      text: `How valuable is ${smartSubject} to you?`,
-      type: 'rating',
-      options: [],
-      aiRefined: true,
-      isScreening: false
-    };
-  };
-
   const generateQuestions = (text: string, subject: string): Question[] => {
     const lower = text.toLowerCase();
 
@@ -587,10 +511,11 @@ export const DashboardPage = () => {
       {
         id: '1',
         text: `Are you interested in ${subject}?`,
-        type: 'single_choice',
+        type: 'single',
         options: ['Yes', 'No', 'Maybe'],
         aiRefined: true,
-        isScreening: false
+        isScreening: true,
+        qualifyingAnswer: 'Yes'
       },
       {
         id: '2',
@@ -603,8 +528,16 @@ export const DashboardPage = () => {
       {
         id: '3',
         text: 'What matters most to you when making a purchase decision?',
-        type: 'multiple_choice',
+        type: 'multi',
         options: ['Price', 'Quality', 'Speed/Convenience', 'Brand Trust', 'Customer Support'],
+        aiRefined: true,
+        isScreening: false
+      },
+      {
+        id: '4',
+        text: `What would make you choose ${subject} over existing alternatives?`,
+        type: 'text',
+        options: [],
         aiRefined: true,
         isScreening: false
       }
@@ -709,7 +642,7 @@ export const DashboardPage = () => {
       setRespondentCount(100);
     }
 
-    // 6. Check for AI-generated questions from location state
+    // 6. Check for AI-generated questions from location state OR localStorage backup
     const locationState = location.state as {
       missionData?: MissionData;
       generatedQuestions?: Question[];
@@ -720,21 +653,43 @@ export const DashboardPage = () => {
       fromSetup?: boolean;
     } | null;
 
-    if (locationState?.generatedQuestions && locationState.generatedQuestions.length > 0) {
-      // Questions already generated on setup page — use them directly
-      setQuestions(locationState.generatedQuestions);
+    // Try location.state first, then localStorage backup
+    let aiQuestions = locationState?.generatedQuestions || null;
+    let aiObjective = locationState?.missionObjective || '';
+    let aiTargeting = locationState?.targetingSuggestions || null;
+    let aiRespondentCount = locationState?.suggestedRespondentCount || null;
 
-      if (locationState.missionObjective) {
-        setMissionObjective(locationState.missionObjective);
-      }
+    if (!aiQuestions || aiQuestions.length === 0) {
+      try {
+        const cached = localStorage.getItem('vettit_ai_result');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          // Only use if fresh (within 10 minutes)
+          if (Date.now() - parsed.timestamp < 10 * 60 * 1000) {
+            aiQuestions = parsed.questions || null;
+            aiObjective = parsed.missionObjective || '';
+            aiTargeting = parsed.targetingSuggestions || null;
+            aiRespondentCount = parsed.suggestedRespondentCount || null;
+          }
+          localStorage.removeItem('vettit_ai_result');
+        }
+      } catch (_) {}
+    }
 
-      if (locationState.targetingSuggestions) {
-        const ts = locationState.targetingSuggestions;
+    if (aiQuestions && aiQuestions.length > 0) {
+      setQuestions(aiQuestions);
+
+      if (aiObjective) setMissionObjective(aiObjective);
+
+      if (aiTargeting) {
+        const ts = aiTargeting;
         setTargetingConfig(prev => ({
           ...prev,
           geography: {
             ...prev.geography,
             countries: ts.countries?.length > 0 ? ts.countries : prev.geography.countries,
+            // Clear cities if AI gave us country-level targeting
+            cities: ts.countries?.length > 0 ? [] : prev.geography.cities,
           },
           demographics: {
             ...prev.demographics,
@@ -744,18 +699,16 @@ export const DashboardPage = () => {
         }));
       }
 
-      if (locationState.suggestedRespondentCount) {
-        setRespondentCount(Math.min(Math.max(locationState.suggestedRespondentCount, 10), 2000));
+      if (aiRespondentCount) {
+        setRespondentCount(Math.min(Math.max(aiRespondentCount, 10), 2000));
       }
-    } else if (questions[0].text === '') {
-      // REGENERATE QUESTIONS with the clean subject
+    } else {
+      // Fallback: generate basic questions locally
       setQuestions(generateQuestions(cleanText, smartSubject));
     }
 
-    // 7. Set Mission Objective
-    if (locationState?.missionObjective) {
-      setMissionObjective(locationState.missionObjective);
-    } else if (missionObjective === '') {
+    // 7. Set Mission Objective (only if not already set from AI)
+    if (!aiObjective && missionObjective === '') {
       setMissionObjective(title);
     }
   }, [missionData]);

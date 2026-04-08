@@ -139,7 +139,7 @@ export const MissionSetupPage = () => {
     console.log('Auth State:', { loading, user: user?.id });
   }, [loading, user]);
 
-  const isValid = missionDescription.trim().length >= 5;
+  const isValid = missionDescription.trim().length >= 30;
 
   const refineDescription = async () => {
     if (!missionDescription.trim()) return;
@@ -177,7 +177,13 @@ export const MissionSetupPage = () => {
     if (!isValid) {
       setShowErrors(true);
       setDescriptionTouched(true);
-      toast.error('Please provide a detailed mission description');
+      toast.error('Please describe your mission in more detail (at least 30 characters)');
+      return;
+    }
+
+    // Require authentication before generating AI survey
+    if (!user) {
+      setShowAuthModal(true);
       return;
     }
 
@@ -234,7 +240,17 @@ export const MissionSetupPage = () => {
 
       localStorage.removeItem('missionSetupDraft');
 
-      // Step 3: Navigate with pre-generated questions so dashboard is instant
+      // Step 3: Save AI result to localStorage as backup (in case location.state is lost)
+      if (aiResult) {
+        try {
+          localStorage.setItem('vettit_ai_result', JSON.stringify({
+            ...aiResult,
+            timestamp: Date.now(),
+          }));
+        } catch (_) {}
+      }
+
+      // Step 4: Navigate with pre-generated questions so dashboard is instant
       navigate(`/dashboard/${missionData.id}`, {
         state: {
           missionData,
@@ -321,7 +337,7 @@ export const MissionSetupPage = () => {
                     onChange={(e) => setMissionDescription(e.target.value)}
                     onBlur={() => setDescriptionTouched(true)}
                     className={`w-full bg-black/40 border rounded-lg p-4 pb-14 text-white focus:ring-2 focus:ring-neon-lime outline-none resize-none placeholder-white/40 transition-all ${
-                      (showErrors || descriptionTouched) && missionDescription.trim().length < 5
+                      (showErrors || descriptionTouched) && missionDescription.trim().length < 30
                         ? 'border-red-500'
                         : 'border-white/10'
                     }`}
@@ -353,9 +369,14 @@ export const MissionSetupPage = () => {
                     )}
                   </button>
                 </div>
-                <p className="text-xs text-white/40 mt-2">
-                  Describe your idea, your target audience, and exactly what you want to learn. The AI will extract the details automatically.
-                </p>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs text-white/40">
+                    Describe your idea, target audience, and what you want to learn. AI extracts the details automatically.
+                  </p>
+                  <span className={`text-xs ml-2 flex-shrink-0 ${missionDescription.trim().length >= 30 ? 'text-neon-lime' : 'text-white/30'}`}>
+                    {missionDescription.trim().length}/30
+                  </span>
+                </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className="text-xs text-white/50">Need inspiration? Try:</span>
@@ -463,7 +484,7 @@ export const MissionSetupPage = () => {
                 AI is crafting your mission...
               </>
             ) : !isValid ? (
-              "Describe your mission to continue"
+              `Add more detail to continue (${missionDescription.trim().length}/30)`
             ) : (
               <>
                 Initialize Mission <ArrowRight className="w-5 h-5" />
