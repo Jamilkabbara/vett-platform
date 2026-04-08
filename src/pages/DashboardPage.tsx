@@ -714,52 +714,39 @@ export const DashboardPage = () => {
       missionData?: MissionData;
       generatedQuestions?: Question[];
       missionObjective?: string;
+      targetingSuggestions?: { countries: string[]; ageRanges: string[]; genders: string[] } | null;
+      suggestedRespondentCount?: number | null;
       aiParams?: { goal: string; subject: string; objective: string };
       fromSetup?: boolean;
     } | null;
 
-    if (locationState?.aiParams && !locationState.generatedQuestions) {
-      setLoadingQuestions(true);
-      generateSurvey(locationState.aiParams)
-        .then(({ questions: aiQuestions, missionObjective: aiObjective, targetingSuggestions, suggestedRespondentCount }) => {
-          setQuestions(aiQuestions);
-          setMissionObjective(aiObjective);
-
-          // Apply AI targeting suggestions
-          if (targetingSuggestions) {
-            setTargetingConfig(prev => ({
-              ...prev,
-              geography: {
-                ...prev.geography,
-                countries: targetingSuggestions.countries.length > 0
-                  ? targetingSuggestions.countries
-                  : prev.geography.countries,
-              },
-              demographics: {
-                ...prev.demographics,
-                ageRanges: targetingSuggestions.ageRanges.length > 0
-                  ? targetingSuggestions.ageRanges
-                  : prev.demographics.ageRanges,
-                genders: targetingSuggestions.genders.length > 0
-                  ? targetingSuggestions.genders
-                  : prev.demographics.genders,
-              },
-            }));
-          }
-
-          // Apply AI-suggested respondent count
-          if (suggestedRespondentCount) {
-            setRespondentCount(Math.min(Math.max(suggestedRespondentCount, 10), 2000));
-          }
-
-          setLoadingQuestions(false);
-        })
-        .catch((error) => {
-          console.error('Error generating questions:', error);
-          setLoadingQuestions(false);
-        });
-    } else if (locationState?.generatedQuestions && locationState.generatedQuestions.length > 0) {
+    if (locationState?.generatedQuestions && locationState.generatedQuestions.length > 0) {
+      // Questions already generated on setup page — use them directly
       setQuestions(locationState.generatedQuestions);
+
+      if (locationState.missionObjective) {
+        setMissionObjective(locationState.missionObjective);
+      }
+
+      if (locationState.targetingSuggestions) {
+        const ts = locationState.targetingSuggestions;
+        setTargetingConfig(prev => ({
+          ...prev,
+          geography: {
+            ...prev.geography,
+            countries: ts.countries?.length > 0 ? ts.countries : prev.geography.countries,
+          },
+          demographics: {
+            ...prev.demographics,
+            ageRanges: ts.ageRanges?.length > 0 ? ts.ageRanges : prev.demographics.ageRanges,
+            genders: ts.genders?.length > 0 ? ts.genders : prev.demographics.genders,
+          },
+        }));
+      }
+
+      if (locationState.suggestedRespondentCount) {
+        setRespondentCount(Math.min(Math.max(locationState.suggestedRespondentCount, 10), 2000));
+      }
     } else if (questions[0].text === '') {
       // REGENERATE QUESTIONS with the clean subject
       setQuestions(generateQuestions(cleanText, smartSubject));

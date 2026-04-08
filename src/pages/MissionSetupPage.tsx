@@ -174,13 +174,7 @@ export const MissionSetupPage = () => {
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('=== INITIALIZE BUTTON CLICKED ===');
-    console.log('Mission Goal:', missionGoal);
-    console.log('Mission Description:', missionDescription);
-    console.log('User:', user);
-
     if (!isValid) {
-      console.log('Validation failed: description too short');
       setShowErrors(true);
       setDescriptionTouched(true);
       toast.error('Please provide a detailed mission description');
@@ -191,13 +185,20 @@ export const MissionSetupPage = () => {
 
     const selectedGoal = MISSION_GOALS.find(g => g.id === missionGoal);
     const aiContext = `${selectedGoal?.label || 'Research'}: ${missionDescription}`;
-
-    const parts = missionDescription.split(/\.\s+/);
-    const subject = parts[0] || missionDescription.slice(0, 100);
-    const objective = parts.length > 1 ? parts.slice(1).join('. ') : missionDescription;
+    const subject = missionDescription;
+    const objective = selectedGoal?.label || missionGoal;
     const targetAudience = 'General Audience';
 
     try {
+      // Step 1: Generate AI questions NOW while user is authenticated
+      let aiResult: Awaited<ReturnType<typeof generateSurvey>> | null = null;
+      try {
+        aiResult = await generateSurvey({ goal: missionGoal, subject, objective });
+      } catch (aiErr) {
+        console.warn('AI generation failed, will use defaults:', aiErr);
+      }
+
+      // Step 2: Create mission in database
       const { data, error } = await supabase
         .from('missions')
         .insert([{
@@ -205,74 +206,49 @@ export const MissionSetupPage = () => {
           context: aiContext,
           target: targetAudience,
           question: objective,
-          respondent_count: 100,
+          respondent_count: aiResult?.suggestedRespondentCount || 100,
           estimated_price: 99,
           role: role,
           stage: stage,
           status: 'DRAFT',
-          mission_type: 'pulse_check',
+          mission_type: missionGoal,
           visualization_type: 'RATING',
           created_at: new Date().toISOString(),
         }])
         .select()
         .single();
 
-      if (error) {
-        console.error('Database error (navigating anyway):', error);
-        const tempMissionData = {
-          id: `temp-${Date.now()}`,
-          context: aiContext,
-          target: targetAudience,
-          question: objective,
-          respondent_count: 100,
-          estimated_price: 99,
-          status: 'DRAFT',
-          mission_type: 'pulse_check',
-          visualization_type: 'RATING',
-        };
-        localStorage.removeItem('missionSetupDraft');
-        navigate(`/dashboard/${tempMissionData.id}`, {
-          state: {
-            missionData: tempMissionData,
-            aiParams: { goal: missionGoal, subject, objective },
-            fromSetup: true
-          }
-        });
-        return;
-      }
-
-      if (data) {
-        console.log('Mission created successfully with ID:', data.id);
-        localStorage.removeItem('missionSetupDraft');
-        navigate(`/dashboard/${data.id}`, {
-          state: {
-            missionData: data,
-            aiParams: { goal: missionGoal, subject, objective },
-            fromSetup: true
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Unexpected error (navigating anyway):', error);
-      const tempMissionData = {
+      const missionData = data || {
         id: `temp-${Date.now()}`,
         context: aiContext,
         target: targetAudience,
         question: objective,
-        respondent_count: 100,
+        respondent_count: aiResult?.suggestedRespondentCount || 100,
         estimated_price: 99,
         status: 'DRAFT',
-        mission_type: 'pulse_check',
+        mission_type: missionGoal,
         visualization_type: 'RATING',
       };
+
+      if (error) console.error('Database error (continuing anyway):', error);
+
       localStorage.removeItem('missionSetupDraft');
-      navigate(`/dashboard/${tempMissionData.id}`, {
+
+      // Step 3: Navigate with pre-generated questions so dashboard is instant
+      navigate(`/dashboard/${missionData.id}`, {
         state: {
-          missionData: tempMissionData,
+          missionData,
+          fromSetup: true,
+          generatedQuestions: aiResult?.questions || null,
+          missionObjective: aiResult?.missionObjective || '',
+          targetingSuggestions: aiResult?.targetingSuggestions || null,
+          suggestedRespondentCount: aiResult?.suggestedRespondentCount || null,
           aiParams: { goal: missionGoal, subject, objective },
-          fromSetup: true
         }
       });
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -481,9 +457,10 @@ export const MissionSetupPage = () => {
             }`}
           >
             {isSubmitting ? (
+                // show spinner + message while AI generates
               <>
                 <div className="w-5 h-5 border-2 border-gray-900/30 border-t-gray-900 rounded-full animate-spin" />
-                Creating Mission...
+                AI is crafting your mission...
               </>
             ) : !isValid ? (
               "Describe your mission to continue"
