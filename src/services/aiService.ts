@@ -10,6 +10,54 @@ interface GenerateSurveyParams {
 interface SurveyGenerationResult {
   questions: Question[];
   missionObjective: string;
+  targetingSuggestions?: {
+    countries: string[];
+    ageRanges: string[];
+    genders: string[];
+    reasoning: string;
+  };
+}
+
+// Map Claude's types to the frontend's supported types
+const VALID_TYPES = ['single', 'multi', 'rating', 'opinion', 'text'];
+const TYPE_MAP: Record<string, string> = {
+  single_choice: 'single',
+  multiple_choice: 'multi',
+  nps: 'rating',
+  yesno: 'single',
+  likert: 'opinion',
+  open: 'text',
+  open_ended: 'text',
+};
+
+function mapType(rawType: string): string {
+  const mapped = TYPE_MAP[rawType] || rawType;
+  return VALID_TYPES.includes(mapped) ? mapped : 'single';
+}
+
+function mapQuestion(q: any, i: number): Question {
+  const type = mapType(q.type);
+  let options = q.options || [];
+
+  // Ensure yesno gets proper options
+  if (q.type === 'yesno' && options.length === 0) {
+    options = ['Yes', 'No'];
+  }
+  // Opinion needs at least 3 options
+  if (type === 'opinion' && options.length === 0) {
+    options = ['Yes', 'No', 'Maybe'];
+  }
+
+  return {
+    id: q.id || `q${i + 1}`,
+    text: q.text || '',
+    type: type as any,
+    options,
+    isScreening: q.isScreening || false,
+    qualifyingAnswer: q.qualifyingAnswer,
+    aiRefined: true,
+    hasPIIError: false,
+  };
 }
 
 export const generateSurvey = async (
@@ -23,21 +71,25 @@ export const generateSurvey = async (
       ? `${subject}. ${objective}`
       : subject;
 
-    const result = await api.post('/api/ai/generate-survey', { goal, description });
+    // Run survey generation and targeting suggestions in parallel
+    const [surveyResult, targetingResult] = await Promise.allSettled([
+      api.post('/api/ai/generate-survey', { goal, description }),
+      api.post('/api/ai/suggest-targeting', { description, goal }),
+    ]);
 
-    if (result?.questions?.length) {
+    const survey = surveyResult.status === 'fulfilled' ? surveyResult.value : null;
+    const targeting = targetingResult.status === 'fulfilled' ? targetingResult.value : null;
+
+    if (survey?.questions?.length) {
       return {
-        questions: result.questions.map((q: any, i: number) => ({
-          id: q.id || `q${i + 1}`,
-          text: q.text || '',
-          type: q.type || 'single',
-          options: q.options || [],
-          isScreening: q.isScreening || false,
-          qualifyingAnswer: q.qualifyingAnswer,
-          aiRefined: true,
-          hasPIIError: false,
-        })),
-        missionObjective: result.missionStatement || `To understand ${subject}.`,
+        questions: survey.questions.map(mapQuestion),
+        missionObjective: survey.missionStatement || `To understand ${subject}.`,
+        targetingSuggestions: targeting ? {
+          countries: targeting.geography?.recommendedCountries || [],
+          ageRanges: targeting.demographics?.ageRanges || [],
+          genders: targeting.demographics?.genders || [],
+          reasoning: targeting.geography?.reasoning || '',
+        } : undefined,
       };
     }
   } catch (err) {

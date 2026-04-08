@@ -378,15 +378,22 @@ export const DashboardPage = () => {
     if (isRefining || !missionContext.trim()) return;
 
     setIsRefining(true);
-
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Generate "professional" version of the text
-    const refinedText = `Concept Validation: ${missionContext}. Target Audience: High-intent buyers.`;
-    setMissionContext(refinedText);
-
-    setIsRefining(false);
+    try {
+      const result = await api.post('/api/ai/refine-description', {
+        rawDescription: missionContext,
+        goal: missionData?.mission_type || 'validate',
+      });
+      if (result?.refined) {
+        setMissionContext(result.refined);
+      }
+    } catch (err) {
+      console.warn('Refine failed:', err);
+      // Fallback: simple formatting
+      const refinedText = `Concept Validation: ${missionContext}. Target Audience: High-intent buyers.`;
+      setMissionContext(refinedText);
+    } finally {
+      setIsRefining(false);
+    }
   };
 
   const parseTargetingFromContext = (context: string) => {
@@ -714,9 +721,32 @@ export const DashboardPage = () => {
     if (locationState?.aiParams && !locationState.generatedQuestions) {
       setLoadingQuestions(true);
       generateSurvey(locationState.aiParams)
-        .then(({ questions: aiQuestions, missionObjective: aiObjective }) => {
+        .then(({ questions: aiQuestions, missionObjective: aiObjective, targetingSuggestions }) => {
           setQuestions(aiQuestions);
           setMissionObjective(aiObjective);
+
+          // Apply AI targeting suggestions
+          if (targetingSuggestions) {
+            setTargetingConfig(prev => ({
+              ...prev,
+              geography: {
+                ...prev.geography,
+                countries: targetingSuggestions.countries.length > 0
+                  ? targetingSuggestions.countries
+                  : prev.geography.countries,
+              },
+              demographics: {
+                ...prev.demographics,
+                ageRanges: targetingSuggestions.ageRanges.length > 0
+                  ? targetingSuggestions.ageRanges
+                  : prev.demographics.ageRanges,
+                genders: targetingSuggestions.genders.length > 0
+                  ? targetingSuggestions.genders
+                  : prev.demographics.genders,
+              },
+            }));
+          }
+
           setLoadingQuestions(false);
         })
         .catch((error) => {
