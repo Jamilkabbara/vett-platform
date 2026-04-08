@@ -10,6 +10,7 @@ interface GenerateSurveyParams {
 interface SurveyGenerationResult {
   questions: Question[];
   missionObjective: string;
+  suggestedRespondentCount?: number;
   targetingSuggestions?: {
     countries: string[];
     ageRanges: string[];
@@ -84,6 +85,7 @@ export const generateSurvey = async (
       return {
         questions: survey.questions.map(mapQuestion),
         missionObjective: survey.missionStatement || `To understand ${subject}.`,
+        suggestedRespondentCount: survey.suggestedRespondentCount,
         targetingSuggestions: targeting ? {
           countries: targeting.geography?.recommendedCountries || [],
           ageRanges: targeting.demographics?.ageRanges || [],

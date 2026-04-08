@@ -721,7 +721,7 @@ export const DashboardPage = () => {
     if (locationState?.aiParams && !locationState.generatedQuestions) {
       setLoadingQuestions(true);
       generateSurvey(locationState.aiParams)
-        .then(({ questions: aiQuestions, missionObjective: aiObjective, targetingSuggestions }) => {
+        .then(({ questions: aiQuestions, missionObjective: aiObjective, targetingSuggestions, suggestedRespondentCount }) => {
           setQuestions(aiQuestions);
           setMissionObjective(aiObjective);
 
@@ -745,6 +745,11 @@ export const DashboardPage = () => {
                   : prev.demographics.genders,
               },
             }));
+          }
+
+          // Apply AI-suggested respondent count
+          if (suggestedRespondentCount) {
+            setRespondentCount(Math.min(Math.max(suggestedRespondentCount, 10), 2000));
           }
 
           setLoadingQuestions(false);
@@ -828,8 +833,6 @@ export const DashboardPage = () => {
   }, [location.state]);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-
     if (missionData && !loading) {
       return;
     }

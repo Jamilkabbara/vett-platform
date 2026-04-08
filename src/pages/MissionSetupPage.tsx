@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { AuthModal } from '../components/layout/AuthModal';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { generateSurvey } from '../services/aiService';
+import { api } from '../lib/apiClient';
 
 const MISSION_GOALS = [
   { id: 'validate', label: 'Validate Product', icon: Rocket, emoji: '🚀' },
@@ -142,36 +143,26 @@ export const MissionSetupPage = () => {
 
   const refineDescription = async () => {
     if (!missionDescription.trim()) return;
-
     setIsRefining(true);
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const text = missionDescription.trim();
-    let refined = text;
-
-    if (text.length < 50) {
-      refined = `I want to validate ${text} for my target customers. I need to understand their preferences, willingness to pay, and what features matter most to them when making a purchase decision.`;
-    } else if (text.length < 100) {
-      if (!text.toLowerCase().includes('want to') && !text.toLowerCase().includes('need to')) {
-        refined = `I want to ${text}. I need to understand customer preferences and identify the key factors that influence their decision-making process.`;
-      } else {
-        refined = text.charAt(0).toUpperCase() + text.slice(1);
-        if (!refined.endsWith('.') && !refined.endsWith('?')) {
-          refined += '.';
-        }
+    try {
+      const selectedGoal = MISSION_GOALS.find(g => g.id === missionGoal);
+      const result = await api.post('/api/ai/refine-description', {
+        rawDescription: missionDescription.trim(),
+        goal: selectedGoal?.label || missionGoal,
+      });
+      if (result?.refined) {
+        setMissionDescription(result.refined);
+        toast.success('Description refined by AI!');
       }
-    } else {
-      refined = text.charAt(0).toUpperCase() + text.slice(1);
-      if (!refined.endsWith('.') && !refined.endsWith('?')) {
-        refined += '.';
-      }
-      const sentences = refined.split('. ');
-      refined = sentences.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('. ');
+    } catch (err) {
+      // Fallback to simple formatting if backend unavailable
+      const text = missionDescription.trim();
+      let refined = text.charAt(0).toUpperCase() + text.slice(1);
+      if (!refined.endsWith('.')) refined += '.';
+      setMissionDescription(refined);
+    } finally {
+      setIsRefining(false);
     }
-
-    setMissionDescription(refined);
-    setIsRefining(false);
   };
 
   const handleInspirationClick = (text: string) => {
