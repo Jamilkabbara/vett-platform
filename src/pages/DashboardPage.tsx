@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navbar } from '../components/layout/Navbar';
 import { ResultsEngine } from '../components/dashboard/ResultsEngine';
@@ -387,9 +388,7 @@ export const DashboardPage = () => {
       }
     } catch (err) {
       console.warn('Refine failed:', err);
-      // Fallback: simple formatting
-      const refinedText = `Concept Validation: ${missionContext}. Target Audience: High-intent buyers.`;
-      setMissionContext(refinedText);
+      toast.error('AI refinement unavailable. Please try again.');
     } finally {
       setIsRefining(false);
     }

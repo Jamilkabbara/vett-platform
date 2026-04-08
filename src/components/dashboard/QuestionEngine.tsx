@@ -22,7 +22,8 @@ interface QuestionEngineProps {
   onScreeningChange?: (isActive: boolean) => void;
 }
 
-const PII_REGEX = /(email|e-mail|phone|mobile number|cell number|telephone|address|street|home address|credit card|debit card|ssn|social security|password|passcode|name|first name|last name|full name|date of birth|dob|birthday|driver license|passport|bank account|routing number|zip code|postal code|national id|identification number)/i;
+// Only flag questions that are literally ASKING for personal data — not questions that mention these words in context
+const PII_REGEX = /\b(your email|your phone|your address|your full name|your first name|your last name|your date of birth|your dob|your birthday|your ssn|your social security|your credit card|your debit card|your password|your passcode|your bank account|your passport|your driver.?s? license|your national id|enter your|provide your|submit your|share your (email|phone|address|name|number))\b/i;
 
 export const QuestionEngine = ({ initialQuestion, questions: propQuestions, onQuestionsChange, onScreeningChange }: QuestionEngineProps) => {
   const [questions, setQuestions] = useState<Question[]>(

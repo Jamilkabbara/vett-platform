@@ -204,14 +204,6 @@ export const AuthModal = ({ onClose, isOpen = true }: AuthModalProps) => {
           )}
         </div>
 
-        <div className="mt-8 pt-6 border-t border-white/5">
-          <button
-            onClick={handlePrototypeBypass}
-            className="w-full text-[10px] font-bold text-white/20 hover:text-primary transition-colors"
-          >
-            [DEV] Continue as Guest / Prototype Mode
-          </button>
-        </div>
       </div>
     </div>
   );

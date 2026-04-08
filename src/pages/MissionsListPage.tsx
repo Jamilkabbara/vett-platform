@@ -73,10 +73,12 @@ export const MissionsListPage = () => {
       setLoading(true);
       const data = await api.get('/api/missions');
       const realMissions = Array.isArray(data) ? data : [];
-      setMissions(realMissions.length > 0 ? realMissions : MOCK_MISSIONS);
+      // Always show real data for authenticated users — empty array shows the empty state CTA
+      setMissions(realMissions);
     } catch (error) {
       console.error('Error fetching missions:', error);
-      setMissions(MOCK_MISSIONS);
+      // On error, show empty state rather than fake missions
+      setMissions([]);
     } finally {
       setLoading(false);
     }
