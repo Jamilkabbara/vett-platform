@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/apiClient';
 import toast from 'react-hot-toast';
 
 interface AuthModalProps {
@@ -30,14 +31,21 @@ export const AuthModal = ({ onClose, isOpen = true }: AuthModalProps) => {
 
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
         });
         if (error) throw error;
+        // Register user profile + send welcome email via backend
+        if (signUpData.user) {
+          api.post('/api/auth/register', {
+            userId: signUpData.user.id,
+            email: signUpData.user.email,
+          }).catch(() => {}); // non-blocking
+        }
         toast.success('Account created successfully!');
         onClose();
-        navigate('/mission-control');
+        navigate('/missions');
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -46,7 +54,7 @@ export const AuthModal = ({ onClose, isOpen = true }: AuthModalProps) => {
         if (error) throw error;
         toast.success('Welcome back!');
         onClose();
-        navigate('/mission-control');
+        navigate('/missions');
       }
     } catch (err: any) {
       const errorMessage = err.message || 'An error occurred';
