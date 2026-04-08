@@ -17,6 +17,7 @@ import { AuthModal } from '../components/layout/AuthModal';
 import { Zap, AlertCircle, Eye, X, MapPin, Users, Pencil, Sparkles, Check, ArrowRight, User, Target, LogOut } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../lib/apiClient';
 import { calculatePricing } from '../utils/pricingEngine';
 import { calculateTimeEstimate } from '../utils/timeEstimation';
 import { generateSurvey } from '../services/aiService';
@@ -48,6 +49,7 @@ export const DashboardPage = () => {
   const [mobileView, setMobileView] = useState<'mission' | 'targeting' | 'preview'>('mission');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showVettingModal, setShowVettingModal] = useState(false);
+  const [backendMissionId, setBackendMissionId] = useState<string | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const targetingMatrixRef = useRef<HTMLDivElement>(null);
   const [respondentCount, setRespondentCount] = useState(50);
@@ -857,7 +859,7 @@ export const DashboardPage = () => {
     fetchMission();
   }, [missionId, user, authLoading, navigate, location.state]);
 
-  const handleLaunch = () => {
+  const handleLaunch = async () => {
     console.log("🎯 handleLaunch called", { user: !!user, questions: questions.length });
 
     const hasErrors = questions.some(q => q.hasPIIError);
@@ -865,6 +867,36 @@ export const DashboardPage = () => {
       console.log("❌ PII errors detected");
       setValidationError('Please remove questions with PII violations before launching');
       return;
+    }
+
+    // Save mission to backend to get a real missionId before payment
+    if (user) {
+      try {
+        const payload = {
+          goal: missionData?.mission_type || 'validate',
+          missionStatement: missionObjective || missionTitle || missionData?.context || '',
+          subject: missionData?.context || missionTitle || '',
+          objective: missionData?.question || '',
+          questions,
+          targetingConfig,
+          respondentCount,
+          missionType: missionData?.mission_type || 'validate',
+        };
+
+        let savedMission;
+        const existingId = backendMissionId || missionData?.id;
+        if (existingId) {
+          savedMission = await api.patch(`/api/missions/${existingId}`, payload);
+        } else {
+          savedMission = await api.post('/api/missions', payload);
+        }
+
+        if (savedMission?.id) {
+          setBackendMissionId(savedMission.id);
+        }
+      } catch (err) {
+        console.warn('Could not save mission to backend before launch:', err);
+      }
     }
 
     console.log("✅ Opening vetting modal");
@@ -958,7 +990,7 @@ export const DashboardPage = () => {
           <h2 className="text-2xl font-black text-white mb-4">No Mission Found</h2>
           <p className="text-white/60 mb-6">Create your first mission to get started.</p>
           <button
-            onClick={() => navigate('/mission-control')}
+            onClick={() => navigate('/setup')}
             className="px-6 py-3 bg-[#ccff00] hover:bg-[#b3e600] rounded-xl font-bold text-black transition-colors"
           >
             Create Mission
@@ -1562,6 +1594,7 @@ export const DashboardPage = () => {
         onComplete={handleVettingComplete}
         totalCost={pricingBreakdown.total}
         respondentCount={respondentCount}
+        missionId={backendMissionId || missionData?.id}
       />
 
       {showAuthModal && (

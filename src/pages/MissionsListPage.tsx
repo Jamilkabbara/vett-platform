@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Zap, Plus, BarChart3, Clock, Users, ArrowRight, Trash2, Eye } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../lib/apiClient';
 
 interface Mission {
   id: string;
@@ -71,16 +71,9 @@ export const MissionsListPage = () => {
   const fetchMissions = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('missions')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const realMissions = data || [];
-      const allMissions = realMissions.length > 0 ? realMissions : MOCK_MISSIONS;
-      setMissions(allMissions);
+      const data = await api.get('/api/missions');
+      const realMissions = Array.isArray(data) ? data : [];
+      setMissions(realMissions.length > 0 ? realMissions : MOCK_MISSIONS);
     } catch (error) {
       console.error('Error fetching missions:', error);
       setMissions(MOCK_MISSIONS);
@@ -94,12 +87,7 @@ export const MissionsListPage = () => {
     if (!confirm('Are you sure you want to delete this mission?')) return;
 
     try {
-      const { error } = await supabase
-        .from('missions')
-        .delete()
-        .eq('id', missionId);
-
-      if (error) throw error;
+      await api.delete(`/api/missions/${missionId}`);
       setMissions(missions.filter(m => m.id !== missionId));
     } catch (error) {
       console.error('Error deleting mission:', error);
@@ -220,7 +208,7 @@ export const MissionsListPage = () => {
                 Launch your first mission to get real feedback from your target audience in hours, not weeks.
               </p>
               <button
-                onClick={() => navigate('/mission-control')}
+                onClick={() => navigate('/setup')}
                 className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-neon-lime to-primary text-gray-900 rounded-xl font-black text-base hover:scale-105 transition-transform shadow-2xl shadow-neon-lime/30"
               >
                 <Plus className="w-5 h-5" />

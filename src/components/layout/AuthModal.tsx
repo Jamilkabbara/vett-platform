@@ -21,7 +21,7 @@ export const AuthModal = ({ onClose, isOpen = true }: AuthModalProps) => {
 
   const handlePrototypeBypass = () => {
     onClose();
-    navigate('/mission-control');
+    navigate('/missions');
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -72,7 +72,7 @@ export const AuthModal = ({ onClose, isOpen = true }: AuthModalProps) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/mission-control`,
+          redirectTo: `${window.location.origin}/missions`,
         },
       });
       if (error) throw error;
