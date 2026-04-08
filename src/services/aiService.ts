@@ -1,4 +1,5 @@
 import { Question } from '../components/dashboard/QuestionEngine';
+import { api } from '../lib/apiClient';
 
 interface GenerateSurveyParams {
   goal: string;
@@ -16,6 +17,34 @@ export const generateSurvey = async (
 ): Promise<SurveyGenerationResult> => {
   const { goal, subject, objective } = params;
 
+  // Try real Claude AI via backend first
+  try {
+    const description = objective
+      ? `${subject}. ${objective}`
+      : subject;
+
+    const result = await api.post('/api/ai/generate-survey', { goal, description });
+
+    if (result?.questions?.length) {
+      return {
+        questions: result.questions.map((q: any, i: number) => ({
+          id: q.id || `q${i + 1}`,
+          text: q.text || '',
+          type: q.type || 'single',
+          options: q.options || [],
+          isScreening: q.isScreening || false,
+          qualifyingAnswer: q.qualifyingAnswer,
+          aiRefined: true,
+          hasPIIError: false,
+        })),
+        missionObjective: result.missionStatement || `To understand ${subject}.`,
+      };
+    }
+  } catch (err) {
+    console.warn('Backend AI unavailable, falling back to local generation:', err);
+  }
+
+  // Fallback: local generation
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   let questions: Question[] = [];

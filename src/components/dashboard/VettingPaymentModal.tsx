@@ -3,6 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Check, CreditCard, Lock, X, Apple } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { loadStripe } from '@stripe/stripe-js';
+import {
+  Elements,
+  CardNumberElement,
+  CardExpiryElement,
+  CardCvcElement,
+  useStripe,
+  useElements,
+} from '@stripe/react-stripe-js';
+import { api } from '../../lib/apiClient';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 interface VettingPaymentModalProps {
   isOpen: boolean;
@@ -10,6 +22,7 @@ interface VettingPaymentModalProps {
   onComplete: () => void;
   totalCost: number;
   respondentCount: number;
+  missionId?: string | null;
 }
 
 type Stage = 'vetting' | 'payment' | 'processing' | 'success';
@@ -19,38 +32,42 @@ interface VettingCheck {
   completed: boolean;
 }
 
-interface CardDetails {
-  cardNumber: string;
-  expiry: string;
-  cvc: string;
-}
+const CARD_ELEMENT_STYLE = {
+  style: {
+    base: {
+      color: '#fff',
+      fontFamily: 'inherit',
+      fontSize: '14px',
+      '::placeholder': { color: 'rgba(255,255,255,0.4)' },
+    },
+    invalid: { color: '#ef4444' },
+  },
+};
 
-export const VettingPaymentModal = ({
+// Inner component that uses Stripe hooks (must be inside <Elements>)
+const PaymentForm = ({
   isOpen,
   onClose,
   onComplete,
   totalCost,
-  respondentCount
+  respondentCount,
+  missionId,
 }: VettingPaymentModalProps) => {
   const navigate = useNavigate();
+  const stripe = useStripe();
+  const elements = useElements();
+
   const [stage, setStage] = useState<Stage>('vetting');
   const [vettingChecks, setVettingChecks] = useState<VettingCheck[]>([
     { label: 'PII (Personal Data) Check', completed: false },
     { label: 'Profanity Filter', completed: false },
-    { label: 'Policy Compliance', completed: false }
+    { label: 'Policy Compliance', completed: false },
   ]);
-  const [cardDetails, setCardDetails] = useState<CardDetails>({
-    cardNumber: '',
-    expiry: '',
-    cvc: ''
-  });
   const [isProcessing, setIsProcessing] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
   const [discountedPrice, setDiscountedPrice] = useState(totalCost);
-
-  const isCardValid = cardDetails.cardNumber.length >= 3;
 
   const handleApplyPromo = () => {
     if (promoCode.toUpperCase() === 'VETT100') {
@@ -76,11 +93,9 @@ export const VettingPaymentModal = ({
             )
           );
         }
-
         await new Promise(resolve => setTimeout(resolve, 500));
         setStage('payment');
       };
-
       runVetting();
     }
   }, [isOpen, stage]);
@@ -91,9 +106,8 @@ export const VettingPaymentModal = ({
       setVettingChecks([
         { label: 'PII (Personal Data) Check', completed: false },
         { label: 'Profanity Filter', completed: false },
-        { label: 'Policy Compliance', completed: false }
+        { label: 'Policy Compliance', completed: false },
       ]);
-      setCardDetails({ cardNumber: '', expiry: '', cvc: '' });
       setIsProcessing(false);
       setPromoCode('');
       setPromoMessage('');
@@ -103,37 +117,57 @@ export const VettingPaymentModal = ({
   }, [isOpen, totalCost]);
 
   const handlePayment = async () => {
-    console.log("💳 Payment button clicked - Starting payment flow");
     setIsProcessing(true);
     setStage('processing');
-
     const toastId = toast.loading('Processing secure payment...');
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    console.log("✅ Payment processed successfully");
+    try {
+      // Free launch via promo code
+      if (promoApplied && discountedPrice === 0) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        setStage('success');
+        toast.success('Mission Launched!', { id: toastId });
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        onClose();
+        navigate(`/mission-success?respondents=${respondentCount}&total=0`);
+        return;
+      }
 
-    setStage('success');
-    toast.success('Mission Launched Successfully!', { id: toastId });
+      // Real Stripe payment
+      if (!stripe || !elements || !missionId) {
+        throw new Error('Payment system not ready. Please try again.');
+      }
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
+      // 1. Create payment intent on backend
+      const { clientSecret, paymentIntentId } = await api.post('/api/payments/create-intent', {
+        missionId,
+      });
 
-    console.log("🎊 Navigating to mission success page");
-    onClose();
-    navigate(`/mission-success?respondents=${respondentCount}&total=${totalCost.toFixed(2)}`);
-  };
+      // 2. Confirm payment with Stripe
+      const cardNumberElement = elements.getElement(CardNumberElement);
+      if (!cardNumberElement) throw new Error('Card details not found');
 
-  const formatCardNumber = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
-    const groups = cleaned.match(/.{1,4}/g);
-    return groups ? groups.join(' ').substring(0, 19) : cleaned;
-  };
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: { card: cardNumberElement },
+      });
 
-  const formatExpiry = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
-    if (cleaned.length >= 2) {
-      return cleaned.substring(0, 2) + ' / ' + cleaned.substring(2, 4);
+      if (stripeError) throw new Error(stripeError.message || 'Payment failed');
+      if (paymentIntent?.status !== 'succeeded') throw new Error('Payment not completed');
+
+      // 3. Confirm with backend (launches Pollfish + sends emails)
+      await api.post('/api/payments/confirm', { missionId, paymentIntentId });
+
+      setStage('success');
+      toast.success('Mission Launched Successfully!', { id: toastId });
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      onClose();
+      navigate(`/mission-success?respondents=${respondentCount}&total=${totalCost.toFixed(2)}`);
+
+    } catch (err: any) {
+      setIsProcessing(false);
+      setStage('payment');
+      toast.error(err.message || 'Payment failed. Please try again.', { id: toastId });
     }
-    return cleaned;
   };
 
   if (!isOpen) return null;
@@ -164,6 +198,7 @@ export const VettingPaymentModal = ({
             </button>
           )}
 
+          {/* VETTING STAGE */}
           {stage === 'vetting' && (
             <div className="p-8">
               <div className="flex items-center justify-center mb-6">
@@ -171,14 +206,8 @@ export const VettingPaymentModal = ({
                   <Shield className="w-8 h-8 text-blue-400" />
                 </div>
               </div>
-
-              <h2 className="text-2xl font-black text-white text-center mb-2">
-                Vetting your Mission...
-              </h2>
-              <p className="text-white/60 text-center mb-8">
-                Running safety and compliance checks
-              </p>
-
+              <h2 className="text-2xl font-black text-white text-center mb-2">Vetting your Mission...</h2>
+              <p className="text-white/60 text-center mb-8">Running safety and compliance checks</p>
               <div className="space-y-4">
                 {vettingChecks.map((check, index) => (
                   <motion.div
@@ -189,23 +218,15 @@ export const VettingPaymentModal = ({
                     className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-lg"
                   >
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                      check.completed
-                        ? 'bg-green-500'
-                        : 'bg-white/10 border-2 border-white/30'
+                      check.completed ? 'bg-green-500' : 'bg-white/10 border-2 border-white/30'
                     }`}>
                       {check.completed && <Check className="w-4 h-4 text-white" />}
                     </div>
-                    <span className={`text-sm font-medium transition-colors ${
-                      check.completed ? 'text-white' : 'text-white/60'
-                    }`}>
+                    <span className={`text-sm font-medium transition-colors ${check.completed ? 'text-white' : 'text-white/60'}`}>
                       {check.label}
                     </span>
                     {check.completed && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="ml-auto"
-                      >
+                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="ml-auto">
                         <Check className="w-5 h-5 text-green-400" />
                       </motion.div>
                     )}
@@ -215,21 +236,15 @@ export const VettingPaymentModal = ({
             </div>
           )}
 
+          {/* PAYMENT STAGE */}
           {stage === 'payment' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col h-full"
-            >
-              {/* HEADER - Sticky at top */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full">
               <div className="sticky top-0 z-10 flex-shrink-0 p-4 sm:p-6 pb-3 sm:pb-4 border-b border-white/10 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-                <h2 className="text-xl sm:text-2xl font-black text-white">
-                  Secure Checkout
-                </h2>
+                <h2 className="text-xl sm:text-2xl font-black text-white">Secure Checkout</h2>
               </div>
 
-              {/* BODY - Scrollable content */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pb-6 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pb-6">
+                {/* Price summary */}
                 <div className="bg-gray-700/30 rounded-lg p-4 mb-6">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-white/70">
@@ -237,101 +252,79 @@ export const VettingPaymentModal = ({
                     </span>
                     <div className="text-right">
                       {promoApplied && (
-                        <div className="text-xs text-white/50 line-through mb-1">
-                          ${totalCost.toFixed(2)}
-                        </div>
+                        <div className="text-xs text-white/50 line-through mb-1">${totalCost.toFixed(2)}</div>
                       )}
-                      <span className="text-white font-bold text-lg">
-                        ${discountedPrice.toFixed(2)}
-                      </span>
+                      <span className="text-white font-bold text-lg">${discountedPrice.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
 
-                <button
-                  onClick={handlePayment}
-                  disabled={isProcessing}
-                  className="w-full h-12 sm:h-14 rounded-lg text-white bg-black hover:bg-gray-950 transition-colors flex items-center justify-center gap-1.5 mb-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Apple className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" />
-                  <span className="text-lg sm:text-xl font-normal tracking-tight">Pay</span>
-                </button>
+                {/* Apple Pay / Google Pay buttons */}
+                {discountedPrice > 0 && (
+                  <>
+                    <button
+                      onClick={handlePayment}
+                      disabled={isProcessing}
+                      className="w-full h-12 sm:h-14 rounded-lg text-white bg-black hover:bg-gray-950 transition-colors flex items-center justify-center gap-1.5 mb-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Apple className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" />
+                      <span className="text-lg sm:text-xl font-normal tracking-tight">Pay</span>
+                    </button>
 
-                <button
-                  onClick={handlePayment}
-                  disabled={isProcessing}
-                  className="w-full h-12 sm:h-14 rounded-lg text-white bg-black hover:bg-gray-950 transition-colors flex items-center justify-center gap-1 mb-4 sm:mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                  </svg>
-                  <span className="text-base sm:text-lg font-medium">Pay</span>
-                </button>
+                    <button
+                      onClick={handlePayment}
+                      disabled={isProcessing}
+                      className="w-full h-12 sm:h-14 rounded-lg text-white bg-black hover:bg-gray-950 transition-colors flex items-center justify-center gap-1 mb-4 sm:mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                      </svg>
+                      <span className="text-base sm:text-lg font-medium">Pay</span>
+                    </button>
 
-                <div className="relative mb-4 sm:mb-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/20"></div>
-                  </div>
-                  <div className="relative flex justify-center text-xs sm:text-sm">
-                    <span className="px-3 sm:px-4 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white/60">
-                      Or pay with card
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-                  <div>
-                    <label className="block text-xs sm:text-sm text-white/70 mb-1.5 sm:mb-2">Card Number</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="1234 5678 9012 3456"
-                        value={cardDetails.cardNumber}
-                        onChange={(e) => setCardDetails({
-                          ...cardDetails,
-                          cardNumber: formatCardNumber(e.target.value)
-                        })}
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-xs sm:text-sm"
-                      />
-                      <CreditCard className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40" />
+                    <div className="relative mb-4 sm:mb-6">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-white/20"></div>
+                      </div>
+                      <div className="relative flex justify-center text-xs sm:text-sm">
+                        <span className="px-3 sm:px-4 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white/60">
+                          Or pay with card
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <label className="block text-xs sm:text-sm text-white/70 mb-1.5 sm:mb-2">MM / YY</label>
-                      <input
-                        type="text"
-                        placeholder="12 / 25"
-                        value={cardDetails.expiry}
-                        onChange={(e) => setCardDetails({
-                          ...cardDetails,
-                          expiry: formatExpiry(e.target.value)
-                        })}
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-xs sm:text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm text-white/70 mb-1.5 sm:mb-2">CVC</label>
-                      <input
-                        type="text"
-                        placeholder="123"
-                        maxLength={4}
-                        value={cardDetails.cvc}
-                        onChange={(e) => setCardDetails({
-                          ...cardDetails,
-                          cvc: e.target.value.replace(/\D/g, '')
-                        })}
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-xs sm:text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
+                    {/* Stripe Card Elements */}
+                    <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+                      <div>
+                        <label className="block text-xs sm:text-sm text-white/70 mb-1.5 sm:mb-2">Card Number</label>
+                        <div className="relative px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
+                          <CardNumberElement options={CARD_ELEMENT_STYLE} />
+                          <CreditCard className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40 pointer-events-none" />
+                        </div>
+                      </div>
 
-                {/* PROMO CODE SECTION */}
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                        <div>
+                          <label className="block text-xs sm:text-sm text-white/70 mb-1.5 sm:mb-2">MM / YY</label>
+                          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
+                            <CardExpiryElement options={CARD_ELEMENT_STYLE} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs sm:text-sm text-white/70 mb-1.5 sm:mb-2">CVC</label>
+                          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
+                            <CardCvcElement options={CARD_ELEMENT_STYLE} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Promo Code */}
                 <div className="mb-4 sm:mb-6 w-full">
                   <label className="block text-xs sm:text-sm text-white/70 mb-1.5 sm:mb-2">Discount Code</label>
                   <div className="flex gap-2 w-full">
@@ -358,73 +351,70 @@ export const VettingPaymentModal = ({
                   )}
                 </div>
 
+                {/* Pay Button */}
                 <button
                   onClick={handlePayment}
-                  disabled={(!isCardValid && discountedPrice > 0) || isProcessing}
+                  disabled={isProcessing}
                   className={`w-full py-3 sm:py-4 rounded-lg font-bold text-base sm:text-lg transition-all ${
-                    ((isCardValid && !isProcessing) || discountedPrice === 0)
+                    !isProcessing
                       ? 'bg-gradient-to-r from-neon-lime to-primary text-gray-900 hover:shadow-2xl hover:shadow-neon-lime/50'
                       : 'bg-gray-700/30 text-white/40 cursor-not-allowed'
                   }`}
                 >
-                  {discountedPrice === 0 ? 'Start Mission' : `Pay $${discountedPrice.toFixed(2)}`}
+                  {discountedPrice === 0 ? 'Start Mission (Free)' : `Pay $${discountedPrice.toFixed(2)}`}
                 </button>
               </div>
 
-              {/* FOOTER - Fixed at bottom */}
               <div className="flex-shrink-0 p-3 sm:p-6 pt-3 sm:pt-4 border-t border-white/10">
                 <div className="flex items-center justify-center gap-2 text-[10px] sm:text-xs text-white/50">
                   <Lock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="text-center">Payments processed securely via Ziina (UAE). All major cards accepted.</span>
+                  <span className="text-center">Payments processed securely via Stripe. All major cards accepted.</span>
                 </div>
               </div>
             </motion.div>
           )}
 
+          {/* PROCESSING STAGE */}
           {stage === 'processing' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="p-8"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8">
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="w-16 h-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin mb-6" />
-                <h2 className="text-2xl font-black text-white text-center mb-2">
-                  Connecting to Ziina...
-                </h2>
-                <p className="text-white/60 text-center">
-                  Securely processing your payment
-                </p>
+                <h2 className="text-2xl font-black text-white text-center mb-2">Processing Payment...</h2>
+                <p className="text-white/60 text-center">Securely processing your payment</p>
               </div>
             </motion.div>
           )}
 
+          {/* SUCCESS STAGE */}
           {stage === 'success' && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="p-8"
-            >
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="p-8">
               <div className="flex flex-col items-center justify-center py-12">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 15 }}
                   className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center mb-6"
                 >
                   <Check className="w-10 h-10 text-white" strokeWidth={3} />
                 </motion.div>
-                <h2 className="text-3xl font-black text-white text-center mb-2">
-                  Payment Approved!
-                </h2>
-                <p className="text-white/60 text-center">
-                  Launching your mission...
-                </p>
+                <h2 className="text-3xl font-black text-white text-center mb-2">Payment Approved!</h2>
+                <p className="text-white/60 text-center">Launching your mission...</p>
               </div>
             </motion.div>
           )}
         </motion.div>
       </div>
     </AnimatePresence>
+  );
+};
+
+// Outer component wraps with Stripe Elements provider
+export const VettingPaymentModal = (props: VettingPaymentModalProps) => {
+  if (!props.isOpen) return null;
+
+  return (
+    <Elements stripe={stripePromise}>
+      <PaymentForm {...props} />
+    </Elements>
   );
 };
