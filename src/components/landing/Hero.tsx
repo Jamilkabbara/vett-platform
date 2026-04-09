@@ -91,7 +91,7 @@ export const Hero = ({ idea, setIdea, onAuthModalOpen }: HeroProps) => {
   };
 
   return (
-    <main className="relative z-10 px-6 pt-24 md:pt-40 pb-20 text-center max-w-4xl mx-auto bg-grid">
+    <main className="relative z-10 px-6 pt-20 md:pt-28 pb-10 text-center max-w-4xl mx-auto bg-grid">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -248,7 +248,7 @@ export const Hero = ({ idea, setIdea, onAuthModalOpen }: HeroProps) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
-        className="mt-20 max-w-6xl mx-auto px-6"
+        className="mt-10 max-w-6xl mx-auto px-6"
       >
         <p className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-8">
           POWERING DECISIONS FOR BUILDERS AT:

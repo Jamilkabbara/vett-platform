@@ -11,7 +11,7 @@ export const LiveTicker = () => {
   ];
 
   return (
-    <div className="relative w-full overflow-hidden bg-white/5 border-y border-white/5 py-4 mb-12 backdrop-blur-sm">
+    <div className="relative w-full overflow-hidden bg-white/5 border-y border-white/5 py-4 mb-4 backdrop-blur-sm">
       <div className="flex whitespace-nowrap animate-marquee gap-12">
         {[1, 2, 3].map((i) => (
           <div key={i} className="flex gap-12">
