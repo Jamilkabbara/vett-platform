@@ -181,12 +181,6 @@ export const MissionSetupPage = () => {
       return;
     }
 
-    // Require authentication before generating AI survey
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
-
     setIsSubmitting(true);
 
     const selectedGoal = MISSION_GOALS.find(g => g.id === missionGoal);
@@ -204,39 +198,46 @@ export const MissionSetupPage = () => {
         console.warn('AI generation failed, will use defaults:', aiErr);
       }
 
-      // Step 2: Create mission in database
-      const { data, error } = await supabase
-        .from('missions')
-        .insert([{
-          user_id: user?.id || 'anonymous',
+      // Step 2: Create mission in database (only if signed in; otherwise use temp local record)
+      let missionData: any;
+      if (user) {
+        const { data, error } = await supabase
+          .from('missions')
+          .insert([{
+            user_id: user.id,
+            context: aiContext,
+            target: targetAudience,
+            question: objective,
+            respondent_count: aiResult?.suggestedRespondentCount || 100,
+            estimated_price: 99,
+            role: role,
+            stage: stage,
+            status: 'DRAFT',
+            mission_type: missionGoal,
+            visualization_type: 'RATING',
+            created_at: new Date().toISOString(),
+          }])
+          .select()
+          .single();
+
+        if (error) console.error('Database error (continuing anyway):', error);
+        missionData = data;
+      }
+
+      // Fallback for guest users (no DB record yet — mission created at payment time)
+      if (!missionData) {
+        missionData = {
+          id: `temp-${Date.now()}`,
           context: aiContext,
           target: targetAudience,
           question: objective,
           respondent_count: aiResult?.suggestedRespondentCount || 100,
           estimated_price: 99,
-          role: role,
-          stage: stage,
           status: 'DRAFT',
           mission_type: missionGoal,
           visualization_type: 'RATING',
-          created_at: new Date().toISOString(),
-        }])
-        .select()
-        .single();
-
-      const missionData = data || {
-        id: `temp-${Date.now()}`,
-        context: aiContext,
-        target: targetAudience,
-        question: objective,
-        respondent_count: aiResult?.suggestedRespondentCount || 100,
-        estimated_price: 99,
-        status: 'DRAFT',
-        mission_type: missionGoal,
-        visualization_type: 'RATING',
-      };
-
-      if (error) console.error('Database error (continuing anyway):', error);
+        };
+      }
 
       localStorage.removeItem('missionSetupDraft');
 

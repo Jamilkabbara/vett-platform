@@ -14,6 +14,8 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { api } from '../../lib/apiClient';
+import { useAuth } from '../../contexts/AuthContext';
+import { AuthModal } from '../layout/AuthModal';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -57,6 +59,8 @@ const PaymentForm = ({
   const navigate = useNavigate();
   const stripe = useStripe();
   const elements = useElements();
+  const { user } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const [stage, setStage] = useState<Stage>('vetting');
   const [vettingChecks, setVettingChecks] = useState<VettingCheck[]>([
@@ -97,6 +101,11 @@ const PaymentForm = ({
     });
 
     pr.on('paymentmethod', async (event) => {
+      if (!user) {
+        event.complete('fail');
+        setShowAuthModal(true);
+        return;
+      }
       setIsProcessing(true);
       setStage('processing');
       const toastId = toast.loading('Processing payment...');
@@ -191,6 +200,11 @@ const PaymentForm = ({
   }, [isOpen, totalCost]);
 
   const handleCardPayment = async () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
     setIsProcessing(true);
     setStage('processing');
     const toastId = toast.loading('Processing secure payment...');
@@ -468,6 +482,7 @@ const PaymentForm = ({
           )}
         </motion.div>
       </div>
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </AnimatePresence>
   );
 };

@@ -217,34 +217,69 @@ export const ResultsPage = () => {
     subtext: '',
     isGenerating: false
   });
+  const [isLoadingResults, setIsLoadingResults] = useState(false);
+  const [resultsProgress, setResultsProgress] = useState<{ completed: number; total: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const filterRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Get missionId from URL query or location state
+  const missionId = new URLSearchParams(location.search).get('missionId') ||
+    (location.state as any)?.missionId || null;
 
   useEffect(() => {
     window.scrollTo(0, 0);
 
-    const state = location.state as { missionData?: any } | null;
-    if (state?.missionData?.results) {
-      const loadedMission = {
-        name: state.missionData.context || "Your Validation Mission",
-        completedAt: state.missionData.completedAt || "Just now",
-        totalRespondents: state.missionData.respondent_count || 100,
-        targeting: {
-          demographics: MOCK_MISSION_DATA.targeting.demographics
-        },
-        questions: state.missionData.results
-      };
-      setMissionData(loadedMission);
-      setFilteredRespondentCount(loadedMission.totalRespondents);
-      setFilteredQuestions(loadedMission.questions);
-    }
-
     const initialFilters: Record<string, string> = {};
-    missionData.targeting.demographics.forEach(demo => {
+    MOCK_MISSION_DATA.targeting.demographics.forEach(demo => {
       initialFilters[demo.name] = 'all';
     });
     setSelectedFilters(initialFilters);
-  }, [location.state]);
+
+    if (missionId) {
+      fetchResults(missionId);
+    }
+  }, [missionId]);
+
+  const fetchResults = async (id: string) => {
+    setIsLoadingResults(true);
+    try {
+      const { api } = await import('../lib/apiClient');
+      const data = await api.get(`/api/results/${id}`);
+
+      if (data.status === 'in_progress') {
+        setResultsProgress({ completed: data.completedResponses, total: data.targetResponses });
+        // Poll every 30s
+        setTimeout(() => fetchResults(id), 30000);
+        return;
+      }
+
+      setResultsProgress(null);
+      if (data.mission) {
+        const loaded: MissionData = {
+          name: data.mission.mission_statement || data.mission.context || 'Your Mission',
+          completedAt: data.mission.completed_at ? new Date(data.mission.completed_at).toLocaleString() : 'Just now',
+          totalRespondents: data.mission.respondent_count || 100,
+          targeting: { demographics: MOCK_MISSION_DATA.targeting.demographics },
+          questions: data.results?.responses?.map((r: any, i: number) => ({
+            id: r.questionId || `q${i + 1}`,
+            question: data.mission.questions?.[i]?.text || `Question ${i + 1}`,
+            type: 'single_choice',
+            data: Object.entries(r.answers || {}).map(([name, value]) => ({
+              name, value, percentage: Math.round((Number(value) / (data.mission.respondent_count || 100)) * 100)
+            })),
+            aiInsight: data.insights?.questionInsights?.[i] || '',
+          })) || MOCK_MISSION_DATA.questions,
+        };
+        setMissionData(loaded);
+        setFilteredRespondentCount(loaded.totalRespondents);
+        setFilteredQuestions(loaded.questions);
+      }
+    } catch (err) {
+      console.error('Failed to load results, showing demo data:', err);
+    } finally {
+      setIsLoadingResults(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -275,8 +310,35 @@ export const ResultsPage = () => {
     }
   };
 
-  const handleExport = (format: ExportFormat) => {
+  const handleExport = async (format: ExportFormat) => {
     setIsDropdownOpen(false);
+
+    // Download from real backend if we have a missionId
+    if (missionId && (format === 'pdf' || format === 'excel')) {
+      const endpoint = format === 'pdf'
+        ? `/api/results/${missionId}/export/pdf`
+        : `/api/results/${missionId}/export/raw`;
+      const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
+      const { supabase } = await import('../lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+      try {
+        const res = await fetch(`${API_URL}${endpoint}`, { headers });
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = format === 'pdf' ? 'vett_results.pdf' : 'vett_results.csv';
+          link.click();
+          URL.revokeObjectURL(url);
+          return;
+        }
+      } catch (e) {
+        console.warn('Backend export failed, falling back to client-side export');
+      }
+    }
 
     if (format === 'excel') {
       // Generate CSV data
@@ -705,6 +767,32 @@ export const ResultsPage = () => {
 
   const hasNoResults = filteredRespondentCount === 0;
   const hasActiveFilters = getActiveFilterCount() > 0;
+
+  // In-progress state: show polling progress bar
+  if (resultsProgress) {
+    const pct = Math.round((resultsProgress.completed / resultsProgress.total) * 100);
+    return (
+      <DashboardLayout>
+        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-6">
+            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-8" />
+            <h2 className="text-3xl font-black text-white mb-3">Gathering Responses</h2>
+            <p className="text-white/60 mb-8">Your mission is live. Responses are coming in.</p>
+            <div className="bg-white/10 rounded-full h-3 mb-3 overflow-hidden">
+              <div
+                className="h-full bg-neon-lime rounded-full transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="text-white/40 text-sm">
+              {resultsProgress.completed} / {resultsProgress.total} responses ({pct}%)
+            </p>
+            <p className="text-white/30 text-xs mt-4">Auto-refreshing every 30 seconds</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
