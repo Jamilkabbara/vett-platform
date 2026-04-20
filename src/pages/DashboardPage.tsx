@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 
@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthedTopNav } from '../components/layout/AuthedTopNav';
 import { VettingPaymentModal } from '../components/dashboard/VettingPaymentModal';
+import { MissionControlQuestions } from '../components/dashboard/MissionControlQuestions';
 import { getGoalById } from '../data/missionGoals';
 import type { Question } from '../components/dashboard/QuestionEngine';
 
@@ -37,7 +38,7 @@ import type { Question } from '../components/dashboard/QuestionEngine';
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'error'; reason: 'not_found' | 'unauthorized' | 'unknown'; detail?: string }
-  | { kind: 'loaded'; mission: MissionRow; questions: Question[] };
+  | { kind: 'loaded'; mission: MissionRow };
 
 /** Snapshot of the real `public.missions` row we care about on this page. */
 interface MissionRow {
@@ -98,8 +99,19 @@ export const DashboardPage = () => {
 
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
 
+  // Questions live outside LoadState so inline edits + refines don't have
+  // to reshape the discriminated union every time.  Hydrated from the
+  // mission row when it loads; pushed back to Supabase on change.
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [persisting, setPersisting] = useState(false);
+
   // Mounted-but-closed payment modal.  Commit 8 will wire the trigger.
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // Debounce timer for question-list saves — one pending write at a time.
+  const persistTimerRef = useRef<number | null>(null);
+  const latestQuestionsRef = useRef<Question[]>([]);
+  const missionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Wait for auth to resolve before deciding anything.
@@ -138,11 +150,12 @@ export const DashboardPage = () => {
           return;
         }
 
-        setState({
-          kind: 'loaded',
-          mission: data as MissionRow,
-          questions: normaliseQuestions(data.questions),
-        });
+        const mission = data as MissionRow;
+        const initialQuestions = normaliseQuestions(mission.questions);
+        setState({ kind: 'loaded', mission });
+        setQuestions(initialQuestions);
+        latestQuestionsRef.current = initialQuestions;
+        missionIdRef.current = mission.id;
       } catch (err) {
         if (cancelled) return;
         setState({
@@ -157,6 +170,55 @@ export const DashboardPage = () => {
       cancelled = true;
     };
   }, [missionId, user, authLoading]);
+
+  // ── Debounced persistence of the questions array ───────────────
+  // Parent owns the list; MissionControlQuestions only fires onChange.
+  // We optimistically update local state and schedule a 500ms-debounced
+  // write back to Supabase so rapid edits don't burn a round-trip each.
+  const flushQuestions = useCallback(async () => {
+    const missionId = missionIdRef.current;
+    if (!missionId) return;
+    const payload = latestQuestionsRef.current;
+    setPersisting(true);
+    try {
+      const { error } = await supabase
+        .from('missions')
+        .update({ questions: payload })
+        .eq('id', missionId);
+      if (error) throw error;
+    } catch (err) {
+      console.error('[DashboardPage] failed to save questions', err);
+      // Non-fatal — UI already reflects the change; next edit retries.
+    } finally {
+      setPersisting(false);
+    }
+  }, []);
+
+  const handleQuestionsChange = useCallback(
+    (next: Question[]) => {
+      setQuestions(next);
+      latestQuestionsRef.current = next;
+      if (persistTimerRef.current !== null) {
+        window.clearTimeout(persistTimerRef.current);
+      }
+      persistTimerRef.current = window.setTimeout(() => {
+        persistTimerRef.current = null;
+        void flushQuestions();
+      }, 500);
+    },
+    [flushQuestions],
+  );
+
+  // Flush on unmount so an in-flight edit isn't lost on route change.
+  useEffect(() => {
+    return () => {
+      if (persistTimerRef.current !== null) {
+        window.clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+        void flushQuestions();
+      }
+    };
+  }, [flushQuestions]);
 
   // ── Derived header bits ────────────────────────────────────────
   const goal = useMemo(() => {
@@ -265,12 +327,14 @@ export const DashboardPage = () => {
                 'grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px]',
               ].join(' ')}
             >
-              {/* LEFT — Questions + Targeting shells */}
+              {/* LEFT — Questions (real) + Targeting (shell) */}
               <div className="flex flex-col gap-4 min-w-0">
-                <ShellCard
-                  dataTestId="mc-questions-shell"
-                  title="Question Engine"
-                  subtitle={`${state.questions.length} question${state.questions.length === 1 ? '' : 's'} drafted · Commit 6 fills this in`}
+                <MissionControlQuestions
+                  questions={questions}
+                  onChange={handleQuestionsChange}
+                  goalId={state.mission.goal_type}
+                  context={state.mission.brief ?? undefined}
+                  persisting={persisting}
                 />
                 <ShellCard
                   dataTestId="mc-targeting-shell"

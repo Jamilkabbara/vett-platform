@@ -61,6 +61,80 @@ function mapQuestion(q: any, i: number): Question {
   };
 }
 
+/**
+ * Refine a single question via backend AI.
+ *
+ * POSTs `{ text, goal, context? }` to /api/ai/refine-description and
+ * expects `{ text: string, type?: string, options?: string[] }` back.
+ * On any error (network, 404 if the endpoint isn't deployed yet, bad
+ * shape) we fall back to a tiny local heuristic — same shape the old
+ * QuestionEngine used — so the UI always gets a usable improvement
+ * and never ends up stuck on a spinner.
+ */
+export interface RefineQuestionResult {
+  text: string;
+  type?: Question['type'];
+  options?: string[];
+}
+
+export const refineQuestion = async (
+  question: Question,
+  goal: string | null,
+  context?: string,
+): Promise<RefineQuestionResult> => {
+  try {
+    const resp = (await api.post('/api/ai/refine-description', {
+      text: question.text,
+      type: question.type,
+      options: question.options,
+      goal,
+      context,
+    })) as Partial<RefineQuestionResult> | null;
+
+    const refinedText =
+      typeof resp?.text === 'string' && resp.text.trim().length > 0
+        ? resp.text.trim()
+        : null;
+    if (refinedText) {
+      const mappedType =
+        resp?.type && VALID_TYPES.includes(mapType(String(resp.type)))
+          ? (mapType(String(resp.type)) as Question['type'])
+          : undefined;
+      const mappedOptions = Array.isArray(resp?.options)
+        ? resp.options.map(String)
+        : undefined;
+      return { text: refinedText, type: mappedType, options: mappedOptions };
+    }
+  } catch (err) {
+    console.warn('[refineQuestion] backend unavailable, using local fallback', err);
+  }
+
+  // ── Local heuristic fallback ──────────────────────────────────────
+  const current = question.text.trim();
+  if (!current) {
+    return { text: 'What is your primary question?' };
+  }
+  const lower = current.toLowerCase();
+  if (
+    !lower.startsWith('do ') &&
+    !lower.startsWith('are ') &&
+    !lower.startsWith('how ') &&
+    !lower.startsWith('what ') &&
+    !lower.startsWith('which ') &&
+    !lower.startsWith('why ') &&
+    !lower.startsWith('when ') &&
+    !lower.startsWith('would ')
+  ) {
+    const stripped = current.replace(/\?+$/, '');
+    return { text: `How would you describe ${stripped.toLowerCase()}?` };
+  }
+  if (!current.endsWith('?')) {
+    return { text: `${current}?` };
+  }
+  // Already a question — nudge it to be more specific.
+  return { text: current.replace(/\?$/, ' — and why?') };
+};
+
 export const generateSurvey = async (
   params: GenerateSurveyParams
 ): Promise<SurveyGenerationResult> => {
