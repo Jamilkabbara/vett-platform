@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
+import { prettifyAuthError } from '../lib/authErrors';
 import { useToast } from '../components/ui/Toast';
 import { Logo } from '../components/ui/Logo';
 import { TopNav } from '../components/ui/TopNav';
@@ -39,9 +40,11 @@ export function ForgotPasswordPage() {
       setSent(true);
       toast.success('Check your email for the reset link.');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not send reset link.';
-      setError(msg);
-      toast.error(msg);
+      const pretty = prettifyAuthError(err, {
+        fallback: 'Could not send reset link. Please try again.',
+      });
+      setError(pretty);
+      toast.error(pretty);
     } finally {
       setSubmitting(false);
     }

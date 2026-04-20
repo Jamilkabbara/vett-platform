@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/Toast';
+import {
+  isProviderNotEnabledError,
+  prettifyAuthError,
+} from '../../lib/authErrors';
 
 /**
  * Shared Google + Apple OAuth buttons — wraps Supabase's
@@ -9,9 +13,16 @@ import { useToast } from '../ui/Toast';
  * messaging, and a `redirectTo` hook so callers can round-trip a
  * post-auth destination.
  *
- * Matches prototype's .m-google button style (dark translucent fill,
- * centered icon + text, 10px gap).
+ * Apple is currently gated behind APPLE_OAUTH_ENABLED. Apple Sign In
+ * requires a provisioned Services ID + domain verification on the
+ * Apple Developer side before Supabase will accept it, so we hold the
+ * button in a "Soon" state until that paperwork is approved. Flip the
+ * constant below to re-enable without touching markup.
  */
+
+/** Flip to `true` once Apple Sign In is configured in Supabase. */
+const APPLE_OAUTH_ENABLED = false;
+
 export interface OAuthButtonsProps {
   /** Path to return to after OAuth succeeds. Default '/dashboard'. */
   redirectPath?: string;
@@ -45,17 +56,37 @@ export function OAuthButtons({
       // the redirect is in flight.
       if (error) throw error;
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : `Could not connect to ${label}.`;
-      toast.error(`${label} sign-in failed — ${message}`);
+      // Special-case the "provider not enabled" error for clearer guidance
+      // than the generic fallback.
+      if (isProviderNotEnabledError(err)) {
+        toast.error(
+          `${label} Sign-In is being configured — try email sign-up instead.`,
+        );
+      } else {
+        toast.error(
+          `${label} sign-in failed — ${prettifyAuthError(err, {
+            fallback: `Could not connect to ${label}.`,
+          })}`,
+        );
+      }
       setPending(null);
     }
   };
 
+  const handleAppleClick = () => {
+    if (APPLE_OAUTH_ENABLED) {
+      start('apple', 'Apple');
+    } else {
+      toast.info('Apple Sign-In coming soon — use Google or email for now.');
+    }
+  };
+
   const base =
-    'w-full inline-flex items-center justify-center gap-2.5 rounded-lg px-4 h-11 ' +
+    'relative w-full inline-flex items-center justify-center gap-2.5 rounded-lg px-4 h-11 ' +
     'font-display font-bold text-[13px] text-white ' +
     'transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+
+  const appleDimmed = !APPLE_OAUTH_ENABLED;
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
@@ -74,9 +105,18 @@ export function OAuthButtons({
       </button>
       <button
         type="button"
-        onClick={() => start('apple', 'Apple')}
-        disabled={disabled || pending !== null}
-        className={`${base} bg-white/[0.06] border border-white/[0.15] hover:bg-white/[0.1]`}
+        onClick={handleAppleClick}
+        disabled={disabled}
+        aria-label={
+          APPLE_OAUTH_ENABLED
+            ? 'Continue with Apple'
+            : 'Apple Sign-In coming soon'
+        }
+        className={[
+          base,
+          'bg-white/[0.06] border border-white/[0.15] hover:bg-white/[0.1]',
+          appleDimmed ? 'opacity-60' : '',
+        ].join(' ')}
       >
         {pending === 'apple' ? (
           <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
@@ -84,6 +124,20 @@ export function OAuthButtons({
           <AppleIcon />
         )}
         <span>Continue with Apple</span>
+        {appleDimmed && (
+          <span
+            className={[
+              'absolute top-1 right-2',
+              'px-1.5 py-0.5 rounded',
+              'bg-lime/15 border border-lime/30',
+              'font-display font-bold text-[9px] uppercase tracking-widest',
+              'text-lime',
+            ].join(' ')}
+            aria-hidden
+          >
+            Soon
+          </span>
+        )}
       </button>
     </div>
   );

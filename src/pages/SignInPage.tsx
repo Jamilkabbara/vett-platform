@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
 import { api } from '../lib/apiClient';
+import { prettifyAuthError } from '../lib/authErrors';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { Logo } from '../components/ui/Logo';
@@ -88,11 +89,9 @@ export function SignInPage() {
       toast.success('Welcome back!');
       navigate(redirectPath, { replace: true });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Sign-in failed.';
-      const pretty =
-        msg === 'Invalid login credentials'
-          ? 'Invalid email or password. Try again.'
-          : msg;
+      const pretty = prettifyAuthError(err, {
+        fallback: 'Sign-in failed. Please try again.',
+      });
       setError(pretty);
       toast.error(pretty);
     } finally {
@@ -156,9 +155,11 @@ export function SignInPage() {
         setTab('signin');
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Sign-up failed.';
-      setError(msg);
-      toast.error(msg);
+      const pretty = prettifyAuthError(err, {
+        fallback: 'Sign-up failed. Please try again.',
+      });
+      setError(pretty);
+      toast.error(pretty);
     } finally {
       setSubmitting(false);
     }
