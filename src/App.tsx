@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { LandingPage } from './pages/LandingPage';
@@ -24,8 +23,6 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ScrollToTop } from './components/shared/ScrollToTop';
 
 function App() {
-  const [idea, setIdea] = useState('');
-
   return (
     <BrowserRouter>
       <Toaster
@@ -71,7 +68,7 @@ function App() {
           <ScrollToTop />
           <Routes>
           <Route path="/" element={<Navigate to="/landing" replace />} />
-          <Route path="/landing" element={<LandingPage idea={idea} setIdea={setIdea} />} />
+          <Route path="/landing" element={<LandingPage />} />
           <Route path="/setup" element={<MissionSetupPage />} />
           <Route path="/mission-control" element={<DashboardLayout><DashboardPage /></DashboardLayout>} />
           <Route path="/missions" element={<MissionsListPage />} />
