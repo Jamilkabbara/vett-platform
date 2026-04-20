@@ -20,8 +20,14 @@ import {
  * constant below to re-enable without touching markup.
  */
 
-/** Flip to `true` once Apple Sign In is configured in Supabase. */
-const APPLE_OAUTH_ENABLED = false;
+/**
+ * Apple Sign In is live in Supabase (Services ID `ai.vettit.signin`,
+ * JWT configured, domain verified). Leave this constant in place as a
+ * kill switch — flip to `false` if Apple's Services ID / JWT rotation
+ * lapses and we need to hide the button while we re-provision, rather
+ * than leaking raw "provider not enabled" errors to users.
+ */
+const APPLE_OAUTH_ENABLED = true;
 
 export interface OAuthButtonsProps {
   /** Path to return to after OAuth succeeds. Default '/dashboard'. */
