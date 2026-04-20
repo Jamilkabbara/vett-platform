@@ -17,6 +17,7 @@ import { HelpPage } from './pages/HelpPage';
 import { MissionSuccessPage } from './pages/MissionSuccessPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { MissionsListPage } from './pages/MissionsListPage';
+import { DesignSystemPreview } from './pages/DesignSystemPreview';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ScrollToTop } from './components/shared/ScrollToTop';
 
@@ -94,6 +95,10 @@ function App() {
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/api" element={<ApiPage />} />
           <Route path="/help" element={<HelpPage />} />
+
+          {/* Internal design-system preview — not linked from the app. */}
+          <Route path="/__design" element={<DesignSystemPreview />} />
+
           <Route path="*" element={<Navigate to="/landing" replace />} />
           </Routes>
         </div>
