@@ -202,5 +202,23 @@ export function getPlaceholderForGoal(id: string): string {
   return getGoalById(id)?.placeholder ?? SHARED_FALLBACK_PLACEHOLDER;
 }
 
-/** Goals that opt into a media-upload affordance on the describe step. */
-export const GOALS_WITH_UPLOAD = new Set(['creative_attention']);
+/**
+ * Goals that opt into a media-upload affordance on the describe step.
+ *
+ * - `creative_attention` — the upload is the point: AI maps emotion /
+ *   attention frame-by-frame over the uploaded video or image.
+ * - `brand_lift` — optional campaign reference asset (storyboard,
+ *   hero image, draft video) so the AI can anchor pre/post questions
+ *   against the specific creative the user is measuring lift on.
+ * - `marketing` — optional creative to test (image / video ad) so
+ *   question generation can refer to it specifically.
+ *
+ * Upload remains a render-only stub (see .design-reference/
+ * PROMPT_3_STUBS.md) for all three; the file is held in state but
+ * never sent to the backend yet.
+ */
+export const GOALS_WITH_UPLOAD = new Set([
+  'creative_attention',
+  'brand_lift',
+  'marketing',
+]);
