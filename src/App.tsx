@@ -17,6 +17,8 @@ import { HelpPage } from './pages/HelpPage';
 import { MissionSuccessPage } from './pages/MissionSuccessPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { MissionsListPage } from './pages/MissionsListPage';
+import { SignInPage } from './pages/SignInPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { DesignSystemPreview } from './pages/DesignSystemPreview';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ScrollToTop } from './components/shared/ScrollToTop';
@@ -81,6 +83,11 @@ function App() {
           <Route path="/mission-success" element={<MissionSuccessPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+
+          {/* Auth — full-page replacements for the old AuthModal. */}
+          <Route path="/signin" element={<SignInPage />} />
+          <Route path="/signup" element={<Navigate to="/signin?tab=signup" replace />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* Redirect old/obsolete routes to setup */}
           <Route path="/create" element={<Navigate to="/setup" replace />} />
