@@ -7,8 +7,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { AuthedTopNav } from '../components/layout/AuthedTopNav';
 import { VettingPaymentModal } from '../components/dashboard/VettingPaymentModal';
 import { MissionControlQuestions } from '../components/dashboard/MissionControlQuestions';
+import { MissionControlTargeting } from '../components/dashboard/MissionControlTargeting';
 import { getGoalById } from '../data/missionGoals';
 import type { Question } from '../components/dashboard/QuestionEngine';
+import type { TargetingConfig } from '../components/dashboard/TargetingEngine';
 
 /**
  * Mission Control — Commit 5 of the redesign.
@@ -93,6 +95,69 @@ function firstLine(text: string | null | undefined, max = 140): string {
   return `${trimmed.slice(0, max - 1).trimEnd()}…`;
 }
 
+/** Default TargetingConfig for missions that haven't saved one yet.  Kept
+ *  in-file because the only consumer is DashboardPage and it must match
+ *  the TargetingConfig shape exactly — we don't want a stale default
+ *  drifting in a shared util. */
+const DEFAULT_TARGETING: TargetingConfig = {
+  geography: { countries: [], cities: [], cityEnabled: false },
+  demographics: {
+    ageRanges: [],
+    genders: [],
+    education: [],
+    marital: [],
+    parental: [],
+    employment: [],
+  },
+  professional: { industries: [], roles: [], companySizes: [] },
+  financials: { incomeRanges: [] },
+  behaviors: [],
+  technographics: { devices: [] },
+};
+
+/** Shallow hydration of the `targeting` jsonb column from Supabase.  The DB
+ *  returns `unknown` (it's a jsonb blob), so we defensively fall back to the
+ *  default shape for any missing sub-key.  Never mutates the argument. */
+function hydrateTargeting(raw: unknown): TargetingConfig {
+  if (!raw || typeof raw !== 'object') return DEFAULT_TARGETING;
+  const r = raw as Record<string, unknown>;
+  const pick = <T,>(path: unknown, fallback: T): T =>
+    path !== undefined && path !== null ? (path as T) : fallback;
+  const geo = (r.geography as Record<string, unknown> | undefined) ?? {};
+  const demo = (r.demographics as Record<string, unknown> | undefined) ?? {};
+  const pro = (r.professional as Record<string, unknown> | undefined) ?? {};
+  const fin = (r.financials as Record<string, unknown> | undefined) ?? {};
+  const tech = (r.technographics as Record<string, unknown> | undefined) ?? {};
+  return {
+    geography: {
+      countries: pick(geo.countries, DEFAULT_TARGETING.geography.countries),
+      cities: pick(geo.cities, DEFAULT_TARGETING.geography.cities),
+      cityEnabled: pick(geo.cityEnabled, DEFAULT_TARGETING.geography.cityEnabled),
+    },
+    demographics: {
+      ageRanges: pick(demo.ageRanges, DEFAULT_TARGETING.demographics.ageRanges),
+      genders: pick(demo.genders, DEFAULT_TARGETING.demographics.genders),
+      education: pick(demo.education, DEFAULT_TARGETING.demographics.education),
+      marital: pick(demo.marital, DEFAULT_TARGETING.demographics.marital),
+      parental: pick(demo.parental, DEFAULT_TARGETING.demographics.parental),
+      employment: pick(demo.employment, DEFAULT_TARGETING.demographics.employment),
+    },
+    professional: {
+      industries: pick(pro.industries, DEFAULT_TARGETING.professional.industries),
+      roles: pick(pro.roles, DEFAULT_TARGETING.professional.roles),
+      companySizes: pick(pro.companySizes, DEFAULT_TARGETING.professional.companySizes),
+    },
+    financials: {
+      incomeRanges: pick(fin.incomeRanges, DEFAULT_TARGETING.financials.incomeRanges),
+    },
+    behaviors: pick(r.behaviors, DEFAULT_TARGETING.behaviors),
+    technographics: {
+      devices: pick(tech.devices, DEFAULT_TARGETING.technographics.devices),
+    },
+    retargeting: r.retargeting as TargetingConfig['retargeting'],
+  };
+}
+
 export const DashboardPage = () => {
   const { missionId } = useParams();
   const { user, loading: authLoading } = useAuth();
@@ -105,6 +170,11 @@ export const DashboardPage = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [persisting, setPersisting] = useState(false);
 
+  // Targeting — same pattern as questions: parent owns state, children
+  // fire onChange, a 500ms debounce writes back to missions.targeting.
+  const [targeting, setTargeting] = useState<TargetingConfig>(DEFAULT_TARGETING);
+  const [targetingPersisting, setTargetingPersisting] = useState(false);
+
   // Mounted-but-closed payment modal.  Commit 8 will wire the trigger.
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
@@ -112,6 +182,11 @@ export const DashboardPage = () => {
   const persistTimerRef = useRef<number | null>(null);
   const latestQuestionsRef = useRef<Question[]>([]);
   const missionIdRef = useRef<string | null>(null);
+
+  // Separate debounce timer + latest-snapshot ref for targeting so a
+  // rapid-fire chip click doesn't burn a round-trip each.
+  const targetingTimerRef = useRef<number | null>(null);
+  const latestTargetingRef = useRef<TargetingConfig>(DEFAULT_TARGETING);
 
   useEffect(() => {
     // Wait for auth to resolve before deciding anything.
@@ -152,9 +227,12 @@ export const DashboardPage = () => {
 
         const mission = data as MissionRow;
         const initialQuestions = normaliseQuestions(mission.questions);
+        const initialTargeting = hydrateTargeting(mission.targeting);
         setState({ kind: 'loaded', mission });
         setQuestions(initialQuestions);
+        setTargeting(initialTargeting);
         latestQuestionsRef.current = initialQuestions;
+        latestTargetingRef.current = initialTargeting;
         missionIdRef.current = mission.id;
       } catch (err) {
         if (cancelled) return;
@@ -209,6 +287,40 @@ export const DashboardPage = () => {
     [flushQuestions],
   );
 
+  // ── Targeting persistence — mirror of the questions debounce ────
+  const flushTargeting = useCallback(async () => {
+    const id = missionIdRef.current;
+    if (!id) return;
+    const payload = latestTargetingRef.current;
+    setTargetingPersisting(true);
+    try {
+      const { error } = await supabase
+        .from('missions')
+        .update({ targeting: payload })
+        .eq('id', id);
+      if (error) throw error;
+    } catch (err) {
+      console.error('[DashboardPage] failed to save targeting', err);
+    } finally {
+      setTargetingPersisting(false);
+    }
+  }, []);
+
+  const handleTargetingChange = useCallback(
+    (next: TargetingConfig) => {
+      setTargeting(next);
+      latestTargetingRef.current = next;
+      if (targetingTimerRef.current !== null) {
+        window.clearTimeout(targetingTimerRef.current);
+      }
+      targetingTimerRef.current = window.setTimeout(() => {
+        targetingTimerRef.current = null;
+        void flushTargeting();
+      }, 500);
+    },
+    [flushTargeting],
+  );
+
   // Flush on unmount so an in-flight edit isn't lost on route change.
   useEffect(() => {
     return () => {
@@ -217,8 +329,13 @@ export const DashboardPage = () => {
         persistTimerRef.current = null;
         void flushQuestions();
       }
+      if (targetingTimerRef.current !== null) {
+        window.clearTimeout(targetingTimerRef.current);
+        targetingTimerRef.current = null;
+        void flushTargeting();
+      }
     };
-  }, [flushQuestions]);
+  }, [flushQuestions, flushTargeting]);
 
   // ── Derived header bits ────────────────────────────────────────
   const goal = useMemo(() => {
@@ -336,10 +453,12 @@ export const DashboardPage = () => {
                   context={state.mission.brief ?? undefined}
                   persisting={persisting}
                 />
-                <ShellCard
-                  dataTestId="mc-targeting-shell"
-                  title="Targeting"
-                  subtitle="Audience filters · Commit 7 fills this in"
+                <MissionControlTargeting
+                  config={targeting}
+                  onChange={handleTargetingChange}
+                  respondentCount={Number(state.mission.respondent_count ?? 100)}
+                  questions={questions}
+                  persisting={targetingPersisting}
                 />
               </div>
 
