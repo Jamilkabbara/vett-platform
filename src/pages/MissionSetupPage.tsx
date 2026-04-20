@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Sparkles, Target, ArrowRight, Rocket, Scale, Megaphone, Star, Brain, DollarSign, Map, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
@@ -74,11 +74,19 @@ const getPlaceholderForGoal = (goalId: string) => {
 export const MissionSetupPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // Landing page can hand us the hero prompt via `?q=<idea>`. Treat it
+  // as a one-shot prefill — consume it into state, then strip it from
+  // the URL so refresh doesn't re-seed over the user's edits.
+  const queryPrefill = searchParams.get('q') || '';
+
   const [missionGoal, setMissionGoal] = useState('validate');
-  const [missionDescription, setMissionDescription] = useState(location.state?.inputText || location.state?.prefill || '');
+  const [missionDescription, setMissionDescription] = useState(
+    location.state?.inputText || location.state?.prefill || queryPrefill || ''
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [role, setRole] = useState('');
@@ -96,6 +104,14 @@ export const MissionSetupPage = () => {
       setMissionGoal('validate');
     }
 
+    // Strip `?q=` from the URL once we've hydrated state from it, so the
+    // visible address bar doesn't carry the prompt forever.
+    if (queryPrefill) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('q');
+      setSearchParams(next, { replace: true });
+    }
+
     if (location.state?.intent) {
       const intentToGoalMap: Record<string, string> = {
         'pricing': 'validate',
@@ -108,7 +124,7 @@ export const MissionSetupPage = () => {
     }
 
     const saved = localStorage.getItem('missionSetupDraft');
-    if (saved && !location.state?.inputText && !location.state?.prefill) {
+    if (saved && !location.state?.inputText && !location.state?.prefill && !queryPrefill) {
       try {
         const draft = JSON.parse(saved);
         setMissionGoal(draft.missionGoal || 'validate');
