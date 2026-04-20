@@ -116,8 +116,15 @@ export const MissionControlQuestions = ({
   const commitEdit = useCallback(
     (id: string, next: string) => {
       const trimmed = next.trim();
+      const existing = questions.find((q) => q.id === id);
       if (!trimmed) {
         // Empty text means "cancel" rather than writing an empty question.
+        // If the card itself was previously empty (i.e., just added via +
+        // Add question and never saved), drop it so the list doesn't end
+        // up littered with "Empty question" placeholders.
+        if (existing && !existing.text.trim()) {
+          onChange(questions.filter((q) => q.id !== id));
+        }
         setEditingId(null);
         setEditText('');
         return;
@@ -133,9 +140,17 @@ export const MissionControlQuestions = ({
   );
 
   const handleCancelEdit = useCallback(() => {
+    // Mirror commitEdit's empty-text handling so cancelling a brand-new
+    // Add-question card removes it instead of leaving a blank placeholder.
+    if (editingId) {
+      const existing = questions.find((q) => q.id === editingId);
+      if (existing && !existing.text.trim()) {
+        onChange(questions.filter((q) => q.id !== editingId));
+      }
+    }
     setEditingId(null);
     setEditText('');
-  }, []);
+  }, [editingId, questions, onChange]);
 
   const handleRefine = useCallback(
     async (q: Question) => {
@@ -225,21 +240,21 @@ export const MissionControlQuestions = ({
       ].join(' ')}
       data-testid="mc-questions"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-4">
+      {/* Header — flex-wrap keeps it readable at 375px */}
+      <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
-          <h2 className="font-display font-black text-[13px] md:text-[14px] text-white truncate">
+          <h2 className="font-display font-black text-[13px] md:text-[14px] text-white whitespace-nowrap">
             Question Engine
           </h2>
           <span
             className={[
               'inline-flex items-center gap-1 rounded-pill',
               'bg-lime/10 text-lime border border-lime/20',
-              'px-2 py-0.5',
+              'px-2 py-0.5 whitespace-nowrap',
               'font-display font-bold text-[9px] uppercase tracking-[0.1em]',
             ].join(' ')}
           >
-            ● {count} {count === 1 ? 'Question' : 'Questions'}
+            ● {count} {count === 1 ? 'Q' : 'Qs'}
           </span>
         </div>
 
@@ -248,7 +263,7 @@ export const MissionControlQuestions = ({
           onClick={handleAdd}
           disabled={persisting}
           className={[
-            'inline-flex items-center gap-1.5 rounded-lg',
+            'inline-flex items-center gap-1.5 rounded-lg whitespace-nowrap',
             'border border-lime/30 bg-lime/10 hover:bg-lime/15',
             'px-2.5 py-1.5',
             'font-display font-bold text-[11px] text-lime',
