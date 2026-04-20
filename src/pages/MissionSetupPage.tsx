@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, X } from 'lucide-react';
 
@@ -13,49 +14,66 @@ import { Button } from '../components/ui/Button';
 import { AuthedTopNav } from '../components/layout/AuthedTopNav';
 import { GoalGrid } from '../components/setup/GoalGrid';
 import {
+  ClarifySection,
+  CLARIFY_DEFAULTS,
+  type ClarifyAnswers,
+} from '../components/setup/ClarifySection';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
 } from '../data/missionGoals';
 
 /**
- * Mission Setup — authored step 1 of the redesign (Prompt 3 / Commit 3).
+ * Mission Setup — Commit 4 of the redesign (Prompt 3).
  *
- * Renders the prototype's "What do you want to VETT?" hero + Mission
- * Brief card (.design-reference/prototype.html lines 1212–1294):
+ * Flow:
+ *   1. Goal picker (GoalGrid).
+ *   2. Describe (30-char textarea + optional upload chip).
+ *   3. ✦ Generate Survey button reveals ClarifySection (3 chip cards)
+ *      inline beneath the CTA — no page navigation.
+ *   4. Clarify CTA calls generateSurvey() (Claude) in the background,
+ *      writes a mission row to Supabase, and navigates to
+ *      /dashboard/:missionId with the AI payload in location.state.
  *
- *   1. GoalGrid — 14 goals, 2-col on mobile / 4-col on desktop.
- *   2. Describe — 30-char-minimum textarea with 500-char counter.
- *   3. Optional media-upload chip (Creative Attention goal only —
- *      render-only stub tracked in PROMPT_3_STUBS.md).
- *   4. Primary CTA — "✦ Generate Survey".
+ * ── Why the insert payload changed ──────────────────────────────
+ * The Commit 3 insert was referencing 8 columns that do not exist
+ * in `public.missions`: context, target, question, estimated_price,
+ * role, stage, mission_type, visualization_type.  PostgREST rejected
+ * every write with PGRST204 — which is where the "Couldn't generate
+ * mission, try again" toast was coming from.  (generateSurvey() itself
+ * has a try/catch fallback and never throws, so the AI call wasn't
+ * the culprit.)
  *
- * ── What this commit preserves ──────────────────────────────────
- *   - `?q=` prefill from landing (commit 78cfd8a).
- *   - localStorage `missionSetupDraft` autosave / restore.
- *   - generateSurvey() wiring + /api/missions Supabase insert.
- *   - AI-result backup at `vettit_ai_result` for guest recovery.
+ * This commit maps every field onto a real column:
+ *   - context            → brief                (text)
+ *   - mission_type       → goal_type            (text)
+ *   - estimated_price    → price_estimated      (numeric)
+ *   - target + stage     → target_audience jsonb {stage, market, price}
+ *   - question / visualization_type / role → dropped (they were never
+ *     reads on the dashboard, and no column backs them)
+ *   - status 'DRAFT'     → 'draft'              (matches default + CHECK)
  *
- * ── Still to come ────────────────────────────────────────────────
- *   - Clarify-card inline step (Commit 4) — "✦ Generate Survey" will
- *     flip to reveal the clarify card before calling handleInitialize.
- *   - localStorage key migration to `vett:mission_draft` (Commit 4).
- *   - Clarify Q2 → `stage` column mapping (Commit 4). Until then, the
- *     insert payload passes `stage: null`; the row was accepting nulls
- *     before, so this doesn't break existing consumers.
+ * `stage` needs a home because the clarify step has to persist it.
+ * There is no `stage` column on `missions`, so we stash it inside
+ * `target_audience` jsonb alongside market + price.  Adding a dedicated
+ * `stage` column is a separate migration we can do later if the
+ * dashboard wants to filter by stage — it wasn't in scope for Commit 4.
  *
- * ── Mobile responsiveness (verified at 375px) ────────────────────
- *   - Hero heading scales via clamp(), text-center stays center.
- *   - Mission Brief card uses 20px padding on mobile (prototype line
- *     614 equivalent) and never exceeds viewport (max-w + px-4 gutter).
- *   - GoalGrid collapses to grid-cols-2; the "NEW" pill sits inside
- *     the card's padding and long labels wrap without overflow.
- *   - Textarea is w-full of its parent, so padding contains it.
- *   - File-upload chip + char counter share a flex-wrap row so they
- *     stack instead of overflowing when the chip is present.
+ * ── localStorage migration ──────────────────────────────────────
+ * Old key `missionSetupDraft` is read on mount for back-compat.  New
+ * writes use `vett:mission_draft`.  On successful mission creation,
+ * both keys are cleared so a stale draft can never resurface.
+ *
+ * ── Mobile (verified at 375px) ──────────────────────────────────
+ *   - Clarify chips wrap inside `flex-wrap gap-[7px]`; no overflow.
+ *   - Staggered reveal uses `opacity + y:6` so no horizontal shift.
+ *   - Both CTAs are full-width (`w-full`) on all breakpoints.
+ *   - The upload chip + char counter share a `flex-wrap` toolbar.
  */
 
-const DRAFT_KEY = 'missionSetupDraft';
+const DRAFT_KEY_NEW = 'vett:mission_draft';
+const DRAFT_KEY_OLD = 'missionSetupDraft';
 const AI_BACKUP_KEY = 'vettit_ai_result';
 const DESCRIPTION_MIN = 30;
 const DESCRIPTION_MAX = 500;
@@ -63,8 +81,57 @@ const DESCRIPTION_MAX = 500;
 interface DraftShape {
   missionGoal?: string;
   missionDescription?: string;
-  stage?: string;
+  clarify?: Partial<ClarifyAnswers>;
   timestamp?: number;
+}
+
+function readDraft(): DraftShape | null {
+  // Prefer new key; fall back to old key; prefer the newer timestamp
+  // if both exist (user may have drafts across branches).
+  try {
+    const rawNew = localStorage.getItem(DRAFT_KEY_NEW);
+    const rawOld = localStorage.getItem(DRAFT_KEY_OLD);
+    const parsedNew = rawNew ? (JSON.parse(rawNew) as DraftShape) : null;
+    const parsedOld = rawOld ? (JSON.parse(rawOld) as DraftShape) : null;
+
+    if (parsedNew && parsedOld) {
+      return (parsedNew.timestamp ?? 0) >= (parsedOld.timestamp ?? 0)
+        ? parsedNew
+        : parsedOld;
+    }
+    return parsedNew ?? parsedOld;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(draft: DraftShape) {
+  try {
+    localStorage.setItem(
+      DRAFT_KEY_NEW,
+      JSON.stringify({ ...draft, timestamp: Date.now() }),
+    );
+  } catch {
+    /* storage full / disabled — silently skip */
+  }
+}
+
+function clearAllDrafts() {
+  try {
+    localStorage.removeItem(DRAFT_KEY_NEW);
+    localStorage.removeItem(DRAFT_KEY_OLD);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Short, DB-safe title derived from the first sentence of the brief. */
+function deriveTitle(brief: string, goalLabel: string): string {
+  const firstSentence = brief.split(/[.!?\n]/)[0]?.trim() ?? '';
+  if (firstSentence.length >= 6 && firstSentence.length <= 120) {
+    return firstSentence;
+  }
+  return goalLabel;
 }
 
 export const MissionSetupPage = () => {
@@ -74,8 +141,6 @@ export const MissionSetupPage = () => {
   const { user, loading } = useAuth();
   const toast = useToast();
 
-  // `?q=` is a one-shot hero handoff. Read it before the draft so an
-  // explicit hero submission wins over any previous draft.
   const queryPrefill = searchParams.get('q') || '';
 
   const [missionGoal, setMissionGoal] = useState<string>(() => {
@@ -104,6 +169,15 @@ export const MissionSetupPage = () => {
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Clarify state — revealed only after ✦ Generate Survey.
+  const [showClarify, setShowClarify] = useState(false);
+  const [clarifyAnswers, setClarifyAnswers] = useState<ClarifyAnswers>(
+    CLARIFY_DEFAULTS,
+  );
+
+  // Guard against double-fire from enter-key repeats / fast double-clicks.
+  const inflightRef = useRef(false);
+
   // Draft hydration + one-shot ?q= consumption.
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -114,7 +188,6 @@ export const MissionSetupPage = () => {
       setSearchParams(next, { replace: true });
     }
 
-    // If nothing was handed in via location.state / ?q=, rehydrate draft.
     const state = location.state as
       | { inputText?: string; prefill?: string; intent?: string }
       | null;
@@ -122,39 +195,31 @@ export const MissionSetupPage = () => {
       !!state?.inputText || !!state?.prefill || !!queryPrefill;
 
     if (!hasIncomingPrefill) {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        try {
-          const draft = JSON.parse(raw) as DraftShape;
-          if (draft.missionGoal && getGoalById(draft.missionGoal)) {
-            setMissionGoal(draft.missionGoal);
-          }
-          if (typeof draft.missionDescription === 'string') {
-            setMissionDescription(draft.missionDescription);
-          }
-        } catch {
-          /* ignore malformed drafts */
+      const draft = readDraft();
+      if (draft) {
+        if (draft.missionGoal && getGoalById(draft.missionGoal)) {
+          setMissionGoal(draft.missionGoal);
+        }
+        if (typeof draft.missionDescription === 'string') {
+          setMissionDescription(draft.missionDescription);
+        }
+        if (draft.clarify) {
+          setClarifyAnswers((prev) => ({ ...prev, ...draft.clarify }));
         }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Autosave draft on any relevant change. Skips empty drafts so we
-  // don't overwrite a previously-good draft with nothing.
+  // Autosave draft on any relevant change. Skips empty drafts.
   useEffect(() => {
     if (!missionDescription && missionGoal === 'validate') return;
-    const draft: DraftShape = {
+    writeDraft({
       missionGoal,
       missionDescription,
-      timestamp: Date.now(),
-    };
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-    } catch {
-      /* storage full / disabled — silently skip */
-    }
-  }, [missionGoal, missionDescription]);
+      clarify: clarifyAnswers,
+    });
+  }, [missionGoal, missionDescription, clarifyAnswers]);
 
   const charCount = missionDescription.trim().length;
   const isValid = charCount >= DESCRIPTION_MIN;
@@ -167,7 +232,14 @@ export const MissionSetupPage = () => {
   );
   const showUpload = GOALS_WITH_UPLOAD.has(missionGoal);
 
-  // Clear the filename if the user switches away from an upload-enabled goal.
+  // Collapse clarify if the user edits goal/description after revealing it —
+  // forces a fresh ✦ Generate Survey click, which keeps the chip answers
+  // aligned with the brief the AI will actually see.
+  useEffect(() => {
+    if (showClarify && !isSubmitting) setShowClarify(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missionGoal, missionDescription]);
+
   useEffect(() => {
     if (!showUpload && uploadedFileName) {
       setUploadedFileName(null);
@@ -179,8 +251,6 @@ export const MissionSetupPage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadedFileName(file.name);
-    // Render-only stub. File is held in state but never uploaded. See
-    // .design-reference/PROMPT_3_STUBS.md — "Creative Attention upload".
     toast.info('File captured — frame-by-frame analysis coming soon.');
   };
 
@@ -194,7 +264,8 @@ export const MissionSetupPage = () => {
     setMissionDescription(next);
   };
 
-  const handleGenerate = async () => {
+  /** Step 1 CTA — validates brief and reveals the clarify step. */
+  const handleRevealClarify = () => {
     if (!isValid) {
       setAttemptedSubmit(true);
       toast.error(
@@ -203,66 +274,88 @@ export const MissionSetupPage = () => {
       return;
     }
 
-    // Require auth before spending an AI call. Redirect-aware so users
-    // return to /setup with their draft intact (localStorage survives).
     if (!user) {
       const redirect = encodeURIComponent('/setup');
       navigate(`/signin?redirect=${redirect}`);
       return;
     }
 
+    setShowClarify(true);
+  };
+
+  /** Step 2 CTA — kicks off generation + persistence + redirect. */
+  const handleGenerate = async () => {
+    if (!isValid || !user) {
+      // Shouldn't reach here — Step 1 gates this — but belt + braces.
+      setShowClarify(false);
+      return;
+    }
+
+    if (inflightRef.current) return; // double-fire guard
+    inflightRef.current = true;
     setIsSubmitting(true);
 
     const goalLabel = selectedGoal?.label ?? missionGoal;
-    const aiContext = `${goalLabel}: ${missionDescription.trim()}`;
-    const subject = missionDescription.trim();
-    const objective = goalLabel;
+    const briefText = missionDescription.trim();
+    const aiContext = `${goalLabel}: ${briefText}`;
 
     try {
-      // 1) Kick AI generation while we still have the user's context.
+      // 1) Kick off AI generation — has internal try/catch + fallback.
       let aiResult: Awaited<ReturnType<typeof generateSurvey>> | null = null;
       try {
         aiResult = await generateSurvey({
           goal: missionGoal,
-          subject,
-          objective,
+          subject: briefText,
+          objective: goalLabel,
         });
       } catch (aiErr) {
+        // generateSurvey swallows its own errors — catch here is defensive.
         console.warn('AI generation failed — continuing with defaults:', aiErr);
       }
 
-      // 2) Insert mission row. `role` is intentionally NULL (the field
-      //    was dropped in the redesign); `stage` is null until the
-      //    clarify step lands in Commit 4 and wires Q2 into it.
+      // 2) Build the insert payload using ONLY columns that exist on
+      //    public.missions.  Stage + market + price from clarify live
+      //    inside target_audience jsonb (see file header for why).
+      const targetAudience = {
+        stage: clarifyAnswers.stage,
+        market: clarifyAnswers.market,
+        price: clarifyAnswers.price,
+        // Carry forward anything the AI suggested so downstream consumers
+        // (the dashboard targeting panel) still have something to render.
+        suggestions: aiResult?.targetingSuggestions ?? null,
+      };
+
+      const insertPayload = {
+        user_id: user.id,
+        title: deriveTitle(briefText, goalLabel),
+        brief: aiContext,
+        goal_type: missionGoal,
+        status: 'draft',
+        respondent_count: aiResult?.suggestedRespondentCount ?? 100,
+        price_estimated: 99,
+        questions: aiResult?.questions ?? null,
+        target_audience: targetAudience,
+      };
+
       const { data: missionData, error } = await supabase
         .from('missions')
-        .insert([
-          {
-            user_id: user.id,
-            context: aiContext,
-            target: 'General Audience',
-            question: objective,
-            respondent_count: aiResult?.suggestedRespondentCount || 100,
-            estimated_price: 99,
-            role: null,
-            stage: null,
-            status: 'DRAFT',
-            mission_type: missionGoal,
-            visualization_type: 'RATING',
-            created_at: new Date().toISOString(),
-          },
-        ])
+        .insert([insertPayload])
         .select()
         .single();
 
       if (error || !missionData) {
         console.error('Mission insert failed:', error);
-        toast.error('Could not save mission — try again in a moment.');
+        toast.error(
+          error?.message?.includes('row-level security')
+            ? 'Sign-in expired — please sign in again.'
+            : 'Could not save mission — try again in a moment.',
+        );
+        inflightRef.current = false;
         setIsSubmitting(false);
         return;
       }
 
-      localStorage.removeItem(DRAFT_KEY);
+      clearAllDrafts();
 
       if (aiResult) {
         try {
@@ -283,17 +376,22 @@ export const MissionSetupPage = () => {
           missionObjective: aiResult?.missionObjective ?? '',
           targetingSuggestions: aiResult?.targetingSuggestions ?? null,
           suggestedRespondentCount: aiResult?.suggestedRespondentCount ?? null,
-          aiParams: { goal: missionGoal, subject, objective },
+          clarifyAnswers,
+          aiParams: {
+            goal: missionGoal,
+            subject: briefText,
+            objective: goalLabel,
+          },
         },
       });
     } catch (err) {
       console.error('Unexpected generate error:', err);
       toast.error('Something went wrong. Please try again.');
+      inflightRef.current = false;
       setIsSubmitting(false);
     }
   };
 
-  // TopNav chooses between authed/unauthed variants.
   const topNav = user ? (
     <AuthedTopNav />
   ) : (
@@ -449,6 +547,7 @@ export const MissionSetupPage = () => {
                               onClick={clearUploadedFile}
                               aria-label="Remove uploaded file"
                               className="shrink-0 text-pur/80 hover:text-pur"
+                              disabled={isSubmitting}
                             >
                               <X className="w-3 h-3" />
                             </button>
@@ -504,40 +603,46 @@ export const MissionSetupPage = () => {
               </div>
             </div>
 
-            {/* Primary CTA */}
-            <div className="mt-5">
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={isSubmitting}
-                className={[
-                  'w-full h-12 rounded-xl',
-                  'inline-flex items-center justify-center gap-2',
-                  'font-display font-black text-[14px] uppercase tracking-widest',
-                  'transition-colors',
-                  'disabled:opacity-60 disabled:cursor-not-allowed',
-                  isValid
-                    ? 'bg-lime text-black hover:bg-lime/90 shadow-lime-soft'
-                    : 'bg-lime/20 text-lime/70',
-                ].join(' ')}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-                    <span>AI is crafting your mission…</span>
-                  </>
-                ) : (
-                  <>
-                    <span aria-hidden>✦</span>
-                    <span>Generate Survey</span>
-                  </>
-                )}
-              </button>
-              <p className="mt-2.5 text-center font-body text-[11px] text-t4">
-                You&apos;ll refine questions + targeting on the next screen before
-                paying anything.
-              </p>
-            </div>
+            {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
+            {!showClarify && (
+              <div className="mt-5">
+                <button
+                  type="button"
+                  onClick={handleRevealClarify}
+                  disabled={isSubmitting}
+                  className={[
+                    'w-full h-12 rounded-xl',
+                    'inline-flex items-center justify-center gap-2',
+                    'font-display font-black text-[14px] uppercase tracking-widest',
+                    'transition-colors',
+                    'disabled:opacity-60 disabled:cursor-not-allowed',
+                    isValid
+                      ? 'bg-lime text-black hover:bg-lime/90 shadow-lime-soft'
+                      : 'bg-lime/20 text-lime/70',
+                  ].join(' ')}
+                >
+                  <span aria-hidden>✦</span>
+                  <span>Generate Survey</span>
+                </button>
+                <p className="mt-2.5 text-center font-body text-[11px] text-t4">
+                  You&apos;ll refine questions + targeting on the next screen before
+                  paying anything.
+                </p>
+              </div>
+            )}
+
+            {/* Step 3 — Clarify (inline, revealed by Step 1 CTA). */}
+            <AnimatePresence initial={false}>
+              {showClarify && (
+                <ClarifySection
+                  key="clarify"
+                  answers={clarifyAnswers}
+                  onChange={setClarifyAnswers}
+                  onSubmit={handleGenerate}
+                  submitting={isSubmitting}
+                />
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </section>
