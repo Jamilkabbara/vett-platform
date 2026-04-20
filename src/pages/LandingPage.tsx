@@ -5,7 +5,6 @@ import {
   ArrowRight,
   Paperclip,
   MessageSquare,
-  Sparkles,
   Zap,
   Target,
   BarChart3,
