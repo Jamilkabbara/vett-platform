@@ -5,6 +5,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Zap, Plus, BarChart3, Clock, Users, ArrowRight, Trash2, Eye } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/apiClient';
+import { ChatWidget } from '../components/chat/ChatWidget';
 
 interface Mission {
   id: string;
@@ -299,6 +300,8 @@ export const MissionsListPage = () => {
         </motion.div>
         </div>
       </div>
+
+      {user && <ChatWidget scope="dashboard" />}
     </DashboardLayout>
   );
 };

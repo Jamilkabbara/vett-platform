@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
-import toast from 'react-hot-toast';
 import {
   ArrowLeft,
   Download,
@@ -11,6 +10,7 @@ import {
   FileText,
   FileSpreadsheet,
   Presentation,
+  FileJson,
   Sparkles,
   TrendingUp,
   Users,
@@ -21,6 +21,7 @@ import {
   AlertCircle,
   MessageSquare
 } from 'lucide-react';
+import { ChatWidget } from '../components/chat/ChatWidget';
 import {
   PieChart,
   Pie,
@@ -35,7 +36,28 @@ import {
   Legend
 } from 'recharts';
 
-type ExportFormat = 'pdf' | 'excel' | 'powerpoint';
+type ExportFormat = 'pdf' | 'xlsx' | 'pptx' | 'raw';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
+
+// Map backend question types → frontend types
+function mapQuestionType(t: string): QuestionResult['type'] {
+  switch (t) {
+    case 'multi':
+    case 'multi_select':
+      return 'multi_select';
+    case 'rating':
+      return 'rating';
+    case 'text':
+    case 'open_text':
+      return 'open_text';
+    case 'single':
+    case 'opinion':
+    case 'single_choice':
+    default:
+      return 'single_choice';
+  }
+}
 
 interface ToastState {
   show: boolean;
@@ -247,33 +269,108 @@ export const ResultsPage = () => {
       const data = await api.get(`/api/results/${id}`);
 
       if (data.status === 'in_progress') {
-        setResultsProgress({ completed: data.completedResponses, total: data.targetResponses });
-        // Poll every 30s
+        setResultsProgress({ completed: data.completedResponses || 0, total: data.targetResponses || 0 });
         setTimeout(() => fetchResults(id), 30000);
         return;
       }
 
       setResultsProgress(null);
-      if (data.mission) {
-        const loaded: MissionData = {
-          name: data.mission.mission_statement || data.mission.context || 'Your Mission',
-          completedAt: data.mission.completed_at ? new Date(data.mission.completed_at).toLocaleString() : 'Just now',
-          totalRespondents: data.mission.respondent_count || 100,
-          targeting: { demographics: MOCK_MISSION_DATA.targeting.demographics },
-          questions: data.results?.responses?.map((r: any, i: number) => ({
-            id: r.questionId || `q${i + 1}`,
-            question: data.mission.questions?.[i]?.text || `Question ${i + 1}`,
-            type: 'single_choice',
-            data: Object.entries(r.answers || {}).map(([name, value]) => ({
-              name, value, percentage: Math.round((Number(value) / (data.mission.respondent_count || 100)) * 100)
-            })),
-            aiInsight: data.insights?.questionInsights?.[i] || '',
-          })) || MOCK_MISSION_DATA.questions,
-        };
-        setMissionData(loaded);
-        setFilteredRespondentCount(loaded.totalRespondents);
-        setFilteredQuestions(loaded.questions);
-      }
+      if (!data.mission) return;
+
+      const mission = data.mission;
+      const agg = data.aggregatedByQuestion || {};
+      const respondentCount = data.responseCount ?? mission.respondent_count ?? 0;
+
+      // Build question list — prefer order from mission.questions[]
+      const missionQuestions: any[] = Array.isArray(mission.questions)
+        ? mission.questions
+        : Object.keys(agg).map((k) => ({ id: k, ...(agg[k]?.question || {}) }));
+
+      const questions: QuestionResult[] = missionQuestions.map((q: any, idx: number) => {
+        const qid = q.id || q.question_id || `q${idx + 1}`;
+        const bucket = agg[qid] || {};
+        const backendType = q.type || bucket.type || 'single';
+        const fType = mapQuestionType(backendType);
+        const qText = q.text || q.question || bucket.question || `Question ${idx + 1}`;
+        const aiInsight =
+          bucket.insight ||
+          data.insights?.questionInsights?.[idx] ||
+          data.insights?.byQuestion?.[qid] ||
+          '';
+
+        if (fType === 'rating') {
+          const dist: Record<string, number> = bucket.distribution || bucket.counts || {};
+          const total =
+            Object.values(dist).reduce((a: number, b: any) => a + Number(b || 0), 0) || respondentCount || 1;
+          const ratingData = [1, 2, 3, 4, 5].map((n) => {
+            const count = Number(dist[String(n)] ?? dist[`${n} Star`] ?? 0);
+            return {
+              rating: `${n} Star${n === 1 ? '' : 's'}`,
+              count,
+              percentage: Math.round((count / total) * 100),
+            };
+          });
+          const weightedSum = ratingData.reduce((s, r, i) => s + (i + 1) * r.count, 0);
+          const avg = total ? weightedSum / total : 0;
+          return { id: qid, question: qText, type: 'rating', data: ratingData, averageScore: avg, aiInsight };
+        }
+
+        if (fType === 'multi_select') {
+          const dist: Record<string, number> = bucket.distribution || bucket.counts || {};
+          const total = respondentCount || Object.values(dist).reduce((a: number, b: any) => a + Number(b || 0), 0) || 1;
+          const arr = Object.entries(dist).map(([feature, count]) => ({
+            feature,
+            count: Number(count || 0),
+            percentage: Math.round((Number(count || 0) / total) * 100),
+          })).sort((a, b) => b.count - a.count);
+          return { id: qid, question: qText, type: 'multi_select', data: arr, aiInsight };
+        }
+
+        if (fType === 'open_text') {
+          const verbatims: string[] = bucket.verbatims || bucket.samples || [];
+          const keywords: any[] = bucket.keywords || bucket.topWords || [];
+          const wordData = keywords.length
+            ? keywords.map((w: any) => ({ word: w.word || w.text || String(w), size: w.size || w.count || 20 }))
+            : [];
+          return {
+            id: qid,
+            question: qText,
+            type: 'open_text',
+            data: wordData,
+            verbatims: verbatims.slice(0, 50),
+            sentiment: bucket.sentiment ?? bucket.sentimentScore,
+            aiInsight,
+          };
+        }
+
+        // single_choice
+        const dist: Record<string, number> = bucket.distribution || bucket.counts || {};
+        const total = Object.values(dist).reduce((a: number, b: any) => a + Number(b || 0), 0) || respondentCount || 1;
+        const arr = Object.entries(dist).map(([name, count], i) => {
+          const value = Math.round((Number(count || 0) / total) * 100);
+          return {
+            name,
+            value,
+            percentage: value,
+            color: COLORS[i % COLORS.length],
+          };
+        });
+        return { id: qid, question: qText, type: 'single_choice', data: arr, aiInsight };
+      });
+
+      const loaded: MissionData = {
+        name: mission.mission_statement || mission.name || mission.context || 'Your Mission',
+        completedAt: mission.completed_at
+          ? new Date(mission.completed_at).toLocaleString()
+          : 'Just now',
+        totalRespondents: respondentCount,
+        targeting: { demographics: MOCK_MISSION_DATA.targeting.demographics },
+        questions,
+      };
+
+      setMissionData(loaded);
+      setFilteredRespondentCount(loaded.totalRespondents);
+      setFilteredQuestions(loaded.questions);
     } catch (err) {
       console.error('Failed to load results, showing demo data:', err);
     } finally {
@@ -303,112 +400,78 @@ export const ResultsPage = () => {
     switch (format) {
       case 'pdf':
         return 'PDF';
-      case 'excel':
+      case 'xlsx':
         return 'Excel';
-      case 'powerpoint':
+      case 'pptx':
         return 'PowerPoint';
+      case 'raw':
+        return 'Raw JSON';
     }
   };
 
   const handleExport = async (format: ExportFormat) => {
     setIsDropdownOpen(false);
 
-    // Download from real backend if we have a missionId
-    if (missionId && (format === 'pdf' || format === 'excel')) {
-      const endpoint = format === 'pdf'
-        ? `/api/results/${missionId}/export/pdf`
-        : `/api/results/${missionId}/export/raw`;
-      const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
+    if (!missionId) {
+      setToast({
+        show: true,
+        message: 'Export unavailable for demo data',
+        subtext: 'Open results from a real mission to export',
+        isGenerating: false,
+      });
+      setTimeout(() => setToast({ show: false, message: '', subtext: '', isGenerating: false }), 3000);
+      return;
+    }
+
+    setToast({
+      show: true,
+      message: `Generating ${getFormatLabel(format)}…`,
+      subtext: 'This may take a moment.',
+      isGenerating: true,
+    });
+
+    const extMap: Record<ExportFormat, string> = { pdf: 'pdf', xlsx: 'xlsx', pptx: 'pptx', raw: 'json' };
+    const endpoint = `/api/results/${missionId}/export/${format}`;
+
+    try {
       const { supabase } = await import('../lib/supabase');
       const { data: { session } } = await supabase.auth.getSession();
       const headers: Record<string, string> = {};
       if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
-      try {
-        const res = await fetch(`${API_URL}${endpoint}`, { headers });
-        if (res.ok) {
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = format === 'pdf' ? 'vett_results.pdf' : 'vett_results.csv';
-          link.click();
-          URL.revokeObjectURL(url);
-          return;
-        }
-      } catch (e) {
-        console.warn('Backend export failed, falling back to client-side export');
+
+      const res = await fetch(`${API_URL}${endpoint}`, { headers });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(errText || `Export failed (${res.status})`);
       }
-    }
 
-    if (format === 'excel') {
-      // Generate CSV data
-      let csvContent = 'Question,Question Type,Response,Count,Percentage,Sentiment\n';
-
-      filteredQuestions.forEach((question) => {
-        const questionText = `"${question.question.replace(/"/g, '""')}"`;
-        const questionType = question.type;
-
-        if (question.type === 'single_choice' || question.type === 'multi_select') {
-          question.data.forEach((item) => {
-            const answer = `"${(item.name || item.feature || '').replace(/"/g, '""')}"`;
-            const count = item.count || item.value || 0;
-            const percentage = item.percentage || 0;
-            csvContent += `${questionText},${questionType},${answer},${count},${percentage}%,\n`;
-          });
-        } else if (question.type === 'rating') {
-          question.data.forEach((item) => {
-            const answer = `"${item.rating.replace(/"/g, '""')}"`;
-            const count = item.count || 0;
-            const percentage = item.percentage || 0;
-            csvContent += `${questionText},${questionType},${answer},${count},${percentage}%,\n`;
-          });
-        } else if (question.type === 'open_text') {
-          const sentiment = question.sentiment || 0;
-          csvContent += `${questionText},${questionType},"See verbatims below",${filteredRespondentCount},,${sentiment}%\n`;
-
-          if (question.verbatims && question.verbatims.length > 0) {
-            question.verbatims.forEach((verbatim, index) => {
-              const cleanVerbatim = `"${verbatim.replace(/"/g, '""')}"`;
-              csvContent += `${questionText},verbatim,${cleanVerbatim},,,\n`;
-            });
-          }
-        }
-      });
-
-      // Create blob and download
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
+      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-
-      link.setAttribute('href', url);
-      link.setAttribute('download', 'vett_mission_results.csv');
-      link.style.visibility = 'hidden';
+      const link = document.createElement('a');
+      const safeName = (missionData.name || 'vett_results').replace(/[^a-z0-9_\-]+/gi, '_').slice(0, 60);
+      link.href = url;
+      link.download = `${safeName}.${extMap[format]}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
-      toast.success('Report downloaded successfully');
-    } else {
-      // For PDF and PowerPoint, show the generating toast
       setToast({
         show: true,
-        message: `Generating ${getFormatLabel(format)}...`,
-        subtext: 'This may take a moment.',
-        isGenerating: true
+        message: `${safeName}.${extMap[format]} downloaded`,
+        subtext: 'Your export is ready',
+        isGenerating: false,
       });
-
-      setTimeout(() => {
-        setToast({
-          show: true,
-          message: `${missionData.name}.${format} downloaded successfully.`,
-          subtext: 'Your export is ready',
-          isGenerating: false
-        });
-
-        setTimeout(() => {
-          setToast({ show: false, message: '', subtext: '', isGenerating: false });
-        }, 3000);
-      }, 2000);
+      setTimeout(() => setToast({ show: false, message: '', subtext: '', isGenerating: false }), 3000);
+    } catch (err: any) {
+      console.error('Export failed:', err);
+      setToast({
+        show: true,
+        message: `${getFormatLabel(format)} export failed`,
+        subtext: err?.message || 'Please try again.',
+        isGenerating: false,
+      });
+      setTimeout(() => setToast({ show: false, message: '', subtext: '', isGenerating: false }), 4000);
     }
   };
 
@@ -545,16 +608,22 @@ export const ResultsPage = () => {
       subtext: 'Charts & Summary'
     },
     {
-      format: 'excel' as ExportFormat,
-      icon: FileSpreadsheet,
-      label: 'Excel / CSV',
-      subtext: 'Raw Respondent Data'
-    },
-    {
-      format: 'powerpoint' as ExportFormat,
+      format: 'pptx' as ExportFormat,
       icon: Presentation,
       label: 'PowerPoint',
       subtext: 'Presentation Slides'
+    },
+    {
+      format: 'xlsx' as ExportFormat,
+      icon: FileSpreadsheet,
+      label: 'Excel Workbook',
+      subtext: 'Raw Respondent Data'
+    },
+    {
+      format: 'raw' as ExportFormat,
+      icon: FileJson,
+      label: 'Raw JSON',
+      subtext: 'Every response + insights'
     }
   ];
 
@@ -1201,6 +1270,8 @@ export const ResultsPage = () => {
         )}
       </AnimatePresence>
       </div>
+
+      {missionId && <ChatWidget scope="results" missionId={missionId} />}
     </DashboardLayout>
   );
 };

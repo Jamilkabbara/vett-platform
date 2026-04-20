@@ -354,6 +354,7 @@ export const ProfilePage = () => {
 
               {/* Desktop Table */}
               {!invoicesLoading && invoices.length > 0 && (
+              <>
               <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -427,6 +428,7 @@ export const ProfilePage = () => {
                   </div>
                 ))}
               </div>
+              </>
               )}
             </div>
 
