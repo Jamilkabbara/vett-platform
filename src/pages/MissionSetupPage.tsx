@@ -1,519 +1,548 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Sparkles, Target, ArrowRight, Rocket, Scale, Megaphone, Star, Brain, DollarSign, Map, Search } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Loader2, X } from 'lucide-react';
+
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { AuthModal } from '../components/layout/AuthModal';
-import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { generateSurvey } from '../services/aiService';
-import { api } from '../lib/apiClient';
+import { useToast } from '../components/ui/Toast';
+import { TopNav } from '../components/ui/TopNav';
+import { Logo } from '../components/ui/Logo';
+import { Button } from '../components/ui/Button';
+import { AuthedTopNav } from '../components/layout/AuthedTopNav';
+import { GoalGrid } from '../components/setup/GoalGrid';
+import {
+  GOALS_WITH_UPLOAD,
+  getGoalById,
+  getPlaceholderForGoal,
+} from '../data/missionGoals';
 
-const MISSION_GOALS = [
-  { id: 'validate', label: 'Validate Product', icon: Rocket, emoji: '🚀' },
-  { id: 'compare', label: 'Compare Concepts', icon: Scale, emoji: '⚖️' },
-  { id: 'marketing', label: 'Test Marketing/Ads', icon: Megaphone, emoji: '📢' },
-  { id: 'satisfaction', label: 'Customer Satisfaction', icon: Star, emoji: '⭐' },
-  { id: 'pricing', label: 'Pricing Research', icon: DollarSign, emoji: '💰' },
-  { id: 'roadmap', label: 'Feature Roadmap', icon: Map, emoji: '🗺️' },
-  { id: 'research', label: 'General Research', icon: Brain, emoji: '🧠' },
-  { id: 'competitor', label: 'Competitor Analysis', icon: Search, emoji: '🔍' },
-];
+/**
+ * Mission Setup — authored step 1 of the redesign (Prompt 3 / Commit 3).
+ *
+ * Renders the prototype's "What do you want to VETT?" hero + Mission
+ * Brief card (.design-reference/prototype.html lines 1212–1294):
+ *
+ *   1. GoalGrid — 14 goals, 2-col on mobile / 4-col on desktop.
+ *   2. Describe — 30-char-minimum textarea with 500-char counter.
+ *   3. Optional media-upload chip (Creative Attention goal only —
+ *      render-only stub tracked in PROMPT_3_STUBS.md).
+ *   4. Primary CTA — "✦ Generate Survey".
+ *
+ * ── What this commit preserves ──────────────────────────────────
+ *   - `?q=` prefill from landing (commit 78cfd8a).
+ *   - localStorage `missionSetupDraft` autosave / restore.
+ *   - generateSurvey() wiring + /api/missions Supabase insert.
+ *   - AI-result backup at `vettit_ai_result` for guest recovery.
+ *
+ * ── Still to come ────────────────────────────────────────────────
+ *   - Clarify-card inline step (Commit 4) — "✦ Generate Survey" will
+ *     flip to reveal the clarify card before calling handleInitialize.
+ *   - localStorage key migration to `vett:mission_draft` (Commit 4).
+ *   - Clarify Q2 → `stage` column mapping (Commit 4). Until then, the
+ *     insert payload passes `stage: null`; the row was accepting nulls
+ *     before, so this doesn't break existing consumers.
+ *
+ * ── Mobile responsiveness (verified at 375px) ────────────────────
+ *   - Hero heading scales via clamp(), text-center stays center.
+ *   - Mission Brief card uses 20px padding on mobile (prototype line
+ *     614 equivalent) and never exceeds viewport (max-w + px-4 gutter).
+ *   - GoalGrid collapses to grid-cols-2; the "NEW" pill sits inside
+ *     the card's padding and long labels wrap without overflow.
+ *   - Textarea is w-full of its parent, so padding contains it.
+ *   - File-upload chip + char counter share a flex-wrap row so they
+ *     stack instead of overflowing when the chip is present.
+ */
 
-const INSPIRATION_EXAMPLES = [
-  {
-    emoji: '🍕',
-    label: 'Consumer Product',
-    text: 'I want to validate a meal prep subscription box ($45/week) for busy parents. I need to know if they prefer organic ingredients or time-saving convenience, and what price point makes them switch from grocery shopping.'
-  },
-  {
-    emoji: '📱',
-    label: 'SaaS App',
-    text: 'I want to test a project management tool for remote teams ($15/user/month). I need to understand if they value real-time collaboration features more than detailed reporting, and if they would switch from their current solution.'
-  },
-  {
-    emoji: '☕',
-    label: 'Local Service',
-    text: 'I want to validate a mobile car detailing service in suburban neighborhoods ($120/visit). I need to know if customers care more about eco-friendly products or same-day booking, and how often they would use the service.'
-  },
-  {
-    emoji: '🏢',
-    label: 'B2B Enterprise',
-    text: 'I want to validate a cybersecurity compliance tool for mid-sized banks ($500/month per location). I need to understand if they prioritize automated reporting or real-time threat detection, and what integration capabilities are deal-breakers for their IT teams.'
-  },
-  {
-    emoji: '🎥',
-    label: 'Content/Media',
-    text: 'I want to test titles and thumbnails for a new YouTube channel about personal finance for millennials. I need to know which content angles resonate most: debt payoff stories, investment basics, or side hustle ideas, and what tone makes them click.'
-  }
-];
+const DRAFT_KEY = 'missionSetupDraft';
+const AI_BACKUP_KEY = 'vettit_ai_result';
+const DESCRIPTION_MIN = 30;
+const DESCRIPTION_MAX = 500;
 
-const getPlaceholderForGoal = (goalId: string) => {
-  switch (goalId) {
-    case 'validate':
-      return 'e.g., I want to validate a subscription service for premium coffee beans ($25/mo) targeting remote workers. I need to know if they care more about Fair Trade sourcing or Fast Delivery.';
-    case 'compare':
-      return 'e.g., I have two logo designs for my fitness app and need to know which one appeals more to Gen Z users and why they prefer it.';
-    case 'marketing':
-      return 'e.g., I want to test a new Instagram ad campaign for sustainable sneakers targeting millennials. I need to understand which messaging resonates better: eco-friendly materials or stylish design.';
-    case 'satisfaction':
-      return 'e.g., I want to measure how satisfied current users are with our mobile app onboarding experience and identify the biggest pain points in the first 3 screens.';
-    case 'pricing':
-      return 'e.g., I want to test pricing tiers for my SaaS platform ($29/$79/$149/mo) with small business owners. I need to know which features justify premium pricing and what price point feels too expensive.';
-    case 'roadmap':
-      return 'e.g., I want to prioritize features for my fitness app (social sharing, meal plans, or workout videos) by understanding what my target users would pay extra for and what they consider essential.';
-    case 'research':
-      return 'e.g., I want to understand remote workers\' productivity habits, specifically what time of day they\'re most focused and what tools they use for deep work sessions.';
-    case 'competitor':
-      return 'e.g., I want to compare my project management tool to Asana and Monday.com. I need to understand what features users value most and where my competitors are falling short for small agencies.';
-    default:
-      return 'Describe your idea, your target audience, and exactly what you want to learn. The AI will extract the details automatically.';
-  }
-};
+interface DraftShape {
+  missionGoal?: string;
+  missionDescription?: string;
+  stage?: string;
+  timestamp?: number;
+}
 
 export const MissionSetupPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const toast = useToast();
 
-  // Landing page can hand us the hero prompt via `?q=<idea>`. Treat it
-  // as a one-shot prefill — consume it into state, then strip it from
-  // the URL so refresh doesn't re-seed over the user's edits.
+  // `?q=` is a one-shot hero handoff. Read it before the draft so an
+  // explicit hero submission wins over any previous draft.
   const queryPrefill = searchParams.get('q') || '';
 
-  const [missionGoal, setMissionGoal] = useState('validate');
-  const [missionDescription, setMissionDescription] = useState(
-    location.state?.inputText || location.state?.prefill || queryPrefill || ''
-  );
+  const [missionGoal, setMissionGoal] = useState<string>(() => {
+    const intent = (location.state as { intent?: string } | null)?.intent;
+    if (intent) {
+      const intentToGoal: Record<string, string> = {
+        pricing: 'pricing',
+        features: 'roadmap',
+        marketing: 'marketing',
+        satisfaction: 'satisfaction',
+      };
+      return intentToGoal[intent] ?? 'validate';
+    }
+    return 'validate';
+  });
+
+  const [missionDescription, setMissionDescription] = useState<string>(() => {
+    const state = location.state as
+      | { inputText?: string; prefill?: string }
+      | null;
+    return state?.inputText || state?.prefill || queryPrefill || '';
+  });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [role, setRole] = useState('');
-  const [stage, setStage] = useState('');
-
-  const [showErrors, setShowErrors] = useState(false);
-  const [descriptionTouched, setDescriptionTouched] = useState(false);
-  const [isRefining, setIsRefining] = useState(false);
-
+  // Draft hydration + one-shot ?q= consumption.
   useEffect(() => {
     window.scrollTo(0, 0);
 
-    if (location.state?.prefill) {
-      setMissionDescription(location.state.prefill);
-      setMissionGoal('validate');
-    }
-
-    // Strip `?q=` from the URL once we've hydrated state from it, so the
-    // visible address bar doesn't carry the prompt forever.
     if (queryPrefill) {
       const next = new URLSearchParams(searchParams);
       next.delete('q');
       setSearchParams(next, { replace: true });
     }
 
-    if (location.state?.intent) {
-      const intentToGoalMap: Record<string, string> = {
-        'pricing': 'validate',
-        'features': 'validate',
-        'marketing': 'marketing',
-        'satisfaction': 'satisfaction'
-      };
-      const mappedGoal = intentToGoalMap[location.state.intent] || 'validate';
-      setMissionGoal(mappedGoal);
-    }
+    // If nothing was handed in via location.state / ?q=, rehydrate draft.
+    const state = location.state as
+      | { inputText?: string; prefill?: string; intent?: string }
+      | null;
+    const hasIncomingPrefill =
+      !!state?.inputText || !!state?.prefill || !!queryPrefill;
 
-    const saved = localStorage.getItem('missionSetupDraft');
-    if (saved && !location.state?.inputText && !location.state?.prefill && !queryPrefill) {
-      try {
-        const draft = JSON.parse(saved);
-        setMissionGoal(draft.missionGoal || 'validate');
-        setMissionDescription(draft.missionDescription || '');
-        setRole(draft.role || '');
-        setStage(draft.stage || '');
-        console.log('Restored draft from localStorage');
-      } catch (e) {
-        console.error('Failed to restore draft:', e);
+    if (!hasIncomingPrefill) {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        try {
+          const draft = JSON.parse(raw) as DraftShape;
+          if (draft.missionGoal && getGoalById(draft.missionGoal)) {
+            setMissionGoal(draft.missionGoal);
+          }
+          if (typeof draft.missionDescription === 'string') {
+            setMissionDescription(draft.missionDescription);
+          }
+        } catch {
+          /* ignore malformed drafts */
+        }
       }
     }
-  }, [location.state]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Autosave draft on any relevant change. Skips empty drafts so we
+  // don't overwrite a previously-good draft with nothing.
   useEffect(() => {
-    if (missionDescription || role || stage) {
-      const draft = {
-        missionGoal,
-        missionDescription,
-        role,
-        stage,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('missionSetupDraft', JSON.stringify(draft));
-    }
-  }, [missionGoal, missionDescription, role, stage]);
-
-  useEffect(() => {
-    console.log('Auth State:', { loading, user: user?.id });
-  }, [loading, user]);
-
-  const isValid = missionDescription.trim().length >= 30;
-
-  const refineDescription = async () => {
-    if (!missionDescription.trim()) return;
-    setIsRefining(true);
+    if (!missionDescription && missionGoal === 'validate') return;
+    const draft: DraftShape = {
+      missionGoal,
+      missionDescription,
+      timestamp: Date.now(),
+    };
     try {
-      const selectedGoal = MISSION_GOALS.find(g => g.id === missionGoal);
-      const result = await api.post('/api/ai/refine-description', {
-        rawDescription: missionDescription.trim(),
-        goal: selectedGoal?.label || missionGoal,
-      });
-      if (result?.refined) {
-        setMissionDescription(result.refined);
-        toast.success('Description refined by AI!');
-      }
-    } catch (err) {
-      // Fallback to simple formatting if backend unavailable
-      const text = missionDescription.trim();
-      let refined = text.charAt(0).toUpperCase() + text.slice(1);
-      if (!refined.endsWith('.')) refined += '.';
-      setMissionDescription(refined);
-    } finally {
-      setIsRefining(false);
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      /* storage full / disabled — silently skip */
     }
+  }, [missionGoal, missionDescription]);
+
+  const charCount = missionDescription.trim().length;
+  const isValid = charCount >= DESCRIPTION_MIN;
+  const showLengthError = attemptedSubmit && !isValid;
+
+  const selectedGoal = getGoalById(missionGoal);
+  const placeholder = useMemo(
+    () => getPlaceholderForGoal(missionGoal),
+    [missionGoal],
+  );
+  const showUpload = GOALS_WITH_UPLOAD.has(missionGoal);
+
+  // Clear the filename if the user switches away from an upload-enabled goal.
+  useEffect(() => {
+    if (!showUpload && uploadedFileName) {
+      setUploadedFileName(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [showUpload, uploadedFileName]);
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadedFileName(file.name);
+    // Render-only stub. File is held in state but never uploaded. See
+    // .design-reference/PROMPT_3_STUBS.md — "Creative Attention upload".
+    toast.info('File captured — frame-by-frame analysis coming soon.');
   };
 
-  const handleInspirationClick = (text: string) => {
-    setMissionDescription(text);
-    setDescriptionTouched(true);
+  const clearUploadedFile = () => {
+    setUploadedFileName(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleInitialize = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDescriptionChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    const next = e.target.value.slice(0, DESCRIPTION_MAX);
+    setMissionDescription(next);
+  };
 
+  const handleGenerate = async () => {
     if (!isValid) {
-      setShowErrors(true);
-      setDescriptionTouched(true);
-      toast.error('Please describe your mission in more detail (at least 30 characters)');
+      setAttemptedSubmit(true);
+      toast.error(
+        `Add a bit more detail — we need at least ${DESCRIPTION_MIN} characters to brief the AI.`,
+      );
+      return;
+    }
+
+    // Require auth before spending an AI call. Redirect-aware so users
+    // return to /setup with their draft intact (localStorage survives).
+    if (!user) {
+      const redirect = encodeURIComponent('/setup');
+      navigate(`/signin?redirect=${redirect}`);
       return;
     }
 
     setIsSubmitting(true);
 
-    const selectedGoal = MISSION_GOALS.find(g => g.id === missionGoal);
-    const aiContext = `${selectedGoal?.label || 'Research'}: ${missionDescription}`;
-    const subject = missionDescription;
-    const objective = selectedGoal?.label || missionGoal;
-    const targetAudience = 'General Audience';
+    const goalLabel = selectedGoal?.label ?? missionGoal;
+    const aiContext = `${goalLabel}: ${missionDescription.trim()}`;
+    const subject = missionDescription.trim();
+    const objective = goalLabel;
 
     try {
-      // Step 1: Generate AI questions NOW while user is authenticated
+      // 1) Kick AI generation while we still have the user's context.
       let aiResult: Awaited<ReturnType<typeof generateSurvey>> | null = null;
       try {
-        aiResult = await generateSurvey({ goal: missionGoal, subject, objective });
+        aiResult = await generateSurvey({
+          goal: missionGoal,
+          subject,
+          objective,
+        });
       } catch (aiErr) {
-        console.warn('AI generation failed, will use defaults:', aiErr);
+        console.warn('AI generation failed — continuing with defaults:', aiErr);
       }
 
-      // Step 2: Create mission in database (only if signed in; otherwise use temp local record)
-      let missionData: any;
-      if (user) {
-        const { data, error } = await supabase
-          .from('missions')
-          .insert([{
+      // 2) Insert mission row. `role` is intentionally NULL (the field
+      //    was dropped in the redesign); `stage` is null until the
+      //    clarify step lands in Commit 4 and wires Q2 into it.
+      const { data: missionData, error } = await supabase
+        .from('missions')
+        .insert([
+          {
             user_id: user.id,
             context: aiContext,
-            target: targetAudience,
+            target: 'General Audience',
             question: objective,
             respondent_count: aiResult?.suggestedRespondentCount || 100,
             estimated_price: 99,
-            role: role,
-            stage: stage,
+            role: null,
+            stage: null,
             status: 'DRAFT',
             mission_type: missionGoal,
             visualization_type: 'RATING',
             created_at: new Date().toISOString(),
-          }])
-          .select()
-          .single();
+          },
+        ])
+        .select()
+        .single();
 
-        if (error) console.error('Database error (continuing anyway):', error);
-        missionData = data;
+      if (error || !missionData) {
+        console.error('Mission insert failed:', error);
+        toast.error('Could not save mission — try again in a moment.');
+        setIsSubmitting(false);
+        return;
       }
 
-      // Fallback for guest users (no DB record yet — mission created at payment time)
-      if (!missionData) {
-        missionData = {
-          id: `temp-${Date.now()}`,
-          context: aiContext,
-          target: targetAudience,
-          question: objective,
-          respondent_count: aiResult?.suggestedRespondentCount || 100,
-          estimated_price: 99,
-          status: 'DRAFT',
-          mission_type: missionGoal,
-          visualization_type: 'RATING',
-        };
-      }
+      localStorage.removeItem(DRAFT_KEY);
 
-      localStorage.removeItem('missionSetupDraft');
-
-      // Step 3: Save AI result to localStorage as backup (in case location.state is lost)
       if (aiResult) {
         try {
-          localStorage.setItem('vettit_ai_result', JSON.stringify({
-            ...aiResult,
-            timestamp: Date.now(),
-          }));
-        } catch (_) {}
+          localStorage.setItem(
+            AI_BACKUP_KEY,
+            JSON.stringify({ ...aiResult, timestamp: Date.now() }),
+          );
+        } catch {
+          /* storage full — skip backup */
+        }
       }
 
-      // Step 4: Navigate with pre-generated questions so dashboard is instant
       navigate(`/dashboard/${missionData.id}`, {
         state: {
           missionData,
           fromSetup: true,
-          generatedQuestions: aiResult?.questions || null,
-          missionObjective: aiResult?.missionObjective || '',
-          targetingSuggestions: aiResult?.targetingSuggestions || null,
-          suggestedRespondentCount: aiResult?.suggestedRespondentCount || null,
+          generatedQuestions: aiResult?.questions ?? null,
+          missionObjective: aiResult?.missionObjective ?? '',
+          targetingSuggestions: aiResult?.targetingSuggestions ?? null,
+          suggestedRespondentCount: aiResult?.suggestedRespondentCount ?? null,
           aiParams: { goal: missionGoal, subject, objective },
-        }
+        },
       });
-    } catch (error) {
-      console.error('Unexpected error:', error);
+    } catch (err) {
+      console.error('Unexpected generate error:', err);
       toast.error('Something went wrong. Please try again.');
-    } finally {
       setIsSubmitting(false);
     }
   };
 
+  // TopNav chooses between authed/unauthed variants.
+  const topNav = user ? (
+    <AuthedTopNav />
+  ) : (
+    <TopNav
+      left={
+        <Link to="/" aria-label="VETT home">
+          <Logo responsive />
+        </Link>
+      }
+      right={
+        <Button variant="ghost" size="md" onClick={() => navigate('/signin?redirect=/setup')}>
+          Sign in
+        </Button>
+      }
+      mobileMenu={
+        <Button
+          variant="ghost"
+          size="md"
+          fullWidth
+          onClick={() => navigate('/signin?redirect=/setup')}
+        >
+          Sign in
+        </Button>
+      }
+    />
+  );
+
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-[100dvh] bg-bg text-t1 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-lime" aria-hidden />
       </div>
     );
   }
 
   return (
-    <>
-      <DashboardLayout>
-        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900">
+    <div className="min-h-[100dvh] bg-bg text-t1 flex flex-col">
+      {topNav}
 
-        <div className="pt-6 md:pt-24 pb-20 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
-          <div className="text-center space-y-3">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter text-white mb-2 sm:mb-4">
-              What do you want to{' '}
-              <span className="text-neon-lime">VETT?</span>
-            </h1>
-            <p className="text-white/60 text-base md:text-lg">Just describe your idea in your own words. AI does the rest.</p>
-          </div>
+      {/* ── Hero ─────────────────────────────────────────────── */}
+      <section className="px-4 md:px-10 pt-8 md:pt-14 pb-6 md:pb-10">
+        <div className="max-w-[920px] mx-auto text-center">
+          <h1
+            className="font-display font-black text-white leading-[1.05] tracking-[-1.2px]"
+            style={{ fontSize: 'clamp(30px, 6.5vw, 44px)' }}
+          >
+            What do you want to <span className="text-lime">VETT?</span>
+          </h1>
+          <p className="mt-3 font-body text-t2 text-[14px] md:text-[15px] leading-relaxed">
+            Just describe your idea in your own words. AI does the rest.
+          </p>
+        </div>
+      </section>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6 md:p-8 backdrop-blur-xl space-y-4 sm:space-y-6">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-semibold flex items-center gap-2 text-white">
-                <Sparkles className="w-5 h-5 text-neon-lime" />
+      {/* ── Mission Brief card ───────────────────────────────── */}
+      <section className="px-4 md:px-10 pb-10 md:pb-16">
+        <div className="max-w-[920px] mx-auto">
+          <div
+            className={[
+              'bg-bg2 border border-b1 rounded-[20px]',
+              'p-5 md:p-7',
+            ].join(' ')}
+          >
+            {/* Title */}
+            <div className="flex items-center gap-2 mb-4">
+              <span
+                className="text-lime font-display font-black text-[16px] leading-none"
+                aria-hidden
+              >
+                ✦
+              </span>
+              <h2 className="font-display font-black text-white text-[15px] tracking-tight-2">
                 Mission Brief
               </h2>
             </div>
 
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-3">
-                  1. Mission Goal (Select One)
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {MISSION_GOALS.map((goal) => {
-                    const Icon = goal.icon;
-                    return (
-                      <button
-                        key={goal.id}
-                        onClick={() => setMissionGoal(goal.id)}
-                        className={`h-full min-h-[60px] flex flex-col items-center justify-center text-center px-2 gap-1.5 rounded-xl text-sm font-semibold transition-all ${
-                          missionGoal === goal.id
-                            ? 'bg-neon-lime text-gray-900 shadow-lg shadow-neon-lime/30'
-                            : 'bg-white/10 text-white/70 hover:bg-white/20 border border-white/10'
-                        }`}
-                      >
-                        <span className="text-xl">{goal.emoji}</span>
-                        <span className="leading-tight">{goal.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+            {/* Step 1 — goals */}
+            <p className="font-body text-[12px] text-t2 mb-3">
+              1. Mission Goal (Select One)
+            </p>
+            <GoalGrid
+              value={missionGoal}
+              onChange={setMissionGoal}
+              disabled={isSubmitting}
+            />
 
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">
-                  2. What do you want to VETT?
-                </label>
-                <div className="relative">
-                  <textarea
-                    value={missionDescription}
-                    onChange={(e) => setMissionDescription(e.target.value)}
-                    onBlur={() => setDescriptionTouched(true)}
-                    className={`w-full bg-black/40 border rounded-lg p-4 pb-14 text-white focus:ring-2 focus:ring-neon-lime outline-none resize-none placeholder-white/40 transition-all ${
-                      (showErrors || descriptionTouched) && missionDescription.trim().length < 30
-                        ? 'border-red-500'
-                        : 'border-white/10'
-                    }`}
-                    placeholder={getPlaceholderForGoal(missionGoal)}
-                    rows={6}
-                    style={{ minHeight: '160px' }}
-                    disabled={isRefining}
-                  />
-                  <button
-                    type="button"
-                    onClick={refineDescription}
-                    disabled={!missionDescription || missionDescription.trim().length === 0 || isRefining}
-                    className={`absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border disabled:cursor-not-allowed ${
-                      !missionDescription || missionDescription.trim().length === 0
-                        ? 'bg-purple-500/10 text-purple-400/40 border-purple-500/20 opacity-40'
-                        : 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/40 hover:scale-105 border-purple-500/40 shadow-lg shadow-purple-500/20'
-                    }`}
-                  >
-                    {isRefining ? (
+            {/* Step 2 — describe */}
+            <div className="mt-5">
+              <p className="font-body text-[12px] text-t2 mb-2">
+                2. Describe what you want to research
+              </p>
+
+              <div
+                className={[
+                  'rounded-xl border bg-bg3',
+                  'transition-colors',
+                  showLengthError
+                    ? 'border-red/60'
+                    : 'border-b1 focus-within:border-lime/60',
+                ].join(' ')}
+              >
+                <textarea
+                  value={missionDescription}
+                  onChange={handleDescriptionChange}
+                  onBlur={() => setAttemptedSubmit(true)}
+                  placeholder={placeholder}
+                  rows={4}
+                  maxLength={DESCRIPTION_MAX}
+                  disabled={isSubmitting}
+                  className={[
+                    'block w-full resize-y min-h-[112px]',
+                    'bg-transparent px-4 pt-3.5 pb-2',
+                    'font-body text-[14px] text-t1',
+                    'placeholder:text-t4',
+                    'focus:outline-none',
+                    'disabled:opacity-60 disabled:cursor-not-allowed',
+                  ].join(' ')}
+                />
+
+                {/* Bottom toolbar — chip(s) + char counter */}
+                <div
+                  className={[
+                    'flex flex-wrap items-center justify-between gap-2',
+                    'px-3 pb-3 pt-1',
+                  ].join(' ')}
+                >
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    {showUpload && (
                       <>
-                        <div className="w-3 h-3 border-2 border-purple-300/30 border-t-purple-300 rounded-full animate-spin" />
-                        <span>Refining...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Auto-Refine</span>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*,video/*"
+                          onChange={handleFileChange}
+                          className="hidden"
+                          aria-hidden
+                        />
+                        {uploadedFileName ? (
+                          <span
+                            className={[
+                              'inline-flex items-center gap-1.5 rounded-pill',
+                              'px-2.5 py-1',
+                              'bg-pur/15 border border-pur/30',
+                              'font-display font-bold text-[10px] text-pur',
+                              'max-w-[200px] sm:max-w-[260px]',
+                            ].join(' ')}
+                          >
+                            <span className="truncate">
+                              🎬 {uploadedFileName}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={clearUploadedFile}
+                              aria-label="Remove uploaded file"
+                              className="shrink-0 text-pur/80 hover:text-pur"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isSubmitting}
+                            className={[
+                              'inline-flex items-center gap-1.5 rounded-pill',
+                              'px-2.5 py-1',
+                              'bg-pur/10 border border-pur/30 hover:bg-pur/15',
+                              'font-display font-bold text-[10px] text-pur',
+                              'transition-colors',
+                              'disabled:opacity-60 disabled:cursor-not-allowed',
+                            ].join(' ')}
+                          >
+                            🖼 Add image / video
+                          </button>
+                        )}
                       </>
                     )}
-                  </button>
-                </div>
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-xs text-white/40">
-                    Describe your idea, target audience, and what you want to learn. AI extracts the details automatically.
-                  </p>
-                  <span className={`text-xs ml-2 flex-shrink-0 ${missionDescription.trim().length >= 30 ? 'text-neon-lime' : 'text-white/30'}`}>
-                    {missionDescription.trim().length}/30
+                  </div>
+
+                  <span
+                    className={[
+                      'shrink-0 font-body text-[10px]',
+                      charCount > DESCRIPTION_MAX * 0.9
+                        ? 'text-org'
+                        : isValid
+                          ? 'text-t3'
+                          : showLengthError
+                            ? 'text-red'
+                            : 'text-t4',
+                    ].join(' ')}
+                    aria-live="polite"
+                  >
+                    {charCount} / {DESCRIPTION_MAX}
                   </span>
                 </div>
+              </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-white/50">Need inspiration? Try:</span>
-                  {INSPIRATION_EXAMPLES.map((example, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => handleInspirationClick(example.text)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/70 hover:text-white transition-all"
-                    >
-                      <span>{example.emoji}</span>
-                      <span>{example.label}</span>
-                    </button>
-                  ))}
-                </div>
+              {/* Below-field helper / error */}
+              <div className="flex items-center justify-between mt-2 gap-2">
+                <span className="font-body text-[11px] text-t3">
+                  {showLengthError
+                    ? `Minimum ${DESCRIPTION_MIN} characters — ${Math.max(0, DESCRIPTION_MIN - charCount)} to go.`
+                    : isValid
+                      ? `Looks good — ${charCount} characters of detail.`
+                      : `Minimum ${DESCRIPTION_MIN} characters.`}
+                </span>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6 md:p-8 backdrop-blur-xl">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
-              <div className="flex-1">
-                <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 text-white mb-2">
-                  <Target className="w-5 h-5 text-primary" />
-                  What happens next?
-                </h2>
-                <p className="text-xs sm:text-sm text-white/60 mt-2">
-                  <span className="font-bold">AI generates 5 survey questions</span> using your description.
-                </p>
-                <p className="text-xs sm:text-sm text-white/60 mt-1">
-                  Then you refine targeting, adjust budget, and launch your mission.
-                </p>
-              </div>
-              <div className="text-left sm:text-right">
-                <div className="text-xs sm:text-sm text-white/60">Starting at</div>
-                <div className="text-3xl sm:text-4xl font-black text-neon-lime">$15</div>
-                <div className="text-xs text-white/40 mt-1">10 respondents</div>
-              </div>
+            {/* Primary CTA */}
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={isSubmitting}
+                className={[
+                  'w-full h-12 rounded-xl',
+                  'inline-flex items-center justify-center gap-2',
+                  'font-display font-black text-[14px] uppercase tracking-widest',
+                  'transition-colors',
+                  'disabled:opacity-60 disabled:cursor-not-allowed',
+                  isValid
+                    ? 'bg-lime text-black hover:bg-lime/90 shadow-lime-soft'
+                    : 'bg-lime/20 text-lime/70',
+                ].join(' ')}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                    <span>AI is crafting your mission…</span>
+                  </>
+                ) : (
+                  <>
+                    <span aria-hidden>✦</span>
+                    <span>Generate Survey</span>
+                  </>
+                )}
+              </button>
+              <p className="mt-2.5 text-center font-body text-[11px] text-t4">
+                You&apos;ll refine questions + targeting on the next screen before
+                paying anything.
+              </p>
             </div>
           </div>
-
-          <div className="w-full max-w-5xl mx-auto mt-6 md:mt-8 mb-10 md:mb-16 px-0">
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-10">
-              <div className="mb-6 sm:mb-8">
-                <h2 className="text-base sm:text-lg font-semibold text-white mb-2">Tell us about you</h2>
-                <p className="text-xs sm:text-sm text-gray-400">Help the AI calibrate your strategy.</p>
-              </div>
-
-              <div className="space-y-6 sm:space-y-8">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-white mb-3 sm:mb-4">Your Role</label>
-                  <div className="flex flex-wrap gap-2 sm:gap-3">
-                    {['Founder / Solopreneur', 'Product Manager', 'Agency Owner / Consultant', 'Software Engineer', 'UX / UI Designer', 'Growth Marketer', 'Investor / VC', 'Academic / Researcher', 'Corporate Innovator', 'Other'].map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => setRole(r)}
-                        className={`px-4 py-2 md:px-6 md:py-2.5 text-sm font-medium rounded-full border transition-all duration-200 ${
-                          role === r
-                            ? 'bg-[#CCFF00] text-black border-[#CCFF00] font-bold shadow-[0_0_15px_rgba(204,255,0,0.3)]'
-                            : 'bg-white/5 border-white/10 text-gray-300 hover:border-[#CCFF00] hover:text-white'
-                        }`}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-white mb-3 sm:mb-4">Project Stage</label>
-                  <div className="flex flex-wrap gap-2 sm:gap-3">
-                    {['Napkin Idea', 'Prototype / MVP', 'Pre-Launch', 'Live Product', 'Scaling / Growth'].map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => setStage(s)}
-                        className={`px-4 py-2 md:px-6 md:py-2.5 text-sm font-medium rounded-full border transition-all duration-200 ${
-                          stage === s
-                            ? 'bg-[#CCFF00] text-black border-[#CCFF00] font-bold shadow-[0_0_15px_rgba(204,255,0,0.3)]'
-                            : 'bg-white/5 border-white/10 text-gray-300 hover:border-[#CCFF00] hover:text-white'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleInitialize}
-            disabled={isSubmitting || !isValid}
-            className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-all transform ${
-              isSubmitting || !isValid
-                ? 'bg-white/5 text-white/30 cursor-not-allowed opacity-50'
-                : 'bg-gradient-to-r from-neon-lime to-primary text-gray-900 hover:shadow-2xl hover:shadow-neon-lime/50 hover:scale-[1.01]'
-            }`}
-          >
-            {isSubmitting ? (
-                // show spinner + message while AI generates
-              <>
-                <div className="w-5 h-5 border-2 border-gray-900/30 border-t-gray-900 rounded-full animate-spin" />
-                AI is crafting your mission...
-              </>
-            ) : !isValid ? (
-              `Add more detail to continue (${missionDescription.trim().length}/30)`
-            ) : (
-              <>
-                Initialize Mission <ArrowRight className="w-5 h-5" />
-              </>
-            )}
-          </button>
         </div>
-        </div>
-        </div>
-      </DashboardLayout>
-
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
-    </>
+      </section>
+    </div>
   );
 };
+
+export default MissionSetupPage;
