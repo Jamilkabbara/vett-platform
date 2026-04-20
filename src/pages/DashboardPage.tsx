@@ -8,16 +8,21 @@ import { AuthedTopNav } from '../components/layout/AuthedTopNav';
 import { VettingPaymentModal } from '../components/dashboard/VettingPaymentModal';
 import { MissionControlQuestions } from '../components/dashboard/MissionControlQuestions';
 import { MissionControlTargeting } from '../components/dashboard/MissionControlTargeting';
+import {
+  MissionControlPricing,
+  MissionControlPricingMobileBar,
+} from '../components/dashboard/MissionControlPricing';
 import { getGoalById } from '../data/missionGoals';
+import { calculatePricing } from '../utils/pricingEngine';
 import type { Question } from '../components/dashboard/QuestionEngine';
 import type { TargetingConfig } from '../components/dashboard/TargetingEngine';
 
 /**
- * Mission Control — Commit 5 of the redesign.
+ * Mission Control — /dashboard/:missionId.
  *
- * This is a layout *shell* only — the LEFT column's questions + targeting
- * panels and the RIGHT column's pricing summary all render placeholder
- * cards.  Commits 6–8 fill each one in.
+ * The redesigned, wired-up version: LEFT column owns the Question Engine
+ * + Targeting accordion; RIGHT column is the sticky Pricing panel that
+ * launches checkout through the shared VettingPaymentModal.
  *
  * Route: /dashboard/:missionId  (also mounted at /mission-control in
  * App.tsx as a legacy alias — that route has no :missionId and therefore
@@ -28,13 +33,16 @@ import type { TargetingConfig } from '../components/dashboard/TargetingEngine';
  *   - Requires an authed user + a valid :missionId.
  *   - Fetches the mission via Supabase (RLS-scoped to the current user).
  *   - 3 states: loading · error · loaded.
- *   - VettingPaymentModal is mounted-but-closed so Commit 8 can re-skin
- *     the trigger without re-plumbing the modal.
+ *   - Questions, targeting, and respondent_count all persist with a 500ms
+ *     debounce to the same `missions` row the landing flow created.
+ *   - The displayed total ≡ what Stripe charges — both read from the
+ *     same pricingEngine.calculatePricing() output.
  *
  * ── Mobile (verified at 375px) ──────────────────────────────────
- *   - Grid collapses to single column; RIGHT panel stacks below LEFT.
- *   - Hero + brief bar wrap without horizontal overflow.
- *   - Goal chip truncates its label instead of forcing horizontal scroll.
+ *   - Grid collapses to single column; pricing stacks below targeting.
+ *   - A sticky bottom CTA bar shows the live total + VETT IT launcher.
+ *   - The body reserves bottom padding equal to the sticky bar height so
+ *     the last card never sits behind the CTA.
  */
 
 type LoadState =
@@ -175,7 +183,11 @@ export const DashboardPage = () => {
   const [targeting, setTargeting] = useState<TargetingConfig>(DEFAULT_TARGETING);
   const [targetingPersisting, setTargetingPersisting] = useState(false);
 
-  // Mounted-but-closed payment modal.  Commit 8 will wire the trigger.
+  // Respondent count — pricing panel owns the UI but parent owns the value
+  // so every component reads the same number.  Hydrated from mission.row.
+  const [respondentCount, setRespondentCount] = useState<number>(100);
+
+  // Payment modal — wired to the Pricing panel's VETT IT CTA (Commit 8).
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Debounce timer for question-list saves — one pending write at a time.
@@ -187,6 +199,11 @@ export const DashboardPage = () => {
   // rapid-fire chip click doesn't burn a round-trip each.
   const targetingTimerRef = useRef<number | null>(null);
   const latestTargetingRef = useRef<TargetingConfig>(DEFAULT_TARGETING);
+
+  // Respondent count debounce — same pattern as the other two, scoped to
+  // `missions.respondent_count`.
+  const respondentTimerRef = useRef<number | null>(null);
+  const latestRespondentRef = useRef<number>(100);
 
   useEffect(() => {
     // Wait for auth to resolve before deciding anything.
@@ -228,11 +245,14 @@ export const DashboardPage = () => {
         const mission = data as MissionRow;
         const initialQuestions = normaliseQuestions(mission.questions);
         const initialTargeting = hydrateTargeting(mission.targeting);
+        const initialRespondents = Number(mission.respondent_count ?? 100) || 100;
         setState({ kind: 'loaded', mission });
         setQuestions(initialQuestions);
         setTargeting(initialTargeting);
+        setRespondentCount(initialRespondents);
         latestQuestionsRef.current = initialQuestions;
         latestTargetingRef.current = initialTargeting;
+        latestRespondentRef.current = initialRespondents;
         missionIdRef.current = mission.id;
       } catch (err) {
         if (cancelled) return;
@@ -321,6 +341,49 @@ export const DashboardPage = () => {
     [flushTargeting],
   );
 
+  // ── Respondent count persistence ─────────────────────────────────
+  // We also re-snapshot the price estimate so the legacy MissionsList
+  // + /api/start-mission flow sees the right number when it reads back
+  // the row.  Re-uses pricingEngine to stay aligned with the UI.
+  const flushRespondentCount = useCallback(async () => {
+    const id = missionIdRef.current;
+    if (!id) return;
+    const payload = latestRespondentRef.current;
+    const estimate = calculatePricing(
+      payload,
+      latestQuestionsRef.current,
+      latestTargetingRef.current,
+      false,
+    ).total;
+    try {
+      const { error } = await supabase
+        .from('missions')
+        .update({
+          respondent_count: payload,
+          price_estimated: estimate,
+        })
+        .eq('id', id);
+      if (error) throw error;
+    } catch (err) {
+      console.error('[DashboardPage] failed to save respondent_count', err);
+    }
+  }, []);
+
+  const handleRespondentChange = useCallback(
+    (next: number) => {
+      setRespondentCount(next);
+      latestRespondentRef.current = next;
+      if (respondentTimerRef.current !== null) {
+        window.clearTimeout(respondentTimerRef.current);
+      }
+      respondentTimerRef.current = window.setTimeout(() => {
+        respondentTimerRef.current = null;
+        void flushRespondentCount();
+      }, 500);
+    },
+    [flushRespondentCount],
+  );
+
   // Flush on unmount so an in-flight edit isn't lost on route change.
   useEffect(() => {
     return () => {
@@ -334,8 +397,22 @@ export const DashboardPage = () => {
         targetingTimerRef.current = null;
         void flushTargeting();
       }
+      if (respondentTimerRef.current !== null) {
+        window.clearTimeout(respondentTimerRef.current);
+        respondentTimerRef.current = null;
+        void flushRespondentCount();
+      }
     };
-  }, [flushQuestions, flushTargeting]);
+  }, [flushQuestions, flushTargeting, flushRespondentCount]);
+
+  // Live total — single source of truth shared with the modal on launch.
+  const pricing = useMemo(
+    () =>
+      state.kind === 'loaded'
+        ? calculatePricing(respondentCount, questions, targeting, false)
+        : null,
+    [state, respondentCount, questions, targeting],
+  );
 
   // ── Derived header bits ────────────────────────────────────────
   const goal = useMemo(() => {
@@ -436,7 +513,9 @@ export const DashboardPage = () => {
           </section>
 
           {/* ── 2-column body ──────────────────────────────────── */}
-          <section className="flex-1 px-4 md:px-8 py-5 md:py-7">
+          {/* Bottom padding reserves space for the sticky mobile CTA bar
+              so the last card isn't covered.  Desktop removes the pad. */}
+          <section className="flex-1 px-4 md:px-8 py-5 md:py-7 pb-[var(--mc-mobile-bar-h,96px)] md:pb-7">
             <div
               className={[
                 'max-w-[1440px] mx-auto',
@@ -462,12 +541,21 @@ export const DashboardPage = () => {
                 />
               </div>
 
-              {/* RIGHT — Pricing summary shell */}
-              <aside className="flex flex-col gap-4 min-w-0">
-                <ShellCard
-                  dataTestId="mc-pricing-shell"
-                  title="Pricing Summary"
-                  subtitle={`${state.mission.respondent_count ?? 100} respondents · Commit 8 fills this in`}
+              {/* RIGHT — Pricing panel (desktop: sticky; mobile: stacks). */}
+              <aside
+                className={[
+                  'flex flex-col gap-4 min-w-0',
+                  // On desktop keep the pricing card pinned above the fold
+                  // so the user never has to scroll to check the total.
+                  'lg:sticky lg:top-4 lg:self-start',
+                ].join(' ')}
+              >
+                <MissionControlPricing
+                  respondentCount={respondentCount}
+                  onRespondentChange={handleRespondentChange}
+                  questions={questions}
+                  targeting={targeting}
+                  onLaunch={() => setShowPaymentModal(true)}
                 />
               </aside>
             </div>
@@ -475,21 +563,25 @@ export const DashboardPage = () => {
         </>
       )}
 
-      {/* Modal stays mounted but closed until Commit 8 wires the trigger. */}
+      {/* Sticky mobile CTA — only rendered once the mission has loaded so
+          we don't flash a bogus $0 total on the loading screen. */}
+      {state.kind === 'loaded' && pricing && (
+        <MissionControlPricingMobileBar
+          total={pricing.total}
+          respondentCount={respondentCount}
+          onLaunch={() => setShowPaymentModal(true)}
+        />
+      )}
+
+      {/* Payment modal — Stripe Elements + vetting animation live inside.
+          totalCost is the single live number from calculatePricing so what
+          the user sees in the panel ≡ what Stripe charges. */}
       <VettingPaymentModal
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         onComplete={() => setShowPaymentModal(false)}
-        totalCost={
-          state.kind === 'loaded'
-            ? Number(state.mission.price_estimated ?? 0)
-            : 0
-        }
-        respondentCount={
-          state.kind === 'loaded'
-            ? Number(state.mission.respondent_count ?? 100)
-            : 100
-        }
+        totalCost={pricing ? pricing.total : 0}
+        respondentCount={respondentCount}
         missionId={state.kind === 'loaded' ? state.mission.id : null}
       />
     </div>
@@ -497,52 +589,6 @@ export const DashboardPage = () => {
 };
 
 // ── Sub-views ────────────────────────────────────────────────────────
-
-interface ShellCardProps {
-  title: string;
-  subtitle?: string;
-  dataTestId?: string;
-}
-
-/** Placeholder panel used until Commits 6–8 replace each section. */
-const ShellCard = ({ title, subtitle, dataTestId }: ShellCardProps) => (
-  <div
-    data-testid={dataTestId}
-    className={[
-      'bg-bg2 border border-b1 rounded-xl',
-      'p-5 md:p-6',
-      'min-h-[180px]',
-      'flex flex-col',
-    ].join(' ')}
-  >
-    <div className="flex items-center justify-between mb-3">
-      <h2 className="font-display font-black text-[13px] text-white">
-        {title}
-      </h2>
-      <span className="font-display font-bold text-[9px] text-t4 uppercase tracking-[0.12em]">
-        Shell
-      </span>
-    </div>
-    {subtitle && (
-      <p className="font-body text-[12px] text-t3 leading-relaxed">
-        {subtitle}
-      </p>
-    )}
-    <div className="flex-1 flex items-center justify-center pt-6">
-      <div
-        className={[
-          'w-full h-full min-h-[96px] rounded-md',
-          'border border-dashed border-b1/70',
-          'flex items-center justify-center',
-          'font-body text-[11px] text-t4',
-        ].join(' ')}
-        aria-hidden
-      >
-        Empty shell
-      </div>
-    </div>
-  </div>
-);
 
 /** 3-state: loading. */
 const DashboardLoadingShell = () => (
