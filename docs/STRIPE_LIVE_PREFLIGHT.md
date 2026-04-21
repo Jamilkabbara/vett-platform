@@ -195,3 +195,131 @@ Stripe is sending events to a path that returns 404. **Webhook delivery is curre
 - Do not rotate any Stripe keys
 - Do not add or remove webhook events without updating the handler in `webhooks.js`
 - Do not change `pricingEngine.js` rates without syncing the frontend `pricingEngine.ts` mirror
+
+---
+
+## 8. Payment Path Safety Audit (P7, Apr 22 2026)
+
+> **Scope:** Read-only analysis of `VettingPaymentModal.tsx` and the known backend payment routes. No fixes applied in this pass.
+
+### Finding 1 — `activateMission()`: Client-side DB write 🟡
+
+**File:** `src/components/dashboard/VettingPaymentModal.tsx` lines 30–40
+
+```ts
+async function activateMission(missionId: string | undefined): Promise<void> {
+  const { error } = await supabase
+    .from('missions')
+    .update({ status: 'active', paid_at: new Date().toISOString() })
+    .eq('id', missionId);
+}
+```
+
+**What it does:** Runs directly from the browser, using the user's Supabase session token. Any authenticated user who knows a `missionId` can call this in DevTools or via a fetch.
+
+**Why the blast radius is limited:**
+- The mission's RLS policy requires `user_id = auth.uid()` on UPDATE — so a user can only flip *their own* missions.
+- This DB write does **not** trigger AI generation. The actual `runMission()` call lives inside `/api/payments/confirm` on the backend, which re-fetches the PaymentIntent from Stripe and verifies `status === 'succeeded'` before proceeding.
+- A user who manipulates the mission to `status: active` without paying sees the "active" badge in the UI but gets no AI output — no backend cost is incurred.
+
+**Actual risk:** Cosmetic / analytics pollution. A user could mark their own draft as active without paying, cluttering the admin panel's mission list. No financial or data integrity risk under the current architecture.
+
+**Recommended fix (future pass):** Move the `status: active` update to the backend inside `/api/payments/confirm`. Remove `activateMission()` from the frontend. The comment on line 28 already says "The backend confirm endpoint is authoritative" — this is the cleanup to match that intent.
+
+---
+
+### Finding 2 — `/api/payments/confirm`: Safe ✅
+
+The frontend calls `POST /api/payments/confirm` with `{ missionId, paymentIntentId }` only *after* `stripe.confirmCardPayment()` returns `status === 'succeeded'` on the client.
+
+**Backend behaviour (known from prior audit):** Re-fetches the PaymentIntent from Stripe using `sk_live_*`, verifies server-side that `status === 'succeeded'`, then triggers `runMission()`.
+
+**Safety:** A user cannot forge a `paymentIntentId`. Stripe returns the real status when the backend retrieves it. Even if a user crafts a POST request to `/api/payments/confirm` with a random or test PI id, the backend's Stripe retrieval will return a non-succeeded status and refuse to launch the mission.
+
+---
+
+### Finding 3 — Dual activation path: race condition risk 🟡
+
+Two code paths can call `runMission()` for the same mission:
+
+| Path | Status |
+|------|--------|
+| `POST /api/payments/confirm` (called by frontend card form) | ✅ Working |
+| `payment_intent.succeeded` webhook (backend) | ❌ Currently dead — webhook URL mismatch (§6) |
+
+**Current state:** Because the webhook URL is wrong (§6), only path #1 fires. This is actually *safer* than the intended design.
+
+**After the webhook URL is fixed:** Both paths could fire within milliseconds of each other, resulting in `runMission()` being called twice for the same mission. If `runMission()` is not idempotent — i.e., it does not check `mission.status` or `mission.paid_at` before launching — this would trigger duplicate AI synthesis jobs and double the AI cost for that mission.
+
+**What to verify before fixing the webhook URL:**
+1. Does `runMission()` begin with a guard like `if (mission.status !== 'draft') return;`?
+2. Is there a DB-level unique constraint or `setImmediate` debounce preventing double-fire?
+3. If not: add an idempotency check first, then fix the webhook URL.
+
+**Recommended fix (future pass, pre-webhook repair):**
+```js
+// In runMission(), before any AI call:
+const { data: mission } = await supabase.from('missions').select('status').eq('id', missionId).single();
+if (mission.status !== 'draft') {
+  console.warn('[runMission] already running or completed — skipping duplicate trigger');
+  return;
+}
+```
+
+---
+
+### Finding 4 — Promo code `VETT100`: Bypasses payment AND AI launch 🟡
+
+**File:** `VettingPaymentModal.tsx` lines 339–348
+
+```ts
+if (promoApplied && discountedPrice === 0) {
+  await activateMission(missionId);   // ← only this runs
+  setStage('success');
+  navigate(`/mission/${missionId}/live`);
+  return;
+}
+```
+
+When `VETT100` is applied:
+- Stripe is never contacted
+- `/api/payments/confirm` is **not** called
+- `runMission()` is **never triggered**
+- The mission flips to `status: active` but no AI synthesis starts
+
+**Effect:** The user sees "Mission Launched!" but the results page never populates. This appears to be an intentional dev shortcut (internal promo during early access), but it's currently broken for actual free-mission grants.
+
+**Recommended fix (future pass):** Either (a) call `/api/payments/confirm` with a `freePass: true` flag that skips Stripe verification but still fires `runMission()`, or (b) add a backend `/api/payments/free-launch` endpoint for promo-code flows.
+
+---
+
+### Finding 5 — Edge case: promo path with missing `missionId` ⚠️ Low
+
+If the modal is opened without a `missionId` prop and the user applies `VETT100`, the flow reaches:
+```ts
+navigate(`/mission/${missionId}/live`);  // → /mission/undefined/live
+```
+
+`activateMission()` short-circuits on line 31 (`if (!missionId) return`), so no DB write fires. But the navigation still happens, landing the user on an invalid URL.
+
+**Recommended fix:** Add `if (!missionId) return fail('No mission ID found...')` before the promo path runs.
+
+---
+
+### Summary Table
+
+| Finding | Severity | Blocks Live Launch? | Recommended Action |
+|---------|----------|--------------------|--------------------|
+| `activateMission()` client-side write | 🟡 Low-Medium | No | Move to backend post-confirm (future pass) |
+| `/api/payments/confirm` | ✅ Safe | — | No action needed |
+| Dual-path idempotency | 🟡 Medium | **Yes — must fix before webhook URL repair** | Add `status` guard in `runMission()` before fixing webhook URL |
+| `VETT100` bypass | 🟡 Low | No | Wire promo path to backend free-launch endpoint (future) |
+| Missing `missionId` on promo | ⚠️ Very Low | No | Guard before navigate |
+
+### Launch gating
+
+**The webhook URL mismatch (§6) must be the last thing fixed.** Fixing it before adding idempotency to `runMission()` risks double-charging AI costs on every successful payment. Sequence:
+
+1. Add idempotency guard to `runMission()` (backend change)
+2. Fix webhook URL in Stripe Dashboard + update `STRIPE_WEBHOOK_SECRET`
+3. Smoke test: single payment → confirm only one AI job fires
