@@ -6,7 +6,11 @@ import { Loader2, X } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { generateSurvey } from '../services/aiService';
+import {
+  fetchAdaptiveClarify,
+  generateSurvey,
+  type AdaptiveClarifyQuestion,
+} from '../services/aiService';
 import {
   MissionAssetUploadError,
   removeMissionAsset,
@@ -24,6 +28,7 @@ import {
   CLARIFY_DEFAULTS,
   type ClarifyAnswers,
 } from '../components/setup/ClarifySection';
+import { DynamicClarifySection } from '../components/setup/DynamicClarifySection';
 import {
   GOALS_WITH_UPLOAD,
   getGoalById,
@@ -187,6 +192,15 @@ export const MissionSetupPage = () => {
   const [clarifyAnswers, setClarifyAnswers] = useState<ClarifyAnswers>(
     CLARIFY_DEFAULTS,
   );
+  // Adaptive clarify — populated by /api/ai/clarify with ≤800ms timeout.
+  // null === "fall back to the static Market/Stage/Price cards".
+  const [dynamicClarify, setDynamicClarify] = useState<
+    AdaptiveClarifyQuestion[] | null
+  >(null);
+  const [dynamicClarifyAnswers, setDynamicClarifyAnswers] = useState<
+    Record<string, string>
+  >({});
+  const [revealingClarify, setRevealingClarify] = useState(false);
 
   // Guard against double-fire from enter-key repeats / fast double-clicks.
   const inflightRef = useRef(false);
@@ -247,9 +261,14 @@ export const MissionSetupPage = () => {
 
   // Collapse clarify if the user edits goal/description after revealing it —
   // forces a fresh ✦ Generate Survey click, which keeps the chip answers
-  // aligned with the brief the AI will actually see.
+  // aligned with the brief the AI will actually see. Dynamic clarify is
+  // cleared so the next reveal re-fetches against the updated brief.
   useEffect(() => {
-    if (showClarify && !isSubmitting) setShowClarify(false);
+    if (showClarify && !isSubmitting) {
+      setShowClarify(false);
+      setDynamicClarify(null);
+      setDynamicClarifyAnswers({});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missionGoal, missionDescription]);
 
@@ -316,7 +335,7 @@ export const MissionSetupPage = () => {
   };
 
   /** Step 1 CTA — validates brief and reveals the clarify step. */
-  const handleRevealClarify = () => {
+  const handleRevealClarify = async () => {
     if (!isValid) {
       setAttemptedSubmit(true);
       toast.error(
@@ -331,7 +350,49 @@ export const MissionSetupPage = () => {
       return;
     }
 
+    if (revealingClarify) return;
+    setRevealingClarify(true);
+
+    // Race the adaptive clarify fetch (fetchAdaptiveClarify internally
+    // aborts after 800ms) against a hard 800ms fallback — whichever wins,
+    // the user sees clarify cards within <1s. If the AI returns a
+    // well-formed set of dynamic questions, we use those; otherwise we
+    // silently fall back to the static Market/Stage/Price trio.
+    const TIMEOUT_FALLBACK_MS = 800;
+    const timeoutPromise = new Promise<null>((resolve) =>
+      window.setTimeout(() => resolve(null), TIMEOUT_FALLBACK_MS),
+    );
+
+    let dynamicQs: AdaptiveClarifyQuestion[] | null = null;
+    try {
+      dynamicQs = await Promise.race([
+        fetchAdaptiveClarify(missionGoal, missionDescription.trim()),
+        timeoutPromise,
+      ]);
+    } catch {
+      dynamicQs = null;
+    }
+
+    if (dynamicQs && dynamicQs.length > 0) {
+      // Seed answers with each question's defaultChipId (or first chip)
+      // so the user never sees an all-unselected state — matches the
+      // static path's CLARIFY_DEFAULTS UX.
+      const seeded: Record<string, string> = {};
+      for (const q of dynamicQs) {
+        seeded[q.id] =
+          q.defaultChipId && q.chips.some((c) => c.id === q.defaultChipId)
+            ? q.defaultChipId
+            : q.chips[0]?.id ?? '';
+      }
+      setDynamicClarify(dynamicQs);
+      setDynamicClarifyAnswers(seeded);
+    } else {
+      setDynamicClarify(null);
+      setDynamicClarifyAnswers({});
+    }
+
     setShowClarify(true);
+    setRevealingClarify(false);
   };
 
   /** Step 2 CTA — kicks off generation + persistence + redirect. */
@@ -366,6 +427,20 @@ export const MissionSetupPage = () => {
       // 1) Kick off AI generation — has internal try/catch + fallback.
       //    The `assets` array lets goal-aware prompts anchor question text
       //    to the uploaded creative ("After watching this ad…").
+      // clarifyAnswers shape depends on which clarify UI we showed:
+      //   - dynamic path → flat map keyed by backend-returned question id
+      //   - static path  → { market, stage, price } object
+      // Both paths forward via the same `clarifyAnswers` param on
+      // generateSurvey, which is stringified into the prompt.
+      const clarifyForPrompt: Record<string, string> =
+        dynamicClarify && dynamicClarify.length > 0
+          ? { ...dynamicClarifyAnswers }
+          : {
+              market: clarifyAnswers.market,
+              stage: clarifyAnswers.stage,
+              price: clarifyAnswers.price,
+            };
+
       let aiResult: Awaited<ReturnType<typeof generateSurvey>> | null = null;
       try {
         aiResult = await generateSurvey({
@@ -373,6 +448,7 @@ export const MissionSetupPage = () => {
           subject: briefText,
           objective: goalLabel,
           assets: missionAssets,
+          clarifyAnswers: clarifyForPrompt,
         });
       } catch (aiErr) {
         // generateSurvey swallows its own errors — catch here is defensive.
@@ -383,9 +459,23 @@ export const MissionSetupPage = () => {
       //    public.missions.  Stage + market + price from clarify live
       //    inside target_audience jsonb (see file header for why).
       const targetAudience = {
+        // Static clarify trio — always present. If the user took the
+        // dynamic path these still hold the last-seen defaults, which
+        // keeps downstream consumers (dashboard targeting panel) stable.
         stage: clarifyAnswers.stage,
         market: clarifyAnswers.market,
         price: clarifyAnswers.price,
+        // Dynamic clarify map — only populated when /api/ai/clarify
+        // returned questions. Preserves the raw answer map so the
+        // dashboard (or an admin debug view) can inspect exactly what
+        // the AI asked and the user picked.
+        clarify:
+          dynamicClarify && dynamicClarify.length > 0
+            ? {
+                questions: dynamicClarify,
+                answers: dynamicClarifyAnswers,
+              }
+            : null,
         // Carry forward anything the AI suggested so downstream consumers
         // (the dashboard targeting panel) still have something to render.
         suggestions: aiResult?.targetingSuggestions ?? null,
@@ -696,7 +786,7 @@ export const MissionSetupPage = () => {
                 <button
                   type="button"
                   onClick={handleRevealClarify}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || revealingClarify}
                   className={[
                     'w-full h-12 rounded-xl',
                     'inline-flex items-center justify-center gap-2',
@@ -708,8 +798,17 @@ export const MissionSetupPage = () => {
                       : 'bg-lime/20 text-lime/70',
                   ].join(' ')}
                 >
-                  <span aria-hidden>✦</span>
-                  <span>Generate Survey</span>
+                  {revealingClarify ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                      <span>Thinking…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span aria-hidden>✦</span>
+                      <span>Generate Survey</span>
+                    </>
+                  )}
                 </button>
                 <p className="mt-2.5 text-center font-body text-[11px] text-t4">
                   You&apos;ll refine questions + targeting on the next screen before
@@ -718,17 +817,30 @@ export const MissionSetupPage = () => {
               </div>
             )}
 
-            {/* Step 3 — Clarify (inline, revealed by Step 1 CTA). */}
+            {/* Step 3 — Clarify (inline, revealed by Step 1 CTA).
+                Dynamic path renders AI-generated questions from
+                /api/ai/clarify; static path renders Market/Stage/Price.
+                The 800ms race in handleRevealClarify decides which. */}
             <AnimatePresence initial={false}>
-              {showClarify && (
-                <ClarifySection
-                  key="clarify"
-                  answers={clarifyAnswers}
-                  onChange={setClarifyAnswers}
-                  onSubmit={handleGenerate}
-                  submitting={isSubmitting}
-                />
-              )}
+              {showClarify &&
+                (dynamicClarify && dynamicClarify.length > 0 ? (
+                  <DynamicClarifySection
+                    key="clarify-dynamic"
+                    questions={dynamicClarify}
+                    answers={dynamicClarifyAnswers}
+                    onChange={setDynamicClarifyAnswers}
+                    onSubmit={handleGenerate}
+                    submitting={isSubmitting}
+                  />
+                ) : (
+                  <ClarifySection
+                    key="clarify-static"
+                    answers={clarifyAnswers}
+                    onChange={setClarifyAnswers}
+                    onSubmit={handleGenerate}
+                    submitting={isSubmitting}
+                  />
+                ))}
             </AnimatePresence>
           </div>
         </div>

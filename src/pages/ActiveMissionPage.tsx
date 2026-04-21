@@ -11,16 +11,20 @@ import {
   AlertTriangle,
   PauseCircle,
   Info,
+  RefreshCw,
+  XCircle,
 } from 'lucide-react';
 import { AuthedTopNav } from '../components/layout/AuthedTopNav';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
-// Backend generator endpoint. Fire-and-forget; a 404 means the backend
-// hasn't shipped the route yet and we flip to a friendlier "queued"
-// message so the user isn't staring at 0/100 forever. Any non-404
-// error is logged but otherwise ignored — retrying on each mount would
-// hammer the backend if it's flapping.
+// Backend generator endpoint. Belt-and-suspenders trigger: the Stripe
+// payment_intent.succeeded webhook is the AUTHORITATIVE path — it
+// fires runMission() directly on the server. This HTTP fire-and-forget
+// is idempotent on the backend (activeRuns Set + DB status check), so
+// a double-fire between webhook and frontend never produces duplicate
+// personas. We still ping it so users who land here before the webhook
+// round-trips don't stare at 0/100 waiting.
 const GENERATOR_PATH = (missionId: string) => `/api/missions/${missionId}/generate-responses`;
 const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
 
@@ -373,9 +377,51 @@ const ActivePanel = ({
 }: ActivePanelProps) => {
   const navigate = useNavigate();
   const target = mission.respondent_count || 0;
-  const isPaused = mission.status === 'paused';
+  const statusLower = (mission.status || '').toLowerCase();
+  const isPaused = statusLower === 'paused';
+  const isFailed = statusLower === 'failed';
+  const isProcessing = statusLower === 'processing' || statusLower === 'paid';
   const isComplete =
-    mission.status === 'completed' || (target > 0 && responsesCollected >= target);
+    statusLower === 'completed' || (target > 0 && responsesCollected >= target);
+
+  // Auto-navigate to results once the mission completes. We wait a beat
+  // (1.2s) so the user sees the completion state flip before the page
+  // transitions, then push to the canonical results route. The guard
+  // ref prevents a re-poll from re-navigating if the user came back.
+  const autoNavRef = useRef(false);
+  useEffect(() => {
+    if (!isComplete) return;
+    if (autoNavRef.current) return;
+    autoNavRef.current = true;
+    const t = window.setTimeout(() => {
+      navigate(`/results?missionId=${mission.id}`);
+    }, 1200);
+    return () => window.clearTimeout(t);
+  }, [isComplete, mission.id, navigate]);
+
+  // Retry handler for the failed state. Re-fires the generator and
+  // optimistically flips the banner's disabled/loading state; the poll
+  // loop picks up the actual status transition on the next 3s tick.
+  const [retrying, setRetrying] = useState(false);
+  const handleRetry = useCallback(async () => {
+    if (retrying) return;
+    setRetrying(true);
+    try {
+      const result = await triggerResponseGenerator(mission.id);
+      if (result === 'ok' || result === 'not_implemented') {
+        // Webhook + endpoint are both idempotent — this will no-op if
+        // the run is already healthy, otherwise it kicks off a fresh
+        // pipeline. Either way the poll loop reconciles.
+        console.info('[active] retry fired →', result);
+      } else {
+        console.warn('[active] retry failed →', result);
+      }
+    } finally {
+      // Hold the spinner for a beat so a sub-200ms response doesn't
+      // flash — otherwise the button looks broken.
+      window.setTimeout(() => setRetrying(false), 800);
+    }
+  }, [retrying, mission.id]);
 
   const pct = useMemo(() => {
     if (target <= 0) return 0;
@@ -410,7 +456,11 @@ const ActivePanel = ({
         className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#141520] to-[#0f1018] p-6 sm:p-8"
       >
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <StatusChip isComplete={isComplete} isPaused={isPaused} />
+          <StatusChip
+            isComplete={isComplete}
+            isPaused={isPaused}
+            isFailed={isFailed}
+          />
         </div>
         <h1 className="font-display text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
           {mission.title?.trim() || 'Your mission is live'}
@@ -464,18 +514,69 @@ const ActivePanel = ({
         </div>
       )}
 
-      {/* Backend generator not deployed yet */}
-      {generatorStatus === 'not_implemented' && (
+      {/* Failed banner with retry. The webhook and endpoint are both
+          idempotent, so firing retry never duplicates work. */}
+      {isFailed && (
+        <div className="rounded-xl border border-red-400/30 bg-red-500/5 p-4 flex items-start gap-3">
+          <XCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" aria-hidden />
+          <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="font-body text-sm text-t2 flex-1">
+              Something went wrong while generating your responses. You can
+              retry below — we'll pick up where we left off.
+            </div>
+            <button
+              type="button"
+              onClick={handleRetry}
+              disabled={retrying}
+              className={[
+                'inline-flex items-center gap-2 rounded-lg px-4 py-2',
+                'font-display text-xs font-extrabold uppercase tracking-[0.08em]',
+                'bg-lime-300 text-black hover:bg-lime-200 transition-colors',
+                'disabled:opacity-60 disabled:cursor-not-allowed',
+                'shrink-0',
+              ].join(' ')}
+            >
+              {retrying ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />
+                  <span>Retrying…</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" aria-hidden />
+                  <span>Retry mission</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Processing banner — reassurance while the backend runs the
+          synthetic-audience pipeline. Suppressed once responses land
+          or the mission flips to completed/failed. */}
+      {isProcessing && !isFailed && !isComplete && responsesCollected === 0 && (
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 flex items-start gap-3">
-          <Info className="w-5 h-5 text-t3 mt-0.5" aria-hidden />
+          <Loader2 className="w-5 h-5 text-lime-300 mt-0.5 animate-spin" aria-hidden />
           <div className="font-body text-sm text-t2">
-            Response generation queued — results typically ready in 15–30 minutes.
+            Warming up the synthetic audience — first responses should appear
+            in under a minute.
+          </div>
+        </div>
+      )}
+
+      {/* Completed banner — shown briefly before auto-nav to /results. */}
+      {isComplete && (
+        <div className="rounded-xl border border-green-400/30 bg-green-400/5 p-4 flex items-start gap-3">
+          <CheckCircle2 className="w-5 h-5 text-green-300 mt-0.5" aria-hidden />
+          <div className="font-body text-sm text-t2">
+            All responses collected. Redirecting you to your results…
           </div>
         </div>
       )}
 
       {/* Stuck banner */}
-      {isStuck && (
+      {isStuck && !isFailed && (
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 flex items-start gap-3">
           <Info className="w-5 h-5 text-t3 mt-0.5" aria-hidden />
           <div className="font-body text-sm text-t2">
@@ -511,8 +612,24 @@ const ActivePanel = ({
         />
         <MetricCard
           label="Status"
-          value={isComplete ? 'Complete' : isPaused ? 'Paused' : 'In flight'}
-          sub={mission.started_at ? 'Launched' : 'Queued'}
+          value={
+            isFailed
+              ? 'Failed'
+              : isComplete
+                ? 'Complete'
+                : isPaused
+                  ? 'Paused'
+                  : isProcessing
+                    ? 'Processing'
+                    : 'In flight'
+          }
+          sub={
+            isFailed
+              ? 'Retry available'
+              : mission.started_at
+                ? 'Launched'
+                : 'Queued'
+          }
           icon={<Rocket className="w-4 h-4" aria-hidden />}
         />
       </div>
@@ -589,12 +706,16 @@ const ActivePanel = ({
         </div>
       )}
 
-      {/* Footer CTA */}
+      {/* Footer CTA. Navigates to the canonical results route; this
+          button is also the manual-escape hatch for the auto-nav in
+          case the user dismisses the page during the 1.2s grace. */}
       <div className="flex justify-end pt-2">
         <button
           type="button"
           disabled={!isComplete}
-          onClick={() => isComplete && navigate(`/dashboard/${mission.id}`)}
+          onClick={() =>
+            isComplete && navigate(`/results?missionId=${mission.id}`)
+          }
           className={[
             'inline-flex items-center gap-2 rounded-xl px-5 py-3',
             'font-display text-sm font-extrabold uppercase tracking-[0.08em]',
@@ -616,7 +737,22 @@ const ActivePanel = ({
 // Primitives
 // ─────────────────────────────────────────────────────────────────────
 
-const StatusChip = ({ isComplete, isPaused }: { isComplete: boolean; isPaused: boolean }) => {
+const StatusChip = ({
+  isComplete,
+  isPaused,
+  isFailed,
+}: {
+  isComplete: boolean;
+  isPaused: boolean;
+  isFailed: boolean;
+}) => {
+  if (isFailed) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-md border border-red-400/40 bg-red-400/10 text-red-300 px-2.5 py-1 font-display text-[10px] font-extrabold uppercase tracking-[0.12em]">
+        <XCircle className="w-3 h-3" aria-hidden /> Mission Failed
+      </span>
+    );
+  }
   if (isComplete) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-md border border-green-400/40 bg-green-400/10 text-green-300 px-2.5 py-1 font-display text-[10px] font-extrabold uppercase tracking-[0.12em]">

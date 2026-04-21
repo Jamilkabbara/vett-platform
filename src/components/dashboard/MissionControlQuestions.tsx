@@ -940,6 +940,35 @@ export const MissionControlQuestions = ({
               </motion.li>
             ))}
           </AnimatePresence>
+          {/* Dashed "+ Add question" placeholder — mirrors the header CTA
+              so the affordance is reachable without scrolling back up.
+              Same onClick as the header button, same persisting gate. */}
+          <motion.li
+            layout
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={persisting}
+              aria-label="Add another question"
+              className={[
+                'w-full rounded-lg',
+                'border-2 border-dashed border-white/20',
+                'px-3.5 py-4',
+                'flex items-center justify-center gap-1.5',
+                'font-display font-bold text-[12px] text-t3',
+                'hover:border-lime/50 hover:text-lime',
+                'transition-colors',
+                'disabled:opacity-60 disabled:cursor-not-allowed',
+              ].join(' ')}
+            >
+              <Plus className="w-3.5 h-3.5" aria-hidden />
+              <span>Add question</span>
+            </button>
+          </motion.li>
         </ul>
       )}
     </div>

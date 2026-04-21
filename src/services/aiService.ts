@@ -33,6 +33,13 @@ interface GenerateSurveyParams {
   objective: string;
   /** Optional: assets uploaded on /setup (image/video) that the questions should reference. */
   assets?: MissionAsset[];
+  /**
+   * Optional: the user's answers to the clarify step — either the static
+   * { market, stage, price } shape OR a dynamic { [questionId]: chipId }
+   * map returned by /api/ai/clarify. Forwarded verbatim so the backend
+   * survey prompt can condition on whatever the user actually answered.
+   */
+  clarifyAnswers?: Record<string, string>;
 }
 
 /**
@@ -336,7 +343,7 @@ function sanitiseSuggestedTargeting(
 export const generateSurvey = async (
   params: GenerateSurveyParams
 ): Promise<SurveyGenerationResult> => {
-  const { goal, subject, objective, assets } = params;
+  const { goal, subject, objective, assets, clarifyAnswers } = params;
   const hasAssets = !!(assets && assets.length > 0);
   const assetType = hasAssets ? assets![0].type : null;
 
@@ -357,6 +364,13 @@ export const generateSurvey = async (
     };
     if (hasAssets) {
       surveyBody.mission_assets = assets;
+    }
+    if (clarifyAnswers && Object.keys(clarifyAnswers).length > 0) {
+      // Forward as both keys for backward-compat — older backend prompts
+      // look for `clarify`, newer ones for `clarify_answers`. Sending both
+      // costs nothing and avoids a coordinated deploy.
+      surveyBody.clarify = clarifyAnswers;
+      surveyBody.clarify_answers = clarifyAnswers;
     }
 
     // Run survey generation and targeting suggestions in parallel
