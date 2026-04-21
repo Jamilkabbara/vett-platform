@@ -210,3 +210,147 @@ export function verifyServerQuote(
   );
   return { authoritative: server, swapped: true, diff };
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Phase 12 — live server-side quote fetch with short TTL cache.
+//
+// The existing `verifyServerQuote()` above is a pure comparator. This
+// helper is the I/O counterpart: it hits POST /api/pricing/quote and
+// returns the authoritative total, memoised for SERVER_QUOTE_CACHE_MS
+// so a user who opens the payment modal twice in a row only pays one
+// network round-trip. Cache key is derived from `{missionId,
+// respondentCount, questionCount, targeting hash, promoCode}` — any
+// mutation invalidates the cache.
+//
+// The pre-checkout flow calls this right before opening the Stripe
+// modal. If |client - server| > $0.01 the caller shows a toast and
+// updates the UI, preventing a "client forged the price" class of
+// attack where a tampered bundle submits a low total while displaying
+// a higher one. Server total is what's charged either way.
+//
+// Failure mode: network error, non-2xx, or bad JSON → returns null.
+// The caller should treat null as "no server confirmation available"
+// and either proceed with the client total (current behaviour) or
+// block checkout, depending on threat model. Today we proceed so a
+// transient outage doesn't brick checkout.
+// ─────────────────────────────────────────────────────────────────────
+
+export const SERVER_QUOTE_CACHE_MS = 5000;
+export const SERVER_QUOTE_TOAST_TOLERANCE_USD = 0.01;
+
+interface ServerQuoteCacheEntry {
+  at: number;
+  total: number;
+}
+
+const serverQuoteCache = new Map<string, ServerQuoteCacheEntry>();
+
+export interface FetchServerQuoteArgs {
+  apiUrl: string;
+  missionId?: string | null;
+  respondentCount?: number;
+  questions?: Question[];
+  targeting?: TargetingConfig;
+  promoCode?: string | null;
+  /** Supabase access token — included as Bearer so RLS can scope mission lookups. */
+  accessToken?: string | null;
+}
+
+export interface ServerQuoteResult {
+  total: number;
+  actualRate?: number;
+  /** Human-readable line items from the server — safe to render. */
+  breakdown?: Array<{ label: string; amount: number }>;
+  /** Ms since epoch when this value was computed (hit or miss). */
+  fetchedAt: number;
+  /** True when served from cache rather than a fresh network call. */
+  cached: boolean;
+}
+
+/**
+ * Build a stable cache key from the request shape. We stringify-hash
+ * targeting so swapping a filter invalidates the entry immediately —
+ * otherwise a user could click VETT IT, change targeting, and re-open
+ * within 5s and see the stale quote.
+ */
+function quoteCacheKey(args: FetchServerQuoteArgs): string {
+  const t = args.targeting ? JSON.stringify(args.targeting) : '';
+  return JSON.stringify({
+    m: args.missionId ?? null,
+    r: args.respondentCount ?? null,
+    q: Array.isArray(args.questions) ? args.questions.length : null,
+    t,
+    p: args.promoCode ?? null,
+  });
+}
+
+export async function fetchServerQuote(
+  args: FetchServerQuoteArgs,
+): Promise<ServerQuoteResult | null> {
+  const key = quoteCacheKey(args);
+  const now = Date.now();
+  const hit = serverQuoteCache.get(key);
+  if (hit && now - hit.at < SERVER_QUOTE_CACHE_MS) {
+    return { total: hit.total, fetchedAt: hit.at, cached: true };
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (args.accessToken) {
+    headers.Authorization = `Bearer ${args.accessToken}`;
+  }
+
+  // Prefer missionId when available — the server then loads targeting
+  // and question count from the row itself, which is more trustworthy
+  // than whatever the client sends. Free-form shape is the fallback.
+  const body: Record<string, unknown> = args.missionId
+    ? { missionId: args.missionId, promoCode: args.promoCode ?? undefined }
+    : {
+        respondentCount: args.respondentCount,
+        targetingConfig: args.targeting,
+        questions: args.questions,
+        promoCode: args.promoCode ?? undefined,
+      };
+
+  try {
+    const res = await fetch(`${args.apiUrl}/api/pricing/quote`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      console.warn(`[fetchServerQuote] ${res.status} ${res.statusText}`);
+      return null;
+    }
+    const json = (await res.json()) as {
+      total?: unknown;
+      actualRate?: unknown;
+      breakdown?: unknown;
+    };
+    const total = typeof json.total === 'number' ? json.total : NaN;
+    if (!Number.isFinite(total)) {
+      console.warn('[fetchServerQuote] malformed response', json);
+      return null;
+    }
+    serverQuoteCache.set(key, { at: now, total });
+    return {
+      total,
+      actualRate:
+        typeof json.actualRate === 'number' ? json.actualRate : undefined,
+      breakdown: Array.isArray(json.breakdown)
+        ? (json.breakdown as Array<{ label: string; amount: number }>)
+        : undefined,
+      fetchedAt: now,
+      cached: false,
+    };
+  } catch (err) {
+    console.warn('[fetchServerQuote] network error', err);
+    return null;
+  }
+}
+
+/** Test-only: blow away the server-quote cache between assertions. */
+export function _clearServerQuoteCache() {
+  serverQuoteCache.clear();
+}

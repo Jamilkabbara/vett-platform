@@ -14,7 +14,12 @@ import {
 } from '../components/dashboard/MissionControlPricing';
 import { MissionControlAssetPreview } from '../components/dashboard/MissionControlAssetPreview';
 import { getGoalById } from '../data/missionGoals';
-import { calculatePricing } from '../utils/pricingEngine';
+import {
+  calculatePricing,
+  fetchServerQuote,
+  SERVER_QUOTE_TOAST_TOLERANCE_USD,
+} from '../utils/pricingEngine';
+import toast from 'react-hot-toast';
 import type { Question } from '../components/dashboard/QuestionEngine';
 import type { TargetingConfig } from '../components/dashboard/TargetingEngine';
 import {
@@ -256,6 +261,13 @@ export const DashboardPage = () => {
 
   // Payment modal — wired to the Pricing panel's VETT IT CTA (Commit 8).
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  // Phase 12 — server-verified total the Stripe modal actually charges.
+  // Starts null so the modal falls back to client `pricing.total`; on
+  // every Launch click we fetch /api/pricing/quote and snap the server
+  // value in if it diverges by >$0.01. Cleared on modal close so the
+  // next launch re-verifies with fresh targeting/question state.
+  const [verifiedTotal, setVerifiedTotal] = useState<number | null>(null);
+  const [verifyingQuote, setVerifyingQuote] = useState(false);
 
   // Debounce timer for question-list saves — one pending write at a time.
   const persistTimerRef = useRef<number | null>(null);
@@ -513,6 +525,77 @@ export const DashboardPage = () => {
     [state, respondentCount, questions, targeting],
   );
 
+  /**
+   * Phase 12 — pre-checkout server quote verification. Runs on every
+   * VETT IT click. Reconciles the client total against /api/pricing/quote
+   * and, if the server disagrees by more than a penny, (a) toasts the
+   * corrected price so the user isn't surprised and (b) stores the server
+   * total in `verifiedTotal` so the Stripe modal charges the authoritative
+   * amount. Network failures/timeouts silently fall through to the client
+   * total so a Railway hiccup doesn't block checkout.
+   *
+   * The fetchServerQuote() helper has a 5s cache keyed on
+   * {missionId, respondentCount, questionCount, targeting, promoCode},
+   * so double-clicks cost one round-trip, not two.
+   */
+  const handleLaunch = useCallback(async () => {
+    if (state.kind !== 'loaded' || !pricing) return;
+    if (verifyingQuote) return;
+
+    setVerifyingQuote(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const API_URL =
+        import.meta.env.VITE_API_URL ||
+        'https://vettit-backend-production.up.railway.app';
+
+      const quote = await fetchServerQuote({
+        apiUrl: API_URL,
+        missionId: state.mission.id,
+        respondentCount,
+        questions,
+        targeting,
+        accessToken: session?.access_token ?? null,
+      });
+
+      if (quote) {
+        const diff = Math.abs(quote.total - pricing.total);
+        if (diff > SERVER_QUOTE_TOAST_TOLERANCE_USD) {
+          toast(
+            `Price updated to $${quote.total.toFixed(2)} — our server recalculated your quote.`,
+            { icon: '🔄', duration: 4000 },
+          );
+          setVerifiedTotal(quote.total);
+        } else {
+          // Server agrees within tolerance — use client total so the UI
+          // doesn't visibly re-render by a rounding cent.
+          setVerifiedTotal(null);
+        }
+      } else {
+        // Quote endpoint unreachable → proceed with client total. Not a
+        // blocker: we'd rather complete a legitimate checkout on a
+        // transient outage than hold the user hostage to Railway uptime.
+        setVerifiedTotal(null);
+      }
+    } catch (err) {
+      console.warn('[handleLaunch] quote verify failed', err);
+      setVerifiedTotal(null);
+    } finally {
+      setVerifyingQuote(false);
+      setShowPaymentModal(true);
+    }
+  }, [
+    state,
+    pricing,
+    verifyingQuote,
+    respondentCount,
+    questions,
+    targeting,
+  ]);
+
   // ── Derived header bits ────────────────────────────────────────
   const goal = useMemo(() => {
     if (state.kind !== 'loaded') return null;
@@ -661,7 +744,7 @@ export const DashboardPage = () => {
                   onRespondentChange={handleRespondentChange}
                   questions={questions}
                   targeting={targeting}
-                  onLaunch={() => setShowPaymentModal(true)}
+                  onLaunch={handleLaunch}
                   priceTierLabel={priceTierLabel(
                     (() => {
                       const ta = (state.mission.target_audience ??
@@ -684,7 +767,7 @@ export const DashboardPage = () => {
         <MissionControlPricingMobileBar
           total={pricing.total}
           respondentCount={respondentCount}
-          onLaunch={() => setShowPaymentModal(true)}
+          onLaunch={handleLaunch}
         />
       )}
 
@@ -693,9 +776,17 @@ export const DashboardPage = () => {
           the user sees in the panel ≡ what Stripe charges. */}
       <VettingPaymentModal
         isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        onComplete={() => setShowPaymentModal(false)}
-        totalCost={pricing ? pricing.total : 0}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setVerifiedTotal(null);
+        }}
+        onComplete={() => {
+          setShowPaymentModal(false);
+          setVerifiedTotal(null);
+        }}
+        totalCost={
+          verifiedTotal !== null ? verifiedTotal : pricing ? pricing.total : 0
+        }
         respondentCount={respondentCount}
         missionId={state.kind === 'loaded' ? state.mission.id : null}
       />
