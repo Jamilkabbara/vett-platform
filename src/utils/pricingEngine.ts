@@ -148,3 +148,65 @@ export const calculatePricing = (
     filterCount,
   };
 };
+
+// ─────────────────────────────────────────────────────────────────────
+// Phase 11 — server-quote validation (frontend ready).
+//
+// Contract: POST /api/pricing/quote returns a PricingBreakdown. Before
+// calling the charge endpoint, Mission Control may call this helper
+// with the client-side breakdown and the server response. The helper:
+//
+//   1. If the server is missing or malformed → return client breakdown
+//      unchanged (no-op). This preserves today's UX when the endpoint
+//      isn't deployed yet.
+//   2. If the server.total differs from client.total by ≤ $0.02 → keep
+//      the client value (pure rounding drift, no UX change).
+//   3. If the diff > $0.02 → log a warning and SWAP IN the server
+//      numbers so Stripe charges the authoritative amount.
+//
+// The caller is responsible for showing a toast if the total changed
+// between click and charge — we don't toast here because the helper
+// is pure.
+// ─────────────────────────────────────────────────────────────────────
+
+export const SERVER_QUOTE_TOLERANCE_USD = 0.02;
+
+function isServerBreakdown(v: unknown): v is PricingBreakdown {
+  if (!v || typeof v !== 'object') return false;
+  const r = v as Record<string, unknown>;
+  return (
+    typeof r.base === 'number' &&
+    typeof r.questionSurcharge === 'number' &&
+    typeof r.targetingSurcharge === 'number' &&
+    typeof r.screeningSurcharge === 'number' &&
+    typeof r.retargetingSurcharge === 'number' &&
+    typeof r.total === 'number' &&
+    typeof r.filterCount === 'number'
+  );
+}
+
+export interface VerifyServerQuoteResult {
+  /** The breakdown the caller should use for the Stripe charge. */
+  authoritative: PricingBreakdown;
+  /** True if we swapped the server total in (diff > tolerance). */
+  swapped: boolean;
+  /** Absolute diff in USD between server and client totals. */
+  diff: number;
+}
+
+export function verifyServerQuote(
+  client: PricingBreakdown,
+  server: unknown,
+): VerifyServerQuoteResult {
+  if (!isServerBreakdown(server)) {
+    return { authoritative: client, swapped: false, diff: 0 };
+  }
+  const diff = Math.abs(server.total - client.total);
+  if (diff <= SERVER_QUOTE_TOLERANCE_USD) {
+    return { authoritative: client, swapped: false, diff };
+  }
+  console.warn(
+    `[verifyServerQuote] server $${server.total} vs client $${client.total} — swapping in server breakdown`,
+  );
+  return { authoritative: server, swapped: true, diff };
+}
