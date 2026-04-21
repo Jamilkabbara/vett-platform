@@ -57,6 +57,20 @@ interface MissionControlQuestionsProps {
  *  so adds / removes always renumber cleanly. */
 const qLabel = (index: number) => `Q${index + 1}`;
 
+/**
+ * Phase 5 — answer option floor & ceiling.
+ * - Below 2 the question is degenerate (only one answer = not a choice).
+ * - Above 6 respondents lose focus and the AI struggles to summarise.
+ * Kept as module-level constants so tests and adjacent components (the
+ * AI summariser, the payment breakdown) can import the same values and
+ * never drift.
+ */
+export const MIN_OPTIONS = 2;
+export const MAX_OPTIONS = 6;
+
+/** Types that carry answer options. `rating`/`opinion`/`text` don't. */
+const HAS_OPTIONS = new Set(['single', 'multi']);
+
 function generateId(existing: Question[]): string {
   // q<N> where N = max existing numeric suffix + 1.  Keeps ids stable
   // across refines but predictable when adding.
@@ -87,6 +101,25 @@ export const MissionControlQuestions = ({
 
   // ── Remove confirm state (one at a time) ─────────────────────────
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+
+  // ── Option edit state ────────────────────────────────────────────
+  // Phase 5: click an answer chip to rename it inline. Only one chip
+  // across the whole list can be in edit mode at a time — a second
+  // click clobbers the first, matching the question-text editor.
+  const [optionEdit, setOptionEdit] = useState<
+    { qId: string; idx: number } | null
+  >(null);
+  const [optionEditText, setOptionEditText] = useState('');
+  const optionInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!optionEdit) return;
+    const t = window.setTimeout(() => {
+      optionInputRef.current?.focus();
+      optionInputRef.current?.select();
+    }, 30);
+    return () => window.clearTimeout(t);
+  }, [optionEdit]);
 
   // When editingId changes to a real id, focus the textarea after the
   // motion frame settles so the cursor lands correctly on mobile.
@@ -198,6 +231,93 @@ export const MissionControlQuestions = ({
       }
     },
     [questions, onChange, goalId, context, refiningId],
+  );
+
+  // ── Option handlers (Phase 5) ────────────────────────────────────
+  const commitOptionEdit = useCallback(
+    (qId: string, idx: number, next: string) => {
+      const trimmed = next.trim();
+      const target = questions.find((q) => q.id === qId);
+      if (!target) {
+        setOptionEdit(null);
+        setOptionEditText('');
+        return;
+      }
+      // Empty = cancel. Don't write an empty option.
+      if (!trimmed) {
+        setOptionEdit(null);
+        setOptionEditText('');
+        return;
+      }
+      // Dedupe against existing options (case-insensitive) — silently
+      // keep the existing value if the user typed a duplicate.
+      const existsAt = target.options.findIndex(
+        (o, i) => i !== idx && o.trim().toLowerCase() === trimmed.toLowerCase(),
+      );
+      if (existsAt !== -1) {
+        setOptionEdit(null);
+        setOptionEditText('');
+        toast('That option already exists', { icon: '↩️' });
+        return;
+      }
+      const nextOptions = target.options.map((o, i) => (i === idx ? trimmed : o));
+      onChange(
+        questions.map((q) =>
+          q.id === qId ? { ...q, options: nextOptions } : q,
+        ),
+      );
+      setOptionEdit(null);
+      setOptionEditText('');
+    },
+    [questions, onChange],
+  );
+
+  const handleAddOption = useCallback(
+    (qId: string) => {
+      const target = questions.find((q) => q.id === qId);
+      if (!target) return;
+      if (target.options.length >= MAX_OPTIONS) {
+        toast(`Maximum ${MAX_OPTIONS} options per question`, { icon: '🛑' });
+        return;
+      }
+      const nextOptions = [...target.options, 'New option'];
+      onChange(
+        questions.map((q) =>
+          q.id === qId ? { ...q, options: nextOptions } : q,
+        ),
+      );
+      // Drop the user straight into editing the new chip.
+      setOptionEdit({ qId, idx: nextOptions.length - 1 });
+      setOptionEditText('New option');
+    },
+    [questions, onChange],
+  );
+
+  const handleRemoveOption = useCallback(
+    (qId: string, idx: number) => {
+      const target = questions.find((q) => q.id === qId);
+      if (!target) return;
+      if (target.options.length <= MIN_OPTIONS) {
+        toast(`At least ${MIN_OPTIONS} options required`, { icon: '🛑' });
+        return;
+      }
+      const nextOptions = target.options.filter((_, i) => i !== idx);
+      onChange(
+        questions.map((q) =>
+          q.id === qId ? { ...q, options: nextOptions } : q,
+        ),
+      );
+      // If we were editing this chip, drop the editor.
+      if (
+        optionEdit &&
+        optionEdit.qId === qId &&
+        optionEdit.idx === idx
+      ) {
+        setOptionEdit(null);
+        setOptionEditText('');
+      }
+    },
+    [questions, onChange, optionEdit],
   );
 
   const handleAdd = useCallback(() => {
@@ -544,28 +664,132 @@ export const MissionControlQuestions = ({
                       )}
                     </button>
 
-                    {q.options.length > 0 && (
-                      <div className="ml-auto flex flex-wrap gap-1">
-                        {q.options.slice(0, 4).map((opt, idx) => (
-                          <span
-                            key={`${q.id}-opt-${idx}`}
+                  </div>
+                )}
+
+                {/* Row 4: editable options (Phase 5) — shown for
+                    single/multi choice questions only. Click a chip to
+                    edit inline, × to remove (blocked at MIN_OPTIONS),
+                    + Add to extend (blocked at MAX_OPTIONS). Hidden
+                    while the question-text editor is open so the user
+                    isn't juggling two inputs at once. */}
+                {editingId !== q.id && HAS_OPTIONS.has(q.type) && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    {q.options.map((opt, idx) => {
+                      const editing =
+                        optionEdit?.qId === q.id && optionEdit.idx === idx;
+                      const canRemove = q.options.length > MIN_OPTIONS;
+                      return (
+                        <div
+                          key={`${q.id}-opt-${idx}`}
+                          className={[
+                            'inline-flex items-center rounded-md',
+                            editing
+                              ? 'bg-bg4 border border-lime'
+                              : 'bg-bg4 border border-b2 hover:border-t3',
+                            'transition-colors',
+                          ].join(' ')}
+                        >
+                          {editing ? (
+                            <input
+                              ref={optionInputRef}
+                              value={optionEditText}
+                              onChange={(e) =>
+                                setOptionEditText(e.target.value)
+                              }
+                              onBlur={() =>
+                                commitOptionEdit(q.id, idx, optionEditText)
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  commitOptionEdit(q.id, idx, optionEditText);
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  setOptionEdit(null);
+                                  setOptionEditText('');
+                                }
+                              }}
+                              maxLength={48}
+                              size={Math.max(4, optionEditText.length)}
+                              className={[
+                                'bg-transparent outline-none',
+                                'px-2 py-1',
+                                'font-body text-[11px] text-t1',
+                              ].join(' ')}
+                              aria-label={`Edit option ${idx + 1}`}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOptionEdit({ qId: q.id, idx });
+                                setOptionEditText(opt);
+                              }}
+                              disabled={persisting || refiningId === q.id}
+                              className={[
+                                'px-2 py-1',
+                                'font-body text-[11px] text-t1',
+                                'disabled:opacity-60 disabled:cursor-not-allowed',
+                              ].join(' ')}
+                              aria-label={`Edit option ${idx + 1}: ${opt}`}
+                            >
+                              {opt || 'Empty'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOption(q.id, idx)}
+                            disabled={
+                              !canRemove || persisting || refiningId === q.id
+                            }
+                            title={
+                              canRemove
+                                ? 'Remove option'
+                                : `At least ${MIN_OPTIONS} options required`
+                            }
+                            aria-label={`Remove option ${idx + 1}`}
                             className={[
-                              'inline-flex items-center rounded-xs',
-                              'bg-bg4 text-t3 border border-b2',
-                              'px-1.5 py-0.5',
-                              'font-body text-[10px]',
+                              'w-5 h-5 rounded-sm mr-0.5',
+                              'inline-flex items-center justify-center',
+                              'text-t4 hover:text-red hover:bg-red/10',
+                              'transition-colors',
+                              'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-t4',
                             ].join(' ')}
                           >
-                            {opt}
-                          </span>
-                        ))}
-                        {q.options.length > 4 && (
-                          <span className="font-body text-[10px] text-t4">
-                            +{q.options.length - 4}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                            <X className="w-3 h-3" aria-hidden />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => handleAddOption(q.id)}
+                      disabled={
+                        q.options.length >= MAX_OPTIONS ||
+                        persisting ||
+                        refiningId === q.id
+                      }
+                      title={
+                        q.options.length >= MAX_OPTIONS
+                          ? `Maximum ${MAX_OPTIONS} options`
+                          : 'Add option'
+                      }
+                      className={[
+                        'inline-flex items-center gap-1 rounded-md',
+                        'border border-dashed border-b2 hover:border-lime hover:text-lime',
+                        'px-2 py-1',
+                        'font-display font-bold text-[11px] text-t3',
+                        'disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-b2 disabled:hover:text-t3',
+                        'transition-colors',
+                      ].join(' ')}
+                    >
+                      <Plus className="w-3 h-3" aria-hidden />
+                      Add option
+                    </button>
+                    <span className="ml-auto font-body text-[10px] text-t4">
+                      {q.options.length}/{MAX_OPTIONS}
+                    </span>
                   </div>
                 )}
               </motion.li>
