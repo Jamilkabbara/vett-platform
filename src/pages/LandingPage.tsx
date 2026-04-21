@@ -22,6 +22,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { KpiCard } from '../components/ui/KpiCard';
 import { Ticker } from '../components/landing/Ticker';
+import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
 
 /* ══════════════════════════════════════════════════════════════════
    Data — the prototype's content, extracted so the JSX stays readable
@@ -745,6 +746,25 @@ export function LandingPage() {
         <p className="mt-4 font-body text-[12px] text-t3">
           No subscription · Pay per mission · From $9 · 150+ markets · 100% delivered
         </p>
+      </section>
+
+      {/* ── Lead capture pre-footer ───────────────────────── */}
+      <section className="px-6 md:px-10 py-16 bg-bg2 border-t border-b1">
+        <div className="max-w-xl mx-auto text-center">
+          <p className="font-display font-black text-white text-[clamp(22px,3vw,32px)] tracking-tight mb-2">
+            Be first to know when new features ship
+          </p>
+          <p className="font-body text-[14px] text-t3 mb-6">
+            No spam. Research drops, product updates, and the occasional MENA market insight.
+          </p>
+          <LeadCaptureForm
+            cta="Notify me"
+            page="landing_prefooter"
+            placeholder="your@email.com"
+            variant="inline"
+            className="justify-center"
+          />
+        </div>
       </section>
 
       {/* ── Footer ────────────────────────────────────────── */}
