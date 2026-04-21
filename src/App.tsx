@@ -82,6 +82,7 @@ function App() {
           <Route path="/dashboard" element={<MissionsListPage />} />
           <Route path="/dashboard/:missionId" element={<DashboardPage />} />
           <Route path="/mission/:missionId" element={<ActiveMissionPage />} />
+          <Route path="/mission/:missionId/live" element={<ActiveMissionPage />} />
           <Route path="/mission-success" element={<MissionSuccessPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/profile" element={<ProfilePage />} />

@@ -19,8 +19,25 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { api } from '../../lib/apiClient';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthModal } from '../layout/AuthModal';
+
+// Flip the mission row from draft → active the moment the charge clears so
+// the post-payment page can trust mission.status. We only touch columns that
+// exist on public.missions today (status + paid_at) — payment_status and
+// stripe_payment_intent_id are handled server-side by /api/payments/confirm.
+async function activateMission(missionId: string | undefined): Promise<void> {
+  if (!missionId) return;
+  const { error } = await supabase
+    .from('missions')
+    .update({ status: 'active', paid_at: new Date().toISOString() })
+    .eq('id', missionId);
+  if (error) {
+    // Don't block navigation — the backend confirm endpoint is authoritative.
+    console.warn('[payment] mission activate failed (non-blocking)', error);
+  }
+}
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -222,14 +239,13 @@ const PaymentForm = ({
 
         event.complete('success');
         await api.post('/api/payments/confirm', { missionId, paymentIntentId });
+        await activateMission(missionId);
 
         setStage('success');
         toast.success('Mission Launched!', { id: toastId });
         await new Promise((resolve) => setTimeout(resolve, 1500));
         onClose();
-        navigate(
-          `/mission-success?respondents=${respondentCount}&total=${discountedPrice.toFixed(2)}`,
-        );
+        navigate(`/mission/${missionId}/live`);
       } catch (err: unknown) {
         // Apple Pay / Google Pay sheet closes on event.complete('fail');
         // we may have already completed it above — ignore double-complete.
@@ -322,11 +338,12 @@ const PaymentForm = ({
       // Free launch via promo code — skip Stripe entirely.
       if (promoApplied && discountedPrice === 0) {
         await new Promise((resolve) => setTimeout(resolve, 1500));
+        await activateMission(missionId);
         setStage('success');
         toast.success('Mission Launched!', { id: toastId });
         await new Promise((resolve) => setTimeout(resolve, 1500));
         onClose();
-        navigate(`/mission-success?respondents=${respondentCount}&total=0`);
+        navigate(`/mission/${missionId}/live`);
         return;
       }
 
@@ -387,13 +404,13 @@ const PaymentForm = ({
         );
       }
 
+      await activateMission(missionId);
+
       setStage('success');
       toast.success('Mission Launched Successfully!', { id: toastId });
       await new Promise((resolve) => setTimeout(resolve, 1500));
       onClose();
-      navigate(
-        `/mission-success?respondents=${respondentCount}&total=${discountedPrice.toFixed(2)}`,
-      );
+      navigate(`/mission/${missionId}/live`);
     } catch (err: unknown) {
       // Final safety net — anything that escapes the targeted catches above.
       fail(extractErrorMessage(err), err);
