@@ -138,7 +138,59 @@ Everything below is already done or confirmed — live keys are already set. The
 
 ---
 
-## 6. What NOT to change this session
+---
+
+## 6. Current Webhook State — Live Audit (Apr 22, 2026)
+
+Queried via `stripe.webhookEndpoints.list()` using the live secret key.
+
+### Registered endpoint
+
+| Field | Value |
+|-------|-------|
+| ID | `we_1TJsbCGvqU3B9kYBNTAYU3Fq` |
+| URL (in Dashboard) | `https://vettit-backend-production.up.railway.app/api/stripe/webhook` |
+| Mode | ✅ Live |
+| Status | `enabled` |
+| Created | 2026-04-08T09:40:38Z |
+| Secret prefix | `whsec_pctGK9…` (from Railway env — list() does not return secrets) |
+
+### ❌ CRITICAL — URL mismatch
+
+The URL registered in Stripe Dashboard does **not** match the actual backend route:
+
+| | URL |
+|--|-----|
+| **Dashboard** | `…/api/stripe/webhook` |
+| **Backend** (`app.js` line 58) | `…/api/webhooks/stripe` |
+
+Stripe is sending events to a path that returns 404. **Webhook delivery is currently broken in production.**
+
+**Fix (manual — Jamil):**
+1. In Stripe Dashboard → Developers → Webhooks, update the endpoint URL to:
+   ```
+   https://vettit-backend-production.up.railway.app/api/webhooks/stripe
+   ```
+2. After saving, the signing secret will be regenerated. Copy the new `whsec_…` value into Railway's `STRIPE_WEBHOOK_SECRET` env var and redeploy.
+3. Confirm delivery in Stripe Dashboard → Recent deliveries — should start showing 200s.
+
+### Event subscription gaps
+
+| Event | Subscribed in Dashboard | Handled in `webhooks.js` | Gap |
+|-------|------------------------|--------------------------|-----|
+| `payment_intent.succeeded` | ✅ | ✅ | — |
+| `payment_intent.payment_failed` | ✅ | ✅ | — |
+| `charge.refunded` | ❌ | ✅ | **Add to Dashboard subscription** |
+| `customer.subscription.created` | ✅ | ❌ (logged, no action) | Low risk — subscription features not live |
+| `customer.subscription.deleted` | ✅ | ❌ (logged, no action) | Low risk — subscription features not live |
+
+**Actions needed when fixing the URL above:**
+- Add `charge.refunded` to the webhook's event subscriptions in the Dashboard
+- Optionally remove `customer.subscription.*` until subscription billing is implemented
+
+---
+
+## 7. What NOT to change this session
 
 - Do not rotate any Stripe keys
 - Do not add or remove webhook events without updating the handler in `webhooks.js`
