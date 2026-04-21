@@ -7,6 +7,12 @@ import { Loader2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateSurvey } from '../services/aiService';
+import {
+  MissionAssetUploadError,
+  removeMissionAsset,
+  uploadMissionAsset,
+} from '../lib/missionAssetUpload';
+import type { MissionAsset } from '../types/missionAssets';
 import { useToast } from '../components/ui/Toast';
 import { TopNav } from '../components/ui/TopNav';
 import { Logo } from '../components/ui/Logo';
@@ -166,7 +172,14 @@ export const MissionSetupPage = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  // Upload state — Phase 10.5. The chip swaps between three modes:
+  //   - idle (no asset)        → 🖼 Add image / video
+  //   - uploading (in-flight)  → spinner + filename
+  //   - uploaded (MissionAsset) → purple pill with ✕ to remove
+  // Keeping `uploadingName` separate from the final asset means we can
+  // show progress without polluting the persisted MissionAsset array.
+  const [uploadingName, setUploadingName] = useState<string | null>(null);
+  const [uploadedAsset, setUploadedAsset] = useState<MissionAsset | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Clarify state — revealed only after ✦ Generate Survey.
@@ -240,22 +253,60 @@ export const MissionSetupPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missionGoal, missionDescription]);
 
+  // When the selected goal no longer supports upload, drop any staged asset.
+  // We also best-effort-delete the orphaned storage object so public buckets
+  // don't collect cruft from users who change their mind mid-flow.
   useEffect(() => {
-    if (!showUpload && uploadedFileName) {
-      setUploadedFileName(null);
+    if (!showUpload && (uploadedAsset || uploadingName)) {
+      if (uploadedAsset) void removeMissionAsset(uploadedAsset.path);
+      setUploadedAsset(null);
+      setUploadingName(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [showUpload, uploadedFileName]);
+  }, [showUpload, uploadedAsset, uploadingName]);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadedFileName(file.name);
-    toast.info('File captured — frame-by-frame analysis coming soon.');
+    if (!user) {
+      toast.error('Sign in first so we can save your upload.');
+      return;
+    }
+
+    // If there's an existing asset, delete it first so we only ever keep
+    // the latest file — the UI only shows one chip at a time.
+    if (uploadedAsset) {
+      void removeMissionAsset(uploadedAsset.path);
+    }
+
+    setUploadingName(file.name);
+    setUploadedAsset(null);
+
+    try {
+      const asset = await uploadMissionAsset(file, user.id);
+      setUploadedAsset(asset);
+      setUploadingName(null);
+      toast.info(
+        asset.type === 'video'
+          ? 'Video uploaded — the AI will reference it in your survey questions.'
+          : 'Image uploaded — the AI will reference it in your survey questions.',
+      );
+    } catch (err) {
+      setUploadingName(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      const message =
+        err instanceof MissionAssetUploadError
+          ? err.message
+          : 'Upload failed — please try again.';
+      toast.error(message);
+    }
   };
 
   const clearUploadedFile = () => {
-    setUploadedFileName(null);
+    // Fire-and-forget storage cleanup — the UI shouldn't block on it.
+    if (uploadedAsset) void removeMissionAsset(uploadedAsset.path);
+    setUploadedAsset(null);
+    setUploadingName(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -299,14 +350,29 @@ export const MissionSetupPage = () => {
     const briefText = missionDescription.trim();
     const aiContext = `${goalLabel}: ${briefText}`;
 
+    // If an upload is still in flight, wait for the user to either finish
+    // or clear it before letting generation kick off — otherwise the AI
+    // prompt won't know about the asset and the row would ship without it.
+    if (uploadingName) {
+      toast.info('Still uploading — hang on a moment.');
+      inflightRef.current = false;
+      setIsSubmitting(false);
+      return;
+    }
+
+    const missionAssets: MissionAsset[] = uploadedAsset ? [uploadedAsset] : [];
+
     try {
       // 1) Kick off AI generation — has internal try/catch + fallback.
+      //    The `assets` array lets goal-aware prompts anchor question text
+      //    to the uploaded creative ("After watching this ad…").
       let aiResult: Awaited<ReturnType<typeof generateSurvey>> | null = null;
       try {
         aiResult = await generateSurvey({
           goal: missionGoal,
           subject: briefText,
           objective: goalLabel,
+          assets: missionAssets,
         });
       } catch (aiErr) {
         // generateSurvey swallows its own errors — catch here is defensive.
@@ -335,6 +401,10 @@ export const MissionSetupPage = () => {
         price_estimated: 99,
         questions: aiResult?.questions ?? null,
         target_audience: targetAudience,
+        // Phase 10.5: persist the uploaded asset so /dashboard/:missionId
+        // can render a preview and the future survey renderer can show
+        // respondents exactly what they're evaluating.
+        mission_assets: missionAssets,
       };
 
       const { data: missionData, error } = await supabase
@@ -529,7 +599,23 @@ export const MissionSetupPage = () => {
                           className="hidden"
                           aria-hidden
                         />
-                        {uploadedFileName ? (
+                        {uploadingName ? (
+                          <span
+                            className={[
+                              'inline-flex items-center gap-1.5 rounded-pill',
+                              'px-2.5 py-1',
+                              'bg-pur/10 border border-pur/30',
+                              'font-display font-bold text-[10px] text-pur',
+                              'max-w-[200px] sm:max-w-[260px]',
+                            ].join(' ')}
+                            aria-live="polite"
+                          >
+                            <Loader2 className="w-3 h-3 animate-spin shrink-0" aria-hidden />
+                            <span className="truncate">
+                              Uploading {uploadingName}…
+                            </span>
+                          </span>
+                        ) : uploadedAsset ? (
                           <span
                             className={[
                               'inline-flex items-center gap-1.5 rounded-pill',
@@ -540,7 +626,8 @@ export const MissionSetupPage = () => {
                             ].join(' ')}
                           >
                             <span className="truncate">
-                              🎬 {uploadedFileName}
+                              {uploadedAsset.type === 'video' ? '🎬' : '🖼'}{' '}
+                              {uploadedAsset.filename}
                             </span>
                             <button
                               type="button"

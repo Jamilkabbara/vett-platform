@@ -12,10 +12,15 @@ import {
   MissionControlPricing,
   MissionControlPricingMobileBar,
 } from '../components/dashboard/MissionControlPricing';
+import { MissionControlAssetPreview } from '../components/dashboard/MissionControlAssetPreview';
 import { getGoalById } from '../data/missionGoals';
 import { calculatePricing } from '../utils/pricingEngine';
 import type { Question } from '../components/dashboard/QuestionEngine';
 import type { TargetingConfig } from '../components/dashboard/TargetingEngine';
+import {
+  normaliseMissionAssets,
+  type MissionAsset,
+} from '../types/missionAssets';
 
 /**
  * Mission Control — /dashboard/:missionId.
@@ -63,6 +68,8 @@ interface MissionRow {
   target_audience: Record<string, unknown> | null;
   targeting: Record<string, unknown> | null;
   questions: unknown[] | null;
+  /** Phase 10.5 — uploaded creative(s). Jsonb on the DB; normalised on load. */
+  mission_assets: unknown;
   created_at: string | null;
 }
 
@@ -187,6 +194,11 @@ export const DashboardPage = () => {
   // so every component reads the same number.  Hydrated from mission.row.
   const [respondentCount, setRespondentCount] = useState<number>(100);
 
+  // Uploaded assets — hydrated once from the mission row and read-only on
+  // the dashboard. Editing assets post-creation would invalidate AI-generated
+  // questions that reference them, so we keep add/remove on the setup page.
+  const [missionAssets, setMissionAssets] = useState<MissionAsset[]>([]);
+
   // Payment modal — wired to the Pricing panel's VETT IT CTA (Commit 8).
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
@@ -225,7 +237,7 @@ export const DashboardPage = () => {
         const { data, error } = await supabase
           .from('missions')
           .select(
-            'id, user_id, title, status, goal_type, brief, respondent_count, price_estimated, target_audience, targeting, questions, created_at',
+            'id, user_id, title, status, goal_type, brief, respondent_count, price_estimated, target_audience, targeting, questions, mission_assets, created_at',
           )
           .eq('id', missionId)
           .eq('user_id', user.id)
@@ -246,10 +258,12 @@ export const DashboardPage = () => {
         const initialQuestions = normaliseQuestions(mission.questions);
         const initialTargeting = hydrateTargeting(mission.targeting);
         const initialRespondents = Number(mission.respondent_count ?? 100) || 100;
+        const initialAssets = normaliseMissionAssets(mission.mission_assets);
         setState({ kind: 'loaded', mission });
         setQuestions(initialQuestions);
         setTargeting(initialTargeting);
         setRespondentCount(initialRespondents);
+        setMissionAssets(initialAssets);
         latestQuestionsRef.current = initialQuestions;
         latestTargetingRef.current = initialTargeting;
         latestRespondentRef.current = initialRespondents;
@@ -523,8 +537,15 @@ export const DashboardPage = () => {
                 'grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px]',
               ].join(' ')}
             >
-              {/* LEFT — Questions (real) + Targeting (shell) */}
+              {/* LEFT — Uploaded asset preview (Phase 10.5, only when present)
+                  + Questions + Targeting accordion. */}
               <div className="flex flex-col gap-4 min-w-0">
+                {missionAssets.length > 0 && (
+                  <MissionControlAssetPreview
+                    assets={missionAssets}
+                    goalType={state.mission.goal_type}
+                  />
+                )}
                 <MissionControlQuestions
                   questions={questions}
                   onChange={handleQuestionsChange}
