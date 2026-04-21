@@ -721,6 +721,24 @@ export const DashboardPage = () => {
                   context={state.mission.brief ?? undefined}
                   persisting={persisting}
                 />
+                {/* Section divider — orients the user that scrolling
+                    past the Question Engine lands them on Audience
+                    Targeting. Purely visual; no state. */}
+                <div
+                  className="flex items-center justify-center py-2"
+                  aria-hidden
+                >
+                  <span
+                    className={[
+                      'font-display font-bold text-[11px] uppercase tracking-[0.12em]',
+                      'text-t3',
+                      'inline-flex items-center gap-1.5',
+                    ].join(' ')}
+                  >
+                    <span aria-hidden>↓</span>
+                    <span>Who should answer these?</span>
+                  </span>
+                </div>
                 <MissionControlTargeting
                   config={targeting}
                   onChange={handleTargetingChange}
