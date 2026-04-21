@@ -7,49 +7,80 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/apiClient';
 import { ChatWidget } from '../components/chat/ChatWidget';
 
+/**
+ * Shape aligned with `public.missions` columns. The legacy backend shim used
+ * to return {context, target, estimated_price} — we now mirror the DB names
+ * (`brief`, `target_audience`, `price_estimated`, `title`) and accept the old
+ * names as optional fallbacks so a not-yet-redeployed backend keeps rendering
+ * instead of showing "Untitled Mission" / "$undefined".
+ */
 interface Mission {
   id: string;
-  context: string;
-  target: string;
+  title?: string | null;
+  brief?: string | null;
+  target_audience?: unknown;
   status: string;
   respondent_count: number;
-  estimated_price: number;
+  price_estimated?: number | null;
   created_at: string;
-  questions: any[];
+  questions: unknown[];
+  // Legacy backend field names — kept optional for graceful fallback.
+  context?: string;
+  target?: string;
+  estimated_price?: number;
 }
 
 const MOCK_MISSIONS: Mission[] = [
   {
     id: 'mock-active-1',
-    context: 'AI-powered meal planning app for busy professionals',
-    target: 'Working professionals aged 25-45',
+    title: 'AI-powered meal planning app for busy professionals',
+    brief: 'AI-powered meal planning app for busy professionals',
+    target_audience: 'Working professionals aged 25-45',
     status: 'ACTIVE',
     respondent_count: 150,
-    estimated_price: 249,
+    price_estimated: 249,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
     questions: []
   },
   {
     id: 'mock-draft-1',
-    context: 'Sustainable sneaker brand with recycled materials',
-    target: 'Eco-conscious millennials and Gen Z',
+    title: 'Sustainable sneaker brand with recycled materials',
+    brief: 'Sustainable sneaker brand with recycled materials',
+    target_audience: 'Eco-conscious millennials and Gen Z',
     status: 'DRAFT',
     respondent_count: 100,
-    estimated_price: 149,
+    price_estimated: 149,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     questions: []
   },
   {
     id: 'mock-completed-1',
-    context: 'Premium coffee subscription service',
-    target: 'Coffee enthusiasts with $75k+ household income',
+    title: 'Premium coffee subscription service',
+    brief: 'Premium coffee subscription service',
+    target_audience: 'Coffee enthusiasts with $75k+ household income',
     status: 'COMPLETED',
     respondent_count: 200,
-    estimated_price: 299,
+    price_estimated: 299,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
     questions: []
   }
 ];
+
+/** target_audience is jsonb — could be a string (legacy) or { segments, ... } */
+function formatTarget(mission: Mission): string {
+  const ta = mission.target_audience;
+  if (typeof ta === 'string' && ta.trim()) return ta;
+  if (ta && typeof ta === 'object') {
+    const asRec = ta as Record<string, unknown>;
+    if (typeof asRec.summary === 'string') return asRec.summary;
+    if (Array.isArray(asRec.segments) && asRec.segments.length > 0) {
+      return asRec.segments.filter((s) => typeof s === 'string').join(', ') || 'General audience';
+    }
+  }
+  // Legacy backend shim
+  if (mission.target) return mission.target;
+  return 'General audience';
+}
 
 export const MissionsListPage = () => {
   const navigate = useNavigate();
@@ -124,7 +155,10 @@ export const MissionsListPage = () => {
   };
 
   const getMissionTitle = (mission: Mission) => {
-    return mission.context || 'Untitled Mission';
+    // Prefer canonical DB columns (`title`, `brief`); fall back to the legacy
+    // backend-shim names (`context`) so a not-yet-redeployed backend keeps
+    // rendering something readable.
+    return mission.title || mission.brief || mission.context || 'Untitled Mission';
   };
 
   const getRespondentProgress = (mission: Mission) => {
@@ -255,7 +289,7 @@ export const MissionsListPage = () => {
                   </h3>
 
                   <p className="text-white/50 text-sm mb-4 line-clamp-1">
-                    Target: {mission.target || 'General audience'}
+                    Target: {formatTarget(mission)}
                   </p>
 
                   <div className="space-y-4 mb-4">
@@ -276,7 +310,7 @@ export const MissionsListPage = () => {
                   <div className="pt-4 border-t border-white/5 mt-auto">
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-black text-white">
-                        ${mission.estimated_price}
+                        ${mission.price_estimated ?? mission.estimated_price ?? 0}
                       </span>
                       <div className="flex items-center gap-2 text-primary group-hover:translate-x-1 transition-transform">
                         {mission.status === 'DRAFT' ? (

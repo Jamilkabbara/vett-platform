@@ -16,11 +16,21 @@ interface Question {
 
 interface MissionData {
   id?: string;
-  context: string;
+  /** DB column is `brief`; `context` kept as optional legacy alias. */
+  brief?: string;
+  context?: string;
+  /** DB column is `title` — added for completion navigation. */
+  title?: string;
   target?: string;
   questions: Question[];
   respondent_count: number;
-  targeting_config?: any;
+  /**
+   * DB column is `targeting` (jsonb). The historical `targeting_config` name
+   * never existed in Supabase; kept as optional alias for old mission state
+   * that may still be passed via `navigate(state)`.
+   */
+  targeting?: unknown;
+  targeting_config?: unknown;
 }
 
 export const ActiveMissionPage = () => {
@@ -192,11 +202,15 @@ export const ActiveMissionPage = () => {
 
     if (missionData.id && user) {
       try {
+        // `result_data` is not a column on `public.missions` — the canonical
+        // home for results / insights is the `insights` jsonb column. Writing
+        // to a non-existent column returns a 400 and silently blocks the
+        // completion status write on real missions.
         await supabase
           .from('missions')
           .update({
             status: 'COMPLETED',
-            result_data: mockResults,
+            insights: mockResults,
             completed_at: new Date().toISOString()
           })
           .eq('id', missionData.id);

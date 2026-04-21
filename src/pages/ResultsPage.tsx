@@ -359,7 +359,17 @@ export const ResultsPage = () => {
       });
 
       const loaded: MissionData = {
-        name: mission.mission_statement || mission.name || mission.context || 'Your Mission',
+        // Canonical columns on `public.missions` are `title` + `brief`.
+        // `mission_statement`, `name`, and `context` never existed on the DB;
+        // kept as last-resort fallbacks for mission rows still held in memory
+        // by older client code paths.
+        name:
+          mission.title ||
+          mission.brief ||
+          mission.mission_statement ||
+          mission.name ||
+          mission.context ||
+          'Your Mission',
         completedAt: mission.completed_at
           ? new Date(mission.completed_at).toLocaleString()
           : 'Just now',
