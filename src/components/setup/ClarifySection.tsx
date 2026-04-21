@@ -28,11 +28,20 @@ import { Loader2 } from 'lucide-react';
  * fixed widths.
  */
 
+/**
+ * Market options. The frontend maps each of these to a concrete set of
+ * countries when the dashboard first hydrates (see marketToCountries in
+ * DashboardPage). `us_europe` is retained as a LEGACY value so missions
+ * created before the North-America / Europe split still load without
+ * crashing — it resolves to US+Canada+EU5 combined. Not shown in the UI.
+ */
 export type ClarifyMarket =
   | 'uae_gulf'
   | 'mena'
   | 'global'
-  | 'us_europe'
+  | 'north_america'
+  | 'europe'
+  | 'us_europe' // legacy — not rendered as a chip
   | 'other';
 
 export type ClarifyStage = 'concept' | 'pre_launch' | 'live' | 'mvp';
@@ -58,8 +67,9 @@ interface ChipDef<T extends string> {
 const MARKET_CHIPS: ChipDef<ClarifyMarket>[] = [
   { id: 'uae_gulf', label: '🇦🇪 UAE & Gulf' },
   { id: 'mena', label: '🌍 MENA Region' },
+  { id: 'north_america', label: '🌎 North America' },
+  { id: 'europe', label: '🇪🇺 Europe' },
   { id: 'global', label: '🌐 Global' },
-  { id: 'us_europe', label: '🌎 US & Europe' },
   { id: 'other', label: '📍 Other' },
 ];
 

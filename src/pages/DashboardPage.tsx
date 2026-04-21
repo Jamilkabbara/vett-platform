@@ -110,6 +110,61 @@ function firstLine(text: string | null | undefined, max = 140): string {
   return `${trimmed.slice(0, max - 1).trimEnd()}…`;
 }
 
+/**
+ * Phase 4 — Clarify market → country preset.
+ *
+ * When a mission lands on the dashboard for the first time and the user
+ * hasn't hand-picked any countries yet, seed the targeting geography from
+ * whatever market the user chose during Clarify. This means the
+ * researcher immediately sees the countries implied by "UAE & Gulf" and
+ * can edit from there, instead of staring at an empty picker.
+ *
+ * Rules (match the Phase 4 spec verbatim):
+ *   - uae_gulf       → AE, SA, KW, QA, BH, OM
+ *   - mena           → EG, JO, LB, AE, SA, MA
+ *   - north_america  → US, CA
+ *   - europe         → GB, DE, FR, IT, ES  (EU5)
+ *   - us_europe      → US, CA, GB, DE, FR, IT, ES  (legacy chip, superset)
+ *   - global / other → []
+ */
+const MARKET_COUNTRY_PRESETS: Record<string, string[]> = {
+  uae_gulf: ['AE', 'SA', 'KW', 'QA', 'BH', 'OM'],
+  mena: ['EG', 'JO', 'LB', 'AE', 'SA', 'MA'],
+  north_america: ['US', 'CA'],
+  europe: ['GB', 'DE', 'FR', 'IT', 'ES'],
+  us_europe: ['US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES'],
+  global: [],
+  other: [],
+};
+
+function countriesForMarket(market: string | null | undefined): string[] {
+  if (!market) return [];
+  return MARKET_COUNTRY_PRESETS[market] ?? [];
+}
+
+/**
+ * Phase 4 — Clarify price → human label.
+ *
+ * Rendered as an informational banner at the top of the pricing panel.
+ * Purely cosmetic: it does NOT affect the computed total. The AI
+ * generation step already uses this value when phrasing questions.
+ */
+function priceTierLabel(priceId: string | null | undefined): string | null {
+  switch (priceId) {
+    case 'under_20':
+      return 'Under $20';
+    case '20_50':
+      return '$20 – $50';
+    case '50_150':
+      return '$50 – $150';
+    case '150_plus':
+      return '$150+';
+    case 'not_relevant':
+    default:
+      return null;
+  }
+}
+
 /** Default TargetingConfig for missions that haven't saved one yet.  Kept
  *  in-file because the only consumer is DashboardPage and it must match
  *  the TargetingConfig shape exactly — we don't want a stale default
@@ -256,9 +311,39 @@ export const DashboardPage = () => {
 
         const mission = data as MissionRow;
         const initialQuestions = normaliseQuestions(mission.questions);
-        const initialTargeting = hydrateTargeting(mission.targeting);
+        let initialTargeting = hydrateTargeting(mission.targeting);
         const initialRespondents = Number(mission.respondent_count ?? 100) || 100;
         const initialAssets = normaliseMissionAssets(mission.mission_assets);
+
+        // Phase 4: if the user hasn't picked any countries yet and the Clarify
+        // market answer implies a preset, seed the geography so they land on
+        // something useful instead of an empty picker. Only writes when the
+        // preset adds at least one country — leaves Global / Other alone.
+        // We also persist the seeded targeting back so subsequent loads
+        // don't re-run this branch and so the pricingEngine always sees the
+        // same state the user sees.
+        if (initialTargeting.geography.countries.length === 0) {
+          const ta = (mission.target_audience ?? {}) as Record<string, unknown>;
+          const clarifyMarket =
+            typeof ta.market === 'string' ? (ta.market as string) : null;
+          const preset = countriesForMarket(clarifyMarket);
+          if (preset.length > 0) {
+            initialTargeting = {
+              ...initialTargeting,
+              geography: {
+                ...initialTargeting.geography,
+                countries: preset,
+              },
+            };
+            // Fire-and-forget persistence — if it fails, the UI still works;
+            // next user-initiated change will save the full state anyway.
+            void supabase
+              .from('missions')
+              .update({ targeting: initialTargeting })
+              .eq('id', mission.id);
+          }
+        }
+
         setState({ kind: 'loaded', mission });
         setQuestions(initialQuestions);
         setTargeting(initialTargeting);
@@ -577,6 +662,15 @@ export const DashboardPage = () => {
                   questions={questions}
                   targeting={targeting}
                   onLaunch={() => setShowPaymentModal(true)}
+                  priceTierLabel={priceTierLabel(
+                    (() => {
+                      const ta = (state.mission.target_audience ??
+                        {}) as Record<string, unknown>;
+                      return typeof ta.price === 'string'
+                        ? (ta.price as string)
+                        : null;
+                    })(),
+                  )}
                 />
               </aside>
             </div>

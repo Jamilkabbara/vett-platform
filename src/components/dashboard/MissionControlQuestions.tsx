@@ -156,6 +156,19 @@ export const MissionControlQuestions = ({
     async (q: Question) => {
       if (refineInflight.current) return;
       if (refiningId) return;
+      // Phase 4 — idempotency. The refine heuristic appends "— and why?" as
+      // its signature suffix; re-refining then just stacks the suffix and
+      // confuses respondents. If we detect the suffix already, short-circuit
+      // with a non-destructive toast.
+      if (
+        q.text
+          .trim()
+          .toLowerCase()
+          .endsWith('— and why?')
+      ) {
+        toast('Question already refined', { icon: '✨' });
+        return;
+      }
       refineInflight.current = true;
       setRefiningId(q.id);
 

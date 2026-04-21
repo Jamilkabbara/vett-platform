@@ -56,8 +56,12 @@ import { COUNTRIES } from '../../data/targetingOptions';
 // ────────────────────────────────────────────────────────────────────
 
 const PRESETS = [100, 250, 500, 1000, 2500] as const;
-const MIN_RESPONDENTS = 50;
+// Phase 4: floor dropped from 50 → 10 so lighter-weight tests can be run
+// without hitting the Pollfish minimum. Step matches the floor so users
+// always stop on a valid multiple of 10.
+const MIN_RESPONDENTS = 10;
 const MAX_RESPONDENTS = 5000;
+const RESPONDENT_STEP = 10;
 
 interface MissionControlPricingProps {
   respondentCount: number;
@@ -69,6 +73,13 @@ interface MissionControlPricingProps {
   /** Fires when the respondentCount change needs to be saved by parent.
    *  Mirrors the targeting save pattern — parent debounces. */
   onPersist?: (next: number) => void;
+  /**
+   * Phase 4: optional informational banner — the price tier the user
+   * selected in Clarify (under $20 / $20–$50 / etc). Purely display, no
+   * pricing impact. Rendered between the header and the slider so
+   * researchers always see the price anchor they picked.
+   */
+  priceTierLabel?: string | null;
 }
 
 /** Build a human-readable subtitle from the current targeting config so
@@ -110,6 +121,15 @@ function buildAudienceSummary(
 /** Format a dollar amount in whole dollars (pricingEngine rounds). */
 const fmt$ = (n: number) => `$${Math.round(n).toLocaleString()}`;
 
+/**
+ * Per-respondent rate formatter — 2 decimals, never rounded up to the
+ * next dollar. Phase 4: the old implementation reused `fmt$` here, so a
+ * $1.90/resp rate displayed as "$2" and the breakdown read "100 × $2 = $190"
+ * which made the math look wrong. This keeps the breakdown arithmetic
+ * honest: 100 × $1.90 = $190.
+ */
+const fmtRate = (n: number) => `$${n.toFixed(2)}`;
+
 // ────────────────────────────────────────────────────────────────────
 // Main card
 // ────────────────────────────────────────────────────────────────────
@@ -122,6 +142,7 @@ export const MissionControlPricing = ({
   isScreeningActive = false,
   onLaunch,
   onPersist,
+  priceTierLabel = null,
 }: MissionControlPricingProps) => {
   const [promo, setPromo] = useState('');
   const [applyingPromo, setApplyingPromo] = useState(false);
@@ -236,6 +257,28 @@ export const MissionControlPricing = ({
         <p className="font-body text-[11px] text-t3 mt-0.5">{audience}</p>
       </div>
 
+      {/* Price tier — informational only. Sourced from the Clarify answer
+          (target_audience.price). Not a pricing input; just anchors the
+          researcher to the price band they told us about in the wizard so
+          they know what AI question-generation is optimising for. */}
+      {priceTierLabel && (
+        <div
+          className={[
+            'px-4 py-2 border-b border-b1',
+            'bg-bg3/40',
+            'flex items-center gap-2',
+          ].join(' ')}
+          aria-label="Target price tier"
+        >
+          <span className="font-display font-bold text-[9px] text-t4 uppercase tracking-[0.1em]">
+            Target price tier
+          </span>
+          <span className="font-display font-black text-[11px] text-white">
+            {priceTierLabel}
+          </span>
+        </div>
+      )}
+
       {/* Mirror / slider */}
       <div className="px-4 py-4 border-b border-b1">
         <div className="flex items-baseline justify-between mb-2">
@@ -254,7 +297,7 @@ export const MissionControlPricing = ({
           type="range"
           min={MIN_RESPONDENTS}
           max={MAX_RESPONDENTS}
-          step={50}
+          step={RESPONDENT_STEP}
           value={respondentCount}
           onChange={(e) => handleSlide(Number(e.target.value))}
           className="w-full accent-lime"
@@ -290,7 +333,7 @@ export const MissionControlPricing = ({
       <div className="px-4 py-3 border-b border-b1">
         <dl className="text-[12px] font-body divide-y divide-b1/60">
           <Row
-            label={`${respondentCount.toLocaleString()} respondents × ${fmt$(perRespondent)}`}
+            label={`${respondentCount.toLocaleString()} × ${fmtRate(perRespondent)} = ${fmt$(pricing.base)}`}
             value={fmt$(pricing.base)}
           />
           <Row
