@@ -35,16 +35,52 @@ interface GenerateSurveyParams {
   assets?: MissionAsset[];
 }
 
+/**
+ * Phase 10 — Smart-split targeting suggestion.
+ *
+ * We extend the existing `targetingSuggestions` (kept for backward
+ * compat) with a richer `suggestedTargeting` shape that mirrors the
+ * frontend's TargetingConfig across every section. Populated from the
+ * new generate-survey response field of the same name; falls back to
+ * mapping the legacy /api/ai/suggest-targeting response when the
+ * generate-survey backend doesn't yet supply it.
+ *
+ * All fields are optional — the consumer merges whatever's populated
+ * into the targeting config and leaves the rest alone. Unknown fields
+ * are ignored at runtime, so backend can add slots without breaking.
+ */
+export interface SuggestedTargeting {
+  countries?: string[];
+  cities?: string[];
+  ageRanges?: string[];
+  genders?: string[];
+  education?: string[];
+  marital?: string[];
+  parental?: string[];
+  employment?: string[];
+  industries?: string[];
+  roles?: string[];
+  companySizes?: string[];
+  incomeRanges?: string[];
+  behaviors?: string[];
+  devices?: string[];
+  /** Free-text explanation shown as a small caption in the panel. */
+  reasoning?: string;
+}
+
 interface SurveyGenerationResult {
   questions: Question[];
   missionObjective: string;
   suggestedRespondentCount?: number;
+  /** Legacy shape — kept so existing callers still compile. */
   targetingSuggestions?: {
     countries: string[];
     ageRanges: string[];
     genders: string[];
     reasoning: string;
   };
+  /** Phase 10 — full targeting suggestion across all sections. */
+  suggestedTargeting?: SuggestedTargeting;
 }
 
 // Map Claude's types to the frontend's supported types
@@ -262,6 +298,41 @@ export const fetchAdaptiveClarify = async (
   }
 };
 
+/**
+ * Phase 10 — strip any non-string or non-array values from an untrusted
+ * backend response. Keeps the frontend resilient to backend schema
+ * drift: extra fields are dropped silently, and malformed ones never
+ * reach the targeting panel where they could crash the render.
+ */
+function sanitiseSuggestedTargeting(
+  raw: Record<string, unknown>,
+): Partial<SuggestedTargeting> {
+  const strArr = (v: unknown): string[] | undefined => {
+    if (!Array.isArray(v)) return undefined;
+    const out = v.filter((x): x is string => typeof x === 'string' && x.length > 0);
+    return out.length > 0 ? out : undefined;
+  };
+  const str = (v: unknown): string | undefined =>
+    typeof v === 'string' && v.length > 0 ? v : undefined;
+  return {
+    countries: strArr(raw.countries),
+    cities: strArr(raw.cities),
+    ageRanges: strArr(raw.ageRanges),
+    genders: strArr(raw.genders),
+    education: strArr(raw.education),
+    marital: strArr(raw.marital),
+    parental: strArr(raw.parental),
+    employment: strArr(raw.employment),
+    industries: strArr(raw.industries),
+    roles: strArr(raw.roles),
+    companySizes: strArr(raw.companySizes),
+    incomeRanges: strArr(raw.incomeRanges),
+    behaviors: strArr(raw.behaviors),
+    devices: strArr(raw.devices),
+    reasoning: str(raw.reasoning),
+  };
+}
+
 export const generateSurvey = async (
   params: GenerateSurveyParams
 ): Promise<SurveyGenerationResult> => {
@@ -298,6 +369,40 @@ export const generateSurvey = async (
     const targeting = targetingResult.status === 'fulfilled' ? targetingResult.value : null;
 
     if (survey?.questions?.length) {
+      // Phase 10 — merge a full targeting suggestion when the backend
+      // supplies one. Start from whatever generate-survey returned in
+      // `suggestedTargeting`, then fill any missing slots from the
+      // legacy /api/ai/suggest-targeting response. Order matters:
+      // generate-survey is more contextually aware so its values win.
+      const fromSurvey: Partial<SuggestedTargeting> =
+        survey.suggestedTargeting && typeof survey.suggestedTargeting === 'object'
+          ? sanitiseSuggestedTargeting(survey.suggestedTargeting)
+          : {};
+      const fromLegacy: Partial<SuggestedTargeting> = targeting
+        ? {
+            countries: Array.isArray(targeting.geography?.recommendedCountries)
+              ? targeting.geography.recommendedCountries
+              : undefined,
+            ageRanges: Array.isArray(targeting.demographics?.ageRanges)
+              ? targeting.demographics.ageRanges
+              : undefined,
+            genders: Array.isArray(targeting.demographics?.genders)
+              ? targeting.demographics.genders
+              : undefined,
+            reasoning: typeof targeting.geography?.reasoning === 'string'
+              ? targeting.geography.reasoning
+              : undefined,
+          }
+        : {};
+      const merged: SuggestedTargeting = {
+        ...fromLegacy,
+        ...fromSurvey, // survey wins
+      };
+      const hasAnySuggestion =
+        Object.values(merged).some((v) =>
+          Array.isArray(v) ? v.length > 0 : typeof v === 'string' && v.length > 0,
+        );
+
       return {
         questions: survey.questions.map(mapQuestion),
         missionObjective: survey.missionStatement || `To understand ${subject}.`,
@@ -308,6 +413,7 @@ export const generateSurvey = async (
           genders: targeting.demographics?.genders || [],
           reasoning: targeting.geography?.reasoning || '',
         } : undefined,
+        suggestedTargeting: hasAnySuggestion ? merged : undefined,
       };
     }
   } catch (err) {
