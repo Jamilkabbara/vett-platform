@@ -1,6 +1,11 @@
 import { Question } from '../components/dashboard/QuestionEngine';
 import { api } from '../lib/apiClient';
+import { supabase } from '../lib/supabase';
 import type { MissionAsset } from '../types/missionAssets';
+
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  'https://vettit-backend-production.up.railway.app';
 
 /**
  * Survey generation — Phase 10.5.
@@ -156,6 +161,105 @@ export const refineQuestion = async (
   }
   // Already a question — nudge it to be more specific.
   return { text: current.replace(/\?$/, ' — and why?') };
+};
+
+/**
+ * Phase 9 — Adaptive clarify (frontend ready, backend optional).
+ *
+ * The UI always ships with three static clarify cards (Market / Stage /
+ * Price) defined in ClarifySection.tsx. Phase 9 makes the frontend
+ * **ready** to receive an AI-generated clarify layout from the backend:
+ *
+ *   POST /api/ai/clarify
+ *     body: { goal: string | null, brief: string }
+ *     200:  { questions: AdaptiveClarifyQuestion[] }
+ *     4xx/5xx/absent: treat as "no adaptive, fall back to static"
+ *
+ * The frontend **never** blocks on this call — the static cards are
+ * always the default. Callers wait ≤ 800ms for a response and fall
+ * back silently if the endpoint isn't deployed or times out.
+ *
+ * Contract for AdaptiveClarifyQuestion is kept intentionally loose so
+ * the backend can ship incremental improvements without requiring
+ * frontend type changes. Any question that doesn't validate is
+ * dropped — we never render untrusted fields.
+ */
+export interface AdaptiveClarifyChip {
+  id: string;
+  label: string;
+}
+
+export interface AdaptiveClarifyQuestion {
+  id: string;
+  question: string;
+  chips: AdaptiveClarifyChip[];
+  defaultChipId?: string;
+}
+
+const CLARIFY_TIMEOUT_MS = 800;
+
+function isAdaptiveClarifyQuestion(
+  value: unknown,
+): value is AdaptiveClarifyQuestion {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  if (typeof v.id !== 'string' || !v.id) return false;
+  if (typeof v.question !== 'string' || !v.question) return false;
+  if (!Array.isArray(v.chips)) return false;
+  for (const c of v.chips) {
+    if (!c || typeof c !== 'object') return false;
+    const chip = c as Record<string, unknown>;
+    if (typeof chip.id !== 'string' || typeof chip.label !== 'string') {
+      return false;
+    }
+  }
+  return true;
+}
+
+export const fetchAdaptiveClarify = async (
+  goal: string | null,
+  brief: string,
+): Promise<AdaptiveClarifyQuestion[] | null> => {
+  const controller = new AbortController();
+  const timer = window.setTimeout(
+    () => controller.abort(),
+    CLARIFY_TIMEOUT_MS,
+  );
+  try {
+    // Direct fetch (not api.post) because we need AbortSignal support
+    // and api.post doesn't take options. Still uses the same auth
+    // header pipeline so RLS is respected on the backend.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
+    }
+    const res = await fetch(`${API_URL}/api/ai/clarify`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ goal, brief }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const resp = (await res.json()) as { questions?: unknown };
+    if (!resp || !Array.isArray(resp.questions)) return null;
+    const valid = resp.questions.filter(isAdaptiveClarifyQuestion);
+    // Require at least one well-formed question; otherwise fall back so
+    // the user always sees usable cards.
+    return valid.length > 0 ? valid : null;
+  } catch (err) {
+    console.info(
+      '[fetchAdaptiveClarify] endpoint unavailable — static clarify will render',
+      err,
+    );
+    return null;
+  } finally {
+    window.clearTimeout(timer);
+  }
 };
 
 export const generateSurvey = async (
