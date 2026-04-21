@@ -6,7 +6,8 @@ import {
   type ReactNode,
 } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Eraser } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 import type { TargetingConfig } from './TargetingEngine';
 import type { Question } from './QuestionEngine';
@@ -555,14 +556,59 @@ export const MissionControlTargeting = ({
             · AI Suggested
           </span>
         </div>
-        {persisting && (
-          <span
-            className="font-body text-[10px] text-t4 italic"
-            aria-live="polite"
-          >
-            Saving…
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {persisting && (
+            <span
+              className="font-body text-[10px] text-t4 italic"
+              aria-live="polite"
+            >
+              Saving…
+            </span>
+          )}
+          {/* Phase 8: bulk-clear. Resets every targeting section in one
+              click — parent's debounced save handles the persistence. */}
+          {(() => {
+            const hasAny =
+              config.geography.countries.length > 0 ||
+              config.geography.cities.length > 0 ||
+              config.demographics.ageRanges.length > 0 ||
+              config.demographics.genders.length > 0 ||
+              config.demographics.education.length > 0 ||
+              config.demographics.marital.length > 0 ||
+              config.demographics.parental.length > 0 ||
+              config.demographics.employment.length > 0 ||
+              config.professional.industries.length > 0 ||
+              config.professional.roles.length > 0 ||
+              config.professional.companySizes.length > 0 ||
+              config.financials.incomeRanges.length > 0 ||
+              config.behaviors.length > 0 ||
+              config.technographics.devices.length > 0 ||
+              !!config.retargeting?.pixelId;
+            return (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(EMPTY_SHADOW);
+                  toast('Targeting cleared', { icon: '🧹' });
+                }}
+                disabled={!hasAny || persisting}
+                className={[
+                  'inline-flex items-center gap-1 rounded-md',
+                  'bg-bg3 border border-b2 hover:border-red hover:text-red',
+                  'px-2 py-1',
+                  'font-display font-bold text-[10px] uppercase tracking-[0.08em] text-t2',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                  'disabled:hover:border-b2 disabled:hover:text-t2',
+                  'transition-colors',
+                ].join(' ')}
+                aria-label="Clear all targeting"
+              >
+                <Eraser className="w-3 h-3" aria-hidden />
+                Clear all
+              </button>
+            );
+          })()}
+        </div>
       </div>
 
       {/* How it works */}

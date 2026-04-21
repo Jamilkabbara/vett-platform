@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Loader2, Pencil, Plus, Sparkles, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Sparkles, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import type { Question } from './QuestionEngine';
@@ -403,6 +403,21 @@ export const MissionControlQuestions = ({
     setEditText('');
   }, [questions, emit]);
 
+  // Phase 8 — reorder by ±1. emit() re-applies Q1 auto-screening so if
+  // the user promotes a question to index 0, it inherits the Screening
+  // tag immediately; the old index-0 loses it cleanly.
+  const handleReorder = useCallback(
+    (index: number, direction: -1 | 1) => {
+      const target = index + direction;
+      if (target < 0 || target >= questions.length) return;
+      const next = questions.slice();
+      const [moved] = next.splice(index, 1);
+      next.splice(target, 0, moved);
+      emit(next);
+    },
+    [questions, emit],
+  );
+
   const handleRequestRemove = useCallback((id: string) => {
     setConfirmRemoveId(id);
   }, []);
@@ -548,6 +563,50 @@ export const MissionControlQuestions = ({
                   })()}
 
                   <div className="flex-1" />
+
+                  {/* Phase 8 — reorder buttons. Up disabled at index 0,
+                      Down disabled at last index. emit() handles the
+                      Q1 screening re-flag when index 0 changes. */}
+                  <button
+                    type="button"
+                    onClick={() => handleReorder(i, -1)}
+                    disabled={i === 0 || persisting || refiningId === q.id}
+                    aria-label={`Move ${qLabel(i)} up`}
+                    title={i === 0 ? 'Already first' : 'Move up'}
+                    className={[
+                      'w-6 h-6 rounded-md',
+                      'inline-flex items-center justify-center',
+                      'text-t3 hover:text-lime hover:bg-lime/10',
+                      'border border-transparent hover:border-lime/20',
+                      'transition-colors',
+                      'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-t3 disabled:hover:border-transparent',
+                    ].join(' ')}
+                  >
+                    <ArrowUp className="w-3.5 h-3.5" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleReorder(i, 1)}
+                    disabled={
+                      i === questions.length - 1 ||
+                      persisting ||
+                      refiningId === q.id
+                    }
+                    aria-label={`Move ${qLabel(i)} down`}
+                    title={
+                      i === questions.length - 1 ? 'Already last' : 'Move down'
+                    }
+                    className={[
+                      'w-6 h-6 rounded-md',
+                      'inline-flex items-center justify-center',
+                      'text-t3 hover:text-lime hover:bg-lime/10',
+                      'border border-transparent hover:border-lime/20',
+                      'transition-colors',
+                      'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-t3 disabled:hover:border-transparent',
+                    ].join(' ')}
+                  >
+                    <ArrowDown className="w-3.5 h-3.5" aria-hidden />
+                  </button>
 
                   {/* Remove button + confirm popover */}
                   <div className="relative">
