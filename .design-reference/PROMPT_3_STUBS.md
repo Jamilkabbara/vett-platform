@@ -9,6 +9,16 @@ track them so nothing ships to production thinking it's wired.
 below are live and visible in the redesigned UI. Each one renders
 exactly the behaviour documented here — no more, no less.
 
+**Post-payment flow (Prompt 4):** a successful payment now lands on
+`/mission/:missionId/live` (the new `ActiveMissionPage`). The mission
+row is flipped from `draft` → `active` (status + paid_at columns)
+optimistically on the client; `/api/payments/confirm` remains the
+authoritative server-side write. The active page renders a full
+hero + progress bar + metrics + realtime ticker, but the response
+data is only real when the backend generator endpoint ships (see
+"Synthetic response generation" below). Until then, the ticker
+shows seed status lines and the counter sits at 0.
+
 ## 1. Creative Attention — media upload
 
 **Where:** `MissionSetupPage` describe step, when the `creative_attention`
@@ -128,6 +138,31 @@ stays functional — users see "Refined (local)" in a toast when
 the fallback fires. A future pass should wire the endpoint so
 refines go through the same OpenAI path as initial question
 generation.
+
+### Synthetic response generation — FRONTEND READY (Prompt 4 Phase 4)
+
+**Where it lives:** `triggerResponseGenerator()` in
+`src/pages/ActiveMissionPage.tsx`.
+
+**Status:** when `/mission/:missionId/live` mounts and the mission
+is in an active-collection state, the frontend fires
+`POST /api/missions/:missionId/generate-responses` exactly once
+(guarded by a ref so poll ticks don't re-spam). **Backend endpoint
+is NOT deployed yet** — on 404 the UI shows a neutral "Response
+generation queued — results typically ready in 15–30 minutes"
+banner instead of letting the counter sit at 0/N forever.
+
+Network / 5xx errors are logged but otherwise swallowed; the user
+sees the same UX as 404 so they aren't blocked by a flaky backend.
+Ticker + counter still work from `mission_responses` — whatever
+ends up in that table shows up in the UI regardless of how it got
+there.
+
+When backend lands: the endpoint should enqueue a job that writes
+rows to `public.mission_responses` (schema: `id, mission_id,
+persona_id, persona_profile jsonb, question_id, answer jsonb,
+answered_at`). Supabase Realtime on `mission_responses` will pick
+them up automatically; no further frontend change required.
 
 ### Server-side pricing quote — FRONTEND READY (Prompt 3.5+ Phase 11)
 
