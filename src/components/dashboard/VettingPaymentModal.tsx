@@ -116,19 +116,47 @@ const PaymentForm = ({
    */
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Set up Apple Pay / Google Pay via Stripe Payment Request
+  /**
+   * Set up Apple Pay / Google Pay via Stripe's Payment Request API.
+   *
+   * ── Availability requirements ─────────────────────────────────────
+   *   - Apple Pay: Safari on macOS/iOS, a card in Wallet, and the domain
+   *     MUST be registered in the Stripe Dashboard under
+   *     Settings → Payments → Apple Pay → "Add new domain". We upload
+   *     the file returned by /.well-known/apple-developer-merchantid-domain-association
+   *     to the site root. This is a MANUAL step per environment — dev,
+   *     staging, and production each need their own verification. See
+   *     .design-reference/STRIPE_DOMAIN_VERIFICATION.md for the runbook.
+   *   - Google Pay: Chrome with a saved card. No domain registration.
+   *   - `canMakePayment()` only resolves truthy once the browser confirms
+   *     at least one method. If it resolves null the Payment Request button
+   *     is never rendered and we silently fall back to the card form.
+   *
+   * ── displayItems ──────────────────────────────────────────────────
+   * The wallet sheet shows `total.label` as the top line and `displayItems`
+   * as the breakdown. Shipping this itemised list ("100 × $1.90 = $190")
+   * matches what the mission pricing panel shows and avoids the "Why am I
+   * paying X?" confusion that a single total row causes.
+   */
   useEffect(() => {
     if (!stripe || discountedPrice <= 0) return;
 
     const amountInCents = Math.round(discountedPrice * 100);
+    const perRespondent = respondentCount > 0 ? discountedPrice / respondentCount : 0;
 
     const pr = stripe.paymentRequest({
       country: 'US',
       currency: 'usd',
       total: {
-        label: `Vettit Mission — ${respondentCount} Respondents`,
+        label: 'Vettit Mission',
         amount: amountInCents,
       },
+      displayItems: [
+        {
+          label: `${respondentCount} respondents × $${perRespondent.toFixed(2)}`,
+          amount: amountInCents,
+        },
+      ],
       requestPayerName: false,
       requestPayerEmail: false,
     });
@@ -137,6 +165,12 @@ const PaymentForm = ({
       if (result) {
         setPaymentRequest(pr);
         setCanMakeExpressPayment(true);
+      } else {
+        // Explicitly clear so a stale request from a prior mount doesn't
+        // leak through when the user retries on a browser that doesn't
+        // support wallet payments.
+        setPaymentRequest(null);
+        setCanMakeExpressPayment(false);
       }
     });
 
