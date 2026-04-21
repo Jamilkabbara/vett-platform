@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Rocket, Users, Clock, Activity, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Rocket,
+  Users,
+  Clock,
+  Activity,
+  CheckCircle2,
+  Loader2,
+  AlertTriangle,
+  PauseCircle,
+  Info,
+} from 'lucide-react';
 import { AuthedTopNav } from '../components/layout/AuthedTopNav';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,15 +19,18 @@ import { useAuth } from '../contexts/AuthContext';
 // ─────────────────────────────────────────────────────────────────────
 // ActiveMissionPage — the post-payment landing page.
 //
-// Prompt 4 Phase 2 (this file's baseline): scaffold the shell per
-// prototype.html. Shows mission hero, progress bar, 4 metrics cards,
-// live ticker placeholder, first 3 questions preview, disabled
-// "View Results" CTA.
+// Phase 2 scaffolded the shell; Phase 3 layers a Supabase Realtime
+// subscription on top of the 3s poll so new respondents appear in the
+// ticker as they land. Realtime is optimistic — if the channel drops
+// or the project's realtime quota is exhausted, the poll picks up the
+// slack. The two paths reconcile through a single Set<string> of seen
+// persona_ids, so the displayed count never double-counts.
 //
-// Polls `public.missions` every 3s for status + response rollup. The
-// real ticker (Supabase Realtime on `mission_responses`) lands in
-// Prompt 4 Phase 3; this file exposes the hook points so Phase 3 is
-// a purely additive diff.
+// Edge cases:
+//   • status === 'paused'      → amber banner, ticker frozen
+//   • 0 responses after 30s    → "Taking longer than expected" notice
+//   • collected >= target      → flip to completed (hero + CTA)
+//   • target == 0              → progress reads as "—"
 // ─────────────────────────────────────────────────────────────────────
 
 interface MissionQuestion {
@@ -39,13 +52,51 @@ interface MissionRow {
   completed_at: string | null;
 }
 
+interface LiveEvent {
+  personaId: string;
+  personaName: string;
+  at: number;
+}
+
 type State =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
-  | { kind: 'pending'; mission: MissionRow; responsesCollected: number }
-  | { kind: 'completed'; mission: MissionRow; responsesCollected: number };
+  | { kind: 'ready'; mission: MissionRow; events: LiveEvent[] };
 
 const POLL_INTERVAL_MS = 3000;
+const STUCK_THRESHOLD_MS = 30_000;
+const MAX_TICKER_EVENTS = 8;
+
+// ─────────────────────────────────────────────────────────────────────
+// Persona naming. persona_profile is free-form jsonb — different
+// generation pipelines may emit different shapes. We try the obvious
+// keys first, then fall back to a deterministic hash of persona_id so
+// two runs of the same mission show the same labels.
+// ─────────────────────────────────────────────────────────────────────
+
+function personaNameFrom(
+  personaId: string,
+  profile: unknown,
+  legacyFlat?: unknown,
+): string {
+  const candidates: unknown[] = [profile, legacyFlat];
+  for (const c of candidates) {
+    if (c && typeof c === 'object') {
+      const obj = c as Record<string, unknown>;
+      for (const key of ['name', 'display_name', 'displayName', 'synthetic_persona', 'persona']) {
+        const v = obj[key];
+        if (typeof v === 'string' && v.trim()) return v.trim();
+      }
+    }
+  }
+  // Deterministic fallback: "Persona A1B2" from the id.
+  let hash = 0;
+  for (let i = 0; i < personaId.length; i++) {
+    hash = (hash * 31 + personaId.charCodeAt(i)) | 0;
+  }
+  const tag = Math.abs(hash).toString(36).slice(0, 4).toUpperCase();
+  return `Persona ${tag}`;
+}
 
 const formatEta = (collected: number, target: number, startedAt: string | null): string => {
   if (target <= 0) return '—';
@@ -64,17 +115,42 @@ const formatEta = (collected: number, target: number, startedAt: string | null):
   return rem ? `~${hrs}h ${rem}m` : `~${hrs}h`;
 };
 
+// ─────────────────────────────────────────────────────────────────────
+
 export const ActiveMissionPage = () => {
   const { missionId } = useParams<{ missionId: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
   const [state, setState] = useState<State>({ kind: 'loading' });
+  const [mountedAt] = useState<number>(() => Date.now());
+
+  // Refs for values read inside realtime/poll callbacks that must stay
+  // stable (i.e. not force re-subscribe). seenPersonasRef is the source
+  // of truth for dedup across both paths.
+  const seenPersonasRef = useRef<Set<string>>(new Set());
   const cancelledRef = useRef(false);
 
-  // Fetch mission + current response count. Used by both initial load
-  // and the 3s poll. Kept in a ref-stable callback so the effect can
-  // invoke it without re-running on every render.
+  // Merge a new persona event into state. Idempotent: if the persona
+  // is already known, returns without changing anything.
+  const ingestPersona = useCallback(
+    (personaId: string, personaName: string, at: number) => {
+      if (!personaId) return;
+      if (seenPersonasRef.current.has(personaId)) return;
+      seenPersonasRef.current.add(personaId);
+      setState((prev) => {
+        if (prev.kind !== 'ready') return prev;
+        const evt: LiveEvent = { personaId, personaName, at };
+        const events = [evt, ...prev.events].slice(0, MAX_TICKER_EVENTS);
+        return { ...prev, events };
+      });
+    },
+    [],
+  );
+
+  // Fetch mission + reconcile response rollup. Invoked on mount and
+  // every POLL_INTERVAL_MS. Only the mission row is replaced wholesale;
+  // the event list is merged so the ticker never "forgets" personas.
   const fetchMissionSnapshot = useCallback(async () => {
     if (!missionId || !user) return;
 
@@ -98,37 +174,32 @@ export const ActiveMissionPage = () => {
       return;
     }
 
-    // Count distinct personas that have submitted answers. Each
-    // persona emits one row per question, so a naive COUNT(*) would
-    // wildly over-report. We ask Supabase for distinct persona_ids.
     const { data: rows, error: rErr } = await supabase
       .from('mission_responses')
-      .select('persona_id')
-      .eq('mission_id', mission.id);
+      .select('persona_id, persona_profile, answered_at')
+      .eq('mission_id', mission.id)
+      .order('answered_at', { ascending: true });
 
     if (cancelledRef.current) return;
 
-    let responsesCollected = 0;
-    if (!rErr && rows) {
-      const seen = new Set<string>();
-      for (const r of rows as Array<{ persona_id: string }>) {
-        if (r.persona_id) seen.add(r.persona_id);
-      }
-      responsesCollected = seen.size;
-    }
-
-    const target = mission.respondent_count || 0;
-    const isComplete =
-      mission.status === 'completed' ||
-      (target > 0 && responsesCollected >= target);
-
-    setState({
-      kind: isComplete ? 'completed' : 'pending',
-      mission,
-      responsesCollected,
+    // Flip to ready first so ingestPersona can attach events.
+    setState((prev) => {
+      if (prev.kind === 'ready') return { ...prev, mission };
+      return { kind: 'ready', mission, events: [] };
     });
-  }, [missionId, user]);
 
+    if (!rErr && rows) {
+      type Row = { persona_id: string; persona_profile: unknown; answered_at: string | null };
+      for (const r of rows as Row[]) {
+        if (!r.persona_id) continue;
+        const name = personaNameFrom(r.persona_id, r.persona_profile);
+        const at = r.answered_at ? new Date(r.answered_at).getTime() : Date.now();
+        ingestPersona(r.persona_id, name, Number.isFinite(at) ? at : Date.now());
+      }
+    }
+  }, [missionId, user, ingestPersona]);
+
+  // Auth guard + initial fetch + 3s poll.
   useEffect(() => {
     cancelledRef.current = false;
     if (authLoading) return;
@@ -152,6 +223,38 @@ export const ActiveMissionPage = () => {
     };
   }, [authLoading, user, missionId, navigate, fetchMissionSnapshot]);
 
+  // Supabase Realtime — INSERT on mission_responses. Subscribes only
+  // once per missionId; handler reads fresh state via the ingest ref.
+  useEffect(() => {
+    if (!missionId || !user) return;
+
+    const channel = supabase
+      .channel(`mission-responses:${missionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'mission_responses',
+          filter: `mission_id=eq.${missionId}`,
+        },
+        (payload) => {
+          const row = (payload as { new?: Record<string, unknown> }).new ?? {};
+          const personaId = typeof row.persona_id === 'string' ? row.persona_id : '';
+          if (!personaId) return;
+          const name = personaNameFrom(personaId, row.persona_profile);
+          const answeredAtRaw = typeof row.answered_at === 'string' ? row.answered_at : null;
+          const at = answeredAtRaw ? new Date(answeredAtRaw).getTime() : Date.now();
+          ingestPersona(personaId, name, Number.isFinite(at) ? at : Date.now());
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [missionId, user, ingestPersona]);
+
   return (
     <div className="min-h-[100dvh] bg-[#0B0C15] flex flex-col">
       <AuthedTopNav />
@@ -159,11 +262,12 @@ export const ActiveMissionPage = () => {
         <div className="max-w-5xl mx-auto w-full">
           {state.kind === 'loading' && <LoadingShell />}
           {state.kind === 'error' && <ErrorShell message={state.message} />}
-          {(state.kind === 'pending' || state.kind === 'completed') && (
+          {state.kind === 'ready' && (
             <ActivePanel
               mission={state.mission}
-              responsesCollected={state.responsesCollected}
-              isComplete={state.kind === 'completed'}
+              events={state.events}
+              responsesCollected={seenPersonasRef.current.size}
+              mountedAt={mountedAt}
             />
           )}
         </div>
@@ -199,12 +303,18 @@ const ErrorShell = ({ message }: { message: string }) => (
 
 interface ActivePanelProps {
   mission: MissionRow;
+  events: LiveEvent[];
   responsesCollected: number;
-  isComplete: boolean;
+  mountedAt: number;
 }
 
-const ActivePanel = ({ mission, responsesCollected, isComplete }: ActivePanelProps) => {
+const ActivePanel = ({ mission, events, responsesCollected, mountedAt }: ActivePanelProps) => {
+  const navigate = useNavigate();
   const target = mission.respondent_count || 0;
+  const isPaused = mission.status === 'paused';
+  const isComplete =
+    mission.status === 'completed' || (target > 0 && responsesCollected >= target);
+
   const pct = useMemo(() => {
     if (target <= 0) return 0;
     return Math.min(100, Math.round((responsesCollected / target) * 100));
@@ -214,6 +324,17 @@ const ActivePanel = ({ mission, responsesCollected, isComplete }: ActivePanelPro
     () => (isComplete ? 'Complete' : formatEta(responsesCollected, target, mission.started_at)),
     [isComplete, responsesCollected, target, mission.started_at],
   );
+
+  // "Stuck at 0" detector — a simple wall-clock check against mount
+  // rather than started_at, because started_at may not be set before
+  // the backend generator kicks off. We intentionally don't track this
+  // via setState; a second-granularity re-render from the poll is
+  // enough to flip it in practice.
+  const isStuck =
+    !isComplete &&
+    !isPaused &&
+    responsesCollected === 0 &&
+    Date.now() - mountedAt > STUCK_THRESHOLD_MS;
 
   const firstThree = (mission.questions ?? []).slice(0, 3);
 
@@ -226,26 +347,8 @@ const ActivePanel = ({ mission, responsesCollected, isComplete }: ActivePanelPro
         transition={{ duration: 0.3 }}
         className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#141520] to-[#0f1018] p-6 sm:p-8"
       >
-        <div className="flex items-center gap-2 mb-4">
-          <span
-            className={[
-              'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1',
-              'font-display text-[10px] font-extrabold uppercase tracking-[0.12em]',
-              isComplete
-                ? 'border-green-400/40 bg-green-400/10 text-green-300'
-                : 'border-lime-400/40 bg-lime-400/10 text-lime-300',
-            ].join(' ')}
-          >
-            {isComplete ? (
-              <>
-                <CheckCircle2 className="w-3 h-3" aria-hidden /> Mission Complete
-              </>
-            ) : (
-              <>
-                <Rocket className="w-3 h-3" aria-hidden /> Mission Active
-              </>
-            )}
-          </span>
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <StatusChip isComplete={isComplete} isPaused={isPaused} />
         </div>
         <h1 className="font-display text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
           {mission.title?.trim() || 'Your mission is live'}
@@ -260,7 +363,11 @@ const ActivePanel = ({ mission, responsesCollected, isComplete }: ActivePanelPro
         <div className="mt-6">
           <div className="flex items-baseline justify-between mb-2">
             <div className="font-body text-xs text-t3">
-              {isComplete ? 'All responses collected' : 'Collecting responses…'}
+              {isComplete
+                ? 'All responses collected'
+                : isPaused
+                  ? 'Mission paused — no responses collected'
+                  : 'Collecting responses…'}
             </div>
             <div className="font-display text-xs font-bold text-white tabular-nums">
               {responsesCollected} / {target || '—'} · {pct}%
@@ -268,7 +375,12 @@ const ActivePanel = ({ mission, responsesCollected, isComplete }: ActivePanelPro
           </div>
           <div className="h-2 rounded-full bg-white/5 overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-lime-300 to-green-300"
+              className={[
+                'h-full',
+                isPaused
+                  ? 'bg-amber-300/60'
+                  : 'bg-gradient-to-r from-lime-300 to-green-300',
+              ].join(' ')}
               initial={{ width: 0 }}
               animate={{ width: `${pct}%` }}
               transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -279,6 +391,30 @@ const ActivePanel = ({ mission, responsesCollected, isComplete }: ActivePanelPro
           </div>
         </div>
       </motion.div>
+
+      {/* Paused banner */}
+      {isPaused && (
+        <div className="rounded-xl border border-amber-300/30 bg-amber-300/5 p-4 flex items-start gap-3">
+          <PauseCircle className="w-5 h-5 text-amber-300 mt-0.5" aria-hidden />
+          <div className="font-body text-sm text-t2">
+            This mission is paused. Contact support to resume collection.
+          </div>
+        </div>
+      )}
+
+      {/* Stuck banner */}
+      {isStuck && (
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 flex items-start gap-3">
+          <Info className="w-5 h-5 text-t3 mt-0.5" aria-hidden />
+          <div className="font-body text-sm text-t2">
+            Taking longer than expected — no responses yet.{' '}
+            <span className="text-t3">
+              AI persona generation typically starts within 30 seconds. If nothing
+              appears in the next minute, reload the page.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Metric cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -303,26 +439,52 @@ const ActivePanel = ({ mission, responsesCollected, isComplete }: ActivePanelPro
         />
         <MetricCard
           label="Status"
-          value={isComplete ? 'Complete' : 'In flight'}
+          value={isComplete ? 'Complete' : isPaused ? 'Paused' : 'In flight'}
           sub={mission.started_at ? 'Launched' : 'Queued'}
           icon={<Rocket className="w-4 h-4" aria-hidden />}
         />
       </div>
 
-      {/* Live ticker (placeholder — Realtime wiring in Phase 3) */}
+      {/* Live ticker */}
       <div className="rounded-2xl border border-white/10 bg-[#141520] p-5 sm:p-6">
         <div className="flex items-center gap-2 mb-3">
           <span className="font-display text-[10px] font-extrabold uppercase tracking-[0.12em] text-lime-300">
             Live activity
           </span>
-          <span className="flex w-1.5 h-1.5 rounded-full bg-lime-300 animate-pulse" aria-hidden />
+          {!isPaused && !isComplete && (
+            <span className="flex w-1.5 h-1.5 rounded-full bg-lime-300 animate-pulse" aria-hidden />
+          )}
         </div>
         <ul className="space-y-2 font-body text-sm text-t2">
-          <TickerRow>Target audience profile constructed</TickerRow>
-          <TickerRow>AI personas initialised ({target || '—'})</TickerRow>
-          <TickerRow>Survey distributed to respondent pool</TickerRow>
-          {responsesCollected > 0 && (
-            <TickerRow>Responses streaming in — {responsesCollected} so far</TickerRow>
+          {/* Persona events (newest first). AnimatePresence keeps
+              newly-inserted rows subtly fading in. */}
+          <AnimatePresence initial={false}>
+            {events.map((e) => (
+              <motion.li
+                key={e.personaId}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="flex items-start gap-2"
+              >
+                <span className="mt-[5px] w-1.5 h-1.5 rounded-full bg-lime-300 shrink-0" aria-hidden />
+                <span>
+                  <span className="text-white font-medium">{e.personaName}</span>{' '}
+                  completed the survey
+                </span>
+              </motion.li>
+            ))}
+          </AnimatePresence>
+
+          {/* Seed status lines — shown if we have no persona events yet
+              or alongside them as context. */}
+          {events.length === 0 && (
+            <>
+              <TickerRow>Target audience profile constructed</TickerRow>
+              <TickerRow>AI personas initialising ({target || '—'})</TickerRow>
+              <TickerRow>Survey distributed to respondent pool</TickerRow>
+            </>
           )}
           {isComplete && <TickerRow done>All responses validated — results ready</TickerRow>}
         </ul>
@@ -381,6 +543,28 @@ const ActivePanel = ({ mission, responsesCollected, isComplete }: ActivePanelPro
 // ─────────────────────────────────────────────────────────────────────
 // Primitives
 // ─────────────────────────────────────────────────────────────────────
+
+const StatusChip = ({ isComplete, isPaused }: { isComplete: boolean; isPaused: boolean }) => {
+  if (isComplete) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-md border border-green-400/40 bg-green-400/10 text-green-300 px-2.5 py-1 font-display text-[10px] font-extrabold uppercase tracking-[0.12em]">
+        <CheckCircle2 className="w-3 h-3" aria-hidden /> Mission Complete
+      </span>
+    );
+  }
+  if (isPaused) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-300/40 bg-amber-300/10 text-amber-300 px-2.5 py-1 font-display text-[10px] font-extrabold uppercase tracking-[0.12em]">
+        <PauseCircle className="w-3 h-3" aria-hidden /> Mission Paused
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-lime-400/40 bg-lime-400/10 text-lime-300 px-2.5 py-1 font-display text-[10px] font-extrabold uppercase tracking-[0.12em]">
+      <Rocket className="w-3 h-3" aria-hidden /> Mission Active
+    </span>
+  );
+};
 
 interface MetricCardProps {
   label: string;
