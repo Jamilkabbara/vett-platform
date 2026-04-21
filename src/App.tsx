@@ -29,7 +29,12 @@ function App() {
         position="top-center"
         containerStyle={{
           top: 80,
-          zIndex: 9999,
+          // Must render above the highest modal in the app. The payment
+          // modal is at z-[10000]; bumping the Toaster to 10100 keeps error
+          // toasts visible when the modal is open — otherwise a payment
+          // failure's toast renders behind the backdrop and the user sees
+          // the spinner revert with "no error."
+          zIndex: 10100,
         }}
         toastOptions={{
           duration: 3000,
@@ -41,7 +46,7 @@ function App() {
             padding: '16px',
             fontSize: '14px',
             fontWeight: '500',
-            zIndex: 9999,
+            zIndex: 10100,
           },
           success: {
             iconTheme: {
