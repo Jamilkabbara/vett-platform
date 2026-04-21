@@ -5,6 +5,34 @@ import toast from 'react-hot-toast';
 
 import type { Question } from './QuestionEngine';
 import { refineQuestion } from '../../services/aiService';
+import { getQuestionTypeConfig } from '../../data/questionTypes';
+
+/**
+ * Phase 7 — AI-picked viz badge.
+ *
+ * Each question type already declares a `visual` string in
+ * data/questionTypes.ts (DonutChart, BarChart, Histogram, GaugeChart,
+ * WordCloud). We surface this as a small read-only chip on the question
+ * card so the user can preview WHICH chart type the AI will render
+ * their results with — without giving them a knob to fiddle.
+ *
+ * Display label keeps it short to avoid blowing out the 375px header
+ * row. Icon is intentionally a static emoji, not the Lucide icon the
+ * config ships, so the badge visually pops against the rest of the
+ * lucide-heavy chrome.
+ */
+const VIZ_LABEL: Record<string, { emoji: string; label: string }> = {
+  DonutChart: { emoji: '🥧', label: 'Pie' },
+  BarChart: { emoji: '📊', label: 'Bar' },
+  Histogram: { emoji: '📶', label: 'Bar' },
+  GaugeChart: { emoji: '🎚', label: 'Gauge' },
+  WordCloud: { emoji: '💬', label: 'Word cloud' },
+};
+
+function vizFor(type: Question['type']): { emoji: string; label: string } {
+  const key = getQuestionTypeConfig(type).visual;
+  return VIZ_LABEL[key] ?? { emoji: '📊', label: 'Chart' };
+}
 
 /**
  * MissionControlQuestions — Commit 6 of the redesign.
@@ -496,6 +524,28 @@ export const MissionControlQuestions = ({
                       Screening
                     </span>
                   )}
+                  {/* Phase 7: read-only viz badge.
+                      title attribute gives users the full "AI-picked" context
+                      without taking up chip space. */}
+                  {(() => {
+                    const viz = vizFor(q.type);
+                    return (
+                      <span
+                        title={`AI will visualise responses as a ${viz.label.toLowerCase()} chart`}
+                        className={[
+                          'inline-flex items-center gap-1 rounded-xs',
+                          'bg-bg4 text-t3 border border-b2',
+                          'px-1.5 py-0.5',
+                          'font-display font-bold text-[8px] uppercase tracking-[0.1em]',
+                          'select-none',
+                        ].join(' ')}
+                        aria-label={`AI-picked visualisation: ${viz.label}`}
+                      >
+                        <span aria-hidden>{viz.emoji}</span>
+                        <span>{viz.label}</span>
+                      </span>
+                    );
+                  })()}
 
                   <div className="flex-1" />
 
