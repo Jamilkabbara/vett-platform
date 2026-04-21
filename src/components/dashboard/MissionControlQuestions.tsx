@@ -102,6 +102,40 @@ export const MissionControlQuestions = ({
   // ── Remove confirm state (one at a time) ─────────────────────────
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
+  // ── Phase 6 — Q1 auto-screening ──────────────────────────────────
+  // Invariant: index 0 is ALWAYS the Screening question; everything
+  // else is ALWAYS non-screening. We enforce this by normalising every
+  // list before it leaves the component. Deleting Q1 auto-promotes Q2
+  // (which was already at index 1 → becomes index 0 → gets the flag).
+  // Emitting through `emit()` keeps the DB state eventually consistent
+  // with the UI without requiring a separate save path.
+  const emit = useCallback(
+    (next: Question[]) => {
+      onChange(
+        next.map((q, i) => ({
+          ...q,
+          isScreening: i === 0,
+        })),
+      );
+    },
+    [onChange],
+  );
+
+  // One-shot normaliser: if the hydrated list from DB isn't already in
+  // the invariant shape, fix it on first render. Guarded by a ref so
+  // parent re-renders with a re-normalised list don't trigger an
+  // infinite save loop.
+  const didNormalizeRef = useRef(false);
+  useEffect(() => {
+    if (didNormalizeRef.current) return;
+    if (questions.length === 0) return;
+    const wrong = questions.some(
+      (q, i) => (i === 0) !== !!q.isScreening,
+    );
+    if (wrong) emit(questions);
+    didNormalizeRef.current = true;
+  }, [questions, emit]);
+
   // ── Option edit state ────────────────────────────────────────────
   // Phase 5: click an answer chip to rename it inline. Only one chip
   // across the whole list can be in edit mode at a time — a second
@@ -156,7 +190,7 @@ export const MissionControlQuestions = ({
         // Add question and never saved), drop it so the list doesn't end
         // up littered with "Empty question" placeholders.
         if (existing && !existing.text.trim()) {
-          onChange(questions.filter((q) => q.id !== id));
+          emit(questions.filter((q) => q.id !== id));
         }
         setEditingId(null);
         setEditText('');
@@ -165,11 +199,11 @@ export const MissionControlQuestions = ({
       const nextList = questions.map((q) =>
         q.id === id ? { ...q, text: trimmed } : q,
       );
-      onChange(nextList);
+      emit(nextList);
       setEditingId(null);
       setEditText('');
     },
-    [questions, onChange],
+    [questions, emit],
   );
 
   const handleCancelEdit = useCallback(() => {
@@ -178,12 +212,12 @@ export const MissionControlQuestions = ({
     if (editingId) {
       const existing = questions.find((q) => q.id === editingId);
       if (existing && !existing.text.trim()) {
-        onChange(questions.filter((q) => q.id !== editingId));
+        emit(questions.filter((q) => q.id !== editingId));
       }
     }
     setEditingId(null);
     setEditText('');
-  }, [editingId, questions, onChange]);
+  }, [editingId, questions, emit]);
 
   const handleRefine = useCallback(
     async (q: Question) => {
@@ -221,7 +255,7 @@ export const MissionControlQuestions = ({
               }
             : existing,
         );
-        onChange(nextList);
+        emit(nextList);
       } catch (err) {
         console.error('[MissionControlQuestions] refine failed', err);
         toast.error("Couldn't refine that question — try again in a sec.");
@@ -230,7 +264,7 @@ export const MissionControlQuestions = ({
         setRefiningId(null);
       }
     },
-    [questions, onChange, goalId, context, refiningId],
+    [questions, emit, goalId, context, refiningId],
   );
 
   // ── Option handlers (Phase 5) ────────────────────────────────────
@@ -261,7 +295,7 @@ export const MissionControlQuestions = ({
         return;
       }
       const nextOptions = target.options.map((o, i) => (i === idx ? trimmed : o));
-      onChange(
+      emit(
         questions.map((q) =>
           q.id === qId ? { ...q, options: nextOptions } : q,
         ),
@@ -269,7 +303,7 @@ export const MissionControlQuestions = ({
       setOptionEdit(null);
       setOptionEditText('');
     },
-    [questions, onChange],
+    [questions, emit],
   );
 
   const handleAddOption = useCallback(
@@ -281,7 +315,7 @@ export const MissionControlQuestions = ({
         return;
       }
       const nextOptions = [...target.options, 'New option'];
-      onChange(
+      emit(
         questions.map((q) =>
           q.id === qId ? { ...q, options: nextOptions } : q,
         ),
@@ -290,7 +324,7 @@ export const MissionControlQuestions = ({
       setOptionEdit({ qId, idx: nextOptions.length - 1 });
       setOptionEditText('New option');
     },
-    [questions, onChange],
+    [questions, emit],
   );
 
   const handleRemoveOption = useCallback(
@@ -302,7 +336,7 @@ export const MissionControlQuestions = ({
         return;
       }
       const nextOptions = target.options.filter((_, i) => i !== idx);
-      onChange(
+      emit(
         questions.map((q) =>
           q.id === qId ? { ...q, options: nextOptions } : q,
         ),
@@ -317,7 +351,7 @@ export const MissionControlQuestions = ({
         setOptionEditText('');
       }
     },
-    [questions, onChange, optionEdit],
+    [questions, emit, optionEdit],
   );
 
   const handleAdd = useCallback(() => {
@@ -330,16 +364,16 @@ export const MissionControlQuestions = ({
         type: 'rating',
         options: [],
         aiRefined: false,
-        isScreening: false,
+        isScreening: false, // emit() will flip this if it lands at index 0
         qualifyingAnswer: undefined,
         hasPIIError: false,
       },
     ];
-    onChange(nextList);
+    emit(nextList);
     // Drop the user into edit mode on the new card.
     setEditingId(id);
     setEditText('');
-  }, [questions, onChange]);
+  }, [questions, emit]);
 
   const handleRequestRemove = useCallback((id: string) => {
     setConfirmRemoveId(id);
@@ -351,15 +385,17 @@ export const MissionControlQuestions = ({
 
   const handleConfirmRemove = useCallback(
     (id: string) => {
+      // emit() auto-promotes the new index-0 question to Screening if
+      // Q1 was the one being deleted — that's the Phase 6 guarantee.
       const nextList = questions.filter((q) => q.id !== id);
-      onChange(nextList);
+      emit(nextList);
       setConfirmRemoveId(null);
       if (editingId === id) {
         setEditingId(null);
         setEditText('');
       }
     },
-    [questions, onChange, editingId],
+    [questions, emit, editingId],
   );
 
   // ── Render ────────────────────────────────────────────────────────
