@@ -18,6 +18,7 @@ import { ResultsPage } from './pages/ResultsPage';
 import { MissionsListPage } from './pages/MissionsListPage';
 import { SignInPage } from './pages/SignInPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { DesignSystemPreview } from './pages/DesignSystemPreview';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ScrollToTop } from './components/shared/ScrollToTop';
@@ -91,6 +92,7 @@ function App() {
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<Navigate to="/signin?tab=signup" replace />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Redirect old/obsolete routes to setup */}
           <Route path="/create" element={<Navigate to="/setup" replace />} />
