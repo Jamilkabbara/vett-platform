@@ -16,7 +16,7 @@ interface StickyActionFooterProps {
   respondentCount?: number;
 }
 
-export const StickyActionFooter = ({ pricingBreakdown, onLaunch, isLaunching, respondentCount = 50 }: StickyActionFooterProps) => {
+export const StickyActionFooter = ({ pricingBreakdown, onLaunch, isLaunching, respondentCount = 10 }: StickyActionFooterProps) => {
   const addOnsTotal = pricingBreakdown.total - pricingBreakdown.base;
   const hasAddOns = addOnsTotal > 0;
 

@@ -72,18 +72,26 @@ export const ProfilePage = () => {
 
   const loadProfile = async () => {
     try {
+      // Select only columns that actually exist on `public.profiles`.
+      // `name`, `vat_tax_id`, and `updated_at` were dropped long ago — reading
+      // them returns a 400 from PostgREST and wipes the form on every mount.
+      // `full_name` is the legacy single-string column; `first_name` +
+      // `last_name` are the split replacements. We display a joined string.
       const { data, error } = await supabase
         .from('profiles')
-        .select('name, company_name, vat_tax_id')
+        .select('first_name, last_name, full_name, company_name')
         .eq('id', user?.id)
         .maybeSingle();
 
       if (error) throw error;
 
       if (data) {
-        setName(data.name || '');
+        const joined = [data.first_name, data.last_name].filter(Boolean).join(' ');
+        setName(joined || data.full_name || '');
         setCompanyName(data.company_name || '');
-        setVatTaxId(data.vat_tax_id || '');
+        // VAT / Tax ID has no persisted home yet — keep the field as
+        // session-local until a migration adds the column. See PROMPT_3_STUBS.md.
+        setVatTaxId('');
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -95,14 +103,23 @@ export const ProfilePage = () => {
     setLoading(true);
 
     try {
+      // Split the single `name` input back into first/last for DB storage.
+      // Anything after the first whitespace token goes into last_name so users
+      // with compound last names ("Van Der Berg") keep them intact.
+      const trimmed = name.trim();
+      const firstSpace = trimmed.indexOf(' ');
+      const firstName = firstSpace === -1 ? trimmed : trimmed.slice(0, firstSpace);
+      const lastName = firstSpace === -1 ? '' : trimmed.slice(firstSpace + 1);
+
       const { error } = await supabase
         .from('profiles')
         .upsert({
           id: user?.id,
-          name,
+          first_name: firstName || null,
+          last_name: lastName || null,
+          full_name: trimmed || null,
           company_name: companyName,
-          vat_tax_id: vatTaxId,
-          updated_at: new Date().toISOString(),
+          // `vat_tax_id` and `updated_at` columns don't exist — don't write them.
         });
 
       if (error) throw error;

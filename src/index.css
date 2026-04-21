@@ -1,9 +1,53 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ──────────────────────────────────────────────────────────────
+   VETT DESIGN TOKENS (mirrored from .design-reference/prototype.html)
+   Tailwind utilities above expose these same values — the CSS
+   variables are here so raw CSS classes migrated from the
+   prototype (e.g. .topnav, .card, .btn-lime) keep working during
+   the redesign rollout.
+────────────────────────────────────────────────────────────── */
+:root {
+  --bg:  #0B0C15;
+  --bg2: #111827;
+  --bg3: #1a2233;
+  --bg4: #0d1117;
+
+  --b1: #1f2937;
+  --b2: #374151;
+
+  --lime: #BEF264;
+  --l10:  rgba(190,242,100,.10);
+  --l20:  rgba(190,242,100,.20);
+  --l30:  rgba(190,242,100,.30);
+
+  --t1: #e5e7eb;
+  --t2: #9ca3af;
+  --t3: #6b7280;
+  --t4: #374151;
+  --t5: #1f2937;
+
+  --grn: #4ade80;
+  --red: #f87171;
+  --org: #fb923c;
+  --pur: #a78bfa;
+  --blu: #60a5fa;
+
+  --indigo: #6366F1;
+  --purple-from: #6d28d9;
+  --purple-to:   #4f46e5;
+
+  --fh: 'Inter', sans-serif;
+  --fb: 'Manrope', sans-serif;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Global resets
+────────────────────────────────────────────────────────────── */
 html,
 body {
   width: 100%;
@@ -11,8 +55,9 @@ body {
   overflow-x: hidden;
   position: relative;
   touch-action: pan-y;
-  background-color: #0B0C15;
-  color: white;
+  background-color: var(--bg);
+  color: var(--t1);
+  font-family: var(--fb);
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
@@ -33,6 +78,10 @@ body {
   position: relative;
 }
 
+/* ──────────────────────────────────────────────────────────────
+   Legacy helpers (used by the existing pages). Leave in place
+   until each page is rebuilt in Prompts 2-8.
+────────────────────────────────────────────────────────────── */
 .aurora-blob {
   position: absolute;
   filter: blur(90px);
@@ -181,6 +230,16 @@ body {
 
 .animate-marquee {
   animation: marquee 25s linear infinite;
+}
+
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .35; }
 }
 
 input[type="range"].slider::-webkit-slider-thumb {

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { LandingPage } from './pages/LandingPage';
@@ -17,19 +16,25 @@ import { HelpPage } from './pages/HelpPage';
 import { MissionSuccessPage } from './pages/MissionSuccessPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { MissionsListPage } from './pages/MissionsListPage';
+import { SignInPage } from './pages/SignInPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { DesignSystemPreview } from './pages/DesignSystemPreview';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ScrollToTop } from './components/shared/ScrollToTop';
 
 function App() {
-  const [idea, setIdea] = useState('');
-
   return (
     <BrowserRouter>
       <Toaster
         position="top-center"
         containerStyle={{
           top: 80,
-          zIndex: 9999,
+          // Must render above the highest modal in the app. The payment
+          // modal is at z-[10000]; bumping the Toaster to 10100 keeps error
+          // toasts visible when the modal is open — otherwise a payment
+          // failure's toast renders behind the backdrop and the user sees
+          // the spinner revert with "no error."
+          zIndex: 10100,
         }}
         toastOptions={{
           duration: 3000,
@@ -41,7 +46,7 @@ function App() {
             padding: '16px',
             fontSize: '14px',
             fontWeight: '500',
-            zIndex: 9999,
+            zIndex: 10100,
           },
           success: {
             iconTheme: {
@@ -68,7 +73,7 @@ function App() {
           <ScrollToTop />
           <Routes>
           <Route path="/" element={<Navigate to="/landing" replace />} />
-          <Route path="/landing" element={<LandingPage idea={idea} setIdea={setIdea} />} />
+          <Route path="/landing" element={<LandingPage />} />
           <Route path="/setup" element={<MissionSetupPage />} />
           <Route path="/mission-control" element={<DashboardLayout><DashboardPage /></DashboardLayout>} />
           <Route path="/missions" element={<MissionsListPage />} />
@@ -77,9 +82,15 @@ function App() {
           <Route path="/dashboard" element={<MissionsListPage />} />
           <Route path="/dashboard/:missionId" element={<DashboardPage />} />
           <Route path="/mission/:missionId" element={<ActiveMissionPage />} />
+          <Route path="/mission/:missionId/live" element={<ActiveMissionPage />} />
           <Route path="/mission-success" element={<MissionSuccessPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+
+          {/* Auth — full-page replacements for the old AuthModal. */}
+          <Route path="/signin" element={<SignInPage />} />
+          <Route path="/signup" element={<Navigate to="/signin?tab=signup" replace />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* Redirect old/obsolete routes to setup */}
           <Route path="/create" element={<Navigate to="/setup" replace />} />
@@ -94,6 +105,10 @@ function App() {
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/api" element={<ApiPage />} />
           <Route path="/help" element={<HelpPage />} />
+
+          {/* Internal design-system preview — not linked from the app. */}
+          <Route path="/__design" element={<DesignSystemPreview />} />
+
           <Route path="*" element={<Navigate to="/landing" replace />} />
           </Routes>
         </div>

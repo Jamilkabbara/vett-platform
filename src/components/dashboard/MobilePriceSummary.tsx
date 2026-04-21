@@ -16,7 +16,7 @@ interface MobilePriceSummaryProps {
   respondentCount?: number;
 }
 
-export const MobilePriceSummary = ({ pricingBreakdown, onLaunch, isLaunching, respondentCount = 50 }: MobilePriceSummaryProps) => {
+export const MobilePriceSummary = ({ pricingBreakdown, onLaunch, isLaunching, respondentCount = 10 }: MobilePriceSummaryProps) => {
   return (
     <motion.div
       initial={{ y: 100, opacity: 0 }}

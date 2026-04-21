@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Check, CreditCard, Lock, X } from 'lucide-react';
+import { Shield, Check, CreditCard, Lock, X, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { loadStripe } from '@stripe/stripe-js';
+import type {
+  PaymentRequest,
+  PaymentRequestPaymentMethodEvent,
+  StripeError,
+} from '@stripe/stripe-js';
 import {
   Elements,
   CardNumberElement,
@@ -14,10 +19,56 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { api } from '../../lib/apiClient';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthModal } from '../layout/AuthModal';
 
+// Flip the mission row from draft → active the moment the charge clears so
+// the post-payment page can trust mission.status. We only touch columns that
+// exist on public.missions today (status + paid_at) — payment_status and
+// stripe_payment_intent_id are handled server-side by /api/payments/confirm.
+async function activateMission(missionId: string | undefined): Promise<void> {
+  if (!missionId) return;
+  const { error } = await supabase
+    .from('missions')
+    .update({ status: 'active', paid_at: new Date().toISOString() })
+    .eq('id', missionId);
+  if (error) {
+    // Don't block navigation — the backend confirm endpoint is authoritative.
+    console.warn('[payment] mission activate failed (non-blocking)', error);
+  }
+}
+
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+
+/**
+ * Normalise whatever got thrown into a user-readable string. Stripe errors
+ * include `code` / `decline_code` which we surface so the user can act
+ * ("Your card was declined" → "Use a different card" rather than silence).
+ *
+ * This is the root cause of the reported "4242 → spinner reverts, no error"
+ * bug: every catch block previously did `err.message || 'Payment failed'`
+ * and routed it through a toast — and the global Toaster was z-indexed
+ * BELOW the modal backdrop, so the toast rendered invisibly behind the
+ * modal. We now surface the message inline inside the modal AND bump the
+ * Toaster z-index (see App.tsx).
+ */
+function extractErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object') {
+    const e = err as Partial<StripeError> & { message?: string };
+    if (e.code === 'card_declined' && e.decline_code) {
+      return `Card declined (${e.decline_code}). Try a different card.`;
+    }
+    if (e.message && typeof e.message === 'string' && e.message.trim()) {
+      return e.message;
+    }
+    if (e.code && typeof e.code === 'string') {
+      return `Payment error: ${e.code}`;
+    }
+  }
+  if (typeof err === 'string' && err.trim()) return err;
+  return 'Payment failed. Please try again.';
+}
 
 interface VettingPaymentModalProps {
   isOpen: boolean;
@@ -73,22 +124,56 @@ const PaymentForm = ({
   const [promoMessage, setPromoMessage] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
   const [discountedPrice, setDiscountedPrice] = useState(totalCost);
-  const [paymentRequest, setPaymentRequest] = useState<any>(null);
+  const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
   const [canMakeExpressPayment, setCanMakeExpressPayment] = useState(false);
+  /**
+   * Inline error surface. This lives *inside* the modal so failures stay
+   * visible even if a toast is miscounted or the user dismisses it. Cleared
+   * on every new payment attempt and on modal close.
+   */
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Set up Apple Pay / Google Pay via Stripe Payment Request
+  /**
+   * Set up Apple Pay / Google Pay via Stripe's Payment Request API.
+   *
+   * ── Availability requirements ─────────────────────────────────────
+   *   - Apple Pay: Safari on macOS/iOS, a card in Wallet, and the domain
+   *     MUST be registered in the Stripe Dashboard under
+   *     Settings → Payments → Apple Pay → "Add new domain". We upload
+   *     the file returned by /.well-known/apple-developer-merchantid-domain-association
+   *     to the site root. This is a MANUAL step per environment — dev,
+   *     staging, and production each need their own verification. See
+   *     .design-reference/STRIPE_DOMAIN_VERIFICATION.md for the runbook.
+   *   - Google Pay: Chrome with a saved card. No domain registration.
+   *   - `canMakePayment()` only resolves truthy once the browser confirms
+   *     at least one method. If it resolves null the Payment Request button
+   *     is never rendered and we silently fall back to the card form.
+   *
+   * ── displayItems ──────────────────────────────────────────────────
+   * The wallet sheet shows `total.label` as the top line and `displayItems`
+   * as the breakdown. Shipping this itemised list ("100 × $1.90 = $190")
+   * matches what the mission pricing panel shows and avoids the "Why am I
+   * paying X?" confusion that a single total row causes.
+   */
   useEffect(() => {
     if (!stripe || discountedPrice <= 0) return;
 
     const amountInCents = Math.round(discountedPrice * 100);
+    const perRespondent = respondentCount > 0 ? discountedPrice / respondentCount : 0;
 
     const pr = stripe.paymentRequest({
       country: 'US',
       currency: 'usd',
       total: {
-        label: `Vettit Mission — ${respondentCount} Respondents`,
+        label: 'Vettit Mission',
         amount: amountInCents,
       },
+      displayItems: [
+        {
+          label: `${respondentCount} respondents × $${perRespondent.toFixed(2)}`,
+          amount: amountInCents,
+        },
+      ],
       requestPayerName: false,
       requestPayerEmail: false,
     });
@@ -97,59 +182,87 @@ const PaymentForm = ({
       if (result) {
         setPaymentRequest(pr);
         setCanMakeExpressPayment(true);
+      } else {
+        // Explicitly clear so a stale request from a prior mount doesn't
+        // leak through when the user retries on a browser that doesn't
+        // support wallet payments.
+        setPaymentRequest(null);
+        setCanMakeExpressPayment(false);
       }
     });
 
-    pr.on('paymentmethod', async (event) => {
+    const onPaymentMethod = async (event: PaymentRequestPaymentMethodEvent) => {
       if (!user) {
         event.complete('fail');
         setShowAuthModal(true);
         return;
       }
+      if (!missionId) {
+        event.complete('fail');
+        const msg = 'Mission not found — reload the page and try again.';
+        setErrorMessage(msg);
+        toast.error(msg);
+        return;
+      }
       setIsProcessing(true);
       setStage('processing');
+      setErrorMessage(null);
       const toastId = toast.loading('Processing payment...');
 
       try {
-        const { clientSecret, paymentIntentId } = await api.post('/api/payments/create-intent', { missionId });
+        const { clientSecret, paymentIntentId } = await api.post(
+          '/api/payments/create-intent',
+          { missionId },
+        );
+        if (!clientSecret) {
+          throw new Error('Payment could not be started — our server did not return a client secret.');
+        }
 
         const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
           clientSecret,
           { payment_method: event.paymentMethod.id },
-          { handleActions: false }
+          { handleActions: false },
         );
 
         if (confirmError) {
           event.complete('fail');
-          throw new Error(confirmError.message || 'Payment failed');
+          throw confirmError;
         }
 
         if (paymentIntent?.status === 'requires_action') {
           const { error: actionError } = await stripe.confirmCardPayment(clientSecret);
           if (actionError) {
             event.complete('fail');
-            throw new Error(actionError.message || 'Payment authentication failed');
+            throw actionError;
           }
         }
 
         event.complete('success');
         await api.post('/api/payments/confirm', { missionId, paymentIntentId });
+        await activateMission(missionId);
 
         setStage('success');
         toast.success('Mission Launched!', { id: toastId });
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         onClose();
-        navigate(`/mission-success?respondents=${respondentCount}&total=${discountedPrice.toFixed(2)}`);
-      } catch (err: any) {
-        event.complete('fail');
+        navigate(`/mission/${missionId}/live`);
+      } catch (err: unknown) {
+        // Apple Pay / Google Pay sheet closes on event.complete('fail');
+        // we may have already completed it above — ignore double-complete.
+        try { event.complete('fail'); } catch { /* already completed */ }
+
+        const msg = extractErrorMessage(err);
         setIsProcessing(false);
         setStage('payment');
-        toast.error(err.message || 'Payment failed. Please try again.', { id: toastId });
+        setErrorMessage(msg);
+        toast.error(msg, { id: toastId });
+        console.error('[payment] wallet charge failed', err);
       }
-    });
+    };
 
-    return () => { pr.off('paymentmethod'); };
-  }, [stripe, discountedPrice, respondentCount, missionId]);
+    pr.on('paymentmethod', onPaymentMethod);
+    return () => { pr.off('paymentmethod', onPaymentMethod); };
+  }, [stripe, discountedPrice, respondentCount, missionId, user, navigate, onClose]);
 
   const handleApplyPromo = () => {
     if (promoCode.toUpperCase() === 'VETT100') {
@@ -196,6 +309,7 @@ const PaymentForm = ({
       setPromoMessage('');
       setPromoApplied(false);
       setDiscountedPrice(totalCost);
+      setErrorMessage(null);
     }
   }, [isOpen, totalCost]);
 
@@ -205,53 +319,101 @@ const PaymentForm = ({
       return;
     }
 
+    // Clear any prior error banner on retry so the user isn't staring at
+    // a stale message while their new attempt spins.
+    setErrorMessage(null);
     setIsProcessing(true);
     setStage('processing');
     const toastId = toast.loading('Processing secure payment...');
 
+    const fail = (msg: string, err?: unknown) => {
+      setIsProcessing(false);
+      setStage('payment');
+      setErrorMessage(msg);
+      toast.error(msg, { id: toastId });
+      if (err !== undefined) console.error('[payment] card charge failed', err);
+    };
+
     try {
-      // Free launch via promo code
+      // Free launch via promo code — skip Stripe entirely.
       if (promoApplied && discountedPrice === 0) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await activateMission(missionId);
         setStage('success');
         toast.success('Mission Launched!', { id: toastId });
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         onClose();
-        navigate(`/mission-success?respondents=${respondentCount}&total=0`);
+        navigate(`/mission/${missionId}/live`);
         return;
       }
 
-      if (!stripe || !elements || !missionId) {
-        throw new Error('Payment system not ready. Please try again.');
+      // Guard each pre-condition with a distinct, user-readable error so
+      // "nothing happened" can never happen silently.
+      if (!stripe) return fail('Payment system not ready — Stripe is still loading. Try again in a moment.');
+      if (!elements) return fail('Payment form not ready — please refresh the page.');
+      if (!missionId) return fail('Mission not found — reload the page and try again.');
+
+      // 1. Create payment intent on backend.
+      let clientSecret: string | undefined;
+      let paymentIntentId: string | undefined;
+      try {
+        const res = await api.post('/api/payments/create-intent', { missionId });
+        clientSecret = res?.clientSecret;
+        paymentIntentId = res?.paymentIntentId;
+      } catch (apiErr) {
+        return fail(extractErrorMessage(apiErr), apiErr);
+      }
+      if (!clientSecret) {
+        return fail('Payment could not be started — our server did not return a client secret.');
       }
 
-      // 1. Create payment intent on backend
-      const { clientSecret, paymentIntentId } = await api.post('/api/payments/create-intent', { missionId });
-
-      // 2. Confirm card payment
+      // 2. Confirm card payment.
       const cardNumberElement = elements.getElement(CardNumberElement);
-      if (!cardNumberElement) throw new Error('Please enter your card details');
+      if (!cardNumberElement) {
+        return fail('Please enter your card details before paying.');
+      }
 
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: { card: cardNumberElement },
-      });
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+        clientSecret,
+        { payment_method: { card: cardNumberElement } },
+      );
 
-      if (stripeError) throw new Error(stripeError.message || 'Payment failed');
-      if (paymentIntent?.status !== 'succeeded') throw new Error('Payment not completed');
+      if (stripeError) {
+        return fail(extractErrorMessage(stripeError), stripeError);
+      }
+      if (!paymentIntent) {
+        return fail('Payment did not complete — no payment intent returned. Please try again.');
+      }
+      if (paymentIntent.status !== 'succeeded') {
+        // Surface the actual state so "requires_action" / "processing" aren't
+        // indistinguishable from a generic decline in the user's eyes.
+        return fail(
+          `Payment not completed (status: ${paymentIntent.status}). Please try again or use a different card.`,
+        );
+      }
 
-      // 3. Confirm with backend
-      await api.post('/api/payments/confirm', { missionId, paymentIntentId });
+      // 3. Confirm with backend. If this fails the charge already went through
+      // — we still have to surface the error so the user knows their mission
+      // isn't queued, but we also warn them not to re-pay.
+      try {
+        await api.post('/api/payments/confirm', { missionId, paymentIntentId });
+      } catch (confirmErr) {
+        return fail(
+          'Your card was charged but we couldn\'t confirm the mission. Please contact support with your mission ID — do not re-pay.',
+          confirmErr,
+        );
+      }
+
+      await activateMission(missionId);
 
       setStage('success');
       toast.success('Mission Launched Successfully!', { id: toastId });
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       onClose();
-      navigate(`/mission-success?respondents=${respondentCount}&total=${totalCost.toFixed(2)}`);
-
-    } catch (err: any) {
-      setIsProcessing(false);
-      setStage('payment');
-      toast.error(err.message || 'Payment failed. Please try again.', { id: toastId });
+      navigate(`/mission/${missionId}/live`);
+    } catch (err: unknown) {
+      // Final safety net — anything that escapes the targeted catches above.
+      fail(extractErrorMessage(err), err);
     }
   };
 
@@ -329,6 +491,31 @@ const PaymentForm = ({
               </div>
 
               <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pb-6">
+
+                {/*
+                 * Inline error banner — persists until dismissed or retry.
+                 * This is the primary failure surface; the toast is a
+                 * redundant confirmation. Previously the modal had neither
+                 * an inline surface nor a visible toast (z-index was below
+                 * the modal), so a 4242 decline looked like "nothing happened."
+                 */}
+                {errorMessage && (
+                  <div
+                    role="alert"
+                    className="mb-5 flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/40 rounded-lg"
+                  >
+                    <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="flex-1 text-sm text-red-200 leading-snug">{errorMessage}</p>
+                    <button
+                      type="button"
+                      onClick={() => setErrorMessage(null)}
+                      className="flex-shrink-0 p-0.5 rounded hover:bg-red-500/20 transition-colors"
+                      aria-label="Dismiss error"
+                    >
+                      <X className="w-4 h-4 text-red-300" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Price summary */}
                 <div className="bg-gray-700/30 rounded-lg p-4 mb-5">
