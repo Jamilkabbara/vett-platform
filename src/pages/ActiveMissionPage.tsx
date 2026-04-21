@@ -16,6 +16,40 @@ import { AuthedTopNav } from '../components/layout/AuthedTopNav';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
+// Backend generator endpoint. Fire-and-forget; a 404 means the backend
+// hasn't shipped the route yet and we flip to a friendlier "queued"
+// message so the user isn't staring at 0/100 forever. Any non-404
+// error is logged but otherwise ignored — retrying on each mount would
+// hammer the backend if it's flapping.
+const GENERATOR_PATH = (missionId: string) => `/api/missions/${missionId}/generate-responses`;
+const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
+
+type GenerateResult = 'ok' | 'not_implemented' | 'failed' | 'skipped';
+
+async function triggerResponseGenerator(missionId: string): Promise<GenerateResult> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+    const res = await fetch(`${API_URL}${GENERATOR_PATH(missionId)}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({}),
+    });
+    if (res.status === 404) return 'not_implemented';
+    if (!res.ok) {
+      console.warn('[active] generator returned non-OK', res.status);
+      return 'failed';
+    }
+    return 'ok';
+  } catch (err) {
+    console.warn('[active] generator trigger threw', err);
+    return 'failed';
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // ActiveMissionPage — the post-payment landing page.
 //
@@ -124,6 +158,8 @@ export const ActiveMissionPage = () => {
 
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [mountedAt] = useState<number>(() => Date.now());
+  const [generatorStatus, setGeneratorStatus] = useState<GenerateResult>('skipped');
+  const generatorFiredRef = useRef(false);
 
   // Refs for values read inside realtime/poll callbacks that must stay
   // stable (i.e. not force re-subscribe). seenPersonasRef is the source
@@ -255,6 +291,24 @@ export const ActiveMissionPage = () => {
     };
   }, [missionId, user, ingestPersona]);
 
+  // Fire-and-forget: once the mission row is loaded and it's in an
+  // active-collection state, kick the backend generator. Only fires
+  // once per component lifetime — we don't want to re-spam the backend
+  // on every poll tick.
+  useEffect(() => {
+    if (state.kind !== 'ready') return;
+    if (generatorFiredRef.current) return;
+    const { mission } = state;
+    // Don't fire for paused / completed missions — the generator has
+    // nothing to do.
+    if (mission.status === 'paused' || mission.status === 'completed') return;
+    generatorFiredRef.current = true;
+    void triggerResponseGenerator(mission.id).then((result) => {
+      if (cancelledRef.current) return;
+      setGeneratorStatus(result);
+    });
+  }, [state]);
+
   return (
     <div className="min-h-[100dvh] bg-[#0B0C15] flex flex-col">
       <AuthedTopNav />
@@ -268,6 +322,7 @@ export const ActiveMissionPage = () => {
               events={state.events}
               responsesCollected={seenPersonasRef.current.size}
               mountedAt={mountedAt}
+              generatorStatus={generatorStatus}
             />
           )}
         </div>
@@ -306,9 +361,16 @@ interface ActivePanelProps {
   events: LiveEvent[];
   responsesCollected: number;
   mountedAt: number;
+  generatorStatus: GenerateResult;
 }
 
-const ActivePanel = ({ mission, events, responsesCollected, mountedAt }: ActivePanelProps) => {
+const ActivePanel = ({
+  mission,
+  events,
+  responsesCollected,
+  mountedAt,
+  generatorStatus,
+}: ActivePanelProps) => {
   const navigate = useNavigate();
   const target = mission.respondent_count || 0;
   const isPaused = mission.status === 'paused';
@@ -398,6 +460,16 @@ const ActivePanel = ({ mission, events, responsesCollected, mountedAt }: ActiveP
           <PauseCircle className="w-5 h-5 text-amber-300 mt-0.5" aria-hidden />
           <div className="font-body text-sm text-t2">
             This mission is paused. Contact support to resume collection.
+          </div>
+        </div>
+      )}
+
+      {/* Backend generator not deployed yet */}
+      {generatorStatus === 'not_implemented' && (
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 flex items-start gap-3">
+          <Info className="w-5 h-5 text-t3 mt-0.5" aria-hidden />
+          <div className="font-body text-sm text-t2">
+            Response generation queued — results typically ready in 15–30 minutes.
           </div>
         </div>
       )}
