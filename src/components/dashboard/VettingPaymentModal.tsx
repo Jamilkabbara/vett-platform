@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Check, CreditCard, Lock, X, AlertCircle } from 'lucide-react';
@@ -126,6 +126,24 @@ const PaymentForm = ({
   const [discountedPrice, setDiscountedPrice] = useState(totalCost);
   const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
   const [canMakeExpressPayment, setCanMakeExpressPayment] = useState(false);
+
+  // Stable options object for PaymentRequestButtonElement — prevents the
+  // "options.paymentRequest is not a mutable property" Stripe warning that
+  // fires on every render when a fresh object literal is passed inline.
+  const paymentRequestButtonOptions = useMemo(() => {
+    if (!paymentRequest) return null;
+    return {
+      paymentRequest,
+      style: {
+        paymentRequestButton: {
+          type: 'buy' as const,
+          theme: 'dark' as const,
+          height: '48px',
+        },
+      },
+    };
+  }, [paymentRequest]);
+
   /**
    * Inline error surface. This lives *inside* the modal so failures stay
    * visible even if a toast is miscounted or the user dismisses it. Cleared
@@ -322,15 +340,21 @@ const PaymentForm = ({
     // Clear any prior error banner on retry so the user isn't staring at
     // a stale message while their new attempt spins.
     setErrorMessage(null);
-    setIsProcessing(true);
-    setStage('processing');
-    const toastId = toast.loading('Processing secure payment...');
+
+    // toastId is assigned later — after the card element is captured and right
+    // before the first await — so React doesn't flush a re-render that unmounts
+    // CardNumberElement before we call elements.getElement().
+    let toastId = '';
 
     const fail = (msg: string, err?: unknown) => {
       setIsProcessing(false);
       setStage('payment');
       setErrorMessage(msg);
-      toast.error(msg, { id: toastId });
+      if (toastId) {
+        toast.error(msg, { id: toastId });
+      } else {
+        toast.error(msg);
+      }
       if (err !== undefined) console.error('[payment] card charge failed', err);
     };
 
@@ -341,6 +365,9 @@ const PaymentForm = ({
       // which never triggered the synthetic audience pipeline.
       if (promoApplied && discountedPrice === 0) {
         if (!missionId) return fail('Mission not found — reload the page and try again.');
+        setIsProcessing(true);
+        setStage('processing');
+        toastId = toast.loading('Processing secure payment...');
         await new Promise((resolve) => setTimeout(resolve, 1200));
         try {
           await api.post('/api/payments/free-launch', { missionId, promoCode: promoCode || 'VETT100' });
@@ -361,6 +388,30 @@ const PaymentForm = ({
       if (!elements) return fail('Payment form not ready — please refresh the page.');
       if (!missionId) return fail('Mission not found — reload the page and try again.');
 
+      // ── Root-cause fix ───────────────────────────────────────────────────────
+      // Capture CardNumberElement reference BEFORE setStage('processing').
+      // setStage() queues a React re-render; the first `await` below yields
+      // control back to React, which flushes the update and unmounts the card
+      // inputs (stage='processing' shows a spinner, not the card form).
+      // After that unmount, elements.getElement(CardNumberElement) returns null —
+      // triggering the misleading "Please enter your card details" error even
+      // when the user correctly filled the form.
+      const cardNumberElement = elements.getElement(CardNumberElement);
+      if (!cardNumberElement) {
+        if (import.meta.env.DEV) {
+          console.error('[payment] CardNumberElement not found in Elements registry', {
+            stripe: !!stripe,
+            elements: !!elements,
+          });
+        }
+        return fail('Payment form is still loading — please wait a moment and try again.');
+      }
+
+      // Element ref captured — safe to transition to processing UI.
+      setIsProcessing(true);
+      setStage('processing');
+      toastId = toast.loading('Processing secure payment...');
+
       // 1. Create payment intent on backend.
       let clientSecret: string | undefined;
       let paymentIntentId: string | undefined;
@@ -376,10 +427,6 @@ const PaymentForm = ({
       }
 
       // 2. Confirm card payment.
-      const cardNumberElement = elements.getElement(CardNumberElement);
-      if (!cardNumberElement) {
-        return fail('Please enter your card details before paying.');
-      }
 
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
         clientSecret,
@@ -541,20 +588,11 @@ const PaymentForm = ({
                 </div>
 
                 {/* Apple Pay / Google Pay — shown automatically if available on device */}
-                {canMakeExpressPayment && paymentRequest && discountedPrice > 0 && (
+                {canMakeExpressPayment && paymentRequestButtonOptions && discountedPrice > 0 && (
                   <>
                     <div className="mb-4">
                       <PaymentRequestButtonElement
-                        options={{
-                          paymentRequest,
-                          style: {
-                            paymentRequestButton: {
-                              type: 'buy',
-                              theme: 'dark',
-                              height: '48px',
-                            },
-                          },
-                        }}
+                        options={paymentRequestButtonOptions}
                       />
                     </div>
                     <div className="relative mb-5">
