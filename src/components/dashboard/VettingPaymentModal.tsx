@@ -127,6 +127,15 @@ const PaymentForm = ({
   const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
   const [canMakeExpressPayment, setCanMakeExpressPayment] = useState(false);
 
+  // Track when each card Element fires its internal ready event.
+  // Stripe's "ready event not emitted" error fires when confirmCardPayment()
+  // is called before the iframe has finished initialising — even if the ref
+  // exists. We disable the Pay button until all three are ready.
+  const [cardNumberReady, setCardNumberReady] = useState(false);
+  const [cardExpiryReady, setCardExpiryReady] = useState(false);
+  const [cardCvcReady, setCardCvcReady] = useState(false);
+  const allElementsReady = cardNumberReady && cardExpiryReady && cardCvcReady;
+
   // Stable options object for PaymentRequestButtonElement — prevents the
   // "options.paymentRequest is not a mutable property" Stripe warning that
   // fires on every render when a fresh object literal is passed inline.
@@ -328,6 +337,11 @@ const PaymentForm = ({
       setPromoApplied(false);
       setDiscountedPrice(totalCost);
       setErrorMessage(null);
+      // Reset card-element ready state so "Loading payment form..." is shown
+      // again when the modal reopens and Elements remount.
+      setCardNumberReady(false);
+      setCardExpiryReady(false);
+      setCardCvcReady(false);
     }
   }, [isOpen, totalCost]);
 
@@ -387,6 +401,12 @@ const PaymentForm = ({
       if (!stripe) return fail('Payment system not ready — Stripe is still loading. Try again in a moment.');
       if (!elements) return fail('Payment form not ready — please refresh the page.');
       if (!missionId) return fail('Mission not found — reload the page and try again.');
+
+      // Belt-and-suspenders: the Pay button is already disabled until
+      // allElementsReady, but guard here too in case of a timing edge case.
+      if (!cardNumberReady || !cardExpiryReady || !cardCvcReady) {
+        return fail('Payment form is still loading — please wait a moment and try again.');
+      }
 
       // ── Root-cause fix ───────────────────────────────────────────────────────
       // Capture CardNumberElement reference BEFORE setStage('processing').
@@ -614,7 +634,10 @@ const PaymentForm = ({
                     <div>
                       <label className="block text-xs sm:text-sm text-white/70 mb-1.5">Card Number</label>
                       <div className="relative px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
-                        <CardNumberElement options={CARD_ELEMENT_STYLE} />
+                        <CardNumberElement
+                          options={CARD_ELEMENT_STYLE}
+                          onReady={() => setCardNumberReady(true)}
+                        />
                         <CreditCard className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40 pointer-events-none" />
                       </div>
                     </div>
@@ -622,13 +645,19 @@ const PaymentForm = ({
                       <div>
                         <label className="block text-xs sm:text-sm text-white/70 mb-1.5">MM / YY</label>
                         <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
-                          <CardExpiryElement options={CARD_ELEMENT_STYLE} />
+                          <CardExpiryElement
+                            options={CARD_ELEMENT_STYLE}
+                            onReady={() => setCardExpiryReady(true)}
+                          />
                         </div>
                       </div>
                       <div>
                         <label className="block text-xs sm:text-sm text-white/70 mb-1.5">CVC</label>
                         <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
-                          <CardCvcElement options={CARD_ELEMENT_STYLE} />
+                          <CardCvcElement
+                            options={CARD_ELEMENT_STYLE}
+                            onReady={() => setCardCvcReady(true)}
+                          />
                         </div>
                       </div>
                     </div>
@@ -662,17 +691,21 @@ const PaymentForm = ({
                   )}
                 </div>
 
-                {/* Pay Button */}
+                {/* Pay Button — disabled until all card Elements emit their ready event */}
                 <button
                   onClick={handleCardPayment}
-                  disabled={isProcessing}
+                  disabled={isProcessing || (discountedPrice > 0 && !allElementsReady)}
                   className={`w-full py-3 sm:py-4 rounded-lg font-bold text-base sm:text-lg transition-all ${
-                    !isProcessing
+                    !isProcessing && (discountedPrice === 0 || allElementsReady)
                       ? 'bg-gradient-to-r from-neon-lime to-primary text-gray-900 hover:shadow-2xl hover:shadow-neon-lime/50'
                       : 'bg-gray-700/30 text-white/40 cursor-not-allowed'
                   }`}
                 >
-                  {discountedPrice === 0 ? 'Launch Mission (Free)' : `Pay $${discountedPrice.toFixed(2)}`}
+                  {discountedPrice === 0
+                    ? 'Launch Mission (Free)'
+                    : !allElementsReady
+                    ? 'Loading payment form...'
+                    : `Pay $${discountedPrice.toFixed(2)}`}
                 </button>
               </div>
 
