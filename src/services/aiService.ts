@@ -207,6 +207,65 @@ export const refineQuestion = async (
 };
 
 /**
+ * Phase 10.5 — Standalone targeting suggestion.
+ *
+ * Calls POST /api/ai/suggest-targeting and maps the backend's legacy response
+ * shape to the frontend's SuggestedTargeting interface.
+ *
+ * Used by:
+ *   · MissionSetupPage: stored in target_audience.aiTargeting so the
+ *     dashboard can pre-populate the targeting panel on first load.
+ *   · Future "Refresh AI targeting" CTA on DashboardPage.
+ *
+ * Always resolves — never throws. Returns null on any error so callers
+ * can treat it as "no suggestions available."
+ */
+export const suggestTargeting = async (
+  description: string,
+  goal: string | null,
+): Promise<SuggestedTargeting | null> => {
+  try {
+    const resp = (await api.post('/api/ai/suggest-targeting', {
+      description,
+      goal,
+    })) as Record<string, unknown> | null;
+    if (!resp || typeof resp !== 'object') return null;
+
+    // The legacy endpoint returns a nested shape; flatten to SuggestedTargeting.
+    const geography = (resp.geography as Record<string, unknown> | undefined) ?? {};
+    const demographics = (resp.demographics as Record<string, unknown> | undefined) ?? {};
+    const professional = (resp.professional as Record<string, unknown> | undefined) ?? {};
+
+    const strArr = (v: unknown): string[] | undefined => {
+      if (!Array.isArray(v)) return undefined;
+      const out = v.filter((x): x is string => typeof x === 'string' && x.length > 0);
+      return out.length > 0 ? out : undefined;
+    };
+
+    const merged: SuggestedTargeting = {
+      countries:     strArr(geography.recommendedCountries),
+      ageRanges:     strArr(demographics.ageRanges),
+      genders:       strArr(demographics.genders),
+      education:     strArr(demographics.education),
+      employment:    strArr(demographics.employment),
+      industries:    strArr(professional.industries),
+      roles:         strArr(professional.roles),
+      companySizes:  strArr(professional.companySizes),
+      reasoning:
+        typeof geography.reasoning === 'string' ? geography.reasoning : undefined,
+    };
+
+    const hasAny = Object.values(merged).some((v) =>
+      Array.isArray(v) ? v.length > 0 : typeof v === 'string' && v.length > 0,
+    );
+    return hasAny ? merged : null;
+  } catch (err) {
+    console.warn('[suggestTargeting] backend unavailable', err);
+    return null;
+  }
+};
+
+/**
  * Phase 9 — Adaptive clarify (frontend ready, backend optional).
  *
  * The UI always ships with three static clarify cards (Market / Stage /

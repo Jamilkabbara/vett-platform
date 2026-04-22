@@ -26,6 +26,7 @@ import {
   normaliseMissionAssets,
   type MissionAsset,
 } from '../types/missionAssets';
+import type { SuggestedTargeting } from '../services/aiService';
 
 /**
  * Mission Control — /dashboard/:missionId.
@@ -249,6 +250,11 @@ export const DashboardPage = () => {
   // fire onChange, a 500ms debounce writes back to missions.targeting.
   const [targeting, setTargeting] = useState<TargetingConfig>(DEFAULT_TARGETING);
   const [targetingPersisting, setTargetingPersisting] = useState(false);
+  // Pass 5C: true when the initial targeting was seeded from the AI's
+  // suggestTargeting output (stored in target_audience.aiTargeting).
+  // Drives the "· AI Suggested" badge in MissionControlTargeting.
+  // Cleared to false the first time the user saves a manual targeting change.
+  const [aiSuggestedTargeting, setAiSuggestedTargeting] = useState(false);
 
   // Respondent count — pricing panel owns the UI but parent owns the value
   // so every component reads the same number.  Hydrated from mission.row.
@@ -327,38 +333,89 @@ export const DashboardPage = () => {
         const initialRespondents = Number(mission.respondent_count ?? 100) || 100;
         const initialAssets = normaliseMissionAssets(mission.mission_assets);
 
-        // Phase 4: if the user hasn't picked any countries yet and the Clarify
-        // market answer implies a preset, seed the geography so they land on
-        // something useful instead of an empty picker. Only writes when the
-        // preset adds at least one country — leaves Global / Other alone.
-        // We also persist the seeded targeting back so subsequent loads
-        // don't re-run this branch and so the pricingEngine always sees the
-        // same state the user sees.
+        // Pass 5C + Phase 4: if the user hasn't picked any countries yet,
+        // try to seed the targeting from the AI's suggestions first (stored
+        // in target_audience.aiTargeting during mission creation). If that
+        // isn't available, fall back to the simple market-preset (Phase 4).
+        // Whichever path runs persists the seeded targeting so subsequent
+        // loads skip this branch and the pricingEngine always sees a
+        // consistent state.
+        let aiWasApplied = false;
         if (initialTargeting.geography.countries.length === 0) {
           const ta = (mission.target_audience ?? {}) as Record<string, unknown>;
-          const clarifyMarket =
-            typeof ta.market === 'string' ? (ta.market as string) : null;
-          const preset = countriesForMarket(clarifyMarket);
-          if (preset.length > 0) {
-            initialTargeting = {
-              ...initialTargeting,
+          const rawAiTargeting = ta.aiTargeting as SuggestedTargeting | null | undefined;
+
+          if (rawAiTargeting && typeof rawAiTargeting === 'object') {
+            // Build a full TargetingConfig from the AI suggestion shape.
+            const ai = rawAiTargeting;
+            const strArr = (v: unknown): string[] =>
+              Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+            const aiConfig: TargetingConfig = {
+              ...DEFAULT_TARGETING,
               geography: {
-                ...initialTargeting.geography,
-                countries: preset,
+                ...DEFAULT_TARGETING.geography,
+                countries: strArr(ai.countries),
+                cities:    strArr(ai.cities),
+              },
+              demographics: {
+                ...DEFAULT_TARGETING.demographics,
+                ageRanges:  strArr(ai.ageRanges),
+                genders:    strArr(ai.genders),
+                education:  strArr(ai.education),
+                marital:    strArr(ai.marital),
+                parental:   strArr(ai.parental),
+                employment: strArr(ai.employment),
+              },
+              professional: {
+                ...DEFAULT_TARGETING.professional,
+                industries:   strArr(ai.industries),
+                roles:        strArr(ai.roles),
+                companySizes: strArr(ai.companySizes),
+              },
+              financials: {
+                incomeRanges: strArr(ai.incomeRanges),
+              },
+              behaviors:      strArr(ai.behaviors),
+              technographics: {
+                devices: strArr(ai.devices),
               },
             };
-            // Fire-and-forget persistence — if it fails, the UI still works;
-            // next user-initiated change will save the full state anyway.
-            void supabase
-              .from('missions')
-              .update({ targeting: initialTargeting })
-              .eq('id', mission.id);
+            if (aiConfig.geography.countries.length > 0) {
+              initialTargeting = aiConfig;
+              aiWasApplied = true;
+              // Fire-and-forget persistence — if it fails, the UI still works.
+              void supabase
+                .from('missions')
+                .update({ targeting: initialTargeting })
+                .eq('id', mission.id);
+            }
+          }
+
+          if (!aiWasApplied) {
+            // Phase 4 fallback: seed country from the Clarify market answer.
+            const clarifyMarket =
+              typeof ta.market === 'string' ? (ta.market as string) : null;
+            const preset = countriesForMarket(clarifyMarket);
+            if (preset.length > 0) {
+              initialTargeting = {
+                ...initialTargeting,
+                geography: {
+                  ...initialTargeting.geography,
+                  countries: preset,
+                },
+              };
+              void supabase
+                .from('missions')
+                .update({ targeting: initialTargeting })
+                .eq('id', mission.id);
+            }
           }
         }
 
         setState({ kind: 'loaded', mission });
         setQuestions(initialQuestions);
         setTargeting(initialTargeting);
+        setAiSuggestedTargeting(aiWasApplied);
         setRespondentCount(initialRespondents);
         setMissionAssets(initialAssets);
         latestQuestionsRef.current = initialQuestions;
@@ -440,6 +497,8 @@ export const DashboardPage = () => {
   const handleTargetingChange = useCallback(
     (next: TargetingConfig) => {
       setTargeting(next);
+      // Once the user makes their first manual change, drop the AI badge.
+      setAiSuggestedTargeting(false);
       latestTargetingRef.current = next;
       if (targetingTimerRef.current !== null) {
         window.clearTimeout(targetingTimerRef.current);
@@ -745,6 +804,7 @@ export const DashboardPage = () => {
                   respondentCount={Number(state.mission.respondent_count ?? 100)}
                   questions={questions}
                   persisting={targetingPersisting}
+                  aiSuggestedTargeting={aiSuggestedTargeting}
                 />
               </div>
 

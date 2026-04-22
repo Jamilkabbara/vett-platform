@@ -479,6 +479,10 @@ export const MissionSetupPage = () => {
         // Carry forward anything the AI suggested so downstream consumers
         // (the dashboard targeting panel) still have something to render.
         suggestions: aiResult?.targetingSuggestions ?? null,
+        // Full SuggestedTargeting shape — stored so DashboardPage can seed
+        // the targeting panel with AI suggestions when the targeting column
+        // is empty (i.e. the user hasn't made any manual targeting edits yet).
+        aiTargeting: aiResult?.suggestedTargeting ?? null,
       };
 
       const insertPayload = {

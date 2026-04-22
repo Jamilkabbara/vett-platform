@@ -322,6 +322,10 @@ interface MissionControlTargetingProps {
   respondentCount?: number;
   questions?: Question[];
   persisting?: boolean;
+  /** Pass 5C: true when the current targeting was seeded from the AI's
+   *  suggestTargeting output rather than set manually by the user.
+   *  Controls visibility of the "· AI Suggested" header badge. */
+  aiSuggestedTargeting?: boolean;
 }
 
 type SectionKey =
@@ -336,6 +340,7 @@ export const MissionControlTargeting = ({
   config,
   onChange,
   persisting = false,
+  aiSuggestedTargeting = false,
 }: MissionControlTargetingProps) => {
   // Free sections open by default; paid sections collapsed.
   const [openMap, setOpenMap] = useState<Record<SectionKey, boolean>>({
@@ -552,9 +557,11 @@ export const MissionControlTargeting = ({
           <h2 className="font-display font-black text-[13px] text-white whitespace-nowrap">
             Audience Targeting
           </h2>
-          <span className="font-display font-bold text-[9px] text-lime uppercase tracking-[0.1em]">
-            · AI Suggested
-          </span>
+          {aiSuggestedTargeting && (
+            <span className="font-display font-bold text-[9px] text-lime uppercase tracking-[0.1em]">
+              · AI Suggested
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {persisting && (
