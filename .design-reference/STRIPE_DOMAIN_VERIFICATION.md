@@ -16,7 +16,7 @@ Stripe Dashboard login + hosting a file at a specific URL on the target domain.
 | Local dev | `localhost` | not supported — Apple Pay is disabled on localhost |
 | Preview | `*.vercel.app` deploy URLs | each preview domain is ephemeral; skip |
 | Staging | `vettit-staging.vercel.app` (or equivalent) | operator |
-| Production | `vett.it` / `vettit.com` / whatever the final domain is | operator |
+| Production | `vettit.ai` | operator |
 
 ## Steps (production flow)
 
@@ -50,6 +50,43 @@ Stripe Dashboard login + hosting a file at a specific URL on the target domain.
   directly with `curl -I` and confirm a 200 + `text/plain`.
 - **Preview deploys**: each Vercel preview has a unique subdomain. Not
   worth verifying individually — test Apple Pay on staging / prod only.
+
+## Current status (as of Apr 22, 2026)
+
+| Item | Status |
+|------|--------|
+| `public/.well-known/apple-developer-merchantid-domain-association` | ✅ Committed (`a02f70e`) — real Stripe blob, 9094 bytes |
+| `vercel.json` rewrite for `/.well-known/:path*` | ✅ In place — serves file as static, no redirect |
+| Stripe Dashboard domain registration for `vettit.ai` | 🔲 **Pending — Jamil must do this step** |
+| Stripe Dashboard "Verify" clicked | 🔲 Pending |
+| Apple Pay button visible on Safari iOS with Wallet card | 🔲 Pending |
+
+## HOW TO FINALIZE (the one remaining step)
+
+The domain association file is already deployed at:
+
+```
+https://vettit.ai/.well-known/apple-developer-merchantid-domain-association
+```
+
+Verify it's live before clicking "Verify" in Stripe:
+
+```bash
+curl -sI https://vettit.ai/.well-known/apple-developer-merchantid-domain-association | head -5
+# Expect: HTTP/2 200, Content-Type: text/plain (or application/octet-stream)
+```
+
+Then in Stripe Dashboard:
+
+1. Go to **Settings → Payments → Apple Pay**
+2. Click **Add new domain**, enter: `vettit.ai` (no https://, no trailing slash)
+3. Stripe will attempt to fetch the file from the URL above
+4. Click **Verify** — should flip to "Verified" within seconds
+5. Test on Safari iOS: open the payment modal, you should see the black Apple Pay button
+
+That's it. No code changes needed.
+
+---
 
 ## Where the code lives
 

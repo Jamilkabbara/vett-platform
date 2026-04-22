@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
-import { Zap, Plus, BarChart3, Clock, Users, ArrowRight, Trash2, Eye } from 'lucide-react';
+import { Zap, Plus, BarChart3, Clock, Users, ArrowRight, Trash2, Eye, X, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/apiClient';
 import { ChatWidget } from '../components/chat/ChatWidget';
+import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
+
+const BANNER_DISMISSED_KEY = 'vett_dashboard_banner_dismissed';
 
 /**
  * Shape aligned with `public.missions` columns. The legacy backend shim used
@@ -88,6 +91,14 @@ export const MissionsListPage = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [bannerVisible, setBannerVisible] = useState(
+    () => !sessionStorage.getItem(BANNER_DISMISSED_KEY)
+  );
+
+  const dismissBanner = () => {
+    sessionStorage.setItem(BANNER_DISMISSED_KEY, '1');
+    setBannerVisible(false);
+  };
 
   useEffect(() => {
     if (!authLoading) {
@@ -227,6 +238,42 @@ export const MissionsListPage = () => {
                 : `${missions.length} ${missions.length === 1 ? 'mission' : 'missions'} total`}
             </p>
           </div>
+
+          {/* Early-access banner — show for authenticated users with no completed missions */}
+          <AnimatePresence>
+            {user && bannerVisible && !missions.some(m => m.status === 'COMPLETED') && (
+              <motion.div
+                key="dashboard-banner"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                className="relative mb-6 rounded-2xl border border-lime/20 bg-lime/5 px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4"
+              >
+                <button
+                  onClick={dismissBanner}
+                  aria-label="Dismiss"
+                  className="absolute top-3 right-3 p-1 text-white/30 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="flex items-center gap-3 flex-1">
+                  <Sparkles className="w-5 h-5 text-lime shrink-0" />
+                  <div>
+                    <p className="text-white font-bold text-[14px] leading-tight">Ship faster with VETT Pro</p>
+                    <p className="text-white/50 text-[12px] mt-0.5">Unlimited missions, priority synthesis, and team sharing — coming soon.</p>
+                  </div>
+                </div>
+                <LeadCaptureForm
+                  cta="Join waitlist"
+                  page="dashboard_banner"
+                  placeholder="your@email.com"
+                  variant="inline"
+                  className="shrink-0 sm:w-auto w-full"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {missions.length === 0 ? (
             <motion.div

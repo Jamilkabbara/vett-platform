@@ -1,11 +1,16 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, Plus } from 'lucide-react';
+import { BarChart3, Plus, Shield } from 'lucide-react';
 import { Logo } from '../shared/Logo';
 import { UserMenu } from '../shared/UserMenu';
+import { useAuth } from '../../contexts/AuthContext';
+
+const ADMIN_EMAIL = 'kabbarajamil@gmail.com';
 
 export const DashboardNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   const isResultsPage = location.pathname === '/results' || location.pathname.startsWith('/dashboard/');
   const isMissionSuccessPage = location.pathname === '/mission-success';
@@ -44,6 +49,16 @@ export const DashboardNavbar = () => {
             </button>
           )}
 
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/admin')}
+              title="Admin panel"
+              className="p-2 rounded-lg text-white/40 hover:text-lime hover:bg-lime/10 transition-colors"
+              aria-label="Admin"
+            >
+              <Shield className="w-4 h-4" />
+            </button>
+          )}
           <UserMenu />
         </div>
       </div>

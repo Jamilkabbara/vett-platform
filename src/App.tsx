@@ -11,6 +11,7 @@ import { ContactPage } from './pages/ContactPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { TermsPage } from './pages/TermsPage';
 import { BlogPage } from './pages/BlogPage';
+import { BlogPostPage } from './pages/BlogPostPage';
 import { ApiPage } from './pages/ApiPage';
 import { HelpPage } from './pages/HelpPage';
 import { MissionSuccessPage } from './pages/MissionSuccessPage';
@@ -18,6 +19,8 @@ import { ResultsPage } from './pages/ResultsPage';
 import { MissionsListPage } from './pages/MissionsListPage';
 import { SignInPage } from './pages/SignInPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { AdminPage } from './pages/AdminPage';
 import { DesignSystemPreview } from './pages/DesignSystemPreview';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ScrollToTop } from './components/shared/ScrollToTop';
@@ -91,6 +94,8 @@ function App() {
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<Navigate to="/signin?tab=signup" replace />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/admin" element={<AdminPage />} />
 
           {/* Redirect old/obsolete routes to setup */}
           <Route path="/create" element={<Navigate to="/setup" replace />} />
@@ -103,6 +108,7 @@ function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
           <Route path="/api" element={<ApiPage />} />
           <Route path="/help" element={<HelpPage />} />
 

@@ -335,10 +335,18 @@ const PaymentForm = ({
     };
 
     try {
-      // Free launch via promo code — skip Stripe entirely.
+      // Free launch via promo code — call backend free-launch endpoint so
+      // runMission() actually fires and AI generation starts.
+      // Previously this path only called activateMission() (a bare DB write)
+      // which never triggered the synthetic audience pipeline.
       if (promoApplied && discountedPrice === 0) {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        await activateMission(missionId);
+        if (!missionId) return fail('Mission not found — reload the page and try again.');
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        try {
+          await api.post('/api/payments/free-launch', { missionId, promoCode: promoCode || 'VETT100' });
+        } catch (freeLaunchErr) {
+          return fail(extractErrorMessage(freeLaunchErr), freeLaunchErr);
+        }
         setStage('success');
         toast.success('Mission Launched!', { id: toastId });
         await new Promise((resolve) => setTimeout(resolve, 1500));

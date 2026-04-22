@@ -19,7 +19,10 @@ import {
   Rocket,
   Filter,
   AlertCircle,
-  MessageSquare
+  MessageSquare,
+  Share2,
+  FileDown,
+  Bot
 } from 'lucide-react';
 import { ChatWidget } from '../components/chat/ChatWidget';
 import {
@@ -87,6 +90,11 @@ interface DemographicFilter {
   options: FilterOption[];
 }
 
+interface PersonaChip {
+  label: string;
+  value: string;
+}
+
 interface MissionData {
   name: string;
   targeting: {
@@ -95,6 +103,10 @@ interface MissionData {
   questions: QuestionResult[];
   totalRespondents: number;
   completedAt: string;
+  // Real data from API
+  executiveSummary?: string;
+  personaChips?: PersonaChip[];
+  missionBrief?: string;
 }
 
 const MOCK_MISSION_DATA: MissionData = {
@@ -241,6 +253,7 @@ export const ResultsPage = () => {
   });
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [resultsProgress, setResultsProgress] = useState<{ completed: number; total: number } | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const filterRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -358,6 +371,33 @@ export const ResultsPage = () => {
         return { id: qid, question: qText, type: 'single_choice', data: arr, aiInsight };
       });
 
+      // Build persona chips from target_audience jsonb
+      const parsePersonaChips = (ta: any): PersonaChip[] => {
+        const chips: PersonaChip[] = [];
+        if (!ta) return chips;
+        if (typeof ta === 'string' && ta.trim()) {
+          chips.push({ label: 'Audience', value: ta.trim() });
+          return chips;
+        }
+        if (typeof ta === 'object') {
+          if (ta.summary) chips.push({ label: 'Summary', value: String(ta.summary) });
+          if (Array.isArray(ta.segments)) ta.segments.slice(0, 4).forEach((s: string) => chips.push({ label: 'Segment', value: String(s) }));
+          if (ta.age) chips.push({ label: 'Age', value: String(ta.age) });
+          if (ta.gender) chips.push({ label: 'Gender', value: String(ta.gender) });
+          if (ta.income) chips.push({ label: 'Income', value: String(ta.income) });
+          if (ta.location) chips.push({ label: 'Location', value: String(ta.location) });
+          if (ta.interests && Array.isArray(ta.interests)) chips.push({ label: 'Interests', value: ta.interests.slice(0, 3).join(', ') });
+        }
+        return chips.slice(0, 6);
+      };
+
+      // Extract executive summary from insights
+      const execSummary =
+        data.insights?.executiveSummary ||
+        data.insights?.summary ||
+        data.insights?.overview ||
+        (typeof data.insights === 'string' ? data.insights : null);
+
       const loaded: MissionData = {
         // Canonical columns on `public.missions` are `title` + `brief`.
         // `mission_statement`, `name`, and `context` never existed on the DB;
@@ -370,12 +410,15 @@ export const ResultsPage = () => {
           mission.name ||
           mission.context ||
           'Your Mission',
+        missionBrief: mission.brief || mission.context || undefined,
         completedAt: mission.completed_at
           ? new Date(mission.completed_at).toLocaleString()
           : 'Just now',
         totalRespondents: respondentCount,
         targeting: { demographics: MOCK_MISSION_DATA.targeting.demographics },
         questions,
+        executiveSummary: execSummary || undefined,
+        personaChips: parsePersonaChips(mission.target_audience),
       };
 
       setMissionData(loaded);
@@ -610,6 +653,75 @@ export const ResultsPage = () => {
     }, 500);
   };
 
+  const handleCsvExport = () => {
+    const rows: string[][] = [['Question', 'Type', 'Choice / Label', 'Count / Value', 'Percentage']];
+    filteredQuestions.forEach((q) => {
+      if (q.type === 'single_choice' || q.type === 'multi_select') {
+        q.data.forEach((d: any) => {
+          rows.push([
+            `"${(q.question || '').replace(/"/g, '""')}"`,
+            q.type,
+            `"${String(d.name || d.feature || '').replace(/"/g, '""')}"`,
+            String(d.value ?? d.count ?? ''),
+            String(d.percentage ?? '') + '%',
+          ]);
+        });
+      } else if (q.type === 'rating') {
+        q.data.forEach((d: any) => {
+          rows.push([
+            `"${(q.question || '').replace(/"/g, '""')}"`,
+            'rating',
+            `"${d.rating}"`,
+            String(d.count),
+            String(d.percentage) + '%',
+          ]);
+        });
+        if (q.averageScore != null) {
+          rows.push([`"${(q.question || '').replace(/"/g, '""')}"`, 'rating', 'Average Score', q.averageScore.toFixed(2), '']);
+        }
+      } else if (q.type === 'open_text') {
+        (q.verbatims || []).forEach((v: string, i: number) => {
+          rows.push([
+            `"${(q.question || '').replace(/"/g, '""')}"`,
+            'open_text',
+            `Response ${i + 1}`,
+            `"${(v || '').replace(/"/g, '""')}"`,
+            '',
+          ]);
+        });
+      }
+    });
+    const csv = rows.map((r) => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeName = (missionData.name || 'vett_results').replace(/[^a-z0-9_\-]+/gi, '_').slice(0, 60);
+    link.href = url;
+    link.download = `${safeName}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      // Fallback: select and copy
+      const el = document.createElement('textarea');
+      el.value = window.location.href;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    }
+  };
+
   const exportOptions = [
     {
       format: 'pdf' as ExportFormat,
@@ -636,6 +748,8 @@ export const ResultsPage = () => {
       subtext: 'Every response + insights'
     }
   ];
+
+  const csvExportOption = { icon: FileDown, label: 'CSV (local)', subtext: 'Quick client-side download' };
 
   const CustomPieTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -910,11 +1024,11 @@ export const ResultsPage = () => {
           </button>
 
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-6">
+            <div className="flex-1">
+              <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-4">
                 {missionData.name}
               </h1>
-              <div className="flex items-center gap-4 text-sm text-white/60">
+              <div className="flex flex-wrap items-center gap-3 text-sm text-white/60 mb-4">
                 <span className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
                   {filteredRespondentCount} {hasActiveFilters && `of ${missionData.totalRespondents}`} Responses
@@ -928,7 +1042,40 @@ export const ResultsPage = () => {
                   Mission Complete
                 </span>
               </div>
+
+              {/* Persona chips — shown when real target_audience data is available */}
+              {missionData.personaChips && missionData.personaChips.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {missionData.personaChips.map((chip, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium bg-white/5 border border-white/10 text-white/70"
+                    >
+                      <span className="text-white/40">{chip.label}:</span>
+                      {chip.value}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Share button */}
+            <button
+              onClick={handleShareLink}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-white/60 hover:text-white hover:border-white/20 transition-all text-sm font-medium shrink-0"
+            >
+              {shareCopied ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-green-400" />
+                  <span className="text-green-400">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4" />
+                  Share
+                </>
+              )}
+            </button>
           </div>
 
           {missionData.targeting.demographics.length > 0 && (
@@ -1030,9 +1177,7 @@ export const ResultsPage = () => {
                             <button
                               key={option.format}
                               onClick={() => handleExport(option.format)}
-                              className={`w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-700/50 transition-all duration-200 ${
-                                index !== exportOptions.length - 1 ? 'border-b border-gray-700/50' : ''
-                              }`}
+                              className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-700/50 transition-all duration-200 border-b border-gray-700/50"
                             >
                               <div className="flex items-center justify-center w-10 h-10 bg-white/5 rounded-lg">
                                 <Icon className="w-5 h-5 text-white" />
@@ -1044,6 +1189,19 @@ export const ResultsPage = () => {
                             </button>
                           );
                         })}
+                        {/* Client-side CSV — always works, no server needed */}
+                        <button
+                          onClick={() => { setIsDropdownOpen(false); handleCsvExport(); }}
+                          className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-700/50 transition-all duration-200"
+                        >
+                          <div className="flex items-center justify-center w-10 h-10 bg-white/5 rounded-lg">
+                            <csvExportOption.icon className="w-5 h-5 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-white font-bold text-sm">{csvExportOption.label}</div>
+                            <div className="text-white/60 text-xs">{csvExportOption.subtext}</div>
+                          </div>
+                        </button>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1111,12 +1269,16 @@ export const ResultsPage = () => {
                         <h2 className="text-xl md:text-2xl font-bold text-white">Executive Summary</h2>
                       </div>
 
-                      <p className="text-white/80 text-lg leading-relaxed">
-                        The data indicates <span className="text-blue-400 font-bold">strong product-market fit</span> with 72% of users rating satisfaction at 4-5 stars.
-                        However, price sensitivity is evident with only 10% selecting the Enterprise tier, suggesting the market gravitates toward mid-tier pricing.
-                        The most valued features are <span className="text-purple-400 font-bold">AI-Powered Insights (78%)</span> and <span className="text-purple-400 font-bold">Real-time Analytics (65%)</span>,
-                        indicating users prioritize intelligence and speed over customization options.
-                      </p>
+                      {missionData.executiveSummary ? (
+                        <p className="text-white/80 text-lg leading-relaxed">{missionData.executiveSummary}</p>
+                      ) : (
+                        <p className="text-white/80 text-lg leading-relaxed">
+                          The data indicates <span className="text-blue-400 font-bold">strong product-market fit</span> with 72% of users rating satisfaction at 4-5 stars.
+                          However, price sensitivity is evident with only 10% selecting the Enterprise tier, suggesting the market gravitates toward mid-tier pricing.
+                          The most valued features are <span className="text-purple-400 font-bold">AI-Powered Insights (78%)</span> and <span className="text-purple-400 font-bold">Real-time Analytics (65%)</span>,
+                          indicating users prioritize intelligence and speed over customization options.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -1198,6 +1360,16 @@ export const ResultsPage = () => {
                     </motion.div>
                   ))}
                 </motion.div>
+
+                {/* AI Disclosure Footer */}
+                <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/5 mb-8 text-[12px] text-white/30 font-body">
+                  <Bot className="w-4 h-4 mt-0.5 shrink-0 text-white/20" />
+                  <span>
+                    Insights and summaries are generated by VETT AI using synthetic respondents modelled on real demographic data.
+                    They are directionally indicative and are not a substitute for primary market research or human survey data.
+                    Always validate key findings with your target audience.
+                  </span>
+                </div>
 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
