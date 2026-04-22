@@ -239,7 +239,9 @@ export interface AdaptiveClarifyQuestion {
   defaultChipId?: string;
 }
 
-const CLARIFY_TIMEOUT_MS = 800;
+// Increased from 800ms: Claude API typically responds in 1-3s; 800ms meant
+// the adaptive fetch almost always lost the race and fell back to static.
+const CLARIFY_TIMEOUT_MS = 5000;
 
 function isAdaptiveClarifyQuestion(
   value: unknown,

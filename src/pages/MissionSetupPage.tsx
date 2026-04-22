@@ -353,12 +353,12 @@ export const MissionSetupPage = () => {
     if (revealingClarify) return;
     setRevealingClarify(true);
 
-    // Race the adaptive clarify fetch (fetchAdaptiveClarify internally
-    // aborts after 800ms) against a hard 800ms fallback — whichever wins,
-    // the user sees clarify cards within <1s. If the AI returns a
-    // well-formed set of dynamic questions, we use those; otherwise we
-    // silently fall back to the static Market/Stage/Price trio.
-    const TIMEOUT_FALLBACK_MS = 800;
+    // Race the adaptive clarify fetch against a hard fallback. Both
+    // fetchAdaptiveClarify's internal abort and this outer race are now
+    // 5 000ms — Claude API needs 1-3s and the old 800ms cut off before
+    // it could return. The "Thinking…" spinner in the button covers the
+    // wait; the static trio is the fallback if the backend is down/slow.
+    const TIMEOUT_FALLBACK_MS = 5000;
     const timeoutPromise = new Promise<null>((resolve) =>
       window.setTimeout(() => resolve(null), TIMEOUT_FALLBACK_MS),
     );

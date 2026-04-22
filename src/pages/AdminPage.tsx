@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import toast from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
 const ADMIN_EMAIL = 'kabbarajamil@gmail.com';
@@ -102,21 +103,15 @@ export function AdminPage() {
     }
   }, [user, authLoading, navigate]);
 
-  const authHeader = useCallback(() => {
-    const token = (user as any)?.access_token ?? '';
-    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-  }, [user]);
-
-  // Use supabase session token
+  // Use the app-wide supabase singleton — previously this created a NEW
+  // client on every call, which triggered onAuthStateChange via localStorage
+  // cross-instance events, causing setUser in AuthContext, changing the
+  // `user` ref in AdminPage's useEffect deps, and re-firing loadLeads 30+
+  // times per second (an infinite loop through the auth ↔ effect chain).
   const getToken = useCallback(async () => {
-    const { createClient } = await import('@supabase/supabase-js');
-    const sb = createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY
-    );
-    const { data } = await sb.auth.getSession();
+    const { data } = await supabase.auth.getSession();
     return data.session?.access_token ?? '';
-  }, []);
+  }, []); // [] stable: supabase is a module-level singleton, never changes
 
   const apiFetch = useCallback(async (path: string, opts: RequestInit = {}) => {
     const token = await getToken();
