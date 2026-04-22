@@ -79,7 +79,10 @@ export function LeadCaptureForm({
   const btnCls = [
     'h-11 px-5 rounded-lg font-display font-bold text-[14px]',
     'bg-lime text-bg hover:bg-lime/90 active:scale-95',
-    'flex items-center gap-2 shrink-0 transition-all',
+    // justify-center so text is centred when stacked full-width on mobile
+    'flex items-center justify-center gap-2 shrink-0 transition-all',
+    // Full width when stacked (mobile inline variant), auto-width on sm+
+    variant === 'inline' ? 'w-full sm:w-auto' : 'w-full',
     state === 'loading' ? 'opacity-70 pointer-events-none' : '',
   ].join(' ');
 
@@ -88,7 +91,12 @@ export function LeadCaptureForm({
       onSubmit={handleSubmit}
       className={[
         className,
-        variant === 'inline' ? 'flex items-center gap-2' : 'flex flex-col gap-2',
+        // Inline variant stacks vertically on very small screens (< sm / 640px)
+        // then goes side-by-side. This prevents the button from being squeezed
+        // below ~130px on a 320px iPhone SE viewport.
+        variant === 'inline'
+          ? 'flex flex-col sm:flex-row items-stretch sm:items-center gap-2'
+          : 'flex flex-col gap-2',
       ].join(' ')}
     >
       <input
@@ -98,7 +106,7 @@ export function LeadCaptureForm({
         placeholder={placeholder}
         required
         aria-label="Email address"
-        className={[inputCls, variant === 'inline' ? 'flex-1 min-w-0' : 'w-full'].join(' ')}
+        className={[inputCls, variant === 'inline' ? 'flex-1 min-w-0 w-full sm:w-auto' : 'w-full'].join(' ')}
       />
       <button type="submit" className={btnCls}>
         {state === 'loading' ? (

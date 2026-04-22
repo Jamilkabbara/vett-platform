@@ -79,6 +79,43 @@ body {
 }
 
 /* ──────────────────────────────────────────────────────────────
+   Mobile UX — Pass 5B
+────────────────────────────────────────────────────────────── */
+
+/*
+ * iOS ZOOM PREVENTION
+ * Safari zooms the viewport when an input/textarea/select is focused
+ * if its font-size is below 16px. Force 16px minimum on small screens.
+ * We use max() so a component that intentionally sets a larger font-size
+ * (e.g. a large-text input) is not overridden.
+ * Scoped to ≤640px so desktop retains whatever sizing the component sets.
+ */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([hidden]),
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+/*
+ * TOUCH TARGETS — Apple HIG minimum 44×44 pt
+ * Applied only to interactive elements that have no explicit height class
+ * (the Tailwind `h-` prefix in their className). This lets intentionally
+ * small chip buttons (h-6, h-7, h-8) keep their compact size while
+ * ensuring unlabelled icon buttons and bare text links meet the tap target.
+ * Scoped to touch-capable viewports (max-width: 1024px) so desktop is
+ * unaffected.
+ */
+@media (max-width: 1024px) {
+  button:not([class*="h-"]):not([disabled]),
+  a:not([class*="h-"])[href],
+  [role="button"]:not([class*="h-"]) {
+    min-height: 44px;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
    Legacy helpers (used by the existing pages). Leave in place
    until each page is rebuilt in Prompts 2-8.
 ────────────────────────────────────────────────────────────── */
