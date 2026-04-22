@@ -287,7 +287,7 @@ export function LandingPage() {
                 aria-label="Research question"
                 className="flex-1 bg-transparent border-0 outline-none font-body text-[14px] md:text-[15px] text-t1 placeholder:text-t3 w-full"
               />
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 md:shrink-0">
                 <button
                   type="button"
                   aria-label="Attach file"
@@ -295,12 +295,15 @@ export function LandingPage() {
                 >
                   <Paperclip className="w-4 h-4" />
                 </button>
+                {/* Pass 6C: w-full on mobile so the button fills the row (matching
+                    the stacked LeadCaptureForm pattern). md:w-auto restores the
+                    natural width on desktop when the form row is horizontal. */}
                 <Button
                   type="submit"
                   variant="gradient"
                   size="sm"
                   rounded="lg"
-                  className="shrink-0"
+                  className="w-full md:w-auto shrink-0"
                   rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
                 >
                   VETT IT
@@ -454,7 +457,8 @@ export function LandingPage() {
       {/* ── AI Consumer Research (split) ────────────────────── */}
       <Section bg="bg2">
         <div className="max-w-[1100px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-[60px] items-center">
-          <div>
+          {/* Pass 6C: text-center on mobile, left-align restored at lg (2-col) */}
+          <div className="text-center lg:text-left">
             <SecTag>✦ AI Consumer Research</SecTag>
             <SecH2>
               Consumer signals at scale.
@@ -467,9 +471,10 @@ export function LandingPage() {
               authentic variance — the same statistical patterns found in real
               market research.
             </SecSub>
-            <div className="mt-6 flex flex-col gap-3.5">
+            {/* mx-auto centers the feature block on mobile; lg:mx-0 removes on desktop */}
+            <div className="mt-6 flex flex-col gap-3.5 max-w-fit mx-auto lg:mx-0">
               {AI_FEATS.map((f) => (
-                <div key={f.title} className="flex gap-3">
+                <div key={f.title} className="flex gap-3 text-left">
                   <div className="text-[20px] shrink-0 pt-0.5" aria-hidden>
                     {f.ico}
                   </div>
@@ -522,7 +527,8 @@ export function LandingPage() {
       {/* ── Creative Attention Analysis ─────────────────────── */}
       <Section bg="bg">
         <div className="max-w-[1100px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-[60px] items-start">
-          <div>
+          {/* Pass 6C: text-center on mobile, left-align restored at lg (2-col) */}
+          <div className="text-center lg:text-left">
             <div className="font-display font-bold text-[10px] text-pur uppercase tracking-[0.12em] mb-3">
               ✦ New — Creative Attention Analysis
             </div>
@@ -536,9 +542,10 @@ export function LandingPage() {
               target audience emotionally responds — second by second. Attention,
               emotion, and engagement mapped before you spend on media.
             </SecSub>
-            <div className="mt-6 flex flex-col gap-3.5">
+            {/* mx-auto centers the feature block on mobile; lg:mx-0 removes on desktop */}
+            <div className="mt-6 flex flex-col gap-3.5 max-w-fit mx-auto lg:mx-0">
               {ATTENTION_FEATS.map((f) => (
-                <div key={f.title} className="flex gap-3">
+                <div key={f.title} className="flex gap-3 text-left">
                   <div className="text-[20px] shrink-0 pt-0.5" aria-hidden>
                     {f.ico}
                   </div>
