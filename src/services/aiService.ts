@@ -298,9 +298,13 @@ export interface AdaptiveClarifyQuestion {
   defaultChipId?: string;
 }
 
-// Increased from 800ms: Claude API typically responds in 1-3s; 800ms meant
-// the adaptive fetch almost always lost the race and fell back to static.
-const CLARIFY_TIMEOUT_MS = 5000;
+// Pass 6A: raised from 5000ms → 15000ms.
+// Measured live Railway round-trip is ~4.4s for a warm request.
+// Railway cold-start on hobby plan adds 2-4s on top. Claude Haiku
+// p95 is ~3-5s for structured JSON. Budget for the p99 tail (≈12s)
+// with 3s of margin. Previously the 5s abort fired before the backend
+// could return on cold starts, causing consistent static fallback.
+const CLARIFY_TIMEOUT_MS = 15_000;
 
 function isAdaptiveClarifyQuestion(
   value: unknown,
@@ -356,10 +360,14 @@ export const fetchAdaptiveClarify = async (
     // the user always sees usable cards.
     return valid.length > 0 ? valid : null;
   } catch (err) {
-    console.info(
-      '[fetchAdaptiveClarify] endpoint unavailable — static clarify will render',
-      err,
-    );
+    // Use warn (not error) so it's visible for debugging without alarming
+    // users in prod. Gate on DEV so production consoles stay clean.
+    if (import.meta.env.DEV) {
+      console.warn(
+        '[clarify] backend call failed — falling back to static clarify:',
+        err,
+      );
+    }
     return null;
   } finally {
     window.clearTimeout(timer);

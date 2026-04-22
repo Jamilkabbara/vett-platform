@@ -192,7 +192,7 @@ export const MissionSetupPage = () => {
   const [clarifyAnswers, setClarifyAnswers] = useState<ClarifyAnswers>(
     CLARIFY_DEFAULTS,
   );
-  // Adaptive clarify — populated by /api/ai/clarify with ≤800ms timeout.
+  // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
     AdaptiveClarifyQuestion[] | null
@@ -353,12 +353,13 @@ export const MissionSetupPage = () => {
     if (revealingClarify) return;
     setRevealingClarify(true);
 
-    // Race the adaptive clarify fetch against a hard fallback. Both
-    // fetchAdaptiveClarify's internal abort and this outer race are now
-    // 5 000ms — Claude API needs 1-3s and the old 800ms cut off before
-    // it could return. The "Thinking…" spinner in the button covers the
-    // wait; the static trio is the fallback if the backend is down/slow.
-    const TIMEOUT_FALLBACK_MS = 5000;
+    // Pass 6A: race timeout raised from 5 000ms → 15 000ms to match
+    // the actual Railway + Claude round-trip time (4.4s warm, 6-8s on
+    // cold start). Both this outer race and the AbortController signal
+    // inside fetchAdaptiveClarify now use 15s. The "Thinking…" spinner
+    // in the button (revealingClarify) covers the wait; the static
+    // Market/Stage/Price trio is the fallback if the backend is down.
+    const TIMEOUT_FALLBACK_MS = 15_000;
     const timeoutPromise = new Promise<null>((resolve) =>
       window.setTimeout(() => resolve(null), TIMEOUT_FALLBACK_MS),
     );
@@ -824,7 +825,7 @@ export const MissionSetupPage = () => {
             {/* Step 3 — Clarify (inline, revealed by Step 1 CTA).
                 Dynamic path renders AI-generated questions from
                 /api/ai/clarify; static path renders Market/Stage/Price.
-                The 800ms race in handleRevealClarify decides which. */}
+                The 15s race in handleRevealClarify decides which. */}
             <AnimatePresence initial={false}>
               {showClarify &&
                 (dynamicClarify && dynamicClarify.length > 0 ? (
