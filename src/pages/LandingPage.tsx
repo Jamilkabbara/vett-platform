@@ -58,9 +58,9 @@ const RESEARCH_TYPES: Array<{
   tagColor?: 'lime' | 'pur';
   featured?: boolean;
 }> = [
-  { emoji: '🚀', title: 'Product Validation', desc: 'Test if your idea has real demand before building. Find your PMF signal fast.', tag: 'From $9' },
+  { emoji: '🚀', title: 'Product Validation', desc: 'Test if your idea has real demand before building. Find your PMF signal fast.', tag: 'From $35' },
   { emoji: '💰', title: 'Pricing Research', desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.', tag: 'From $45' },
-  { emoji: '📣', title: 'Creative & Ad Testing', desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.', tag: 'From $9' },
+  { emoji: '📣', title: 'Creative & Ad Testing', desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.', tag: 'From $35' },
   { emoji: '⭐', title: 'Customer Satisfaction', desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.', tag: 'From $90' },
   { emoji: '🗺️', title: 'Feature Roadmap', desc: 'Let your users tell you what to build next. Kano model prioritisation.', tag: 'From $45' },
   { emoji: '🌍', title: 'Market Entry', desc: 'Validate demand in new geographies before expanding. Test any country, any city.', tag: 'From $90' },
@@ -69,7 +69,7 @@ const RESEARCH_TYPES: Array<{
   { emoji: '🔄', title: 'Churn Research', desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.', tag: 'From $45' },
   { emoji: '🔍', title: 'Competitor Analysis', desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.', tag: 'From $45' },
   { emoji: '🎯', title: 'Audience Profiling', desc: 'Build a deep psychographic and behavioural profile of your target customer segment.', tag: 'From $45' },
-  { emoji: '✍️', title: 'Naming & Messaging', desc: 'Test product names, taglines, and positioning across your target audience.', tag: 'From $9' },
+  { emoji: '✍️', title: 'Naming & Messaging', desc: 'Test product names, taglines, and positioning across your target audience.', tag: 'From $35' },
 ];
 
 const LOOP_STEPS = [
@@ -116,7 +116,7 @@ const COMPARISON_ROWS: Array<[string, string, string, string]> = [
   ['Time to results', 'Minutes', '4–8 weeks', 'Days (if lucky)'],
   ['Survey design', 'AI-built instantly', 'Human researcher', 'You do it all'],
   ['Respondents', 'AI consumer panel', 'Recruited panel', 'Your own network'],
-  ['Starting price', 'From $9', '$10,000+ per study', 'Free but limited'],
+  ['Starting price', 'From $35', '$10,000+ per study', 'Free but limited'],
   ['AI insights', 'Per data point', 'Manual deck, weeks later', 'None included'],
   ['Reports', 'PDF + PPT + XLS free', 'PDF, weeks later', 'CSV only'],
   ['Creative testing', 'Video + image + emotions', 'Separate study, months', 'Not available'],
@@ -335,7 +335,7 @@ export function LandingPage() {
         {/* Trust row */}
         <div className="mt-5 flex flex-col md:flex-row flex-wrap items-center justify-center gap-1.5 md:gap-3.5 font-body text-[12px] text-t3">
           <span>
-            Surveys from <span className="text-lime font-bold">$9</span>
+            Surveys from <span className="text-lime font-bold">$35</span>
           </span>
           <Sep />
           <span>Results in minutes</span>
@@ -378,11 +378,11 @@ export function LandingPage() {
             Not 4 weeks.
           </SecH2>
           <SecSub>
-            Agencies take a month and $10k. VETT takes minutes and $9. Get the
+            Agencies take a month and $10k. VETT takes minutes and from $35. Get the
             signal you need to move fast.
           </SecSub>
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-[900px] mx-auto">
-            <StatCard n="$9" tail="" body="Starting price per mission — no subscriptions, ever." />
+            <StatCard n="$35" tail="" body="Starting price per mission — no subscriptions, ever." />
             <StatCard n="2" tail="min" body="Average time from launch to full research insights." />
             <StatCard n="150" tail="+" body="Markets worldwide. Any country, any city." />
           </div>
@@ -770,7 +770,7 @@ export function LandingPage() {
           </Button>
         </div>
         <p className="mt-4 font-body text-[12px] text-t3">
-          No subscription · Pay per mission · From $9 · 150+ markets · 100% delivered
+          No subscription · Pay per mission · From $35 · 150+ markets · 100% delivered
         </p>
       </section>
 
