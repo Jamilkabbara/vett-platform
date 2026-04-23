@@ -832,6 +832,7 @@ export const DashboardPage = () => {
                   questions={questions}
                   targeting={targeting}
                   onLaunch={handleLaunch}
+                  missionId={state.kind === 'loaded' ? state.mission.id : null}
                   priceTierLabel={priceTierLabel(
                     (() => {
                       const ta = (state.mission.target_audience ??

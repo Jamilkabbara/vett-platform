@@ -7,6 +7,7 @@ import type { Question } from './QuestionEngine';
 import type { TargetingConfig } from './TargetingEngine';
 import { calculatePricing } from '../../utils/pricingEngine';
 import { COUNTRIES } from '../../data/targetingOptions';
+import { api } from '../../lib/apiClient';
 
 /**
  * MissionControlPricing — Commit 8 of the redesign.
@@ -80,6 +81,11 @@ interface MissionControlPricingProps {
    * researchers always see the price anchor they picked.
    */
   priceTierLabel?: string | null;
+  /**
+   * Mission id for server-side promo validation. When provided the Apply
+   * button calls /api/pricing/quote instead of showing "coming soon".
+   */
+  missionId?: string | null;
 }
 
 /** Build a human-readable subtitle from the current targeting config so
@@ -136,6 +142,7 @@ const fmtRate = (n: number) => `$${n.toFixed(2)}`;
 
 export const MissionControlPricing = ({
   respondentCount,
+  missionId,
   onRespondentChange,
   questions,
   targeting,
@@ -146,6 +153,12 @@ export const MissionControlPricing = ({
 }: MissionControlPricingProps) => {
   const [promo, setPromo] = useState('');
   const [applyingPromo, setApplyingPromo] = useState(false);
+  /** null = no promo applied; object = validated server-discounted total */
+  const [promoResult, setPromoResult] = useState<{
+    code: string;
+    discountedTotal: number;
+    label: string;
+  } | null>(null);
 
   // Double-fire guard for the Launch CTA — a rapid double-click should
   // open the payment modal exactly once.
@@ -184,39 +197,44 @@ export const MissionControlPricing = ({
     [onRespondentChange, onPersist],
   );
 
-  const handleApplyPromo = useCallback(() => {
-    if (applyingPromo) return;
+  const handleApplyPromo = useCallback(async () => {
+    if (applyingPromo || !promo.trim()) return;
+    // Clear any previous result when the user types a new code
+    setPromoResult(null);
     setApplyingPromo(true);
-    // Intentional no-op — see file header.  Keeps the input controlled but
-    // reassures users the button "did something".
-    toast(
-      (t) => (
-        <span>
-          <strong>Promo codes coming soon</strong>
-          <br />
-          <span style={{ opacity: 0.75, fontSize: 12 }}>
-            We'll honour "{promo || '—'}" once server-side validation is live.
-          </span>
-          <button
-            type="button"
-            onClick={() => toast.dismiss(t.id)}
-            style={{
-              marginLeft: 10,
-              background: 'transparent',
-              color: 'inherit',
-              border: 0,
-              cursor: 'pointer',
-              textDecoration: 'underline',
-            }}
-          >
-            dismiss
-          </button>
-        </span>
-      ),
-      { icon: '🎁', duration: 3000 },
-    );
-    setTimeout(() => setApplyingPromo(false), 400);
-  }, [applyingPromo, promo]);
+    try {
+      const code = promo.trim().toUpperCase();
+      const data: {
+        total: number;
+        breakdown?: Array<{ label: string; amount: number }>;
+      } = await api.post('/api/pricing/quote', {
+        missionId: missionId ?? undefined,
+        respondentCount,
+        questions,
+        targeting,
+        promoCode: code,
+      });
+      const discountLine = Array.isArray(data.breakdown)
+        ? data.breakdown.find((b) => b.amount < 0)
+        : null;
+      if (discountLine && typeof data.total === 'number' && data.total < pricing.total) {
+        setPromoResult({
+          code,
+          discountedTotal: data.total,
+          label: discountLine.label,
+        });
+        toast.success(`${discountLine.label} applied!`);
+      } else {
+        setPromoResult(null);
+        toast.error('Invalid or expired promo code');
+      }
+    } catch {
+      setPromoResult(null);
+      toast.error('Could not validate promo code');
+    } finally {
+      setApplyingPromo(false);
+    }
+  }, [applyingPromo, promo, missionId, respondentCount, questions, targeting, pricing.total]);
 
   const handleLaunchClick = useCallback(() => {
     if (launchInflight.current) return;
@@ -372,7 +390,7 @@ export const MissionControlPricing = ({
         </dl>
       </div>
 
-      {/* Promo (stub) */}
+      {/* Promo code */}
       <div className="px-4 py-3 border-b border-b1">
         <label
           htmlFor="promo-input"
@@ -385,7 +403,11 @@ export const MissionControlPricing = ({
             id="promo-input"
             type="text"
             value={promo}
-            onChange={(e) => setPromo(e.target.value.toUpperCase())}
+            onChange={(e) => {
+              setPromo(e.target.value.toUpperCase());
+              // Clear result when user edits the code
+              setPromoResult(null);
+            }}
             placeholder="LAUNCH50"
             className={[
               'flex-1 bg-bg4 border border-b1 rounded-md',
@@ -399,15 +421,20 @@ export const MissionControlPricing = ({
             onClick={handleApplyPromo}
             disabled={applyingPromo || !promo.trim()}
             className={[
-              'px-3 py-1.5 rounded-md',
+              'min-w-[56px] px-3 py-1.5 rounded-md',
               'font-display font-black text-[10px] uppercase tracking-widest',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               'bg-bg3 text-t2 border border-b2 hover:border-t3 transition-colors',
             ].join(' ')}
           >
-            Apply
+            {applyingPromo ? '…' : 'Apply'}
           </button>
         </div>
+        {promoResult && (
+          <p className="mt-1.5 text-[11px] text-lime font-body">
+            ✅ {promoResult.label}
+          </p>
+        )}
       </div>
 
       {/* Total + CTA (desktop) */}
@@ -416,9 +443,16 @@ export const MissionControlPricing = ({
           <span className="font-display font-black text-[11px] text-t3 uppercase tracking-[0.12em]">
             Total due
           </span>
-          <span className="font-display font-black text-[26px] text-white tabular-nums">
-            {fmt$(pricing.total)}
-          </span>
+          <div className="text-right">
+            {promoResult && (
+              <div className="font-display font-bold text-[14px] text-t3 line-through tabular-nums">
+                {fmt$(pricing.total)}
+              </div>
+            )}
+            <span className="font-display font-black text-[26px] text-white tabular-nums">
+              {promoResult ? fmt$(promoResult.discountedTotal) : fmt$(pricing.total)}
+            </span>
+          </div>
         </div>
         <motion.button
           type="button"
@@ -436,7 +470,7 @@ export const MissionControlPricing = ({
           ].join(' ')}
         >
           <Rocket className="w-4 h-4" aria-hidden />
-          VETT IT · {fmt$(pricing.total)}
+          VETT IT · {fmt$(promoResult ? promoResult.discountedTotal : pricing.total)}
         </motion.button>
 
         <div className="mt-3 flex items-center justify-center gap-1.5 text-t4">
