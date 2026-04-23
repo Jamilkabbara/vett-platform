@@ -2,17 +2,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, RefreshCw, Trash2, CheckCircle2, Plus, Download,
-  Users, FileText, BarChart2, ChevronDown, X, Loader2
+  Users, FileText, BarChart2, ChevronDown, X, Loader2, Tag
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
+import { PromosPanel } from '../components/admin/PromosPanel';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
 const ADMIN_EMAIL = 'kabbarajamil@gmail.com';
 
-type Tab = 'missions' | 'crm' | 'content';
+type Tab = 'missions' | 'crm' | 'content' | 'promos';
 
 // ---- Types -----------------------------------------------------------------
 
@@ -234,6 +235,7 @@ export function AdminPage() {
     { id: 'missions', label: 'Missions', icon: BarChart2 },
     { id: 'crm',      label: 'CRM',      icon: Users },
     { id: 'content',  label: 'Content',  icon: FileText },
+    { id: 'promos',   label: 'Promos',   icon: Tag },
   ];
 
   const inputCls = 'w-full h-10 px-3 bg-bg3 border border-b1 rounded-lg text-[13px] text-t1 placeholder:text-t4 focus:outline-none focus:border-lime/60';
@@ -486,6 +488,11 @@ export function AdminPage() {
               </table>
             </div>
           </div>
+        )}
+
+        {/* ── Promos Tab ────────────────────────────────────────────────── */}
+        {tab === 'promos' && (
+          <PromosPanel apiFetch={apiFetch} />
         )}
       </div>
 

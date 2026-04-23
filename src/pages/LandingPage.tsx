@@ -147,8 +147,16 @@ const PRICING_TIERS = [
   { range: '2,001–5,000', price: '$0.40', label: 'Enterprise tier' },
 ];
 
-const DEFAULT_HERO_PROMPT =
-  'Will UAE consumers pay for a meal kit subscription targeting working professionals?';
+const HERO_PLACEHOLDERS = [
+  'Will UAE consumers pay for a meal kit subscription?',
+  'Which pricing tier would SaaS users choose in Saudi Arabia?',
+  'What features do remote workers in Singapore value most?',
+  'Is there demand for premium EVs in Egypt?',
+  'Would UK millennials subscribe to a mental wellness app?',
+  'What messaging resonates with B2B buyers in the Gulf?',
+  'How do Indian Gen-Z shoppers discover new brands?',
+  'What stops US consumers from adopting fintech apps?',
+];
 
 /* ══════════════════════════════════════════════════════════════════
    LandingPage
@@ -158,11 +166,10 @@ export function LandingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Hero input prefill via ?q=... — falls back to the prototype example.
+  // Hero input — empty unless a ?q= URL param is present.
   const initialQuery = useMemo(() => {
-    if (typeof window === 'undefined') return DEFAULT_HERO_PROMPT;
-    const p = new URLSearchParams(window.location.search);
-    return p.get('q') || DEFAULT_HERO_PROMPT;
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('q') || '';
   }, []);
   const [idea, setIdea] = useState(initialQuery);
 
@@ -170,17 +177,29 @@ export function LandingPage() {
   useEffect(() => {
     const handler = () => {
       const p = new URLSearchParams(window.location.search);
-      setIdea(p.get('q') || DEFAULT_HERO_PROMPT);
+      setIdea(p.get('q') || '');
     };
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
   }, []);
 
+  // Rotating ghost placeholder
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [heroFocused, setHeroFocused] = useState(false);
+
+  useEffect(() => {
+    if (heroFocused) return; // freeze while focused
+    const id = setInterval(() => {
+      setPlaceholderIdx(i => (i + 1) % HERO_PLACEHOLDERS.length);
+    }, 3000);
+    return () => clearInterval(id);
+  }, [heroFocused]);
+
   const heroInputRef = useRef<HTMLInputElement>(null);
 
   const launchMission = () => {
     const trimmed = idea.trim();
-    const qs = trimmed && trimmed !== DEFAULT_HERO_PROMPT ? `?q=${encodeURIComponent(trimmed)}` : '';
+    const qs = trimmed ? `?q=${encodeURIComponent(trimmed)}` : '';
     if (user) {
       navigate(`/setup${qs}`);
     } else {
@@ -283,7 +302,9 @@ export function LandingPage() {
                 value={idea}
                 onChange={(e) => setIdea(e.target.value)}
                 onKeyDown={handleHeroKeydown}
-                placeholder="Describe what you want to research..."
+                onFocus={() => setHeroFocused(true)}
+                onBlur={() => { if (!idea.trim()) setHeroFocused(false); }}
+                placeholder={HERO_PLACEHOLDERS[placeholderIdx]}
                 aria-label="Research question"
                 className="flex-1 bg-transparent border-0 outline-none font-body text-[14px] md:text-[15px] text-t1 placeholder:text-t3 w-full"
               />

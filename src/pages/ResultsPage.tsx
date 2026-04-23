@@ -12,9 +12,7 @@ import {
   Presentation,
   FileJson,
   Sparkles,
-  TrendingUp,
   Users,
-  Target,
   Clock,
   Rocket,
   Filter,
@@ -109,122 +107,6 @@ interface MissionData {
   missionBrief?: string;
 }
 
-const MOCK_MISSION_DATA: MissionData = {
-  name: "Product Market Fit Survey",
-  completedAt: "2h ago",
-  totalRespondents: 100,
-  targeting: {
-    demographics: [
-      {
-        name: 'Age',
-        options: [
-          { label: 'All Ages', value: 'all' },
-          { label: '18-24', value: '18-24' },
-          { label: '25-34', value: '25-34' },
-          { label: '35-44', value: '35-44' },
-          { label: '45+', value: '45+' }
-        ]
-      },
-      {
-        name: 'Gender',
-        options: [
-          { label: 'All Genders', value: 'all' },
-          { label: 'Female', value: 'female' },
-          { label: 'Male', value: 'male' },
-          { label: 'Non-binary', value: 'non-binary' }
-        ]
-      },
-      {
-        name: 'Income',
-        options: [
-          { label: 'All Income Levels', value: 'all' },
-          { label: '$0-50k', value: '0-50k' },
-          { label: '$50k-100k', value: '50k-100k' },
-          { label: '$100k-150k', value: '100k-150k' },
-          { label: '$150k+', value: '150k+' }
-        ]
-      }
-    ]
-  },
-  questions: [
-    {
-      id: '1',
-      question: 'How would you rate your overall satisfaction with our product?',
-      type: 'rating',
-      averageScore: 4.2,
-      data: [
-        { rating: '1 Star', count: 5, percentage: 5 },
-        { rating: '2 Stars', count: 8, percentage: 8 },
-        { rating: '3 Stars', count: 15, percentage: 15 },
-        { rating: '4 Stars', count: 42, percentage: 42 },
-        { rating: '5 Stars', count: 30, percentage: 30 }
-      ],
-      aiInsight: '72% of users rated 4-5 stars, indicating strong product satisfaction. However, 13% gave low ratings (1-2 stars), suggesting room for improvement in user experience.'
-    },
-    {
-      id: '2',
-      question: 'Which pricing tier would you choose?',
-      type: 'single_choice',
-      data: [
-        { name: 'Free', value: 25, percentage: 25, color: '#3b82f6' },
-        { name: 'Starter ($19/mo)', value: 35, percentage: 35, color: '#8b5cf6' },
-        { name: 'Pro ($49/mo)', value: 30, percentage: 30, color: '#ec4899' },
-        { name: 'Enterprise ($99/mo)', value: 10, percentage: 10, color: '#14b8a6' }
-      ],
-      aiInsight: 'Starter tier ($19/mo) is most popular at 35%, suggesting this price point aligns well with perceived value. Only 10% chose Enterprise, indicating potential price resistance at higher tiers.'
-    },
-    {
-      id: '3',
-      question: 'Which features are most important to you? (Select all that apply)',
-      type: 'multi_select',
-      data: [
-        { feature: 'AI-Powered Insights', count: 78, percentage: 78 },
-        { feature: 'Real-time Analytics', count: 65, percentage: 65 },
-        { feature: 'Custom Dashboards', count: 52, percentage: 52 },
-        { feature: 'Mobile App', count: 45, percentage: 45 },
-        { feature: 'API Access', count: 38, percentage: 38 },
-        { feature: 'White Label', count: 22, percentage: 22 }
-      ],
-      aiInsight: 'AI-Powered Insights (78%) and Real-time Analytics (65%) are clear priority features. White Label support (22%) has lowest demand, suggesting it may not be worth immediate development.'
-    },
-    {
-      id: '4',
-      question: 'What do you like most about our product?',
-      type: 'open_text',
-      data: [
-        { word: 'intuitive', size: 48 },
-        { word: 'fast', size: 42 },
-        { word: 'easy', size: 38 },
-        { word: 'powerful', size: 35 },
-        { word: 'reliable', size: 32 },
-        { word: 'clean design', size: 28 },
-        { word: 'helpful', size: 25 },
-        { word: 'affordable', size: 22 },
-        { word: 'innovative', size: 20 },
-        { word: 'responsive', size: 18 }
-      ],
-      sentiment: 85,
-      verbatims: [
-        "The interface is incredibly intuitive and easy to navigate. I was up and running in minutes!",
-        "Fast performance is what sets this apart from competitors. No lag at all.",
-        "Love the clean design and how everything just works without complexity.",
-        "It's powerful yet simple - exactly what I needed for my business.",
-        "Reliable service with excellent uptime. Haven't had a single issue.",
-        "The AI features are innovative and actually useful, not just a gimmick.",
-        "Great value for money. Much more affordable than other enterprise solutions.",
-        "Customer support is responsive and helpful whenever I have questions.",
-        "The mobile app makes it easy to stay connected on the go.",
-        "Regular updates show the team is committed to continuous improvement.",
-        "Integration with our existing tools was seamless and straightforward.",
-        "The analytics dashboard gives us insights we never had before.",
-        "Our team adopted it quickly because the learning curve is so gentle.",
-        "The customization options let us tailor it to our specific workflow.",
-        "Security features give us confidence in protecting our data."
-      ],
-      aiInsight: 'Top keywords "intuitive" and "fast" indicate users value ease-of-use and performance. Positive sentiment score of 85% suggests strong brand affinity and user satisfaction.'
-    }
-  ]
-};
 
 const COLORS = [
   '#8B5CF6',
@@ -238,13 +120,13 @@ const COLORS = [
 export const ResultsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [missionData, setMissionData] = useState<MissionData>(MOCK_MISSION_DATA);
+  const [missionData, setMissionData] = useState<MissionData | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
   const [openFilterDropdown, setOpenFilterDropdown] = useState<string | null>(null);
   const [isFilterLoading, setIsFilterLoading] = useState(false);
-  const [filteredRespondentCount, setFilteredRespondentCount] = useState(missionData.totalRespondents);
-  const [filteredQuestions, setFilteredQuestions] = useState<QuestionResult[]>(MOCK_MISSION_DATA.questions);
+  const [filteredRespondentCount, setFilteredRespondentCount] = useState(0);
+  const [filteredQuestions, setFilteredQuestions] = useState<QuestionResult[]>([]);
   const [toast, setToast] = useState<ToastState>({
     show: false,
     message: '',
@@ -252,6 +134,7 @@ export const ResultsPage = () => {
     isGenerating: false
   });
   const [isLoadingResults, setIsLoadingResults] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [resultsProgress, setResultsProgress] = useState<{ completed: number; total: number } | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -263,13 +146,6 @@ export const ResultsPage = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-
-    const initialFilters: Record<string, string> = {};
-    MOCK_MISSION_DATA.targeting.demographics.forEach(demo => {
-      initialFilters[demo.name] = 'all';
-    });
-    setSelectedFilters(initialFilters);
-
     if (missionId) {
       fetchResults(missionId);
     }
@@ -288,7 +164,10 @@ export const ResultsPage = () => {
       }
 
       setResultsProgress(null);
-      if (!data.mission) return;
+      if (!data.mission) {
+        setFetchError('Mission data not found. It may still be processing.');
+        return;
+      }
 
       const mission = data.mission;
       const agg = data.aggregatedByQuestion || {};
@@ -415,7 +294,7 @@ export const ResultsPage = () => {
           ? new Date(mission.completed_at).toLocaleString()
           : 'Just now',
         totalRespondents: respondentCount,
-        targeting: { demographics: MOCK_MISSION_DATA.targeting.demographics },
+        targeting: { demographics: [] },
         questions,
         executiveSummary: execSummary || undefined,
         personaChips: parsePersonaChips(mission.target_audience),
@@ -424,8 +303,9 @@ export const ResultsPage = () => {
       setMissionData(loaded);
       setFilteredRespondentCount(loaded.totalRespondents);
       setFilteredQuestions(loaded.questions);
-    } catch (err) {
-      console.error('Failed to load results, showing demo data:', err);
+    } catch (err: any) {
+      console.error('Failed to load results:', err);
+      setFetchError(err?.message || 'Failed to load mission results. Please try again.');
     } finally {
       setIsLoadingResults(false);
     }
@@ -501,7 +381,7 @@ export const ResultsPage = () => {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      const safeName = (missionData.name || 'vett_results').replace(/[^a-z0-9_\-]+/gi, '_').slice(0, 60);
+      const safeName = (missionData?.name || 'vett_results').replace(/[^a-z0-9_\-]+/gi, '_').slice(0, 60);
       link.href = url;
       link.download = `${safeName}.${extMap[format]}`;
       document.body.appendChild(link);
@@ -533,20 +413,20 @@ export const ResultsPage = () => {
     const activeCount = activeFilters.length;
 
     if (activeCount === 0) {
-      setFilteredQuestions(MOCK_MISSION_DATA.questions);
-      setFilteredRespondentCount(missionData.totalRespondents);
+      setFilteredQuestions(missionData?.questions || []);
+      setFilteredRespondentCount(missionData?.totalRespondents ?? 0);
       return;
     }
 
     const seed = activeFilters.map(([k, v]) => `${k}:${v}`).join('|');
     const variance = seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 100;
 
-    const newTotal = Math.floor(missionData.totalRespondents / (activeCount + 1)) * (activeCount + 1);
+    const newTotal = Math.floor((missionData?.totalRespondents ?? 0) / (activeCount + 1)) * (activeCount + 1);
     setFilteredRespondentCount(Math.max(newTotal, 25));
 
     const filterLabel = activeFilters.map(([k, v]) => `${k} ${v}`).join(', ');
 
-    const newQuestions = MOCK_MISSION_DATA.questions.map((q) => {
+    const newQuestions = (missionData?.questions || []).map((q) => {
       if (q.type === 'single_choice') {
         const shuffledData = q.data.map((item, idx) => {
           const shift = (variance + idx * 13) % 30 - 15;
@@ -642,7 +522,7 @@ export const ResultsPage = () => {
 
   const clearAllFilters = () => {
     const clearedFilters: Record<string, string> = {};
-    missionData.targeting.demographics.forEach(demo => {
+    (missionData?.targeting.demographics || []).forEach(demo => {
       clearedFilters[demo.name] = 'all';
     });
     setSelectedFilters(clearedFilters);
@@ -695,7 +575,7 @@ export const ResultsPage = () => {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    const safeName = (missionData.name || 'vett_results').replace(/[^a-z0-9_\-]+/gi, '_').slice(0, 60);
+    const safeName = (missionData?.name || 'vett_results').replace(/[^a-z0-9_\-]+/gi, '_').slice(0, 60);
     link.href = url;
     link.download = `${safeName}.csv`;
     document.body.appendChild(link);
@@ -987,6 +867,48 @@ export const ResultsPage = () => {
     );
   }
 
+  // Loading state — missionId present but data not yet fetched
+  if (!missionData && !fetchError) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-6">
+            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-8" />
+            <h2 className="text-2xl font-black text-white mb-3">Loading Results</h2>
+            <p className="text-white/60">Fetching your mission data...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Error state
+  if (fetchError && !missionData) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-6">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 mx-auto mb-6">
+              <AlertCircle className="w-8 h-8 text-red-400" />
+            </div>
+            <h2 className="text-2xl font-black text-white mb-3">Could Not Load Results</h2>
+            <p className="text-white/60 mb-8">{fetchError}</p>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white font-bold transition-all mx-auto"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // At this point missionData is guaranteed non-null
+  const mission = missionData!;
+
   return (
     <DashboardLayout>
       <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900">
@@ -1026,16 +948,16 @@ export const ResultsPage = () => {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
             <div className="flex-1">
               <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-4">
-                {missionData.name}
+                {mission.name}
               </h1>
               <div className="flex flex-wrap items-center gap-3 text-sm text-white/60 mb-4">
                 <span className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
-                  {filteredRespondentCount} {hasActiveFilters && `of ${missionData.totalRespondents}`} Responses
+                  {filteredRespondentCount} {hasActiveFilters && `of ${mission.totalRespondents}`} Responses
                 </span>
                 <span className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
-                  Completed {missionData.completedAt}
+                  Completed {mission.completedAt}
                 </span>
                 <span className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-400" />
@@ -1044,9 +966,9 @@ export const ResultsPage = () => {
               </div>
 
               {/* Persona chips — shown when real target_audience data is available */}
-              {missionData.personaChips && missionData.personaChips.length > 0 && (
+              {mission.personaChips && mission.personaChips.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {missionData.personaChips.map((chip, i) => (
+                  {mission.personaChips.map((chip, i) => (
                     <span
                       key={i}
                       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium bg-white/5 border border-white/10 text-white/70"
@@ -1078,7 +1000,7 @@ export const ResultsPage = () => {
             </button>
           </div>
 
-          {missionData.targeting.demographics.length > 0 && (
+          {mission.targeting.demographics.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1093,7 +1015,7 @@ export const ResultsPage = () => {
                   </div>
 
                   <div className="flex flex-col md:flex-row md:flex-wrap gap-3 w-full md:w-auto md:flex-1">
-                    {missionData.targeting.demographics.map((filter) => (
+                    {mission.targeting.demographics.map((filter) => (
                       <div
                         key={filter.name}
                         className="relative w-full md:w-auto"
@@ -1269,51 +1191,12 @@ export const ResultsPage = () => {
                         <h2 className="text-xl md:text-2xl font-bold text-white">Executive Summary</h2>
                       </div>
 
-                      {missionData.executiveSummary ? (
-                        <p className="text-white/80 text-lg leading-relaxed">{missionData.executiveSummary}</p>
+                      {mission.executiveSummary ? (
+                        <p className="text-white/80 text-lg leading-relaxed">{mission.executiveSummary}</p>
                       ) : (
-                        <p className="text-white/80 text-lg leading-relaxed">
-                          The data indicates <span className="text-blue-400 font-bold">strong product-market fit</span> with 72% of users rating satisfaction at 4-5 stars.
-                          However, price sensitivity is evident with only 10% selecting the Enterprise tier, suggesting the market gravitates toward mid-tier pricing.
-                          The most valued features are <span className="text-purple-400 font-bold">AI-Powered Insights (78%)</span> and <span className="text-purple-400 font-bold">Real-time Analytics (65%)</span>,
-                          indicating users prioritize intelligence and speed over customization options.
-                        </p>
+                        <p className="text-white/50 text-base italic">Executive summary is being generated...</p>
                       )}
                     </div>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
-                >
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-xl">
-                    <div className="flex items-center gap-3 mb-2">
-                      <TrendingUp className="w-5 h-5 text-green-400" />
-                      <div className="text-white/60 text-sm font-medium">Satisfaction Rate</div>
-                    </div>
-                    <div className="text-4xl font-black text-white mb-1">72%</div>
-                    <div className="text-white/40 text-xs">Rated 4-5 stars</div>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-xl">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Target className="w-5 h-5 text-blue-400" />
-                      <div className="text-white/60 text-sm font-medium">Price Sweet Spot</div>
-                    </div>
-                    <div className="text-4xl font-black text-white mb-1">$19-49</div>
-                    <div className="text-white/40 text-xs">65% chose these tiers</div>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-xl">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Sparkles className="w-5 h-5 text-purple-400" />
-                      <div className="text-white/60 text-sm font-medium">Top Feature Request</div>
-                    </div>
-                    <div className="text-4xl font-black text-white mb-1">AI</div>
-                    <div className="text-white/40 text-xs">78% want AI insights</div>
                   </div>
                 </motion.div>
 
@@ -1390,9 +1273,9 @@ export const ResultsPage = () => {
                       </div>
 
                       <p className="text-white/80 text-base leading-relaxed mb-6">
-                        Since users showed <span className="text-green-400 font-bold">high interest in AI features (78%)</span> but
-                        only <span className="text-yellow-400 font-bold">10% selected Enterprise pricing</span>, we recommend launching a
-                        targeted Pricing Sensitivity Mission to identify the optimal price point that balances AI feature access with market demand.
+                        Review the patterns in your results and consider launching a follow-up mission to
+                        dig deeper into any question that surfaced unexpected findings — or to test a
+                        specific hypothesis with a more targeted audience segment.
                       </p>
 
                       <div className="flex flex-col sm:flex-row gap-3">
@@ -1401,15 +1284,15 @@ export const ResultsPage = () => {
                           className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl text-white font-bold hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300"
                         >
                           <Rocket className="w-5 h-5" />
-                          Initialize Pricing Mission
+                          Launch Follow-Up Mission
                         </button>
 
                         <button
-                          onClick={() => navigate('/mission-control')}
+                          onClick={() => navigate('/dashboard')}
                           className="flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/20 rounded-xl text-white font-bold hover:bg-white/10 hover:border-white/30 transition-all duration-300"
                         >
-                          <Sparkles className="w-5 h-5" />
-                          Validate AI Features
+                          <ArrowLeft className="w-5 h-5" />
+                          Back to Dashboard
                         </button>
                       </div>
                     </div>
