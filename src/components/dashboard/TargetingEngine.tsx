@@ -119,18 +119,28 @@ export default function TargetingEngine({ config, onChange, respondentCount }: T
     return count;
   };
 
+  /** Returns true when every country in a preset is already selected. */
+  const isRegionActive = (regionId: string): boolean => {
+    const region = REGIONS.find(r => r.id === regionId);
+    if (!region || region.countries.length === 0) return false;
+    return region.countries.every(c => config.geography.countries.includes(c));
+  };
+
   const selectRegion = (regionId: string) => {
     const region = REGIONS.find(r => r.id === regionId);
     if (!region) return;
 
-    const newCountries = [...new Set([...config.geography.countries, ...region.countries])];
-    onChange({
-      ...config,
-      geography: {
-        ...config.geography,
-        countries: newCountries,
-      },
-    });
+    if (isRegionActive(regionId)) {
+      // Second click — toggle OFF: remove all countries belonging to this preset
+      const newCountries = config.geography.countries.filter(
+        c => !region.countries.includes(c)
+      );
+      onChange({ ...config, geography: { ...config.geography, countries: newCountries } });
+    } else {
+      // First click — add all preset countries (union, no duplicates)
+      const newCountries = [...new Set([...config.geography.countries, ...region.countries])];
+      onChange({ ...config, geography: { ...config.geography, countries: newCountries } });
+    }
   };
 
   const addCountry = (countryCode: string) => {
@@ -229,15 +239,24 @@ export default function TargetingEngine({ config, onChange, respondentCount }: T
               <div>
                 <label className="block text-xs sm:text-sm text-white/60 mb-3">Quick Select Regions</label>
                 <div className="flex flex-wrap gap-2">
-                  {REGIONS.map(region => (
-                    <button
-                      key={region.id}
-                      onClick={() => selectRegion(region.id)}
-                      className="px-4 py-2 bg-primary/20 border border-primary/30 text-primary rounded-lg text-xs sm:text-sm font-medium hover:bg-primary/30 transition"
-                    >
-                      {region.label}
-                    </button>
-                  ))}
+                  {REGIONS.map(region => {
+                    const active = isRegionActive(region.id);
+                    return (
+                      <button
+                        key={region.id}
+                        onClick={() => selectRegion(region.id)}
+                        title={active ? `Remove ${region.label} countries` : `Add ${region.label} countries`}
+                        className={`px-4 py-2 border rounded-lg text-xs sm:text-sm font-medium transition ${
+                          active
+                            ? 'bg-primary/40 border-primary text-primary ring-1 ring-primary/50'
+                            : 'bg-primary/20 border-primary/30 text-primary hover:bg-primary/30'
+                        }`}
+                      >
+                        {region.label}
+                        {active && <span className="ml-1.5 text-[10px] opacity-70">✓</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
