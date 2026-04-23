@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
+import { trackFunnel } from '../lib/funnelTrack';
 import { Logo } from '../components/ui/Logo';
 import { TopNav } from '../components/ui/TopNav';
 import { Button } from '../components/ui/Button';
@@ -173,6 +174,9 @@ export function LandingPage() {
     return new URLSearchParams(window.location.search).get('q') || '';
   }, []);
   const [idea, setIdea] = useState(initialQuery);
+
+  // Track landing page view (once per mount)
+  useEffect(() => { trackFunnel('landing_view'); }, []);
 
   // Keep the input in sync if the URL changes (e.g. back/forward navigation)
   useEffect(() => {

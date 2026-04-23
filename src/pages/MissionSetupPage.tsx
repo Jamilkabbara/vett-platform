@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { Loader2, X } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
+import { trackFunnel } from '../lib/funnelTrack';
 import { useAuth } from '../contexts/AuthContext';
 import {
   fetchAdaptiveClarify,
@@ -208,6 +209,7 @@ export const MissionSetupPage = () => {
   // Draft hydration + one-shot ?q= consumption.
   useEffect(() => {
     window.scrollTo(0, 0);
+    trackFunnel('mission_setup_started');
 
     if (queryPrefill) {
       const next = new URLSearchParams(searchParams);
@@ -521,6 +523,7 @@ export const MissionSetupPage = () => {
       }
 
       clearAllDrafts();
+      trackFunnel('mission_setup_completed', { goal_type: missionGoal, mission_id: missionData.id });
 
       if (aiResult) {
         try {

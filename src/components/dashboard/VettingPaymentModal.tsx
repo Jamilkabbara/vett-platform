@@ -19,6 +19,7 @@ import {
 import { api } from '../../lib/apiClient';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { trackFunnel } from '../../lib/funnelTrack';
 import { AuthModal } from '../layout/AuthModal';
 import { StripeElementsWrapper } from './StripeElementsWrapper';
 
@@ -297,6 +298,7 @@ const PaymentForm = ({
         event.complete('success');
         await api.post('/api/payments/confirm', { missionId, paymentIntentId });
         await activateMission(missionId);
+        trackFunnel('mission_paid', { mission_id: missionId, method: 'wallet' });
 
         setStage('success');
         toast.success('Mission Launched!', { id: toastId });
@@ -555,6 +557,7 @@ const PaymentForm = ({
       }
 
       await activateMission(missionId);
+      trackFunnel('mission_paid', { mission_id: missionId, method: 'card' });
 
       setStage('success');
       toast.success('Mission Launched Successfully!', { id: toastId });
