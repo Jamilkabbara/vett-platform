@@ -23,6 +23,7 @@ export interface RegionPreset {
 }
 
 export const REGIONS: RegionPreset[] = [
+  // ── Middle East ──────────────────────────────────────────────────────────
   { id: 'gcc', label: 'GCC', countries: ['AE', 'SA', 'KW', 'QA', 'BH', 'OM'] },
   {
     id: 'mena',
@@ -30,8 +31,22 @@ export const REGIONS: RegionPreset[] = [
     // Pass 6B: expanded to include Palestine, Syria, Iraq, Yemen, Algeria, Libya
     countries: ['AE', 'SA', 'KW', 'QA', 'BH', 'OM', 'EG', 'JO', 'LB', 'MA', 'TN', 'PS', 'SY', 'IQ', 'YE', 'DZ', 'LY'],
   },
-  { id: 'north_america', label: 'North America', countries: ['US', 'CA'] },
+  // ── Americas ─────────────────────────────────────────────────────────────
+  { id: 'north_america', label: 'North America', countries: ['US', 'CA', 'MX'] },
+  { id: 'south_america', label: 'South America', countries: ['BR', 'AR', 'CL', 'CO', 'PE', 'VE', 'EC', 'BO', 'PY', 'UY'] },
+  // ── Europe ───────────────────────────────────────────────────────────────
   { id: 'eu5', label: 'Europe (EU5)', countries: ['GB', 'DE', 'FR', 'IT', 'ES'] },
+  { id: 'western_europe', label: 'Western Europe', countries: ['GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'CH', 'AT', 'IE', 'PT', 'LU'] },
+  { id: 'eastern_europe', label: 'Eastern Europe', countries: ['PL', 'CZ', 'HU', 'RO', 'BG', 'SK', 'HR', 'RS', 'UA', 'BY'] },
+  { id: 'nordics', label: 'Nordics', countries: ['SE', 'NO', 'DK', 'FI', 'IS'] },
+  // ── Asia-Pacific ─────────────────────────────────────────────────────────
+  { id: 'southeast_asia', label: 'Southeast Asia', countries: ['SG', 'MY', 'TH', 'ID', 'PH', 'VN'] },
+  { id: 'south_asia', label: 'South Asia', countries: ['IN', 'PK', 'BD', 'LK', 'NP'] },
+  { id: 'east_asia', label: 'East Asia', countries: ['JP', 'KR', 'CN', 'TW', 'HK'] },
+  { id: 'oceania', label: 'Oceania', countries: ['AU', 'NZ'] },
+  // ── Africa ───────────────────────────────────────────────────────────────
+  { id: 'sub_saharan_africa', label: 'Sub-Saharan Africa', countries: ['NG', 'ZA', 'KE', 'GH', 'TZ', 'ET', 'UG', 'SN', 'CM', 'CI'] },
+  { id: 'north_africa', label: 'North Africa', countries: ['EG', 'MA', 'TN', 'DZ', 'LY'] },
 ];
 
 /**
