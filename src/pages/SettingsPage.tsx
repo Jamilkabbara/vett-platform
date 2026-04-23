@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { User, CreditCard, Bell, Download, Upload, Plus, Trash2 } from 'lucide-react';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 type TabType = 'profile' | 'billing' | 'notifications';
 
@@ -50,6 +51,7 @@ export const SettingsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlTab = searchParams.get('tab') as TabType;
   const [activeTab, setActiveTab] = useState<TabType>(urlTab || 'profile');
+  const { profile } = useUserProfile();
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -127,7 +129,7 @@ export const SettingsPage = () => {
                       <label className="block text-sm font-bold text-white/60 mb-2">Full Name</label>
                       <input
                         type="text"
-                        defaultValue="John Maverick"
+                        defaultValue={profile?.displayName ?? ''}
                         className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                       />
                     </div>
@@ -136,7 +138,7 @@ export const SettingsPage = () => {
                       <label className="block text-sm font-bold text-white/60 mb-2">Email</label>
                       <input
                         type="email"
-                        defaultValue="john@example.com"
+                        defaultValue={profile?.email ?? ''}
                         className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                       />
                     </div>

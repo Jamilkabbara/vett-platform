@@ -2,17 +2,18 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, LogOut, Target } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useUserProfile } from '../../hooks/useUserProfile';
 
-interface UserMenuProps {
-  userName?: string;
-  userEmail?: string;
-}
-
-export const UserMenu = ({ userName = 'John Maverick', userEmail = 'john@example.com' }: UserMenuProps) => {
+export const UserMenu = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { signOut } = useAuth();
+  const { profile } = useUserProfile();
+
+  const displayName = profile?.displayName ?? '…';
+  const email = profile?.email ?? '';
+  const initials = profile?.initials ?? '?';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -20,7 +21,6 @@ export const UserMenu = ({ userName = 'John Maverick', userEmail = 'john@example
         setIsOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -36,15 +36,6 @@ export const UserMenu = ({ userName = 'John Maverick', userEmail = 'john@example
     navigate('/landing');
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -52,7 +43,7 @@ export const UserMenu = ({ userName = 'John Maverick', userEmail = 'john@example
         className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-neon-lime flex items-center justify-center text-gray-900 font-black text-sm hover:scale-105 active:scale-95 transition-transform shadow-lg ring-2 ring-black/5"
         aria-label="User menu"
       >
-        {getInitials(userName)}
+        {initials}
       </button>
 
       {isOpen && (
@@ -60,11 +51,11 @@ export const UserMenu = ({ userName = 'John Maverick', userEmail = 'john@example
           <div className="p-6 border-b border-gray-800/60 bg-gradient-to-br from-gray-900/50 to-gray-900/30">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-neon-lime flex items-center justify-center text-gray-900 font-black text-xs">
-                {getInitials(userName)}
+                {initials}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{userName}</p>
-                <p className="text-xs text-gray-500 truncate">{userEmail}</p>
+                <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+                <p className="text-xs text-gray-500 truncate">{email}</p>
               </div>
             </div>
           </div>
