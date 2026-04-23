@@ -127,6 +127,11 @@ const PaymentForm = ({
   const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
   const [canMakeExpressPayment, setCanMakeExpressPayment] = useState(false);
 
+  // Server-quoted price — fetched on open so the Pay button always shows
+  // the backend-authoritative amount, not the client-computed estimate.
+  const [serverOriginalPrice, setServerOriginalPrice] = useState<number | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+
   // Track when each card Element fires its internal ready event.
   // Stripe's "ready event not emitted" error fires when confirmCardPayment()
   // is called before the iframe has finished initialising — even if the ref
@@ -291,18 +296,58 @@ const PaymentForm = ({
     return () => { pr.off('paymentmethod', onPaymentMethod); };
   }, [stripe, discountedPrice, respondentCount, missionId, user, navigate, onClose]);
 
-  const handleApplyPromo = () => {
-    if (promoCode.toUpperCase() === 'VETT100') {
-      setPromoApplied(true);
-      setDiscountedPrice(0);
-      setPromoMessage('✅ Code Applied: 100% OFF');
-      setCanMakeExpressPayment(false); // hide express payment when free
-    } else {
+  // Fetch the authoritative server price as soon as the modal opens.
+  // The client-computed totalCost prop is a UX estimate only; the backend is
+  // the single source of truth (country tier, surcharges, rounding).
+  useEffect(() => {
+    if (!isOpen || !missionId) return;
+    api.post('/api/pricing/quote', { missionId })
+      .then((data: any) => {
+        if (typeof data?.total === 'number') {
+          setServerOriginalPrice(data.total);
+          setDiscountedPrice(data.total);
+        }
+      })
+      .catch(() => {
+        // Non-fatal: keep client-computed totalCost shown until server responds.
+      });
+  }, [isOpen, missionId]);
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoMessage('');
+    try {
+      const data: any = await api.post('/api/pricing/quote', {
+        missionId,
+        promoCode: promoCode.trim(),
+      });
+      const originalTotal = serverOriginalPrice ?? totalCost;
+      const hasDiscount = typeof data?.total === 'number' &&
+        (data.total < originalTotal || data.total === 0);
+
+      if (hasDiscount) {
+        setPromoApplied(true);
+        setDiscountedPrice(data.total);
+        const discountLine = Array.isArray(data.breakdown)
+          ? data.breakdown.find((b: any) => b.amount < 0)
+          : null;
+        setPromoMessage(discountLine
+          ? `✅ ${discountLine.label}`
+          : '✅ Promo applied');
+        if (data.total === 0) setCanMakeExpressPayment(false);
+      } else {
+        setPromoApplied(false);
+        setDiscountedPrice(originalTotal);
+        setPromoMessage('❌ Invalid or expired code');
+        setTimeout(() => setPromoMessage(''), 3000);
+      }
+    } catch {
       setPromoApplied(false);
-      setDiscountedPrice(totalCost);
-      setPromoMessage('❌ Invalid Code');
+      setPromoMessage('❌ Could not validate code');
       setTimeout(() => setPromoMessage(''), 3000);
     }
+    setPromoLoading(false);
   };
 
   useEffect(() => {
@@ -336,6 +381,8 @@ const PaymentForm = ({
       setPromoMessage('');
       setPromoApplied(false);
       setDiscountedPrice(totalCost);
+      setServerOriginalPrice(null);
+      setPromoLoading(false);
       setErrorMessage(null);
       // Reset card-element ready state so "Loading payment form..." is shown
       // again when the modal reopens and Elements remount.
@@ -678,10 +725,10 @@ const PaymentForm = ({
                     />
                     <button
                       onClick={handleApplyPromo}
-                      disabled={!promoCode.trim()}
+                      disabled={!promoCode.trim() || promoLoading}
                       className="px-4 sm:px-6 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex-shrink-0"
                     >
-                      Apply
+                      {promoLoading ? 'Checking...' : 'Apply'}
                     </button>
                   </div>
                   {promoMessage && (
