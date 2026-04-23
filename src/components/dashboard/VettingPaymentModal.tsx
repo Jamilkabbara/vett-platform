@@ -3,14 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Check, CreditCard, Lock, X, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { loadStripe } from '@stripe/stripe-js';
 import type {
   PaymentRequest,
   PaymentRequestPaymentMethodEvent,
   StripeError,
 } from '@stripe/stripe-js';
 import {
-  Elements,
   CardNumberElement,
   CardExpiryElement,
   CardCvcElement,
@@ -22,6 +20,7 @@ import { api } from '../../lib/apiClient';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthModal } from '../layout/AuthModal';
+import { StripeElementsWrapper } from './StripeElementsWrapper';
 
 // Flip the mission row from draft → active the moment the charge clears so
 // the post-payment page can trust mission.status. We only touch columns that
@@ -38,8 +37,6 @@ async function activateMission(missionId: string | undefined): Promise<void> {
     console.warn('[payment] mission activate failed (non-blocking)', error);
   }
 }
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 /**
  * Normalise whatever got thrown into a user-readable string. Stripe errors
@@ -851,13 +848,16 @@ const PaymentForm = ({
   );
 };
 
-// Outer component wraps with Stripe Elements provider
+// Outer component wraps with Stripe Elements provider.
+// StripeElementsWrapper resolves loadStripe() before mounting <Elements> so
+// card iframes never fire their "ready" events before the Stripe instance
+// arrives — the root cause of the desktop card payment failure (Nourhan's bug).
 export const VettingPaymentModal = (props: VettingPaymentModalProps) => {
   if (!props.isOpen) return null;
 
   return (
-    <Elements stripe={stripePromise}>
+    <StripeElementsWrapper>
       <PaymentForm {...props} />
-    </Elements>
+    </StripeElementsWrapper>
   );
 };
