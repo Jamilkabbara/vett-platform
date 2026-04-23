@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTypewriterPlaceholder } from '../hooks/useTypewriterPlaceholder';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -183,17 +184,14 @@ export function LandingPage() {
     return () => window.removeEventListener('popstate', handler);
   }, []);
 
-  // Rotating ghost placeholder
-  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  // Typewriter placeholder — pauses when the input is focused so the user
+  // isn't distracted by animation while they're composing their question.
   const [heroFocused, setHeroFocused] = useState(false);
-
-  useEffect(() => {
-    if (heroFocused) return; // freeze while focused
-    const id = setInterval(() => {
-      setPlaceholderIdx(i => (i + 1) % HERO_PLACEHOLDERS.length);
-    }, 3000);
-    return () => clearInterval(id);
-  }, [heroFocused]);
+  const heroPaused = heroFocused || idea.trim().length > 0;
+  const typewriterPlaceholder = useTypewriterPlaceholder({
+    phrases: HERO_PLACEHOLDERS,
+    paused: heroPaused,
+  });
 
   const heroInputRef = useRef<HTMLInputElement>(null);
 
@@ -304,7 +302,7 @@ export function LandingPage() {
                 onKeyDown={handleHeroKeydown}
                 onFocus={() => setHeroFocused(true)}
                 onBlur={() => { if (!idea.trim()) setHeroFocused(false); }}
-                placeholder={HERO_PLACEHOLDERS[placeholderIdx]}
+                placeholder={typewriterPlaceholder}
                 aria-label="Research question"
                 className="flex-1 bg-transparent border-0 outline-none font-body text-[14px] md:text-[15px] text-t1 placeholder:text-t3 w-full"
               />

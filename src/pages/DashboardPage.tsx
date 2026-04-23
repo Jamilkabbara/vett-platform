@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
@@ -236,6 +236,7 @@ function hydrateTargeting(raw: unknown): TargetingConfig {
 
 export const DashboardPage = () => {
   const { missionId } = useParams();
+  const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
@@ -410,6 +411,14 @@ export const DashboardPage = () => {
                 .eq('id', mission.id);
             }
           }
+        }
+
+        // A completed mission belongs on the results page, not the setup page.
+        // Redirect immediately so the user lands in the right place whether
+        // they navigated here via a bookmark or an old link.
+        if (mission.status === 'completed' || mission.status === 'COMPLETED') {
+          navigate(`/results/${mission.id}`, { replace: true });
+          return;
         }
 
         setState({ kind: 'loaded', mission });

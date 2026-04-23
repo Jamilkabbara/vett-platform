@@ -127,9 +127,14 @@ const PaymentForm = ({
   const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
   const [canMakeExpressPayment, setCanMakeExpressPayment] = useState(false);
 
-  // Server-quoted price — fetched on open so the Pay button always shows
-  // the backend-authoritative amount, not the client-computed estimate.
+  // Server-authoritative quote — fetched on open, updated on promo apply.
+  // Stores total + line-item breakdown for the pricing card.
+  const [serverQuote, setServerQuote] = useState<{
+    total: number;
+    breakdown: Array<{ label: string; amount: number }>;
+  } | null>(null);
   const [serverOriginalPrice, setServerOriginalPrice] = useState<number | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [promoLoading, setPromoLoading] = useState(false);
 
   // Track when each card Element fires its internal ready event.
@@ -164,6 +169,29 @@ const PaymentForm = ({
    * on every new payment attempt and on modal close.
    */
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Fetch the authoritative server quote whenever the modal opens.
+  // We use this to (a) set the correct price from the server, and
+  // (b) populate the pricing breakdown card below the Pay button.
+  useEffect(() => {
+    if (!isOpen || !missionId) return;
+    let cancelled = false;
+    setQuoteLoading(true);
+    api.post('/api/pricing/quote', { missionId })
+      .then((data: { total: number; breakdown: Array<{ label: string; amount: number }> }) => {
+        if (cancelled) return;
+        setServerQuote(data);
+        setDiscountedPrice(data.total);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Fall back silently to the prop value — the modal still works.
+      })
+      .finally(() => {
+        if (!cancelled) setQuoteLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [isOpen, missionId]);
 
   /**
    * Set up Apple Pay / Google Pay via Stripe's Payment Request API.
@@ -314,27 +342,26 @@ const PaymentForm = ({
   }, [isOpen, missionId]);
 
   const handleApplyPromo = async () => {
-    if (!promoCode.trim()) return;
+    if (!promoCode.trim() || promoLoading) return;
     setPromoLoading(true);
     setPromoMessage('');
     try {
+      const originalTotal = serverOriginalPrice ?? serverQuote?.total ?? totalCost;
       const data: any = await api.post('/api/pricing/quote', {
         missionId,
-        promoCode: promoCode.trim(),
+        promoCode: promoCode.trim().toUpperCase(),
       });
-      const originalTotal = serverOriginalPrice ?? totalCost;
       const hasDiscount = typeof data?.total === 'number' &&
         (data.total < originalTotal || data.total === 0);
 
       if (hasDiscount) {
         setPromoApplied(true);
         setDiscountedPrice(data.total);
+        if (data.breakdown) setServerQuote(data);
         const discountLine = Array.isArray(data.breakdown)
           ? data.breakdown.find((b: any) => b.amount < 0)
           : null;
-        setPromoMessage(discountLine
-          ? `✅ ${discountLine.label}`
-          : '✅ Promo applied');
+        setPromoMessage(discountLine ? `✅ ${discountLine.label}` : '✅ Promo applied');
         if (data.total === 0) setCanMakeExpressPayment(false);
       } else {
         setPromoApplied(false);
@@ -346,8 +373,9 @@ const PaymentForm = ({
       setPromoApplied(false);
       setPromoMessage('❌ Could not validate code');
       setTimeout(() => setPromoMessage(''), 3000);
+    } finally {
+      setPromoLoading(false);
     }
-    setPromoLoading(false);
   };
 
   useEffect(() => {
@@ -384,6 +412,9 @@ const PaymentForm = ({
       setServerOriginalPrice(null);
       setPromoLoading(false);
       setErrorMessage(null);
+      setServerQuote(null);
+      setQuoteLoading(false);
+      setPromoLoading(false);
       // Reset card-element ready state so "Loading payment form..." is shown
       // again when the modal reopens and Elements remount.
       setCardNumberReady(false);
@@ -639,19 +670,39 @@ const PaymentForm = ({
                   </div>
                 )}
 
-                {/* Price summary */}
+                {/* Pricing breakdown card */}
                 <div className="bg-gray-700/30 rounded-lg p-4 mb-5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-white/70">
-                      {respondentCount} Respondents × ${(totalCost / respondentCount).toFixed(2)}
-                    </span>
-                    <div className="text-right">
-                      {promoApplied && (
-                        <div className="text-xs text-white/50 line-through mb-1">${totalCost.toFixed(2)}</div>
-                      )}
+                  {quoteLoading ? (
+                    <div className="flex items-center gap-2 text-white/40 text-xs py-1">
+                      <div className="w-3 h-3 border border-white/20 border-t-white/60 rounded-full animate-spin flex-shrink-0" />
+                      Calculating price…
+                    </div>
+                  ) : serverQuote ? (
+                    <div className="space-y-2">
+                      {serverQuote.breakdown.map((line, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <span className="text-white/60">{line.label}</span>
+                          <span className={line.amount < 0 ? 'text-green-400 font-medium' : 'text-white'}>
+                            {line.amount < 0
+                              ? `-$${Math.abs(line.amount).toFixed(2)}`
+                              : `$${line.amount.toFixed(2)}`}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                        <span className="text-white font-bold text-sm">Total</span>
+                        <span className="text-white font-bold text-lg">${discountedPrice.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Fallback while quote hasn't loaded yet */
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-white/70">
+                        {respondentCount} Respondent{respondentCount !== 1 ? 's' : ''}
+                      </span>
                       <span className="text-white font-bold text-lg">${discountedPrice.toFixed(2)}</span>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Apple Pay / Google Pay — shown automatically if available on device */}
@@ -726,9 +777,9 @@ const PaymentForm = ({
                     <button
                       onClick={handleApplyPromo}
                       disabled={!promoCode.trim() || promoLoading}
-                      className="px-4 sm:px-6 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex-shrink-0"
+                      className="px-4 sm:px-6 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex-shrink-0 min-w-[72px]"
                     >
-                      {promoLoading ? 'Checking...' : 'Apply'}
+                      {promoLoading ? 'Checking…' : 'Apply'}
                     </button>
                   </div>
                   {promoMessage && (

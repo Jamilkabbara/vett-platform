@@ -394,7 +394,7 @@ const ActivePanel = ({
     if (autoNavRef.current) return;
     autoNavRef.current = true;
     const t = window.setTimeout(() => {
-      navigate(`/results?missionId=${mission.id}`);
+      navigate(`/results/${mission.id}`);
     }, 1200);
     return () => window.clearTimeout(t);
   }, [isComplete, mission.id, navigate]);
@@ -714,7 +714,7 @@ const ActivePanel = ({
           type="button"
           disabled={!isComplete}
           onClick={() =>
-            isComplete && navigate(`/results?missionId=${mission.id}`)
+            isComplete && navigate(`/results/${mission.id}`)
           }
           className={[
             'inline-flex items-center gap-2 rounded-xl px-5 py-3',

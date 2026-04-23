@@ -95,6 +95,7 @@ function App() {
               <Route path="/mission/:missionId" element={<ActiveMissionPage />} />
               <Route path="/mission/:missionId/live" element={<ActiveMissionPage />} />
               <Route path="/mission-success" element={<MissionSuccessPage />} />
+              <Route path="/results/:missionId" element={<ResultsPage />} />
               <Route path="/results" element={<ResultsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
 

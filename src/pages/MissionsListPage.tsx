@@ -24,6 +24,8 @@ interface Mission {
   target_audience?: unknown;
   status: string;
   respondent_count: number;
+  /** Actual collected responses (from mission_responses join). */
+  responses_collected?: number;
   price_estimated?: number | null;
   created_at: string;
   questions: unknown[];
@@ -173,13 +175,11 @@ export const MissionsListPage = () => {
   };
 
   const getRespondentProgress = (mission: Mission) => {
-    if (mission.status === 'ACTIVE') {
-      return `0/${mission.respondent_count}`;
-    } else if (mission.status === 'COMPLETED') {
-      return `${mission.respondent_count}/${mission.respondent_count}`;
-    } else {
-      return `0/${mission.respondent_count}`;
-    }
+    const target = mission.respondent_count;
+    const statusUp = (mission.status || '').toUpperCase();
+    // Use live join count when available, fall back to heuristics.
+    const actual = mission.responses_collected ?? (statusUp === 'COMPLETED' ? target : 0);
+    return `${actual}/${target}`;
   };
 
   const getEstimatedTime = (mission: Mission) => {
@@ -190,7 +190,7 @@ export const MissionsListPage = () => {
 
   const handleMissionClick = (mission: Mission) => {
     if (mission.status === 'ACTIVE' || mission.status === 'COMPLETED') {
-      navigate(`/results?missionId=${mission.id}`);
+      navigate(`/results/${mission.id}`);
     } else {
       navigate(`/dashboard/${mission.id}`);
     }

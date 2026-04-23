@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import {
@@ -120,6 +120,7 @@ const COLORS = [
 export const ResultsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { missionId: missionIdParam } = useParams<{ missionId?: string }>();
   const [missionData, setMissionData] = useState<MissionData | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
@@ -136,13 +137,18 @@ export const ResultsPage = () => {
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [resultsProgress, setResultsProgress] = useState<{ completed: number; total: number } | null>(null);
+  const [screeningFunnel, setScreeningFunnel] = useState<{ total: number; passed: number; screenedOut: number } | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const filterRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Get missionId from URL query or location state
-  const missionId = new URLSearchParams(location.search).get('missionId') ||
-    (location.state as any)?.missionId || null;
+  // Get missionId — path param takes priority (clean URLs), fall back to
+  // query string (?missionId=) and location state for backward compat.
+  const missionId =
+    missionIdParam ||
+    new URLSearchParams(location.search).get('missionId') ||
+    (location.state as any)?.missionId ||
+    null;
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -303,6 +309,8 @@ export const ResultsPage = () => {
       setMissionData(loaded);
       setFilteredRespondentCount(loaded.totalRespondents);
       setFilteredQuestions(loaded.questions);
+      // Screening funnel — only present if mission has a screening question.
+      setScreeningFunnel(data.screeningFunnel || null);
     } catch (err: any) {
       console.error('Failed to load results:', err);
       setFetchError(err?.message || 'Failed to load mission results. Please try again.');
@@ -1199,6 +1207,54 @@ export const ResultsPage = () => {
                     </div>
                   </div>
                 </motion.div>
+
+                {/* Screening Funnel card — only shown when mission has a screening question */}
+                {screeningFunnel && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="mb-8 bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl"
+                  >
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-lime-400/10">
+                        <Users className="w-5 h-5 text-lime-400" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-white">Screening Funnel</h2>
+                        <p className="text-white/40 text-xs">Respondents filtered before entering the survey</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center p-4 bg-white/5 rounded-xl border border-white/10">
+                        <div className="text-2xl font-black text-white mb-1">{screeningFunnel.total}</div>
+                        <div className="text-xs text-white/50 uppercase tracking-wide">Started</div>
+                      </div>
+                      <div className="text-center p-4 bg-lime-400/10 rounded-xl border border-lime-400/20">
+                        <div className="text-2xl font-black text-lime-400 mb-1">{screeningFunnel.passed}</div>
+                        <div className="text-xs text-lime-400/70 uppercase tracking-wide">Qualified</div>
+                      </div>
+                      <div className="text-center p-4 bg-red-400/10 rounded-xl border border-red-400/20">
+                        <div className="text-2xl font-black text-red-400 mb-1">{screeningFunnel.screenedOut}</div>
+                        <div className="text-xs text-red-400/70 uppercase tracking-wide">Screened Out</div>
+                      </div>
+                    </div>
+                    {screeningFunnel.total > 0 && (
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between text-xs text-white/40 mb-1.5">
+                          <span>Pass rate</span>
+                          <span>{Math.round((screeningFunnel.passed / screeningFunnel.total) * 100)}%</span>
+                        </div>
+                        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-lime-400 rounded-full transition-all"
+                            style={{ width: `${Math.round((screeningFunnel.passed / screeningFunnel.total) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
 
                 <motion.div
                   initial={{ opacity: 0 }}
