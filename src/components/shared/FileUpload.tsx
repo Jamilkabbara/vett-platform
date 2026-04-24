@@ -8,7 +8,7 @@ import {
   Loader2,
   CheckCircle2,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 // ── Types ────────────────────────────────────────────────────────────────────
