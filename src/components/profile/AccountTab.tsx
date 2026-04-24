@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Mail, Building2, Save, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useUserProfile } from '../../hooks/useUserProfile';
+import { FileUpload, type UploadedFile } from '../shared/FileUpload';
 import toast from 'react-hot-toast';
 
 const ROLE_OPTIONS   = ['Founder', 'Product Manager', 'Marketing', 'Researcher', 'Developer', 'Other'];
@@ -19,6 +20,9 @@ export const AccountTab = () => {
   const [projectStage, setProjectStage] = useState('');
   const [hydrated, setHydrated]         = useState(false);
 
+  // Logo upload state
+  const [logo, setLogo] = useState<UploadedFile | null>(null);
+
   // Hydrate form once the profile hook resolves
   useEffect(() => {
     if (profile && !hydrated) {
@@ -28,6 +32,18 @@ export const AccountTab = () => {
       setRole(profile.role             ?? '');
       setProjectStage(profile.projectStage ?? '');
       setHydrated(true);
+
+      // Hydrate logo from profile if stored
+      if ((profile as Record<string, unknown>).logo_path) {
+        setLogo({
+          path:         (profile as Record<string, unknown>).logo_path as string,
+          publicUrl:    (profile as Record<string, unknown>).logo_url as string | undefined,
+          originalName: 'Company logo',
+          sizeBytes:    0,
+          mimeType:     'image/png',
+          uploadedAt:   '',
+        });
+      }
     }
   }, [profile, hydrated]);
 
@@ -81,6 +97,40 @@ export const AccountTab = () => {
 
   return (
     <form onSubmit={handleSave} className="space-y-8">
+
+      {/* Company Logo */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-300 mb-3">
+          Company Logo
+          <span className="ml-2 text-xs text-gray-500 font-normal">optional — used on PDF invoices</span>
+        </label>
+        <FileUpload
+          bucket="vett-uploads"
+          folder="logos"
+          accept="image/png,image/jpeg,image/webp"
+          maxSizeMB={5}
+          label="Upload your company logo"
+          hint="PNG, JPG, WebP up to 5 MB"
+          current={logo}
+          onUpload={async (f) => {
+            setLogo(f);
+            if (!profile?.id) return;
+            await supabase.from('profiles').update({
+              logo_path: f.path,
+              logo_url:  f.publicUrl ?? null,
+            }).eq('id', profile.id);
+            toast.success('Logo saved');
+          }}
+          onRemove={async () => {
+            setLogo(null);
+            if (!profile?.id) return;
+            await supabase.from('profiles').update({
+              logo_path: null,
+              logo_url:  null,
+            }).eq('id', profile.id);
+          }}
+        />
+      </div>
 
       {/* Name row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
