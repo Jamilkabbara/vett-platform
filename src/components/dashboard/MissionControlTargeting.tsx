@@ -385,14 +385,18 @@ export const MissionControlTargeting = ({
     });
   };
 
-  const applyRegionPreset = (countries: string[]) => {
-    // Merge-wise add; don't stomp an existing hand-picked list.
-    const merged = Array.from(
-      new Set([...config.geography.countries, ...countries]),
+  const toggleRegionPreset = (presetCountries: string[]) => {
+    const isActive = presetCountries.every((c) =>
+      config.geography.countries.includes(c),
     );
+    const next = isActive
+      ? // Toggle OFF: remove countries that belong to this preset
+        config.geography.countries.filter((c) => !presetCountries.includes(c))
+      : // Toggle ON: union-merge, no duplicates
+        Array.from(new Set([...config.geography.countries, ...presetCountries]));
     onChange({
       ...config,
-      geography: { ...config.geography, countries: merged },
+      geography: { ...config.geography, countries: next },
     });
   };
 
@@ -647,7 +651,7 @@ export const MissionControlTargeting = ({
               selected={preset.countries.every((c) =>
                 config.geography.countries.includes(c),
               )}
-              onToggle={() => applyRegionPreset(preset.countries)}
+              onToggle={() => toggleRegionPreset(preset.countries)}
             />
           ))}
         </ChipRow>

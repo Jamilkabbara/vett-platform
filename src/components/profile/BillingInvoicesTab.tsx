@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FileText, Download, DollarSign, Target, TrendingUp } from 'lucide-react';
 import { api } from '../../lib/apiClient';
-import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 interface Invoice {
@@ -32,28 +31,145 @@ export const BillingInvoicesTab = () => {
     })();
   }, []);
 
-  const handleDownload = async (inv: Invoice) => {
+  const handleDownload = (inv: Invoice) => {
     if (downloading) return;
     setDownloading(inv.invoiceId);
+
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = {};
-      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
-      const res = await fetch(`${API_URL}/api/results/${inv.missionId}/export/pdf`, { headers });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href     = url;
-        a.download = `vett_invoice_${inv.invoiceId}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
+      const formattedDate = new Date(inv.date).toLocaleDateString('en-US', {
+        month: 'long', day: 'numeric', year: 'numeric',
+      });
+      const amount = (inv.amount || 0).toFixed(2);
+      const respondents = inv.respondentCount ?? 0;
+      const unitPrice = respondents > 0 ? (inv.amount / respondents).toFixed(2) : amount;
+
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Invoice ${inv.invoiceId}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #111; background: #fff; padding: 48px; font-size: 14px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 48px; }
+    .brand { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: #111; }
+    .brand span { color: #84cc16; }
+    .invoice-meta { text-align: right; }
+    .invoice-meta h1 { font-size: 28px; font-weight: 900; color: #111; letter-spacing: -1px; margin-bottom: 4px; }
+    .invoice-meta p { color: #6b7280; font-size: 13px; }
+    .invoice-meta .invoice-id { font-size: 13px; color: #374151; font-weight: 600; margin-top: 4px; }
+    .divider { border: none; border-top: 1.5px solid #e5e7eb; margin: 24px 0; }
+    .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 40px; }
+    .party h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; margin-bottom: 8px; }
+    .party p { color: #111; font-weight: 600; font-size: 14px; line-height: 1.6; }
+    .party .sub { color: #6b7280; font-size: 13px; font-weight: 400; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+    thead th { background: #f9fafb; text-align: left; padding: 12px 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; border-bottom: 1.5px solid #e5e7eb; }
+    thead th:last-child { text-align: right; }
+    tbody td { padding: 16px; border-bottom: 1px solid #f3f4f6; font-size: 14px; color: #111; vertical-align: top; }
+    tbody td:last-child { text-align: right; font-weight: 600; }
+    .desc-title { font-weight: 600; color: #111; }
+    .desc-sub { color: #6b7280; font-size: 12px; margin-top: 2px; }
+    .totals { margin-left: auto; width: 280px; }
+    .totals-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: #374151; }
+    .totals-row.total { border-top: 2px solid #111; margin-top: 8px; padding-top: 12px; font-size: 18px; font-weight: 900; color: #111; }
+    .status-badge { display: inline-flex; align-items: center; gap: 6px; background: #dcfce7; color: #15803d; font-weight: 700; font-size: 12px; padding: 4px 12px; border-radius: 99px; border: 1px solid #86efac; }
+    .footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+    .footer p { font-size: 12px; color: #9ca3af; }
+    .footer .thank-you { font-size: 14px; font-weight: 700; color: #111; }
+    @media print {
+      body { padding: 32px; }
+      @page { margin: 0; size: A4; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">VETT<span>.</span></div>
+    <div class="invoice-meta">
+      <h1>INVOICE</h1>
+      <p class="invoice-id">${inv.invoiceId}</p>
+      <p>Issued: ${formattedDate}</p>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <div class="parties">
+    <div class="party">
+      <h3>From</h3>
+      <p>Vett Inc.</p>
+      <p class="sub">hello@vett.ai</p>
+      <p class="sub">vett.ai</p>
+    </div>
+    <div class="party">
+      <h3>Bill To</h3>
+      <p>Account Holder</p>
+      <p class="sub">Payment on file</p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <p class="desc-title">Market Research Mission</p>
+          <p class="desc-sub">${inv.missionStatement || 'Consumer research mission'}</p>
+          <p class="desc-sub">Mission ID: ${inv.missionId}</p>
+        </td>
+        <td>${respondents > 0 ? respondents + ' respondents' : '1'}</td>
+        <td>$${respondents > 0 ? unitPrice : amount}</td>
+        <td>$${amount}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="totals-row">
+      <span>Subtotal</span>
+      <span>$${amount}</span>
+    </div>
+    <div class="totals-row">
+      <span>Tax</span>
+      <span>$0.00</span>
+    </div>
+    <div class="totals-row total">
+      <span>Total</span>
+      <span>$${amount}</span>
+    </div>
+  </div>
+
+  <div style="margin-top: 32px; display: flex; align-items: center; gap: 12px;">
+    <span class="status-badge">✓ PAID</span>
+    <span style="color: #6b7280; font-size: 13px;">Payment received on ${formattedDate}</span>
+  </div>
+
+  <div class="footer">
+    <p>Vett Inc. · hello@vett.ai · vett.ai</p>
+    <p class="thank-you">Thank you for your business!</p>
+  </div>
+
+  <script>window.onload = () => { window.print(); };<\/script>
+</body>
+</html>`;
+
+      const win = window.open('', '_blank', 'width=900,height=700');
+      if (win) {
+        win.document.write(html);
+        win.document.close();
       } else {
-        toast.error('Invoice not available yet');
+        toast.error('Pop-up blocked — please allow pop-ups for this site');
       }
     } catch {
-      toast.error('Download failed');
+      toast.error('Could not generate invoice');
     } finally {
       setDownloading(null);
     }
