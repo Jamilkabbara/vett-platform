@@ -14,7 +14,9 @@ import {
   Linkedin,
   Mail,
   MapPin,
+  X,
 } from 'lucide-react';
+import { FileUpload, type UploadedFile } from '../components/shared/FileUpload';
 
 import { useAuth } from '../contexts/AuthContext';
 import { trackFunnel } from '../lib/funnelTrack';
@@ -199,9 +201,19 @@ export function LandingPage() {
 
   const heroInputRef = useRef<HTMLInputElement>(null);
 
+  // Attachment state — file uploaded via the 📎 icon
+  const [attachment, setAttachment] = useState<UploadedFile | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+
   const launchMission = () => {
     const trimmed = idea.trim();
     const qs = trimmed ? `?q=${encodeURIComponent(trimmed)}` : '';
+    // Pass attachment through sessionStorage so MissionSetupPage can read it
+    if (attachment) {
+      sessionStorage.setItem('vett_landing_attachment', JSON.stringify(attachment));
+    } else {
+      sessionStorage.removeItem('vett_landing_attachment');
+    }
     if (user) {
       navigate(`/setup${qs}`);
     } else {
@@ -314,9 +326,13 @@ export function LandingPage() {
                 <button
                   type="button"
                   aria-label="Attach file"
-                  className="hidden md:inline-flex w-9 h-9 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 text-t3 hover:text-t1 hover:bg-white/10 transition-colors"
+                  onClick={() => setShowUploadModal(true)}
+                  className="hidden md:inline-flex relative w-9 h-9 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 text-t3 hover:text-t1 hover:bg-white/10 transition-colors"
                 >
                   <Paperclip className="w-4 h-4" />
+                  {attachment && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-lime border-2 border-bg2" />
+                  )}
                 </button>
                 {/* Pass 6C: w-full on mobile so the button fills the row (matching
                     the stacked LeadCaptureForm pattern). md:w-auto restores the
@@ -335,6 +351,74 @@ export function LandingPage() {
             </div>
           </div>
         </form>
+
+        {/* Attachment pill — shown when a file is attached */}
+        {attachment && (
+          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.07] border border-white/10 text-[11px] text-t2">
+            <Paperclip className="w-3 h-3 text-lime shrink-0" />
+            <span className="truncate max-w-[200px]">{attachment.originalName}</span>
+            <button
+              type="button"
+              onClick={() => setAttachment(null)}
+              aria-label="Remove attachment"
+              className="hover:text-red-400 transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
+        {/* Upload modal */}
+        {showUploadModal && (
+          <div
+            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowUploadModal(false)}
+          >
+            <div
+              className="bg-bg2 border border-white/10 rounded-2xl p-6 max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-display font-bold text-lg text-t1">
+                    Attach a file to your brief
+                  </h3>
+                  <p className="text-xs text-t3 mt-0.5">
+                    Images, PDFs, and CSVs up to 20 MB
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowUploadModal(false)}
+                  className="p-2 rounded-lg hover:bg-white/5 text-t2 hover:text-t1 transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <FileUpload
+                bucket="vett-uploads"
+                folder="landing-attachments"
+                accept="image/jpeg,image/png,image/webp,application/pdf,text/csv"
+                maxSizeMB={20}
+                label="Upload image, PDF, or CSV"
+                hint="PNG, JPG, PDF, CSV up to 20 MB"
+                current={attachment}
+                onUpload={(f) => {
+                  setAttachment(f);
+                  setShowUploadModal(false);
+                  // Toast handled inside FileUpload; just close modal
+                }}
+                onRemove={() => setAttachment(null)}
+              />
+
+              <p className="text-xs text-t3 mt-3">
+                Your file gives the AI more context when generating your research brief.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Trust row */}
         <div className="mt-5 flex flex-col md:flex-row flex-wrap items-center justify-center gap-1.5 md:gap-3.5 font-body text-[12px] text-t3">
