@@ -75,6 +75,8 @@ interface VettingPaymentModalProps {
   totalCost: number;
   respondentCount: number;
   missionId?: string | null;
+  /** Override the post-payment redirect. Defaults to /mission/:missionId/live */
+  successPath?: string;
 }
 
 type Stage = 'vetting' | 'payment' | 'processing' | 'success';
@@ -104,6 +106,7 @@ const PaymentForm = ({
   totalCost,
   respondentCount,
   missionId,
+  successPath,
 }: VettingPaymentModalProps) => {
   const navigate = useNavigate();
   const stripe = useStripe();
@@ -304,7 +307,7 @@ const PaymentForm = ({
         toast.success('Mission Launched!', { id: toastId });
         await new Promise((resolve) => setTimeout(resolve, 1500));
         onClose();
-        navigate(`/mission/${missionId}/live`);
+        navigate(successPath ?? `/mission/${missionId}/live`);
       } catch (err: unknown) {
         // Apple Pay / Google Pay sheet closes on event.complete('fail');
         // we may have already completed it above — ignore double-complete.
@@ -469,7 +472,7 @@ const PaymentForm = ({
         toast.success('Mission Launched!', { id: toastId });
         await new Promise((resolve) => setTimeout(resolve, 1500));
         onClose();
-        navigate(`/mission/${missionId}/live`);
+        navigate(successPath ?? `/mission/${missionId}/live`);
         return;
       }
 
@@ -563,7 +566,7 @@ const PaymentForm = ({
       toast.success('Mission Launched Successfully!', { id: toastId });
       await new Promise((resolve) => setTimeout(resolve, 1500));
       onClose();
-      navigate(`/mission/${missionId}/live`);
+      navigate(successPath ?? `/mission/${missionId}/live`);
     } catch (err: unknown) {
       // Final safety net — anything that escapes the targeted catches above.
       fail(extractErrorMessage(err), err);

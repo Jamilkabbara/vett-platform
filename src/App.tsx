@@ -30,7 +30,9 @@ const SignInPage          = lazy(() => import('./pages/SignInPage').then(m => ({
 const ForgotPasswordPage  = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage   = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const AdminPage           = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
-const DesignSystemPreview = lazy(() => import('./pages/DesignSystemPreview').then(m => ({ default: m.DesignSystemPreview })));
+const DesignSystemPreview           = lazy(() => import('./pages/DesignSystemPreview').then(m => ({ default: m.DesignSystemPreview })));
+const CreativeAttentionPage         = lazy(() => import('./pages/CreativeAttentionPage').then(m => ({ default: m.CreativeAttentionPage })));
+const CreativeAttentionResultsPage  = lazy(() => import('./pages/CreativeAttentionResultsPage').then(m => ({ default: m.CreativeAttentionResultsPage })));
 
 function App() {
   return (
@@ -120,6 +122,10 @@ function App() {
               <Route path="/blog/:slug" element={<BlogPostPage />} />
               <Route path="/api" element={<ApiPage />} />
               <Route path="/help" element={<HelpPage />} />
+
+              {/* Creative Attention Analysis */}
+              <Route path="/creative-attention/new" element={<CreativeAttentionPage />} />
+              <Route path="/creative-results/:missionId" element={<CreativeAttentionResultsPage />} />
 
               {/* Internal design-system preview — not linked from the app. */}
               <Route path="/__design" element={<DesignSystemPreview />} />
