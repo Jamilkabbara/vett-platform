@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, DollarSign, Target, TrendingUp } from 'lucide-react';
+import { FileText, Download, DollarSign, Target, TrendingUp, Presentation } from 'lucide-react';
 import { api } from '../../lib/apiClient';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { generateInvoicePdf } from '../../lib/generateInvoicePdf';
+import { generateInvoicePpt } from '../../lib/generateInvoicePpt';
 import toast from 'react-hot-toast';
 
 interface Invoice {
@@ -23,9 +24,10 @@ interface Invoice {
 }
 
 export const BillingInvoicesTab = () => {
-  const [invoices, setInvoices]       = useState<Invoice[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [downloading, setDownloading] = useState<string | null>(null);
+  const [invoices, setInvoices]         = useState<Invoice[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [downloading, setDownloading]   = useState<string | null>(null);
+  const [pptLoading, setPptLoading]     = useState<string | null>(null);
   const { profile } = useUserProfile();
 
   useEffect(() => {
@@ -83,6 +85,40 @@ export const BillingInvoicesTab = () => {
     }
   };
 
+  const handleDownloadPpt = async (inv: Invoice) => {
+    if (pptLoading) return;
+    setPptLoading(inv.invoiceId);
+    try {
+      const total    = inv.amount || 0;
+      const baseCost = inv.base_cost_usd ?? total;
+      await generateInvoicePpt(
+        {
+          id:                      inv.missionId,
+          title:                   inv.missionStatement || 'Market Research Mission',
+          total_price_usd:         total,
+          base_cost_usd:           baseCost,
+          targeting_surcharge_usd: inv.targeting_surcharge_usd ?? 0,
+          extra_questions_cost_usd: inv.extra_questions_cost_usd ?? 0,
+          discount_usd:            inv.discount_usd ?? 0,
+          promo_code:              inv.promo_code ?? null,
+          respondent_count:        inv.respondentCount || 0,
+          paid_at:                 inv.date,
+          goal_type:               inv.goal_type || 'research',
+        },
+        {
+          displayName: profile?.displayName || '',
+          email:       profile?.email || '',
+          companyName: profile?.companyName ?? null,
+        },
+      );
+    } catch (err) {
+      console.error('[invoice-ppt]', err);
+      toast.error('Could not generate PPT — please try again');
+    } finally {
+      setPptLoading(null);
+    }
+  };
+
   const totalSpent   = invoices.reduce((s, i) => s + (i.amount || 0), 0);
   const missionCount = invoices.length;
   const avgOrder     = missionCount > 0 ? totalSpent / missionCount : 0;
@@ -134,7 +170,8 @@ export const BillingInvoicesTab = () => {
                   <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wider px-6 py-4">Mission</th>
                   <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-wider px-6 py-4">Amount</th>
                   <th className="text-center text-xs font-bold text-gray-500 uppercase tracking-wider px-6 py-4">Status</th>
-                  <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-wider px-6 py-4">PDF</th>
+                  <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-wider px-6 py-4 pr-2">PDF</th>
+                  <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-wider px-2 py-4 pr-6">PPT</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800/60">
@@ -155,7 +192,7 @@ export const BillingInvoicesTab = () => {
                         Paid
                       </span>
                     </td>
-                    <td className="px-6 py-5 text-right">
+                    <td className="py-5 text-right pr-2">
                       <button
                         onClick={() => handleDownload(inv)}
                         disabled={downloading === inv.invoiceId}
@@ -163,6 +200,16 @@ export const BillingInvoicesTab = () => {
                         title="Download PDF"
                       >
                         <Download className={`w-4.5 h-4.5 ${downloading === inv.invoiceId ? 'animate-bounce' : ''}`} />
+                      </button>
+                    </td>
+                    <td className="py-5 text-right pr-6">
+                      <button
+                        onClick={() => handleDownloadPpt(inv)}
+                        disabled={pptLoading === inv.invoiceId}
+                        className="p-2 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 rounded-lg transition-all disabled:opacity-50"
+                        title="Download PPT"
+                      >
+                        <Presentation className={`w-4.5 h-4.5 ${pptLoading === inv.invoiceId ? 'animate-bounce' : ''}`} />
                       </button>
                     </td>
                   </tr>
@@ -189,13 +236,24 @@ export const BillingInvoicesTab = () => {
                     <p className="text-xs text-gray-500">{new Date(inv.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                     <p className="text-xl font-black text-white mt-1">${(inv.amount || 0).toFixed(2)}</p>
                   </div>
-                  <button
-                    onClick={() => handleDownload(inv)}
-                    disabled={downloading === inv.invoiceId}
-                    className="p-3 text-primary hover:text-primary/80 hover:bg-primary/10 rounded-xl transition-all disabled:opacity-50"
-                  >
-                    <Download className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleDownload(inv)}
+                      disabled={downloading === inv.invoiceId}
+                      className="p-3 text-primary hover:text-primary/80 hover:bg-primary/10 rounded-xl transition-all disabled:opacity-50"
+                      title="Download PDF"
+                    >
+                      <Download className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDownloadPpt(inv)}
+                      disabled={pptLoading === inv.invoiceId}
+                      className="p-3 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 rounded-xl transition-all disabled:opacity-50"
+                      title="Download PPT"
+                    >
+                      <Presentation className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
