@@ -7,12 +7,9 @@ export interface PricingBreakdown {
   questionSurcharge: number;
   targetingSurcharge: number;
   screeningSurcharge: number;
-  retargetingSurcharge: number;
   total: number;
   filterCount: number;
 }
-
-const PIXEL_TRACKING_FEE = 1.50;
 
 const getTierPrice = (tier: number): number => {
   switch (tier) {
@@ -97,11 +94,7 @@ export const calculatePricing = (
 
   const screeningSurcharge = isScreeningActive ? respondentCount * 0.50 : 0;
 
-  // Retargeting pixel fee
-  const hasPixel = targeting.retargeting?.pixelId && targeting.retargeting.pixelId.trim().length > 0;
-  const retargetingSurcharge = hasPixel ? respondentCount * PIXEL_TRACKING_FEE : 0;
-
-  const total = base + questionSurcharge + targetingSurcharge + screeningSurcharge + retargetingSurcharge;
+  const total = base + questionSurcharge + targetingSurcharge + screeningSurcharge;
 
   // Detailed pricing breakdown for debugging
   if (process.env.NODE_ENV === 'development') {
@@ -130,7 +123,6 @@ export const calculatePricing = (
     if (targeting.geography.cities?.length > 0) console.log(`+ City Targeting: $${(1.00 * respondentCount).toFixed(2)}`);
     if (questionSurcharge > 0) console.log(`+ Extra Questions: $${questionSurcharge.toFixed(2)}`);
     if (screeningSurcharge > 0) console.log(`+ Screening: $${screeningSurcharge.toFixed(2)}`);
-    if (retargetingSurcharge > 0) console.log(`+ Audience Activation (Pixel): $${retargetingSurcharge.toFixed(2)} (${respondentCount} × $${PIXEL_TRACKING_FEE.toFixed(2)})`);
     console.log(`\nTOTAL: $${total.toFixed(2)}`);
     console.log("========================");
   }
@@ -143,7 +135,6 @@ export const calculatePricing = (
     questionSurcharge,
     targetingSurcharge: Math.round(targetingSurcharge),
     screeningSurcharge: Math.round(screeningSurcharge),
-    retargetingSurcharge: Math.round(retargetingSurcharge),
     total: Math.round(total),
     filterCount,
   };
@@ -179,7 +170,6 @@ function isServerBreakdown(v: unknown): v is PricingBreakdown {
     typeof r.questionSurcharge === 'number' &&
     typeof r.targetingSurcharge === 'number' &&
     typeof r.screeningSurcharge === 'number' &&
-    typeof r.retargetingSurcharge === 'number' &&
     typeof r.total === 'number' &&
     typeof r.filterCount === 'number'
   );

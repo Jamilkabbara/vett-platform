@@ -7,7 +7,6 @@ interface StickyActionFooterProps {
     questionSurcharge: number;
     targetingSurcharge: number;
     screeningSurcharge: number;
-    retargetingSurcharge: number;
     total: number;
     filterCount: number;
   };

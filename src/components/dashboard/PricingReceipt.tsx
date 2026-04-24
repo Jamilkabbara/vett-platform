@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Receipt, Target, Clock } from 'lucide-react';
+import { Receipt, Clock } from 'lucide-react';
 import { PricingBreakdown } from '../../utils/pricingEngine';
 import { TimeEstimate } from '../../utils/timeEstimation';
 
@@ -69,20 +69,6 @@ export const PricingReceipt = ({ pricingBreakdown, respondentCount, timeEstimate
           </div>
         )}
 
-        {pricingBreakdown.retargetingSurcharge > 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center justify-between text-sm bg-gradient-to-r from-amber-500/10 to-primary/10 border border-amber-400/30 rounded-lg p-3 -mx-1"
-          >
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-amber-400" />
-              <span className="text-amber-400 font-semibold">Audience Activation Fee</span>
-            </div>
-            <span className="text-amber-400 font-bold">+${pricingBreakdown.retargetingSurcharge}</span>
-          </motion.div>
-        )}
-
         <div className="border-t border-white/10 pt-3 mt-3">
           <div className="flex items-center justify-between">
             <span className="text-white font-bold text-base">Total</span>
@@ -98,13 +84,6 @@ export const PricingReceipt = ({ pricingBreakdown, respondentCount, timeEstimate
         </div>
       </div>
 
-      {pricingBreakdown.retargetingSurcharge > 0 && (
-        <div className="mt-4 p-3 bg-amber-500/5 border border-amber-400/20 rounded-lg">
-          <p className="text-xs text-amber-400/80 leading-relaxed">
-            <span className="font-bold">Value Upgrade:</span> Build custom retargeting audiences automatically. Your pixel will fire when respondents complete your mission.
-          </p>
-        </div>
-      )}
     </motion.div>
   );
 };

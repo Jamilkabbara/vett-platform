@@ -329,13 +329,6 @@ export const MissionControlPricing = ({
               tone="surcharge"
             />
           )}
-          {pricing.retargetingSurcharge > 0 && (
-            <Row
-              label="Retargeting pixel"
-              value={fmt$(pricing.retargetingSurcharge)}
-              tone="surcharge"
-            />
-          )}
           <Row label="PDF + PPT + XLS reports" value="Included" tone="free" />
         </dl>
       </div>

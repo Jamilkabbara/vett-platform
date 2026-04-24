@@ -94,18 +94,18 @@ function perRespondent(shadow: TargetingConfig): number {
   // Ask the real engine what ONE respondent's targeting surcharge would be
   // for this shadow.  We divide by 1 and pass 1 so rounding doesn't hide
   // tiny per-resp surcharges.  Never mutate `targeting` here.
-  const { targetingSurcharge, retargetingSurcharge } = calculatePricing(
+  const { targetingSurcharge } = calculatePricing(
     1,
     [],
     shadow,
     false,
   );
-  return targetingSurcharge + retargetingSurcharge;
+  return targetingSurcharge;
 }
 
 function sectionCost(
   config: TargetingConfig,
-  section: 'location' | 'demographics' | 'professional' | 'financials' | 'behavioral' | 'retargeting',
+  section: 'location' | 'demographics' | 'professional' | 'financials' | 'behavioral',
 ): number {
   switch (section) {
     case 'location': {
@@ -138,11 +138,6 @@ function sectionCost(
         ...EMPTY_SHADOW,
         behaviors: [...config.behaviors],
         technographics: { devices: [...config.technographics.devices] },
-      });
-    case 'retargeting':
-      return perRespondent({
-        ...EMPTY_SHADOW,
-        retargeting: config.retargeting,
       });
   }
 }
@@ -333,8 +328,7 @@ type SectionKey =
   | 'demographics'
   | 'professional'
   | 'financials'
-  | 'behavioral'
-  | 'retargeting';
+  | 'behavioral';
 
 export const MissionControlTargeting = ({
   config,
@@ -349,7 +343,6 @@ export const MissionControlTargeting = ({
     professional: false,
     financials: false,
     behavioral: false,
-    retargeting: false,
   });
 
   // Country search (small local UX — no network calls)
@@ -490,12 +483,6 @@ export const MissionControlTargeting = ({
     });
   };
 
-  const setRetargeting = (patch: Partial<NonNullable<TargetingConfig['retargeting']>>) => {
-    const base = config.retargeting ?? { pixelPlatform: '', pixelId: '' };
-    const merged = { ...base, ...patch };
-    onChange({ ...config, retargeting: merged });
-  };
-
   // ── Derived for pill ─────────────────────────────────────────────
 
   const costs = useMemo(
@@ -505,7 +492,6 @@ export const MissionControlTargeting = ({
       professional: sectionCost(config, 'professional'),
       financials: sectionCost(config, 'financials'),
       behavioral: sectionCost(config, 'behavioral'),
-      retargeting: sectionCost(config, 'retargeting'),
     }),
     [config],
   );
@@ -593,8 +579,7 @@ export const MissionControlTargeting = ({
               config.professional.companySizes.length > 0 ||
               config.financials.incomeRanges.length > 0 ||
               config.behaviors.length > 0 ||
-              config.technographics.devices.length > 0 ||
-              !!config.retargeting?.pixelId;
+              config.technographics.devices.length > 0;
             return (
               <button
                 type="button"
@@ -1029,53 +1014,6 @@ export const MissionControlTargeting = ({
 
         <p className="font-body text-[10px] text-t4 mt-3 italic">
           $0.50 per selection — capped at <span className="text-lime">+$1.00/resp</span> across device + behaviors.
-        </p>
-      </SectionShell>
-
-      {/* ── Retargeting Pixel (PAID) ────────────────────────────── */}
-      <SectionShell
-        id="retargeting"
-        title="Retargeting Pixel"
-        emoji="🎯"
-        subtitle="· Optional ad-platform ID"
-        sectionCost={costs.retargeting}
-        open={openMap.retargeting}
-        onToggle={() => toggleSection('retargeting')}
-      >
-        <SubLabel>Platform</SubLabel>
-        <ChipRow>
-          {(['Meta', 'Google', 'LinkedIn', 'TikTok'] as const).map((p) => (
-            <Chip
-              key={p}
-              label={p}
-              selected={config.retargeting?.pixelPlatform === p}
-              onToggle={() =>
-                setRetargeting({
-                  pixelPlatform:
-                    config.retargeting?.pixelPlatform === p ? '' : p,
-                })
-              }
-            />
-          ))}
-        </ChipRow>
-
-        <SubLabel>Pixel ID</SubLabel>
-        <input
-          type="text"
-          value={config.retargeting?.pixelId ?? ''}
-          onChange={(e) => setRetargeting({ pixelId: e.target.value })}
-          placeholder="e.g. 1234567890123456"
-          className={[
-            'w-full bg-bg4 border border-b1 rounded-md',
-            'px-3 py-2 font-body text-[12px] text-white',
-            'placeholder:text-t4',
-            'outline-none focus:border-t3',
-          ].join(' ')}
-        />
-
-        <p className="font-body text-[10px] text-t4 mt-3 italic">
-          When a pixel ID is set, personas are tagged for ad-platform lookalike
-          activation — adds <span className="text-lime">+$1.50/resp</span>.
         </p>
       </SectionShell>
 

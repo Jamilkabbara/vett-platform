@@ -30,10 +30,6 @@ export interface TargetingConfig {
   technographics: {
     devices: string[];
   };
-  retargeting?: {
-    pixelPlatform: string;
-    pixelId: string;
-  };
 }
 
 interface TargetingEngineProps {
@@ -826,84 +822,7 @@ export default function TargetingEngine({ config, onChange, respondentCount }: T
           )}
         </div>
 
-        <CollapsibleSection
-          title={
-            <div className="flex items-center gap-2 flex-wrap">
-              <span>Advanced: Retargeting & Integrations</span>
-              <span className="text-amber-400 font-bold text-sm">+ $1.50 / respondent</span>
-            </div>
-          }
-          subtitle="Optional: Add your tracking pixel to build retargeting audiences from this mission"
-          icon={<Target className="w-4 h-4 sm:w-5 sm:h-5" />}
-          defaultExpanded={false}
-        >
-          <div className="space-y-4 pt-4">
-            <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 space-y-2">
-              <p className="text-xs text-white/60 leading-relaxed">
-                Connect a tracking pixel to automatically build custom audiences on your ad platform.
-                This allows you to retarget respondents who completed your mission with follow-up campaigns.
-              </p>
-              <div className="pt-2 border-t border-blue-500/10">
-                <p className="text-xs text-amber-400/80 leading-relaxed">
-                  <span className="font-semibold">Note:</span> Activating audience retargeting adds a $1.50 fee per respondent to cover data processing and signal passing.
-                </p>
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-xs sm:text-sm text-white/60 mb-3">Pixel Platform</label>
-              <select
-                value={config.retargeting?.pixelPlatform || ''}
-                onChange={(e) => onChange({
-                  ...config,
-                  retargeting: {
-                    pixelPlatform: e.target.value,
-                    pixelId: config.retargeting?.pixelId || '',
-                  },
-                })}
-                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 sm:py-3.5 text-white text-sm focus:ring-2 focus:ring-primary outline-none"
-              >
-                <option value="">Select a platform (optional)</option>
-                <option value="facebook">Facebook Pixel</option>
-                <option value="google">Google Ads Conversion</option>
-                <option value="tiktok">TikTok Pixel</option>
-                <option value="linkedin">LinkedIn Insight Tag</option>
-                <option value="twitter">Twitter Pixel</option>
-                <option value="snapchat">Snapchat Pixel</option>
-              </select>
-            </div>
-
-            {config.retargeting?.pixelPlatform && (
-              <div>
-                <label className="block text-xs sm:text-sm text-white/60 mb-3">
-                  Pixel ID
-                  <span className="text-white/40 ml-2">(found in your ads manager)</span>
-                  {config.retargeting?.pixelId && config.retargeting.pixelId.trim().length > 0 && (
-                    <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] font-bold uppercase rounded-full border border-green-500/30">
-                      Active
-                    </span>
-                  )}
-                </label>
-                <input
-                  type="text"
-                  value={config.retargeting?.pixelId || ''}
-                  onChange={(e) => onChange({
-                    ...config,
-                    retargeting: {
-                      pixelPlatform: config.retargeting?.pixelPlatform || '',
-                      pixelId: e.target.value,
-                    },
-                  })}
-                  placeholder="Enter your pixel ID"
-                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 sm:py-3.5 text-white text-sm focus:ring-2 focus:ring-primary outline-none placeholder:text-white/30"
-                />
-                <p className="text-xs text-white/40 mt-2">
-                  This pixel will fire when respondents complete your mission, allowing you to retarget them.
-                </p>
-              </div>
-            )}
-          </div>
-        </CollapsibleSection>
       </div>
     </div>
   );

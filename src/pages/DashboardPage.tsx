@@ -230,7 +230,6 @@ function hydrateTargeting(raw: unknown): TargetingConfig {
     technographics: {
       devices: pick(tech.devices, DEFAULT_TARGETING.technographics.devices),
     },
-    retargeting: r.retargeting as TargetingConfig['retargeting'],
   };
 }
 
