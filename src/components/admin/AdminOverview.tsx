@@ -290,10 +290,10 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
 
   const funnelSteps = data
     ? [
-        { key: 'signups',          label: 'Signups',          value: data.funnel.signups },
-        { key: 'missions_created', label: 'Missions Created', value: data.funnel.missions_created },
-        { key: 'paid',             label: 'Paid',             value: data.funnel.paid },
-        { key: 'completed',        label: 'Completed',        value: data.funnel.completed },
+        { key: 'signups',          label: 'Signups',          value: data.funnel?.signups },
+        { key: 'missions_created', label: 'Missions Created', value: data.funnel?.missions_created },
+        { key: 'paid',             label: 'Paid',             value: data.funnel?.paid },
+        { key: 'completed',        label: 'Completed',        value: data.funnel?.completed },
       ]
     : [];
 
@@ -360,9 +360,9 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
               <Target className="w-3.5 h-3.5 text-t4 shrink-0" />
             </div>
             <div className="font-display font-black text-white text-[clamp(22px,3.5vw,30px)] leading-none tracking-display-l mb-2">
-              {fmtNumber(data.kpis.total_missions.value)}
+              {fmtNumber(data.kpis?.total_missions?.value ?? 0)}
             </div>
-            <DeltaBadge pct={data.kpis.total_missions.delta_pct} />
+            <DeltaBadge pct={data.kpis?.total_missions?.delta_pct ?? 0} />
           </div>
 
           {/* Total Revenue */}
@@ -372,9 +372,9 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
               <DollarSign className="w-3.5 h-3.5 text-t4 shrink-0" />
             </div>
             <div className="font-display font-black text-lime text-[clamp(22px,3.5vw,30px)] leading-none tracking-display-l mb-2">
-              {fmtMoney(data.kpis.total_revenue.value)}
+              {fmtMoney(data.kpis?.total_revenue?.value ?? 0)}
             </div>
-            <DeltaBadge pct={data.kpis.total_revenue.delta_pct} />
+            <DeltaBadge pct={data.kpis?.total_revenue?.delta_pct ?? 0} />
           </div>
 
           {/* Active Users */}
@@ -384,9 +384,9 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
               <Users className="w-3.5 h-3.5 text-t4 shrink-0" />
             </div>
             <div className="font-display font-black text-white text-[clamp(22px,3.5vw,30px)] leading-none tracking-display-l mb-2">
-              {fmtNumber(data.kpis.active_users.value)}
+              {fmtNumber(data.kpis?.active_users?.value ?? 0)}
             </div>
-            <DeltaBadge pct={data.kpis.active_users.delta_pct} />
+            <DeltaBadge pct={data.kpis?.active_users?.delta_pct ?? 0} />
           </div>
 
           {/* Avg Mission Value */}
@@ -396,9 +396,9 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
               <BarChart2 className="w-3.5 h-3.5 text-t4 shrink-0" />
             </div>
             <div className="font-display font-black text-lime text-[clamp(22px,3.5vw,30px)] leading-none tracking-display-l mb-2">
-              {fmtMoney(data.kpis.avg_mission_value.value)}
+              {fmtMoney(data.kpis?.avg_mission_value?.value ?? 0)}
             </div>
-            <DeltaBadge pct={data.kpis.avg_mission_value.delta_pct} />
+            <DeltaBadge pct={data.kpis?.avg_mission_value?.delta_pct ?? 0} />
           </div>
 
         </div>
@@ -448,11 +448,11 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
             </div>
 
             {/* Overall conversion */}
-            {(data.funnel.signups ?? 0) > 0 && (data.funnel.completed ?? 0) > 0 && (
+            {(data.funnel?.signups ?? 0) > 0 && (data.funnel?.completed ?? 0) > 0 && (
               <div className="mt-4 pt-3 border-t border-gray-800 flex items-center justify-between">
                 <span className="text-t3 text-[11px] font-bold">Overall conversion</span>
                 <span className="text-lime font-mono font-bold text-[12px]">
-                  {cvr(data.funnel.signups, data.funnel.completed)}
+                  {cvr(data.funnel?.signups, data.funnel?.completed)}
                 </span>
               </div>
             )}
@@ -460,13 +460,13 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
 
           {/* User Segments */}
           <Section title="User Segments" icon={<Users className="w-4 h-4" />}>
-            {data.segments.length === 0 ? (
+            {(data.segments ?? []).length === 0 ? (
               <p className="text-t4 text-[12px] text-center py-6">No segment data</p>
             ) : (
               <div className="space-y-2.5">
                 {(() => {
-                  const maxCount = data.segments.reduce((m, s) => Math.max(m, s.count), 1);
-                  return data.segments.map(seg => (
+                  const maxCount = (data.segments ?? []).reduce((m, s) => Math.max(m, s.count), 1);
+                  return (data.segments ?? []).map(seg => (
                     <div key={seg.segment}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-t2 text-[11px] font-bold capitalize">
@@ -491,11 +491,11 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
 
           {/* Activity Feed */}
           <Section title="Activity Feed" icon={<Activity className="w-4 h-4" />}>
-            {data.activity.length === 0 ? (
+            {(data.activity ?? []).length === 0 ? (
               <p className="text-t4 text-[12px] text-center py-6">No recent activity</p>
             ) : (
               <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 scrollbar-thin">
-                {data.activity.map((item, i) => (
+                {(data.activity ?? []).map((item, i) => (
                   <div
                     key={i}
                     className="flex items-start gap-2.5 py-2 border-b border-gray-800/60 last:border-0"
@@ -517,11 +517,11 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
 
           {/* Mission Type Mix */}
           <Section title="Mission Type Mix" icon={<Layers className="w-4 h-4" />}>
-            {data.missionTypeMix.length === 0 ? (
+            {(data.missionTypeMix ?? []).length === 0 ? (
               <p className="text-t4 text-[12px] text-center py-6">No mission data</p>
             ) : (
               <div className="space-y-2.5">
-                {data.missionTypeMix.map(item => (
+                {(data.missionTypeMix ?? []).map(item => (
                   <div key={item.type}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-t2 text-[11px] font-bold capitalize">

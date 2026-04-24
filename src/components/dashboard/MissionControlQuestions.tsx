@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Sparkles, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, CheckCircle2, Circle, Loader2, Pencil, Plus, Sparkles, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import type { Question } from './QuestionEngine';
@@ -380,6 +380,24 @@ export const MissionControlQuestions = ({
       }
     },
     [questions, emit, optionEdit],
+  );
+
+  // Task 14 — screening question pass/fail toggle.
+  // Clicking an option on a screening question makes it the qualifying answer.
+  // Clicking the active qualifying answer deselects it (undefined).
+  const handleToggleQualifying = useCallback(
+    (qId: string, opt: string) => {
+      emit(
+        questions.map((q) => {
+          if (q.id !== qId) return q;
+          return {
+            ...q,
+            qualifyingAnswer: q.qualifyingAnswer === opt ? undefined : opt,
+          };
+        }),
+      );
+    },
+    [questions, emit],
   );
 
   const handleAdd = useCallback(() => {
@@ -819,11 +837,19 @@ export const MissionControlQuestions = ({
                     while the question-text editor is open so the user
                     isn't juggling two inputs at once. */}
                 {editingId !== q.id && HAS_OPTIONS.has(q.type) && (
+                  <>
+                    {/* Screening pass/fail hint — only on the Screening question */}
+                    {q.isScreening && (
+                      <p className="text-[10px] text-lime/60 font-body pt-1">
+                        ✓ = qualifying answer · click to toggle
+                      </p>
+                    )}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
                     {q.options.map((opt, idx) => {
                       const editing =
                         optionEdit?.qId === q.id && optionEdit.idx === idx;
                       const canRemove = q.options.length > MIN_OPTIONS;
+                      const isPass = q.isScreening && q.qualifyingAnswer === opt;
                       return (
                         <div
                           key={`${q.id}-opt-${idx}`}
@@ -831,10 +857,36 @@ export const MissionControlQuestions = ({
                             'inline-flex items-center rounded-md',
                             editing
                               ? 'bg-bg4 border border-lime'
+                              : isPass
+                              ? 'bg-grn/10 border border-grn/40 hover:border-grn/60'
                               : 'bg-bg4 border border-b2 hover:border-t3',
                             'transition-colors',
                           ].join(' ')}
                         >
+                          {/* Pass/fail toggle — only on screening question */}
+                          {q.isScreening && !editing && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleQualifying(q.id, opt)}
+                              disabled={persisting || refiningId === q.id}
+                              title={isPass ? 'Passing answer (click to unset)' : 'Mark as passing answer'}
+                              aria-label={isPass ? `Unmark "${opt}" as qualifying answer` : `Mark "${opt}" as qualifying answer`}
+                              className={[
+                                'pl-1.5 pr-0.5 py-1',
+                                'inline-flex items-center justify-center',
+                                'transition-colors',
+                                isPass
+                                  ? 'text-grn hover:text-grn/70'
+                                  : 'text-t4 hover:text-grn/60',
+                                'disabled:opacity-40 disabled:cursor-not-allowed',
+                              ].join(' ')}
+                            >
+                              {isPass
+                                ? <CheckCircle2 className="w-3.5 h-3.5" aria-hidden />
+                                : <Circle className="w-3.5 h-3.5" aria-hidden />
+                              }
+                            </button>
+                          )}
                           {editing ? (
                             <input
                               ref={optionInputRef}
@@ -874,7 +926,8 @@ export const MissionControlQuestions = ({
                               disabled={persisting || refiningId === q.id}
                               className={[
                                 'px-2 py-1',
-                                'font-body text-[11px] text-t1',
+                                'font-body text-[11px]',
+                                isPass ? 'text-grn font-bold' : 'text-t1',
                                 'disabled:opacity-60 disabled:cursor-not-allowed',
                               ].join(' ')}
                               aria-label={`Edit option ${idx + 1}: ${opt}`}
@@ -936,6 +989,7 @@ export const MissionControlQuestions = ({
                       {q.options.length}/{MAX_OPTIONS}
                     </span>
                   </div>
+                  </>
                 )}
               </motion.li>
             ))}

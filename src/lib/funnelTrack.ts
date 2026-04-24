@@ -17,14 +17,14 @@ export type FunnelEvent =
 
 export async function trackFunnel(
   event: FunnelEvent,
-  properties?: Record<string, unknown>,
+  metadata?: Record<string, unknown>,
 ): Promise<void> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('funnel_events').insert({
       user_id:    user?.id ?? null,
-      event_name: event,
-      properties: properties ?? {},
+      event_type: event,
+      metadata:   metadata ?? {},
     });
   } catch {
     // never throw — tracking must be invisible to users

@@ -16,6 +16,8 @@ export interface UserProfile {
   projectStage: string | null;
   /** e.g. "Feb 2021" */
   memberSince: string | null;
+  /** True for admin users */
+  is_admin: boolean;
 }
 
 export function useUserProfile() {
@@ -37,7 +39,7 @@ export function useUserProfile() {
       const { data } = await supabase
         .from('profiles')
         .select(
-          'first_name, last_name, full_name, company_name, role, project_stage, created_at',
+          'first_name, last_name, full_name, company_name, role, project_stage, created_at, is_admin',
         )
         .eq('id', user.id)
         .single();
@@ -76,6 +78,7 @@ export function useUserProfile() {
         role: data?.role || null,
         projectStage: data?.project_stage || null,
         memberSince,
+        is_admin: data?.is_admin === true,
       });
       setLoading(false);
     })();

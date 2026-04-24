@@ -1,56 +1,65 @@
 import { useState, useEffect } from 'react';
-import { Mail, Building2, Save } from 'lucide-react';
+import { Mail, Building2, Save, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useUserProfile } from '../../hooks/useUserProfile';
 import toast from 'react-hot-toast';
 
-const ROLE_OPTIONS = ['Founder', 'Product Manager', 'Marketing', 'Researcher', 'Developer', 'Other'];
-const STAGE_OPTIONS = ['Idea', 'Early Stage', 'Growth', 'Scale', 'Enterprise'];
+const ROLE_OPTIONS   = ['Founder', 'Product Manager', 'Marketing', 'Researcher', 'Developer', 'Other'];
+const STAGE_OPTIONS  = ['Idea', 'Early Stage', 'Growth', 'Scale', 'Enterprise'];
 
 export const AccountTab = () => {
-  const { user } = useAuth();
-  const [loading, setLoading]             = useState(false);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [firstName, setFirstName]         = useState('');
-  const [lastName, setLastName]           = useState('');
-  const [companyName, setCompanyName]     = useState('');
-  const [vatTaxId, setVatTaxId]           = useState('');
-  const [role, setRole]                   = useState('');
-  const [projectStage, setProjectStage]   = useState('');
+  const { profile, loading: profileLoading } = useUserProfile();
 
+  const [loading, setLoading]           = useState(false);
+  const [firstName, setFirstName]       = useState('');
+  const [lastName, setLastName]         = useState('');
+  const [companyName, setCompanyName]   = useState('');
+  const [vatTaxId, setVatTaxId]         = useState('');
+  const [role, setRole]                 = useState('');
+  const [projectStage, setProjectStage] = useState('');
+  const [hydrated, setHydrated]         = useState(false);
+
+  // Hydrate form once the profile hook resolves
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('first_name, last_name, company_name, role, project_stage')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (data) {
-        setFirstName(data.first_name   || '');
-        setLastName(data.last_name     || '');
-        setCompanyName(data.company_name || '');
-        setRole(data.role              || '');
-        setProjectStage(data.project_stage || '');
-      }
-      setProfileLoading(false);
-    })();
-  }, [user]);
+    if (profile && !hydrated) {
+      setFirstName(profile.firstName   ?? '');
+      setLastName(profile.lastName     ?? '');
+      setCompanyName(profile.companyName ?? '');
+      setRole(profile.role             ?? '');
+      setProjectStage(profile.projectStage ?? '');
+      setHydrated(true);
+    }
+  }, [profile, hydrated]);
+
+  // Also fetch vat_tax_id separately (not in the hook)
+  useEffect(() => {
+    if (!profile?.id) return;
+    supabase
+      .from('profiles')
+      .select('vat_tax_id')
+      .eq('id', profile.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.vat_tax_id) setVatTaxId(data.vat_tax_id);
+      });
+  }, [profile?.id]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!profile?.id) return;
     setLoading(true);
     try {
       const { error } = await supabase
         .from('profiles')
         .upsert({
-          id:           user?.id,
-          first_name:   firstName.trim()   || null,
-          last_name:    lastName.trim()    || null,
-          full_name:    [firstName.trim(), lastName.trim()].filter(Boolean).join(' ') || null,
-          company_name: companyName.trim() || null,
-          role:         role               || null,
-          project_stage: projectStage      || null,
+          id:            profile.id,
+          first_name:    firstName.trim()   || null,
+          last_name:     lastName.trim()    || null,
+          full_name:     [firstName.trim(), lastName.trim()].filter(Boolean).join(' ') || null,
+          company_name:  companyName.trim() || null,
+          vat_tax_id:    vatTaxId.trim()    || null,
+          role:          role               || null,
+          project_stage: projectStage       || null,
         });
       if (error) throw error;
       toast.success('Profile saved');
@@ -72,6 +81,7 @@ export const AccountTab = () => {
 
   return (
     <form onSubmit={handleSave} className="space-y-8">
+
       {/* Name row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div>
@@ -80,7 +90,7 @@ export const AccountTab = () => {
             type="text"
             value={firstName}
             onChange={e => setFirstName(e.target.value)}
-            placeholder="Jane"
+            placeholder="First name"
             className="w-full px-5 py-3.5 bg-[#1e293b] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
           />
         </div>
@@ -90,25 +100,29 @@ export const AccountTab = () => {
             type="text"
             value={lastName}
             onChange={e => setLastName(e.target.value)}
-            placeholder="Smith"
+            placeholder="Last name"
             className="w-full px-5 py-3.5 bg-[#1e293b] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
           />
         </div>
       </div>
 
-      {/* Email */}
+      {/* Email — locked */}
       <div>
-        <label className="block text-sm font-semibold text-gray-300 mb-2.5">Email Address</label>
+        <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-400 mb-2.5">
+          <Lock className="w-3.5 h-3.5 text-gray-600" />
+          Email Address
+        </label>
         <div className="relative">
-          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-500" />
+          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
           <input
             type="email"
-            value={user?.email || ''}
+            value={profile?.email || ''}
             disabled
-            className="w-full pl-12 pr-5 py-3.5 bg-[#1e293b]/50 border border-gray-700 rounded-xl text-gray-500 cursor-not-allowed"
+            readOnly
+            className="w-full pl-12 pr-5 py-3.5 bg-[#0f172a] border border-gray-800 rounded-xl text-gray-500 cursor-not-allowed select-none"
           />
         </div>
-        <p className="text-xs text-gray-500 mt-2">Email cannot be changed</p>
+        <p className="text-xs text-gray-600 mt-2">Email address cannot be changed here</p>
       </div>
 
       {/* Role */}
@@ -153,7 +167,7 @@ export const AccountTab = () => {
         </div>
       </div>
 
-      {/* Invoicing separator */}
+      {/* Invoicing details */}
       <div className="border-t border-gray-800 pt-6">
         <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-5">Invoicing Details</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -162,12 +176,12 @@ export const AccountTab = () => {
               Company Name <span className="text-gray-600 font-normal">(optional)</span>
             </label>
             <div className="relative">
-              <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-500" />
+              <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
                 type="text"
                 value={companyName}
                 onChange={e => setCompanyName(e.target.value)}
-                placeholder="Acme Inc."
+                placeholder="Your company"
                 className="w-full pl-12 pr-5 py-3.5 bg-[#1e293b] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
               />
             </div>
@@ -194,7 +208,7 @@ export const AccountTab = () => {
           disabled={loading}
           className="inline-flex items-center gap-2.5 px-8 py-3.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Save className="w-4.5 h-4.5" />
+          <Save className="w-4 h-4" />
           {loading ? 'Saving…' : 'Save Changes'}
         </button>
       </div>

@@ -280,47 +280,49 @@ export function AdminAICosts({ apiFetch }: AdminAICostsProps) {
           {/* ---------------------------------------------------------------- */}
           {/* 1. KPI Tiles                                                     */}
           {/* ---------------------------------------------------------------- */}
+          {data.summary && (
           <section>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {/* Total AI Cost */}
               <KpiTile
                 label="Total AI Cost"
-                value={fmt.usd2(data.summary.total_cost_usd.value)}
-                delta={data.summary.total_cost_usd.delta_pct}
+                value={fmt.usd2(data.summary.total_cost_usd?.value ?? 0)}
+                delta={data.summary.total_cost_usd?.delta_pct ?? 0}
                 invertDelta
               />
               {/* Gross Margin */}
               <KpiTile
                 label="Gross Margin"
-                value={fmt.pct(data.summary.gross_margin_pct.value)}
-                delta={data.summary.gross_margin_pct.delta_pct}
+                value={fmt.pct(data.summary.gross_margin_pct?.value ?? 0)}
+                delta={data.summary.gross_margin_pct?.delta_pct ?? 0}
               />
               {/* Total Calls */}
               <KpiTile
                 label="Total Calls"
-                value={fmt.num(data.summary.total_calls.value)}
-                delta={data.summary.total_calls.delta_pct}
+                value={fmt.num(data.summary.total_calls?.value ?? 0)}
+                delta={data.summary.total_calls?.delta_pct ?? 0}
               />
               {/* Avg Cost / Mission */}
               <KpiTile
                 label="Avg Cost / Mission"
-                value={fmt.usd(data.summary.avg_cost_per_mission.value)}
-                delta={data.summary.avg_cost_per_mission.delta_pct}
+                value={fmt.usd(data.summary.avg_cost_per_mission?.value ?? 0)}
+                delta={data.summary.avg_cost_per_mission?.delta_pct ?? 0}
                 invertDelta
               />
               {/* Tiering Savings */}
               <KpiTile
                 label="Tiering Savings"
-                value={fmt.usd2(data.summary.tiering_savings_usd)}
+                value={fmt.usd2(data.summary.tiering_savings_usd ?? 0)}
                 accent
               />
             </div>
           </section>
+          )}
 
           {/* ---------------------------------------------------------------- */}
           {/* 2. Daily Cost vs Revenue Chart                                   */}
           {/* ---------------------------------------------------------------- */}
-          {data.daily_buckets.length > 0 && (
+          {(data.daily_buckets ?? []).length > 0 && (
             <section className="bg-[#0f172a] border border-gray-800 rounded-xl p-5">
               <h2 className="text-sm font-semibold text-gray-300 mb-4">Daily Cost vs Revenue</h2>
               <ResponsiveContainer width="100%" height={220}>
@@ -384,7 +386,7 @@ export function AdminAICosts({ apiFetch }: AdminAICostsProps) {
           {/* ---------------------------------------------------------------- */}
           {/* 3. Operations Breakdown Table                                    */}
           {/* ---------------------------------------------------------------- */}
-          {data.by_operation.length > 0 && (
+          {(data.by_operation ?? []).length > 0 && (
             <section className="bg-[#0f172a] border border-gray-800 rounded-xl overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-800">
                 <h2 className="text-sm font-semibold text-gray-300">Operations Breakdown</h2>
@@ -402,7 +404,7 @@ export function AdminAICosts({ apiFetch }: AdminAICostsProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...data.by_operation]
+                    {[...(data.by_operation ?? [])]
                       .sort((a, b) => b.total_cost_usd - a.total_cost_usd)
                       .map((op, i) => (
                         <tr
@@ -442,11 +444,11 @@ export function AdminAICosts({ apiFetch }: AdminAICostsProps) {
           {/* ---------------------------------------------------------------- */}
           {/* 4. Model Mix                                                     */}
           {/* ---------------------------------------------------------------- */}
-          {data.model_mix.length > 0 && (
+          {(data.model_mix ?? []).length > 0 && (
             <section className="bg-[#0f172a] border border-gray-800 rounded-xl p-5">
               <h2 className="text-sm font-semibold text-gray-300 mb-4">Model Mix</h2>
               <div className="space-y-3">
-                {[...data.model_mix]
+                {[...(data.model_mix ?? [])]
                   .sort((a, b) => b.pct_of_cost - a.pct_of_cost)
                   .map((m, idx) => {
                     const color = modelColor(idx);

@@ -219,14 +219,14 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
   if (!data) return null;
 
   // ── Derived data ──
-  const chartData = data.daily_buckets.map((b) => ({
+  const chartData = (data.daily_buckets ?? []).map((b) => ({
     day: b.day.slice(5), // MM-DD
     Revenue: b.revenue_usd,
     Cost: b.cost_usd,
     Profit: b.revenue_usd - b.cost_usd,
   }));
 
-  const goalEntries = Object.entries(data.goal_breakdown).sort(([, a], [, b]) => b - a);
+  const goalEntries = Object.entries(data.goal_breakdown ?? {}).sort(([, a], [, b]) => b - a);
   const maxGoal = goalEntries[0]?.[1] ?? 1;
 
   return (
@@ -295,22 +295,22 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiTile
           label="Revenue"
-          value={data.revenue.value}
-          delta_pct={data.revenue.delta_pct}
+          value={data.revenue?.value ?? 0}
+          delta_pct={data.revenue?.delta_pct ?? 0}
           prefix="$"
           icon={<DollarSign className="w-4 h-4" />}
         />
         <KpiTile
           label="Gross Profit"
-          value={data.gross_profit.value}
-          delta_pct={data.gross_profit.delta_pct}
+          value={data.gross_profit?.value ?? 0}
+          delta_pct={data.gross_profit?.delta_pct ?? 0}
           prefix="$"
           icon={<TrendingUp className="w-4 h-4" />}
         />
         <KpiTile
           label="Avg Order"
-          value={data.avg_order.value}
-          delta_pct={data.avg_order.delta_pct}
+          value={data.avg_order?.value ?? 0}
+          delta_pct={data.avg_order?.delta_pct ?? 0}
           prefix="$"
           icon={<ShoppingCart className="w-4 h-4" />}
         />
@@ -322,7 +322,7 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
             </span>
           </div>
           <div className="text-3xl font-black text-white tracking-tight">
-            {data.mission_count.toLocaleString()}
+            {(data.mission_count ?? 0).toLocaleString()}
           </div>
           <div className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full w-fit bg-primary/10 text-primary">
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />

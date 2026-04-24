@@ -2,15 +2,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { BarChart3, Plus, Shield } from 'lucide-react';
 import { Logo } from '../shared/Logo';
 import { UserMenu } from '../shared/UserMenu';
-import { useAuth } from '../../contexts/AuthContext';
-
-const ADMIN_EMAIL = 'kabbarajamil@gmail.com';
+import { useUserProfile } from '../../hooks/useUserProfile';
 
 export const DashboardNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const { profile } = useUserProfile();
+  const isAdmin = profile?.is_admin === true;
 
   const isResultsPage = location.pathname === '/results' || location.pathname.startsWith('/dashboard/');
   const isMissionSuccessPage = location.pathname === '/mission-success';

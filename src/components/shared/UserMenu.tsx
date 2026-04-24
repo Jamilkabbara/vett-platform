@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, Target } from 'lucide-react';
+import { User, LogOut, Target, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUserProfile } from '../../hooks/useUserProfile';
 
@@ -14,6 +14,7 @@ export const UserMenu = () => {
   const displayName = profile?.displayName ?? '…';
   const email = profile?.email ?? '';
   const initials = profile?.initials ?? '?';
+  const isAdmin = profile?.is_admin === true;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -76,6 +77,16 @@ export const UserMenu = () => {
               <Target className="w-4.5 h-4.5 group-hover:scale-110 transition-transform" />
               <span className="text-sm font-medium">My Missions</span>
             </button>
+
+            {isAdmin && (
+              <button
+                onClick={() => handleNavigation('/admin')}
+                className="w-full px-4 py-2.5 flex items-center gap-3 text-lime/70 hover:text-lime hover:bg-lime/10 transition-all duration-150 rounded-lg group"
+              >
+                <Shield className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-medium">Admin Panel</span>
+              </button>
+            )}
           </div>
 
           <div className="border-t border-gray-800/60 py-1.5 px-1.5 bg-gray-900/20">
