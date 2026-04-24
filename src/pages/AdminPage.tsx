@@ -2,21 +2,23 @@ import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, LayoutDashboard, DollarSign, Cpu, Users, Target,
-  HeadphonesIcon, FileText, Tag, Menu, X,
+  HeadphonesIcon, FileText, Tag, Menu, X, Truck, AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { supabase } from '../lib/supabase';
 
-import { AdminOverview }  from '../components/admin/AdminOverview';
-import { AdminRevenue }   from '../components/admin/AdminRevenue';
-import { AdminAICosts }   from '../components/admin/AdminAICosts';
-import { AdminUsers }     from '../components/admin/AdminUsers';
-import { AdminMissions }  from '../components/admin/AdminMissions';
-import { AdminCRM }       from '../components/admin/AdminCRM';
-import { AdminSupport }   from '../components/admin/AdminSupport';
-import { AdminBlog }      from '../components/admin/AdminBlog';
-import { PromosPanel }    from '../components/admin/PromosPanel';
+import { AdminOverview }       from '../components/admin/AdminOverview';
+import { AdminRevenue }        from '../components/admin/AdminRevenue';
+import { AdminAICosts }        from '../components/admin/AdminAICosts';
+import { AdminUsers }          from '../components/admin/AdminUsers';
+import { AdminMissions }       from '../components/admin/AdminMissions';
+import { AdminCRM }            from '../components/admin/AdminCRM';
+import { AdminSupport }        from '../components/admin/AdminSupport';
+import { AdminBlog }           from '../components/admin/AdminBlog';
+import { PromosPanel }         from '../components/admin/PromosPanel';
+import { AdminDeliveryHealth } from '../components/admin/AdminDeliveryHealth';
+import { AdminPaymentErrors }  from '../components/admin/AdminPaymentErrors';
 
 const API_URL    = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
 const ADMIN_EMAIL = 'kabbarajamil@gmail.com';
@@ -24,30 +26,35 @@ const ADMIN_EMAIL = 'kabbarajamil@gmail.com';
 type SidebarTab =
   | 'overview' | 'revenue' | 'ai-costs'
   | 'users' | 'missions'
-  | 'crm' | 'support' | 'blog' | 'promos';
+  | 'crm' | 'support' | 'blog' | 'promos'
+  | 'delivery-health' | 'payment-errors';
 
 const NAV_ITEMS: { id: SidebarTab; label: string; icon: React.ComponentType<{ className?: string }>; group?: string }[] = [
-  { id: 'overview',  label: 'Overview',   icon: LayoutDashboard, group: 'Analytics' },
-  { id: 'revenue',   label: 'Revenue',    icon: DollarSign,      group: 'Analytics' },
-  { id: 'ai-costs',  label: 'AI Costs',   icon: Cpu,             group: 'Analytics' },
-  { id: 'users',     label: 'Users',      icon: Users,           group: 'Data' },
-  { id: 'missions',  label: 'Missions',   icon: Target,          group: 'Data' },
-  { id: 'crm',       label: 'CRM',        icon: Users,           group: 'Growth' },
-  { id: 'support',   label: 'Support',    icon: HeadphonesIcon,  group: 'Growth' },
-  { id: 'blog',      label: 'Blog',       icon: FileText,        group: 'Content' },
-  { id: 'promos',    label: 'Promos',     icon: Tag,             group: 'Content' },
+  { id: 'overview',        label: 'Overview',        icon: LayoutDashboard, group: 'Analytics' },
+  { id: 'revenue',         label: 'Revenue',         icon: DollarSign,      group: 'Analytics' },
+  { id: 'ai-costs',        label: 'AI Costs',        icon: Cpu,             group: 'Analytics' },
+  { id: 'users',           label: 'Users',           icon: Users,           group: 'Data' },
+  { id: 'missions',        label: 'Missions',        icon: Target,          group: 'Data' },
+  { id: 'delivery-health', label: 'Delivery Health', icon: Truck,           group: 'Data' },
+  { id: 'payment-errors',  label: 'Payment Errors',  icon: AlertTriangle,   group: 'Data' },
+  { id: 'crm',             label: 'CRM',             icon: Users,           group: 'Growth' },
+  { id: 'support',         label: 'Support',         icon: HeadphonesIcon,  group: 'Growth' },
+  { id: 'blog',            label: 'Blog',            icon: FileText,        group: 'Content' },
+  { id: 'promos',          label: 'Promos',          icon: Tag,             group: 'Content' },
 ];
 
 const TAB_TITLES: Record<SidebarTab, string> = {
-  'overview':  'Overview',
-  'revenue':   'Revenue',
-  'ai-costs':  'AI Costs',
-  'users':     'Users',
-  'missions':  'Missions',
-  'crm':       'CRM Leads',
-  'support':   'Support',
-  'blog':      'Blog',
-  'promos':    'Promo Codes',
+  'overview':        'Overview',
+  'revenue':         'Revenue',
+  'ai-costs':        'AI Costs',
+  'users':           'Users',
+  'missions':        'Missions',
+  'delivery-health': 'Delivery Health',
+  'payment-errors':  'Payment Errors',
+  'crm':             'CRM Leads',
+  'support':         'Support',
+  'blog':            'Blog',
+  'promos':          'Promo Codes',
 };
 
 export function AdminPage() {
@@ -93,8 +100,10 @@ export function AdminPage() {
       case 'revenue':   return <AdminRevenue   {...props} />;
       case 'ai-costs':  return <AdminAICosts   {...props} />;
       case 'users':     return <AdminUsers     {...props} />;
-      case 'missions':  return <AdminMissions  {...props} />;
-      case 'crm':       return <AdminCRM       {...props} />;
+      case 'missions':         return <AdminMissions       {...props} />;
+      case 'delivery-health':  return <AdminDeliveryHealth {...props} />;
+      case 'payment-errors':   return <AdminPaymentErrors  {...props} />;
+      case 'crm':              return <AdminCRM            {...props} />;
       case 'support':   return <AdminSupport   {...props} />;
       case 'blog':      return <AdminBlog      {...props} />;
       case 'promos':    return <PromosPanel     apiFetch={apiFetch} />;

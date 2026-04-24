@@ -106,6 +106,11 @@ interface MissionData {
   executiveSummary?: string;
   personaChips?: PersonaChip[];
   missionBrief?: string;
+  // Pass 19 — delivery metrics
+  deliveryStatus?: 'full' | 'partial' | 'screener_too_restrictive';
+  qualifiedRespondentCount?: number;
+  totalSimulatedCount?: number;
+  qualificationRate?: number;
 }
 
 
@@ -305,6 +310,11 @@ export const ResultsPage = () => {
         questions,
         executiveSummary: execSummary || undefined,
         personaChips: parsePersonaChips(mission.target_audience),
+        // Pass 19 — delivery metrics
+        deliveryStatus: mission.delivery_status || undefined,
+        qualifiedRespondentCount: mission.qualified_respondent_count ?? undefined,
+        totalSimulatedCount: mission.total_simulated_count ?? undefined,
+        qualificationRate: mission.qualification_rate ?? undefined,
       };
 
       setMissionData(loaded);
@@ -1010,6 +1020,40 @@ export const ResultsPage = () => {
             <ArrowLeft className="w-4 h-4" />
             Back to My Missions
           </button>
+
+          {/* Pass 19 — Delivery health banner */}
+          {mission.deliveryStatus && mission.deliveryStatus !== 'full' && (
+            <div className={`mb-6 rounded-xl border px-4 py-3 flex items-start gap-3 ${
+              mission.deliveryStatus === 'screener_too_restrictive'
+                ? 'bg-red-950/40 border-red-800/60'
+                : 'bg-amber-950/40 border-amber-700/60'
+            }`}>
+              <span className={`mt-0.5 text-lg leading-none ${
+                mission.deliveryStatus === 'screener_too_restrictive' ? 'text-red-400' : 'text-amber-400'
+              }`}>⚠</span>
+              <div>
+                {mission.deliveryStatus === 'screener_too_restrictive' ? (
+                  <>
+                    <p className="text-sm font-semibold text-red-300">Screener too restrictive</p>
+                    <p className="text-sm text-red-400/80 mt-0.5">
+                      Only <strong>{mission.qualifiedRespondentCount ?? 0}</strong> of {mission.totalRespondents} requested respondents passed your screening question
+                      {mission.qualificationRate != null && ` (${Math.round(mission.qualificationRate * 100)}% pass rate)`}.
+                      Consider relaxing your screener criteria to improve future delivery.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-amber-300">Partial delivery</p>
+                    <p className="text-sm text-amber-400/80 mt-0.5">
+                      <strong>{mission.qualifiedRespondentCount ?? 0}</strong> of {mission.totalRespondents} qualified respondents were delivered
+                      {mission.totalSimulatedCount != null && ` (${mission.totalSimulatedCount} total simulated)`}.
+                      Results below reflect the qualified cohort.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
             <div className="flex-1">

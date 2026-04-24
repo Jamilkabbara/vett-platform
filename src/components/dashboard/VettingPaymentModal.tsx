@@ -68,6 +68,56 @@ function extractErrorMessage(err: unknown): string {
   return 'Payment failed. Please try again.';
 }
 
+/**
+ * Pass 19 Task 4 — Payment error telemetry.
+ * Fire-and-forget: logs a row to `payment_errors` so the admin panel can
+ * surface trends without digging through logs. Never throws.
+ */
+async function logPaymentError(params: {
+  userId?: string | null;
+  missionId?: string | null;
+  err: unknown;
+  paymentMethod?: 'card' | 'apple_pay' | 'google_pay';
+  amountCents?: number;
+  currency?: string;
+}): Promise<void> {
+  try {
+    const e = (params.err && typeof params.err === 'object')
+      ? params.err as Partial<StripeError> & { message?: string }
+      : null;
+
+    // Simple UA sniffing — good enough for trend analysis.
+    const ua = navigator.userAgent;
+    const browser =
+      /Edg\//.test(ua)   ? 'Edge' :
+      /OPR\//.test(ua)   ? 'Opera' :
+      /Chrome\//.test(ua) ? 'Chrome' :
+      /Firefox\//.test(ua) ? 'Firefox' :
+      /Safari\//.test(ua)  ? 'Safari' : 'Other';
+    const os =
+      /iPhone|iPad/.test(ua) ? 'iOS' :
+      /Android/.test(ua) ? 'Android' :
+      /Mac OS/.test(ua)  ? 'macOS' :
+      /Windows/.test(ua) ? 'Windows' :
+      /Linux/.test(ua)   ? 'Linux' : 'Other';
+
+    await supabase.from('payment_errors').insert({
+      user_id:        params.userId || null,
+      mission_id:     params.missionId || null,
+      error_code:     e?.code || null,
+      error_message:  e?.message || (typeof params.err === 'string' ? params.err : null),
+      decline_code:   e?.decline_code || null,
+      payment_method: params.paymentMethod || 'card',
+      amount_cents:   params.amountCents ?? null,
+      currency:       params.currency || null,
+      browser,
+      os,
+    });
+  } catch {
+    // Telemetry must never surface errors to the user.
+  }
+}
+
 interface VettingPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -319,6 +369,15 @@ const PaymentForm = ({
         setErrorMessage(msg);
         toast.error(msg, { id: toastId });
         console.error('[payment] wallet charge failed', err);
+        // Pass 19 Task 4 — fire-and-forget telemetry
+        const walletType = event.walletName === 'applePay' ? 'apple_pay' : 'google_pay';
+        logPaymentError({
+          userId:        user?.id,
+          missionId,
+          err,
+          paymentMethod: walletType,
+          amountCents:   Math.round((discountedPrice ?? totalCost) * 100),
+        });
       }
     };
 
@@ -449,7 +508,17 @@ const PaymentForm = ({
       } else {
         toast.error(msg);
       }
-      if (err !== undefined) console.error('[payment] card charge failed', err);
+      if (err !== undefined) {
+        console.error('[payment] card charge failed', err);
+        // Pass 19 Task 4 — fire-and-forget telemetry
+        logPaymentError({
+          userId:        user?.id,
+          missionId,
+          err,
+          paymentMethod: 'card',
+          amountCents:   Math.round((discountedPrice ?? totalCost) * 100),
+        });
+      }
     };
 
     try {
