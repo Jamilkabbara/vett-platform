@@ -20,7 +20,8 @@ import {
   MessageSquare,
   Share2,
   FileDown,
-  Bot
+  Bot,
+  Target
 } from 'lucide-react';
 import { ChatWidget } from '../components/chat/ChatWidget';
 import {
@@ -592,6 +593,63 @@ export const ResultsPage = () => {
     URL.revokeObjectURL(url);
   };
 
+  const [briefDownloading, setBriefDownloading] = useState(false);
+
+  const handleTargetingBriefExport = async () => {
+    if (briefDownloading || !missionId) return;
+    setIsDropdownOpen(false);
+    setBriefDownloading(true);
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch(`${API_URL}/api/results/${missionId}/export/targeting-brief`, { headers });
+
+      if (res.status === 202) {
+        // Brief still generating — notify and bail
+        const data = await res.json().catch(() => ({}));
+        setNotification({
+          type: 'info',
+          message: 'Targeting brief is generating…',
+          subtext: data.error || 'Try again in about a minute',
+        });
+        return;
+      }
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(errText || `Export failed (${res.status})`);
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `VETT-TargetingBrief-${missionId.slice(0, 8).toUpperCase()}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setNotification({
+        type: 'success',
+        message: 'Targeting Brief downloaded',
+        subtext: 'Ready to paste into Meta Ads, Google, or LinkedIn',
+      });
+    } catch (err) {
+      console.error('Targeting brief export failed:', err);
+      setNotification({
+        type: 'error',
+        message: 'Targeting brief export failed',
+        subtext: err instanceof Error ? err.message : 'Please try again',
+      });
+    } finally {
+      setBriefDownloading(false);
+    }
+  };
+
   const handleShareLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -1056,6 +1114,22 @@ export const ResultsPage = () => {
                       <div className="flex-1">
                         <div className="text-white font-bold text-sm">{csvExportOption.label}</div>
                         <div className="text-white/60 text-xs">{csvExportOption.subtext}</div>
+                      </div>
+                    </button>
+                    {/* AI Targeting Brief — Meta / Google / LinkedIn specs */}
+                    <button
+                      onClick={handleTargetingBriefExport}
+                      disabled={briefDownloading}
+                      className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-primary/10 transition-all duration-200 border-t border-white/5 disabled:opacity-50"
+                    >
+                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                        <Target className={`w-5 h-5 text-primary ${briefDownloading ? 'animate-pulse' : ''}`} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-primary font-bold text-sm">
+                          {briefDownloading ? 'Downloading…' : 'Targeting Brief'}
+                        </div>
+                        <div className="text-white/60 text-xs">AI-generated Meta / Google / LinkedIn specs</div>
                       </div>
                     </button>
                   </motion.div>
