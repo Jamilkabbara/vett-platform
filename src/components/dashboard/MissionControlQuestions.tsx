@@ -382,17 +382,28 @@ export const MissionControlQuestions = ({
     [questions, emit, optionEdit],
   );
 
-  // Task 14 — screening question pass/fail toggle.
-  // Clicking an option on a screening question makes it the qualifying answer.
-  // Clicking the active qualifying answer deselects it (undefined).
+  // Bug 1/2 fix — screening pass/fail toggle supports MULTIPLE qualifying answers.
+  // Each option can independently be toggled on/off. All green options are valid
+  // qualifying answers; respondents selecting any one of them pass the screener.
   const handleToggleQualifying = useCallback(
     (qId: string, opt: string) => {
       emit(
         questions.map((q) => {
           if (q.id !== qId) return q;
+          const current: string[] = q.qualifying_answers?.length
+            ? q.qualifying_answers
+            : q.qualifyingAnswer
+              ? [q.qualifyingAnswer]
+              : [];
+          const next = current.includes(opt)
+            ? current.filter((o) => o !== opt)  // deselect
+            : [...current, opt];                // select
           return {
             ...q,
-            qualifyingAnswer: q.qualifyingAnswer === opt ? undefined : opt,
+            qualifying_answers:     next,
+            screening_continue_on:  next,
+            // Keep legacy field in sync with primary selection for older readers
+            qualifyingAnswer: next[0] ?? undefined,
           };
         }),
       );
@@ -849,7 +860,11 @@ export const MissionControlQuestions = ({
                       const editing =
                         optionEdit?.qId === q.id && optionEdit.idx === idx;
                       const canRemove = q.options.length > MIN_OPTIONS;
-                      const isPass = q.isScreening && q.qualifyingAnswer === opt;
+                      // Bug 1/2 fix: check against qualifying_answers array (multi-select)
+                      const qualifyingSet: string[] = q.qualifying_answers?.length
+                        ? q.qualifying_answers
+                        : q.qualifyingAnswer ? [q.qualifyingAnswer] : [];
+                      const isPass = q.isScreening && qualifyingSet.includes(opt);
                       return (
                         <div
                           key={`${q.id}-opt-${idx}`}

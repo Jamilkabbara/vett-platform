@@ -11,7 +11,12 @@ export interface Question {
   options: string[];
   aiRefined: boolean;
   isScreening?: boolean;
+  /** Legacy single-value field — kept for backward compat with existing missions */
   qualifyingAnswer?: string;
+  /** Bug 1/2 fix: multi-qualifying support. Multiple options can be green. */
+  qualifying_answers?: string[];
+  /** Kept in sync with qualifying_answers for backend screening gate */
+  screening_continue_on?: string[];
   hasPIIError?: boolean;
 }
 
