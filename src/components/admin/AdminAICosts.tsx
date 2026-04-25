@@ -10,6 +10,7 @@ import {
   Legend,
 } from 'recharts';
 import { supabase } from '../../lib/supabase';
+import { safeFormatter, safe } from '../../utils/safeFormatter';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -82,23 +83,27 @@ interface AdminAICostsProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
+// All number formatters are null/undefined/NaN-safe. Recharts may call
+// tickFormatter / Tooltip formatter with undefined values during empty
+// data states — unguarded `.toFixed()` / `.toLocaleString()` crashes
+// the whole /admin route. See src/utils/safeFormatter.ts.
 const fmt = {
-  usd: (n: number) =>
-    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 4 }),
-  usd2: (n: number) =>
-    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }),
-  pct: (n: number) => `${n.toFixed(1)}%`,
-  num: (n: number) => n.toLocaleString('en-US'),
-  day: (d: string) => {
+  usd:  (n: number | undefined | null) => safe.usd(n, 4),
+  usd2: (n: number | undefined | null) => safe.usd2(n),
+  pct:  (n: number | undefined | null) => safe.pct(n, 1),
+  num:  (n: number | undefined | null) => safe.num(n),
+  day: (d: string | undefined | null) => {
+    if (!d) return '—';
     const date = new Date(d);
+    if (isNaN(date.getTime())) return '—';
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   },
 };
 
 function DeltaBadge({ delta_pct }: { delta_pct: number }) {
-  if (delta_pct === undefined || delta_pct === null) return null;
+  if (delta_pct === undefined || delta_pct === null || !Number.isFinite(delta_pct)) return null;
   const positive = delta_pct >= 0;
-  const label = `${positive ? '+' : ''}${delta_pct.toFixed(1)}%`;
+  const label = `${positive ? '+' : ''}${safeFormatter(delta_pct, n => n.toFixed(1))}%`;
   return (
     <span
       className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded ${
@@ -131,7 +136,7 @@ function modelColor(idx: number) {
 // Custom Recharts tooltip
 // ---------------------------------------------------------------------------
 
-function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) {
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { name: string; value?: number; color: string }[]; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div className="bg-[#0f172a] border border-gray-700 rounded-lg px-3 py-2 text-xs shadow-xl">
@@ -349,7 +354,9 @@ export function AdminAICosts({ apiFetch }: AdminAICostsProps) {
                     tickLine={false}
                   />
                   <YAxis
-                    tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                    tickFormatter={(v?: number) =>
+                      `$${safeFormatter(v, (x) => x.toFixed(2), '0.00')}`
+                    }
                     tick={{ fill: '#94a3b8', fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}

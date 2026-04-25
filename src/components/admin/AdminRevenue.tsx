@@ -17,6 +17,7 @@ import {
   RefreshCw,
   ChevronDown,
 } from 'lucide-react';
+import { safeFormatter } from '../../utils/safeFormatter';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -65,7 +66,10 @@ interface KpiTileProps {
 }
 
 const KpiTile = ({ label, value, delta_pct, prefix = '', suffix = '', icon }: KpiTileProps) => {
-  const positive = delta_pct >= 0;
+  // Guard against undefined/NaN — Recharts and admin payloads can omit fields.
+  const safeValue = Number.isFinite(value) ? value : 0;
+  const safeDelta = Number.isFinite(delta_pct) ? delta_pct : 0;
+  const positive = safeDelta >= 0;
   return (
     <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -74,11 +78,9 @@ const KpiTile = ({ label, value, delta_pct, prefix = '', suffix = '', icon }: Kp
       </div>
       <div className="text-3xl font-black text-white tracking-tight">
         {prefix}
-        {typeof value === 'number'
-          ? value >= 1000
-            ? `${(value / 1000).toFixed(1)}k`
-            : value.toLocaleString()
-          : value}
+        {safeValue >= 1000
+          ? `${safeFormatter(safeValue / 1000, (n) => n.toFixed(1), '0.0')}k`
+          : safeFormatter(safeValue, (n) => n.toLocaleString(), '0')}
         {suffix}
       </div>
       <div
@@ -94,7 +96,7 @@ const KpiTile = ({ label, value, delta_pct, prefix = '', suffix = '', icon }: Kp
           <TrendingDown className="w-3 h-3" />
         )}
         {positive ? '+' : ''}
-        {delta_pct.toFixed(1)}%
+        {safeFormatter(safeDelta, (n) => n.toFixed(1), '0.0')}%
       </div>
     </div>
   );
@@ -122,7 +124,7 @@ const RangeButton = ({ value, active, onClick }: RangeButtonProps) => (
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string }>;
+  payload?: Array<{ name: string; value?: number; color: string }>;
   label?: string;
 }
 
@@ -135,7 +137,9 @@ const ChartTooltip = ({ active, payload, label }: CustomTooltipProps) => {
         <div key={p.name} className="flex items-center gap-2 mb-1">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
           <span className="text-gray-300 capitalize">{p.name}:</span>
-          <span className="text-white font-bold">${p.value.toLocaleString()}</span>
+          <span className="text-white font-bold">
+            ${safeFormatter(p.value, (n) => n.toLocaleString(), '0')}
+          </span>
         </div>
       ))}
     </div>
@@ -322,7 +326,7 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
             </span>
           </div>
           <div className="text-3xl font-black text-white tracking-tight">
-            {(data.mission_count ?? 0).toLocaleString()}
+            {safeFormatter(data.mission_count, (n) => n.toLocaleString(), '0')}
           </div>
           <div className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full w-fit bg-primary/10 text-primary">
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
@@ -361,7 +365,13 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
                 tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 700 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                tickFormatter={(v?: number) =>
+                  `$${safeFormatter(
+                    v,
+                    (n) => (n >= 1000 ? `${(n / 1000).toFixed(0)}k` : `${n}`),
+                    '0',
+                  )}`
+                }
               />
               <Tooltip content={<ChartTooltip />} />
               <Area
@@ -412,7 +422,9 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
                 <div key={goal}>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-sm font-bold text-gray-300 capitalize">{goal}</span>
-                    <span className="text-sm font-black text-white">${amount.toLocaleString()}</span>
+                    <span className="text-sm font-black text-white">
+                      ${safeFormatter(amount, (n) => n.toLocaleString(), '0')}
+                    </span>
                   </div>
                   <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                     <div

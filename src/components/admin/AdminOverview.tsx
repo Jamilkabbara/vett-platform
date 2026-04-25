@@ -28,6 +28,7 @@ import {
   BarChart2,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { safeFormatter, isFiniteNum } from '../../utils/safeFormatter';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,13 +74,17 @@ const RANGE_LABELS: Record<Range, string> = {
   'all':     'All time',
 };
 
-function fmtMoney(n: number): string {
+// Defensive — admin payloads occasionally omit fields, and unguarded
+// `.toFixed()` on undefined was a SEV-1 crash source.
+function fmtMoney(n: number | undefined | null): string {
+  if (!isFiniteNum(n)) return '$0.00';
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000)     return `$${(n / 1_000).toFixed(1)}K`;
   return `$${n.toFixed(2)}`;
 }
 
-function fmtNumber(n: number): string {
+function fmtNumber(n: number | undefined | null): string {
+  if (!isFiniteNum(n)) return '0';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
@@ -106,6 +111,7 @@ function cvr(from: number | undefined, to: number | undefined): string {
 
 /** Delta badge: green for positive, red for negative, muted for zero. */
 function DeltaBadge({ pct }: { pct: number }) {
+  if (!isFiniteNum(pct)) pct = 0;
   const abs = Math.abs(pct);
   const fmt = abs >= 100 ? `${Math.round(abs)}%` : `${abs.toFixed(1)}%`;
 
@@ -532,7 +538,7 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
                           {fmtNumber(item.count)}
                         </span>
                         <span className="text-lime font-mono font-bold text-[11px] w-[36px] text-right">
-                          {item.pct.toFixed(1)}%
+                          {safeFormatter(item.pct, (n) => n.toFixed(1), '0.0')}%
                         </span>
                       </div>
                     </div>
@@ -557,7 +563,7 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
                     data.gross_margin_pct >= 0 ? 'text-grn' : 'text-red',
                   ].join(' ')}
                 >
-                  {data.gross_margin_pct.toFixed(1)}%
+                  {safeFormatter(data.gross_margin_pct, (n) => n.toFixed(1), '0.0')}%
                 </span>
               </div>
             )}
