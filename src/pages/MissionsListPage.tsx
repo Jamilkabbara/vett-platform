@@ -249,14 +249,60 @@ export const MissionsListPage = () => {
     }
   };
 
+  // Pass 21 Bug 15: replaced the centered spinner with skeleton cards
+  // that mirror the actual mission card layout (status pill, title, target
+  // line, two metric rows, footer with price + CTA). The previous centered
+  // spinner gave no preview of the page structure — users on slow networks
+  // saw a blank page for ~600ms before everything popped in. The skeleton
+  // mirrors the real grid (1/2/3 cols at sm/md/lg) so when results land
+  // there's no layout shift.
   if (authLoading || loading) {
     return (
       <DashboardLayout>
         <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-24">
-            <div className="flex items-center justify-center py-20">
-              <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-20">
+            <div className="flex flex-col gap-4 mb-4">
+              <div className="flex flex-row items-center justify-between">
+                <div className="h-9 md:h-14 w-44 md:w-72 bg-white/5 rounded-xl animate-pulse" />
+                <div className="h-10 md:h-12 w-32 md:w-44 bg-white/5 rounded-xl animate-pulse" />
+              </div>
+              <div className="h-4 w-40 bg-white/5 rounded-md animate-pulse" />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={i}
+                  className="bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6 backdrop-blur-xl animate-pulse"
+                  style={{ animationDelay: `${i * 80}ms` }}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="h-7 w-20 bg-white/10 rounded-lg" />
+                  </div>
+                  <div className="h-6 w-3/4 bg-white/10 rounded mb-2" />
+                  <div className="h-6 w-2/3 bg-white/10 rounded mb-4" />
+                  <div className="h-3 w-1/2 bg-white/5 rounded mb-5" />
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 bg-white/10 rounded" />
+                      <div className="h-3 w-32 bg-white/10 rounded" />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 bg-white/10 rounded" />
+                      <div className="h-3 w-24 bg-white/10 rounded" />
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t border-white/5 mt-2">
+                    <div className="flex items-center justify-between">
+                      <div className="h-7 w-16 bg-white/10 rounded" />
+                      <div className="h-4 w-20 bg-white/10 rounded" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <span className="sr-only" role="status" aria-live="polite">
+              Loading your missions…
+            </span>
           </div>
         </div>
       </DashboardLayout>
