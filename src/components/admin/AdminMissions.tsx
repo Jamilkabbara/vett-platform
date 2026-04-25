@@ -112,6 +112,68 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
     setBusy(false);
   };
 
+  /**
+   * Pass 21 Bug 20 — bulk-reanalyze all stale missions. Two-step UX:
+   *   1. dryRun fetch shows the candidate count and asks for confirmation.
+   *   2. On confirm, real run processes up to 25 missions sequentially.
+   * The button is disabled while any single-mission action is in flight
+   * to keep cost predictable.
+   */
+  const bulkReanalyze = async () => {
+    setBusy(true);
+    const t = toast.loading('Finding stale missions…');
+    try {
+      const dry = await apiFetch('/api/admin/missions/bulk-reanalyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: true, limit: 25 }),
+      });
+      if (!dry.ok) {
+        const j = await dry.json().catch(() => ({}));
+        throw new Error(j.error || 'Dry run failed');
+      }
+      const dryJson = await dry.json();
+      const count = Number(dryJson.totalStale || 0);
+      toast.dismiss(t);
+
+      if (count === 0) {
+        toast.success('No stale missions found');
+        return;
+      }
+      const ok = window.confirm(
+        `Reanalyze ${count} stale mission${count === 1 ? '' : 's'}? ` +
+        `Each call costs ~$0.10–0.30 in AI spend. The action runs sequentially ` +
+        `and reports per-mission success/failure when done.`
+      );
+      if (!ok) return;
+
+      const t2 = toast.loading(`Reanalyzing ${count} mission${count === 1 ? '' : 's'}…`);
+      const res = await apiFetch('/api/admin/missions/bulk-reanalyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 25 }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'Bulk reanalyze failed');
+      }
+      const j = await res.json();
+      const succeeded = Number(j.succeeded || 0);
+      const failed = Number(j.failed || 0);
+      if (failed === 0) {
+        toast.success(`Reanalyzed ${succeeded} mission${succeeded === 1 ? '' : 's'}`, { id: t2 });
+      } else {
+        toast.error(`Reanalyzed ${succeeded}, failed ${failed} — check Railway logs`, { id: t2 });
+      }
+      // Refresh the table so updated rows show their new state.
+      fetchMissions(search, statusFilter, offset);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Bulk reanalyze failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const STATUS_OPTIONS = ['', 'draft', 'paid', 'processing', 'completed', 'failed'];
 
   return (
@@ -140,8 +202,19 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
         <button
           onClick={() => fetchMissions(search, statusFilter, offset)}
           className="p-2.5 bg-gray-900 border border-gray-700 rounded-xl text-gray-400 hover:text-white transition-colors"
+          title="Refresh mission list"
         >
           <RefreshCw className="w-4 h-4" />
+        </button>
+        {/* Pass 21 Bug 20 — bulk reanalyze stale missions. */}
+        <button
+          onClick={bulkReanalyze}
+          disabled={busy}
+          title="Reanalyze all stale missions (null/short summary, missing insights, or analysis_error)"
+          className="flex items-center gap-1.5 px-3 py-2.5 bg-violet-500/10 border border-violet-500/30 rounded-xl text-violet-300 hover:bg-violet-500/20 disabled:opacity-40 transition-colors text-xs font-bold"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Reanalyze stale</span>
         </button>
       </div>
 
