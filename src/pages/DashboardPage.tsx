@@ -258,7 +258,12 @@ export const DashboardPage = () => {
 
   // Respondent count — pricing panel owns the UI but parent owns the value
   // so every component reads the same number.  Hydrated from mission.row.
-  const [respondentCount, setRespondentCount] = useState<number>(100);
+  // Pass 21 Bug 16: initial state 100 → 50 to match the new entry-tier
+  // default. Note this is just the local-state seed; the real value gets
+  // hydrated from the mission row a few lines later (see useEffect that
+  // reads state.mission.respondent_count). The seed only matters for the
+  // brief flash before hydration completes.
+  const [respondentCount, setRespondentCount] = useState<number>(50);
 
   // Uploaded assets — hydrated once from the mission row and read-only on
   // the dashboard. Editing assets post-creation would invalidate AI-generated
@@ -330,7 +335,8 @@ export const DashboardPage = () => {
         const mission = data as MissionRow;
         const initialQuestions = normaliseQuestions(mission.questions);
         let initialTargeting = hydrateTargeting(mission.targeting);
-        const initialRespondents = Number(mission.respondent_count ?? 100) || 100;
+        // Pass 21 Bug 16: hydration fallback 100 → 50 to match new default.
+        const initialRespondents = Number(mission.respondent_count ?? 50) || 50;
         const initialAssets = normaliseMissionAssets(mission.mission_assets);
 
         // Pass 5C + Phase 4: if the user hasn't picked any countries yet,
@@ -809,7 +815,7 @@ export const DashboardPage = () => {
                 <MissionControlTargeting
                   config={targeting}
                   onChange={handleTargetingChange}
-                  respondentCount={Number(state.mission.respondent_count ?? 100)}
+                  respondentCount={Number(state.mission.respondent_count ?? 50)}
                   questions={questions}
                   persisting={targetingPersisting}
                   aiSuggestedTargeting={aiSuggestedTargeting}

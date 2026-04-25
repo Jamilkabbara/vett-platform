@@ -494,7 +494,8 @@ export const MissionSetupPage = () => {
         brief: aiContext,
         goal_type: missionGoal,
         status: 'draft',
-        respondent_count: aiResult?.suggestedRespondentCount ?? 100,
+        // Pass 21 Bug 16: fallback default 100 → 50 (entry-tier alignment).
+        respondent_count: aiResult?.suggestedRespondentCount ?? 50,
         price_estimated: 99,
         questions: aiResult?.questions ?? null,
         target_audience: targetAudience,
