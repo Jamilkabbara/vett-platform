@@ -214,9 +214,12 @@ export const ActiveMissionPage = () => {
       return;
     }
 
+    // Bug 6 fix: include screened_out so the live ticker only counts
+    // qualified respondents (matching what respondent_count targets).
+    // Without this, screened-out personas inflate the progress bar.
     const { data: rows, error: rErr } = await supabase
       .from('mission_responses')
-      .select('persona_id, persona_profile, answered_at')
+      .select('persona_id, persona_profile, answered_at, screened_out')
       .eq('mission_id', mission.id)
       .order('answered_at', { ascending: true });
 
@@ -229,9 +232,15 @@ export const ActiveMissionPage = () => {
     });
 
     if (!rErr && rows) {
-      type Row = { persona_id: string; persona_profile: unknown; answered_at: string | null };
+      type Row = {
+        persona_id: string;
+        persona_profile: unknown;
+        answered_at: string | null;
+        screened_out: boolean | null;
+      };
       for (const r of rows as Row[]) {
         if (!r.persona_id) continue;
+        if (r.screened_out === true) continue; // don't credit screened-outs toward target
         const name = personaNameFrom(r.persona_id, r.persona_profile);
         const at = r.answered_at ? new Date(r.answered_at).getTime() : Date.now();
         ingestPersona(r.persona_id, name, Number.isFinite(at) ? at : Date.now());
@@ -282,6 +291,8 @@ export const ActiveMissionPage = () => {
           const row = (payload as { new?: Record<string, unknown> }).new ?? {};
           const personaId = typeof row.persona_id === 'string' ? row.persona_id : '';
           if (!personaId) return;
+          // Bug 6 fix: drop screened-out rows from the realtime ticker too.
+          if (row.screened_out === true) return;
           const name = personaNameFrom(personaId, row.persona_profile);
           const answeredAtRaw = typeof row.answered_at === 'string' ? row.answered_at : null;
           const at = answeredAtRaw ? new Date(answeredAtRaw).getTime() : Date.now();
