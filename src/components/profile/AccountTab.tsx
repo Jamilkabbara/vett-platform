@@ -15,7 +15,6 @@ export const AccountTab = () => {
   const [firstName, setFirstName]       = useState('');
   const [lastName, setLastName]         = useState('');
   const [companyName, setCompanyName]   = useState('');
-  const [vatTaxId, setVatTaxId]         = useState('');
   const [role, setRole]                 = useState('');
   const [projectStage, setProjectStage] = useState('');
   const [hydrated, setHydrated]         = useState(false);
@@ -47,19 +46,6 @@ export const AccountTab = () => {
     }
   }, [profile, hydrated]);
 
-  // Also fetch vat_tax_id separately (not in the hook)
-  useEffect(() => {
-    if (!profile?.id) return;
-    supabase
-      .from('profiles')
-      .select('vat_tax_id')
-      .eq('id', profile.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.vat_tax_id) setVatTaxId(data.vat_tax_id);
-      });
-  }, [profile?.id]);
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile?.id) return;
@@ -73,7 +59,6 @@ export const AccountTab = () => {
           last_name:     lastName.trim()    || null,
           full_name:     [firstName.trim(), lastName.trim()].filter(Boolean).join(' ') || null,
           company_name:  companyName.trim() || null,
-          vat_tax_id:    vatTaxId.trim()    || null,
           role:          role               || null,
           project_stage: projectStage       || null,
         });
@@ -220,32 +205,18 @@ export const AccountTab = () => {
       {/* Invoicing details */}
       <div className="border-t border-gray-800 pt-6">
         <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-5">Invoicing Details</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2.5">
-              Company Name <span className="text-gray-600 font-normal">(optional)</span>
-            </label>
-            <div className="relative">
-              <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input
-                type="text"
-                value={companyName}
-                onChange={e => setCompanyName(e.target.value)}
-                placeholder="Your company"
-                className="w-full pl-12 pr-5 py-3.5 bg-[#1e293b] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2.5">
-              VAT / Tax ID <span className="text-gray-600 font-normal">(optional)</span>
-            </label>
+        <div>
+          <label className="block text-sm font-semibold text-gray-300 mb-2.5">
+            Company Name <span className="text-gray-600 font-normal">(optional)</span>
+          </label>
+          <div className="relative">
+            <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input
               type="text"
-              value={vatTaxId}
-              onChange={e => setVatTaxId(e.target.value)}
-              placeholder="GB123456789"
-              className="w-full px-5 py-3.5 bg-[#1e293b] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+              value={companyName}
+              onChange={e => setCompanyName(e.target.value)}
+              placeholder="Your company"
+              className="w-full pl-12 pr-5 py-3.5 bg-[#1e293b] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
             />
           </div>
         </div>
