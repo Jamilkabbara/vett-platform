@@ -42,7 +42,7 @@ export const SecurityTab = () => {
       toast.error('Type DELETE to confirm');
       return;
     }
-    toast.error('Account deletion — please contact support@vettit.app');
+    toast.error('Account deletion — please contact support@vettit.ai');
     setDeleteConfirm('');
   };
 

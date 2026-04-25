@@ -137,11 +137,25 @@ export const ResultsPage = () => {
   });
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [resultsProgress, setResultsProgress] = useState<{ completed: number; total: number } | null>(null);
+  // Pass 20 Bug 7: progress envelope now matches new backend shape:
+  //   { collected, target, percent }
+  const [resultsProgress, setResultsProgress] = useState<{
+    collected: number;
+    target: number;
+    percent: number;
+  } | null>(null);
+  const [missionFailed, setMissionFailed] = useState<{ reason: string } | null>(null);
   const [screeningFunnel, setScreeningFunnel] = useState<{ total: number; passed: number; screenedOut: number } | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const filterRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Pass 20 Bug 7: poll timer + first-poll-at tracking. Refs (not state) so
+  // updates don't re-render and so cleanup can clear them. firstPollAtRef is
+  // reset whenever missionId changes (cleanup in the effect below) so the
+  // adaptive 5s→15s curve restarts per mission.
+  const pollTimerRef = useRef<number | null>(null);
+  const firstPollAtRef = useRef<number | null>(null);
 
   // Get missionId — path param takes priority (clean URLs), fall back to
   // query string (?missionId=) and location state for backward compat.
@@ -156,6 +170,14 @@ export const ResultsPage = () => {
     if (missionId) {
       fetchResults(missionId);
     }
+    return () => {
+      // Reset poll state when missionId changes or component unmounts.
+      if (pollTimerRef.current != null) {
+        window.clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+      firstPollAtRef.current = null;
+    };
   }, [missionId]);
 
   const fetchResults = async (id: string) => {
@@ -164,13 +186,45 @@ export const ResultsPage = () => {
       const { api } = await import('../lib/apiClient');
       const data = await api.get(`/api/results/${id}`);
 
-      if (data.status === 'in_progress') {
-        setResultsProgress({ completed: data.completedResponses || 0, total: data.targetResponses || 0 });
-        setTimeout(() => fetchResults(id), 30000);
+      // Pass 20 Bug 7: in-flight ('paid' or 'processing' on the backend
+      // collapses to the single 'processing' shape here). Render progress
+      // UI and self-schedule the next poll. Adaptive cadence: 5s for the
+      // first 30s of waiting, 15s thereafter.
+      if (data.status === 'processing') {
+        const p = data.progress || {};
+        setResultsProgress({
+          collected: Number(p.collected || 0),
+          target:    Number(p.target || 0),
+          percent:   Number(p.percent || 0),
+        });
+        setMissionFailed(null);
+
+        if (firstPollAtRef.current == null) firstPollAtRef.current = Date.now();
+        const waitedMs = Date.now() - firstPollAtRef.current;
+        const nextDelayMs = waitedMs < 30_000 ? 5_000 : 15_000;
+
+        if (pollTimerRef.current != null) window.clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = window.setTimeout(() => {
+          pollTimerRef.current = null;
+          fetchResults(id);
+        }, nextDelayMs);
         return;
       }
 
+      // Pass 20 Bug 7: fatal failure — render error state, stop polling.
+      if (data.status === 'failed') {
+        setMissionFailed({ reason: data.error || 'Mission could not complete.' });
+        setResultsProgress(null);
+        firstPollAtRef.current = null;
+        return;
+      }
+
+      // Completed (or legacy responses missing the explicit status field):
+      // clear poll/progress/failure state and fall through to the success
+      // path below.
       setResultsProgress(null);
+      setMissionFailed(null);
+      firstPollAtRef.current = null;
       if (!data.mission) {
         setFetchError('Mission data not found. It may still be processing.');
         return;
@@ -907,16 +961,42 @@ export const ResultsPage = () => {
   const hasNoResults = filteredRespondentCount === 0;
   const hasActiveFilters = getActiveFilterCount() > 0;
 
-  // In-progress state: show polling progress bar
+  // Pass 20 Bug 7: failed state — surface the persisted reason from the
+  // backend (mission_assets.analysis_error.message, or generic fallback)
+  // and offer a contact email. Polling is already stopped at fetch time.
+  if (missionFailed) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-6">
+            <div className="w-16 h-16 rounded-full bg-red-900/40 border border-red-700/60 flex items-center justify-center mx-auto mb-8">
+              <span className="text-3xl">⚠</span>
+            </div>
+            <h2 className="text-3xl font-black text-white mb-3">Mission Failed</h2>
+            <p className="text-white/70 mb-6">{missionFailed.reason}</p>
+            <a
+              href="mailto:hello@vettit.ai"
+              className="inline-block px-5 py-2.5 rounded-lg bg-primary text-black font-semibold hover:bg-primary/90 transition"
+            >
+              Contact support
+            </a>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Pass 20 Bug 7: in-flight state — real progress UI. Polling is driven
+  // by fetchResults's adaptive setTimeout (5s for first 30s, 15s after).
   if (resultsProgress) {
-    const pct = Math.round((resultsProgress.completed / resultsProgress.total) * 100);
+    const pct = resultsProgress.percent;
     return (
       <DashboardLayout>
         <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-6">
             <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-8" />
-            <h2 className="text-3xl font-black text-white mb-3">Gathering Responses</h2>
-            <p className="text-white/60 mb-8">Your mission is live. Responses are coming in.</p>
+            <h2 className="text-3xl font-black text-white mb-3">Simulating respondents…</h2>
+            <p className="text-white/60 mb-8">We're running your synthetic audience now.</p>
             <div className="bg-white/10 rounded-full h-3 mb-3 overflow-hidden">
               <div
                 className="h-full bg-neon-lime rounded-full transition-all duration-500"
@@ -924,9 +1004,9 @@ export const ResultsPage = () => {
               />
             </div>
             <p className="text-white/40 text-sm">
-              {resultsProgress.completed} / {resultsProgress.total} responses ({pct}%)
+              {resultsProgress.collected} / {resultsProgress.target} responses ({pct}%)
             </p>
-            <p className="text-white/30 text-xs mt-4">Auto-refreshing every 30 seconds</p>
+            <p className="text-white/30 text-xs mt-4">This usually takes 1–3 minutes.</p>
           </div>
         </div>
       </DashboardLayout>
