@@ -17,6 +17,7 @@ import { AdminCRM }       from '../components/admin/AdminCRM';
 import { AdminSupport }   from '../components/admin/AdminSupport';
 import { AdminBlog }      from '../components/admin/AdminBlog';
 import { PromosPanel }    from '../components/admin/PromosPanel';
+import { ErrorBoundary }  from '../components/shared/ErrorBoundary';
 
 const API_URL    = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
 const ADMIN_EMAIL = 'kabbarajamil@gmail.com';
@@ -86,18 +87,24 @@ export function AdminPage() {
   if (authLoading) return null;
   if (!user || user.email !== ADMIN_EMAIL) return null;
 
+  // Wrap each panel in its own ErrorBoundary so a downstream payload
+  // surprise (undefined field, malformed shape) only blacks out one tab
+  // instead of the whole /admin route. Pass 20 Hotfix Round 2 (SEV-1).
   const ActivePanel = () => {
     const props = { apiFetch };
+    const wrap = (label: string, node: React.ReactNode) => (
+      <ErrorBoundary label={label}>{node}</ErrorBoundary>
+    );
     switch (tab) {
-      case 'overview':  return <AdminOverview  {...props} />;
-      case 'revenue':   return <AdminRevenue   {...props} />;
-      case 'ai-costs':  return <AdminAICosts   {...props} />;
-      case 'users':     return <AdminUsers     {...props} />;
-      case 'missions':  return <AdminMissions  {...props} />;
-      case 'crm':       return <AdminCRM       {...props} />;
-      case 'support':   return <AdminSupport   {...props} />;
-      case 'blog':      return <AdminBlog      {...props} />;
-      case 'promos':    return <PromosPanel     apiFetch={apiFetch} />;
+      case 'overview':  return wrap('Overview',  <AdminOverview  {...props} />);
+      case 'revenue':   return wrap('Revenue',   <AdminRevenue   {...props} />);
+      case 'ai-costs':  return wrap('AI Costs',  <AdminAICosts   {...props} />);
+      case 'users':     return wrap('Users',     <AdminUsers     {...props} />);
+      case 'missions':  return wrap('Missions',  <AdminMissions  {...props} />);
+      case 'crm':       return wrap('CRM',       <AdminCRM       {...props} />);
+      case 'support':   return wrap('Support',   <AdminSupport   {...props} />);
+      case 'blog':      return wrap('Blog',      <AdminBlog      {...props} />);
+      case 'promos':    return wrap('Promos',    <PromosPanel     apiFetch={apiFetch} />);
     }
   };
 

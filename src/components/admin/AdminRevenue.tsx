@@ -18,6 +18,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { safeFormatter } from '../../utils/safeFormatter';
+import { ErrorBoundary } from '../shared/ErrorBoundary';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -223,11 +224,16 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
   if (!data) return null;
 
   // ── Derived data ──
+  // Defensive — `b.day` has occasionally been seen undefined for partial
+  // buckets returned during range switches. Unguarded `.slice` would crash
+  // the chart and unmount the page (Pass 20 Hotfix Round 2 SEV-1 family).
   const chartData = (data.daily_buckets ?? []).map((b) => ({
-    day: b.day.slice(5), // MM-DD
-    Revenue: b.revenue_usd,
-    Cost: b.cost_usd,
-    Profit: b.revenue_usd - b.cost_usd,
+    day: typeof b.day === 'string' ? b.day.slice(5) : '', // MM-DD
+    Revenue: Number.isFinite(b.revenue_usd) ? b.revenue_usd : 0,
+    Cost: Number.isFinite(b.cost_usd) ? b.cost_usd : 0,
+    Profit:
+      (Number.isFinite(b.revenue_usd) ? b.revenue_usd : 0) -
+      (Number.isFinite(b.cost_usd) ? b.cost_usd : 0),
   }));
 
   const goalEntries = Object.entries(data.goal_breakdown ?? {}).sort(([, a], [, b]) => b - a);
@@ -341,6 +347,7 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
           Daily Revenue vs Cost
         </h2>
         <div className="h-64">
+          <ErrorBoundary label="Daily Revenue chart">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
@@ -394,6 +401,7 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
               />
             </AreaChart>
           </ResponsiveContainer>
+          </ErrorBoundary>
         </div>
         <div className="flex items-center gap-6 mt-4 justify-center">
           <div className="flex items-center gap-2 text-xs text-gray-400 font-bold">

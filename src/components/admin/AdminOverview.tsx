@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { safeFormatter, isFiniteNum } from '../../utils/safeFormatter';
+import { ErrorBoundary } from '../shared/ErrorBoundary';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -164,8 +165,20 @@ function Section({
   );
 }
 
-/** Activity type pill. */
-function ActivityTypePill({ type }: { type: string }) {
+/**
+ * Activity type pill.
+ *
+ * Pass 20 Hotfix Round 2 (SEV-1): `type` was previously typed as `string`,
+ * but the activity feed payload occasionally contains entries where `type`
+ * is `undefined` (legacy rows, schema gaps, server-side aggregation glitches).
+ * The unguarded `type.replace(/_/g, ' ')` then threw
+ * `Cannot read properties of undefined (reading 'replace')` and unmounted
+ * the entire /admin route as a black screen during React's commit phase
+ * (the call surfaced inside a Recharts callback frame, but the throwing
+ * function was here). Guard `type` and bail out for non-string values.
+ */
+function ActivityTypePill({ type }: { type: string | undefined | null }) {
+  const safeType = typeof type === 'string' && type.length > 0 ? type : 'unknown';
   const colorMap: Record<string, string> = {
     mission_created: 'bg-blu/10 text-blu border-blu/20',
     payment:         'bg-grn/10 text-grn border-grn/20',
@@ -173,12 +186,12 @@ function ActivityTypePill({ type }: { type: string }) {
     signup:          'bg-pur/10 text-pur border-pur/20',
     refund:          'bg-red/10 text-red  border-red/20',
   };
-  const cls = colorMap[type] ?? 'bg-b1 text-t3 border-b2';
+  const cls = colorMap[safeType] ?? 'bg-b1 text-t3 border-b2';
   return (
     <span
       className={`inline-block px-1.5 py-0.5 rounded-md border text-[9px] font-bold uppercase tracking-wider shrink-0 ${cls}`}
     >
-      {type.replace(/_/g, ' ')}
+      {safeType.replace(/_/g, ' ')}
     </span>
   );
 }
@@ -415,6 +428,7 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           {/* Funnel */}
+          <ErrorBoundary label="Conversion Funnel">
           <Section title="Conversion Funnel" icon={<Target className="w-4 h-4" />}>
             <div className="space-y-3">
               {funnelSteps.map((step, idx) => {
@@ -463,8 +477,10 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
               </div>
             )}
           </Section>
+          </ErrorBoundary>
 
           {/* User Segments */}
+          <ErrorBoundary label="User Segments">
           <Section title="User Segments" icon={<Users className="w-4 h-4" />}>
             {(data.segments ?? []).length === 0 ? (
               <p className="text-t4 text-[12px] text-center py-6">No segment data</p>
@@ -476,7 +492,7 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
                     <div key={seg.segment}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-t2 text-[11px] font-bold capitalize">
-                          {seg.segment.replace(/_/g, ' ')}
+                          {typeof seg.segment === 'string' ? seg.segment.replace(/_/g, ' ') : '—'}
                         </span>
                         <span className="text-t3 font-mono text-[11px]">
                           {fmtNumber(seg.count)}
@@ -494,8 +510,10 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
               </div>
             )}
           </Section>
+          </ErrorBoundary>
 
           {/* Activity Feed */}
+          <ErrorBoundary label="Activity Feed">
           <Section title="Activity Feed" icon={<Activity className="w-4 h-4" />}>
             {(data.activity ?? []).length === 0 ? (
               <p className="text-t4 text-[12px] text-center py-6">No recent activity</p>
@@ -520,8 +538,10 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
               </div>
             )}
           </Section>
+          </ErrorBoundary>
 
           {/* Mission Type Mix */}
+          <ErrorBoundary label="Mission Type Mix">
           <Section title="Mission Type Mix" icon={<Layers className="w-4 h-4" />}>
             {(data.missionTypeMix ?? []).length === 0 ? (
               <p className="text-t4 text-[12px] text-center py-6">No mission data</p>
@@ -531,7 +551,7 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
                   <div key={item.type}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-t2 text-[11px] font-bold capitalize">
-                        {item.type.replace(/_/g, ' ')}
+                        {typeof item.type === 'string' ? item.type.replace(/_/g, ' ') : '—'}
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-t3 font-mono text-[10px]">
@@ -568,6 +588,7 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
               </div>
             )}
           </Section>
+          </ErrorBoundary>
 
         </div>
       )}

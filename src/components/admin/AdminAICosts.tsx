@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { supabase } from '../../lib/supabase';
 import { safeFormatter, safe } from '../../utils/safeFormatter';
+import { ErrorBoundary } from '../shared/ErrorBoundary';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -330,6 +331,7 @@ export function AdminAICosts({ apiFetch }: AdminAICostsProps) {
           {(data.daily_buckets ?? []).length > 0 && (
             <section className="bg-[#0f172a] border border-gray-800 rounded-xl p-5">
               <h2 className="text-sm font-semibold text-gray-300 mb-4">Daily Cost vs Revenue</h2>
+              <ErrorBoundary label="Daily Cost vs Revenue chart">
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart
                   data={data.daily_buckets}
@@ -387,6 +389,7 @@ export function AdminAICosts({ apiFetch }: AdminAICostsProps) {
                   />
                 </AreaChart>
               </ResponsiveContainer>
+              </ErrorBoundary>
             </section>
           )}
 
