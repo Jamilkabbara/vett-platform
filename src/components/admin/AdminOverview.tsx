@@ -7,7 +7,7 @@
  *
  * Sections
  *  · 4 KPI tiles (total_missions, total_revenue, active_users, avg_mission_value)
- *  · Conversion funnel (signups → missions_created → paid → completed)
+ *  · Conversion funnel (signups → mission attempts → reached payment → paid → completed)
  *  · User segments bar list
  *  · Activity feed
  *  · Mission type mix
@@ -47,11 +47,21 @@ interface OverviewData {
     active_users:      KpiMetric;
     avg_mission_value: KpiMetric;
   };
+  /**
+   * Pass 21 Bug 23 — admin_funnel RPC actually emits these fields:
+   *   landing_views, signups, setup_started, payment_reached, paid, completed
+   * The previous shape declared `missions_created` (never sent by the RPC),
+   * so the second funnel bar was always 0 and the "Overall conversion"
+   * footer divided completed-missions by signed-up-users — a unit-mixed
+   * percentage that read 200% in production.
+   */
   funnel: {
-    signups?:          number;
-    missions_created?: number;
-    paid?:             number;
-    completed?:        number;
+    landing_views?:   number;
+    signups?:         number;   // unit: users
+    setup_started?:   number;   // unit: missions (every row in `missions`)
+    payment_reached?: number;   // unit: missions
+    paid?:            number;   // unit: missions
+    completed?:       number;   // unit: missions
   };
   segments: Array<{ segment: string; count: number }>;
   /**
@@ -326,12 +336,18 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
 
   // ── Funnel steps config ────────────────────────────────────────────────────
 
-  const funnelSteps = data
+  // Pass 21 Bug 23 — explicit units. The signups stage counts USERS, every
+  // stage below it counts MISSIONS. Stage-to-stage conversion is only shown
+  // between adjacent same-unit stages, so the misleading users→missions
+  // ratio is never rendered.
+  type FunnelUnit = 'users' | 'missions';
+  const funnelSteps: Array<{ key: string; label: string; unit: FunnelUnit; value: number | undefined }> = data
     ? [
-        { key: 'signups',          label: 'Signups',          value: data.funnel?.signups },
-        { key: 'missions_created', label: 'Missions Created', value: data.funnel?.missions_created },
-        { key: 'paid',             label: 'Paid',             value: data.funnel?.paid },
-        { key: 'completed',        label: 'Completed',        value: data.funnel?.completed },
+        { key: 'signups',         label: 'Signups',          unit: 'users',    value: data.funnel?.signups },
+        { key: 'setup_started',   label: 'Mission attempts', unit: 'missions', value: data.funnel?.setup_started },
+        { key: 'payment_reached', label: 'Reached payment',  unit: 'missions', value: data.funnel?.payment_reached },
+        { key: 'paid',            label: 'Paid',             unit: 'missions', value: data.funnel?.paid },
+        { key: 'completed',       label: 'Completed',        unit: 'missions', value: data.funnel?.completed },
       ]
     : [];
 
@@ -454,22 +470,41 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
                 const val = step.value ?? 0;
                 const pct = funnelMax > 0 ? (val / funnelMax) * 100 : 0;
                 const prevStep = idx > 0 ? funnelSteps[idx - 1] : null;
-                const convLabel = prevStep
+                // Pass 21 Bug 23 — only show stage-to-stage conversion when
+                // both stages count the same unit. Signups (users) →
+                // Mission attempts (missions) is a unit change, so no %.
+                const sameUnit = prevStep ? prevStep.unit === step.unit : false;
+                const convLabel = prevStep && sameUnit
                   ? cvr(prevStep.value, val)
                   : null;
+                const unitChanged = prevStep && !sameUnit;
 
                 return (
                   <div key={step.key}>
-                    {/* Conversion rate connector */}
+                    {/* Conversion rate connector — same-unit stages only */}
                     {convLabel && (
                       <div className="flex items-center gap-2 mb-1.5 ml-1">
                         <div className="w-px h-3 bg-gray-700 ml-1" />
-                        <span className="text-t4 text-[10px] font-mono">{convLabel} conversion</span>
+                        <span className="text-t4 text-[10px] font-mono">
+                          {convLabel} of {prevStep?.label.toLowerCase()}
+                        </span>
+                      </div>
+                    )}
+                    {/* Unit-change marker — explicit, no misleading % */}
+                    {unitChanged && (
+                      <div className="flex items-center gap-2 mb-1.5 ml-1">
+                        <div className="w-px h-3 bg-gray-700 ml-1" />
+                        <span className="text-t4 text-[10px] font-mono italic">
+                          unit changes: {prevStep?.unit} → {step.unit}
+                        </span>
                       </div>
                     )}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-t2 text-[11px] font-bold">{step.label}</span>
+                        <span className="text-t2 text-[11px] font-bold">
+                          {step.label}{' '}
+                          <span className="text-t4 font-mono font-normal">({step.unit})</span>
+                        </span>
                         <span className="text-lime font-mono font-bold text-[11px]">
                           {fmtNumber(val)}
                         </span>
@@ -477,7 +512,7 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
                       <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full bg-lime transition-all duration-500"
-                          style={{ width: `${pct}%`, opacity: 1 - idx * 0.15 }}
+                          style={{ width: `${pct}%`, opacity: 1 - idx * 0.12 }}
                         />
                       </div>
                     </div>
@@ -486,15 +521,13 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
               })}
             </div>
 
-            {/* Overall conversion */}
-            {(data.funnel?.signups ?? 0) > 0 && (data.funnel?.completed ?? 0) > 0 && (
-              <div className="mt-4 pt-3 border-t border-gray-800 flex items-center justify-between">
-                <span className="text-t3 text-[11px] font-bold">Overall conversion</span>
-                <span className="text-lime font-mono font-bold text-[12px]">
-                  {cvr(data.funnel?.signups, data.funnel?.completed)}
-                </span>
-              </div>
-            )}
+            {/*
+              Pass 21 Bug 23 — "Overall conversion" footer removed. It
+              previously divided completed-missions by signed-up-users,
+              producing values >100% (200% in production). Mission-level
+              conversion is now visible as the cvr label between Mission
+              attempts → Completed in the funnel itself.
+            */}
           </Section>
           </ErrorBoundary>
 
