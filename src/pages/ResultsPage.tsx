@@ -728,13 +728,20 @@ export const ResultsPage = () => {
       const res = await fetch(`${API_URL}/api/results/${missionId}/export/targeting-brief`, { headers });
 
       if (res.status === 202) {
-        // Brief still generating — notify and bail
+        // Brief still generating — notify and bail.
+        // Pass 21 Bug 18: previously called the non-existent setNotification
+        // helper, which threw `setNotification is not defined` and dropped
+        // the user into the catch block with a misleading "Targeting brief
+        // export failed" message. Use the real setToast like every other
+        // export flow on this page.
         const data = await res.json().catch(() => ({}));
-        setNotification({
-          type: 'info',
+        setToast({
+          show: true,
           message: 'Targeting brief is generating…',
           subtext: data.error || 'Try again in about a minute',
+          isGenerating: true,
         });
+        setTimeout(() => setToast({ show: false, message: '', subtext: '', isGenerating: false }), 4000);
         return;
       }
 
@@ -753,18 +760,23 @@ export const ResultsPage = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      setNotification({
-        type: 'success',
+      // Pass 21 Bug 18: see comment above on the 202 branch — same fix.
+      setToast({
+        show: true,
         message: 'Targeting Brief downloaded',
         subtext: 'Ready to paste into Meta Ads, Google, or LinkedIn',
+        isGenerating: false,
       });
+      setTimeout(() => setToast({ show: false, message: '', subtext: '', isGenerating: false }), 3000);
     } catch (err) {
       console.error('Targeting brief export failed:', err);
-      setNotification({
-        type: 'error',
+      setToast({
+        show: true,
         message: 'Targeting brief export failed',
         subtext: err instanceof Error ? err.message : 'Please try again',
+        isGenerating: false,
       });
+      setTimeout(() => setToast({ show: false, message: '', subtext: '', isGenerating: false }), 4000);
     } finally {
       setBriefDownloading(false);
     }
