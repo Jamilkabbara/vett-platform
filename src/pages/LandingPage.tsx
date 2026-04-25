@@ -306,8 +306,22 @@ export function LandingPage() {
           className="w-full max-w-[720px] mt-9"
         >
           <div className="bg-bg2/90 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm focus-within:border-lime/40 transition-colors">
+            {/* Pass 21 Bug 14: hero input prompt overlap.
+                Two issues fixed:
+                1. The flex-1 input had no `min-w-0`. Flex items default to
+                   `min-width: auto` (= intrinsic content size). When the
+                   typewriter rendered a long phrase, the input's intrinsic
+                   width pushed siblings off — on desktop the >_ prompt and
+                   on mobile the wrapped/extended placeholder could collide
+                   with adjacent elements. `min-w-0` lets the input shrink
+                   below its content's natural width and respect flex-1.
+                2. `w-full` on the input fights flex-basis arithmetic — at
+                   certain widths the browser computes 100% of parent + the
+                   prompt's width, overflowing the row. Removed.
+                Also added `truncate` semantics so a placeholder longer than
+                the visible field clips with ellipsis instead of bleeding. */}
             <div className="flex flex-col md:flex-row md:items-center gap-3 px-4 py-3.5 md:px-5 md:py-4">
-              <span className="hidden md:inline-block font-mono font-bold text-lime text-[16px] shrink-0">
+              <span className="hidden md:inline-block font-mono font-bold text-lime text-[16px] shrink-0 leading-none">
                 &gt;_
               </span>
               <input
@@ -320,7 +334,7 @@ export function LandingPage() {
                 onBlur={() => { if (!idea.trim()) setHeroFocused(false); }}
                 placeholder={typewriterPlaceholder}
                 aria-label="Research question"
-                className="flex-1 bg-transparent border-0 outline-none font-body text-[14px] md:text-[15px] text-t1 placeholder:text-t3 w-full"
+                className="flex-1 min-w-0 bg-transparent border-0 outline-none font-body text-[14px] md:text-[15px] text-t1 placeholder:text-t3 truncate"
               />
               <div className="flex items-center gap-2 md:shrink-0">
                 <button
