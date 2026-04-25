@@ -245,8 +245,23 @@ export const ResultsPage = () => {
         const backendType = q.type || bucket.type || 'single';
         const fType = mapQuestionType(backendType);
         const qText = q.text || q.question || bucket.question || `Question ${idx + 1}`;
+        // Per-question insight lookup — snake_case first.
+        // Backend writes `insights.per_question_insights` as an array of
+        // `{ question_id, headline, body, significance }`. Older paths
+        // and stale clients used `questionInsights[idx]` / `byQuestion[qid]`.
+        const perQList: any[] =
+          (data?.insights?.per_question_insights as any[]) ||
+          (data?.mission?.insights?.per_question_insights as any[]) ||
+          [];
+        const perQItem = Array.isArray(perQList)
+          ? perQList.find((pi: any) => pi && pi.question_id === qid)
+          : null;
+        const perQText = perQItem
+          ? [perQItem.headline, perQItem.body].filter(Boolean).join(' — ')
+          : '';
         const aiInsight =
           bucket.insight ||
+          perQText ||
           data.insights?.questionInsights?.[idx] ||
           data.insights?.byQuestion?.[qid] ||
           '';
