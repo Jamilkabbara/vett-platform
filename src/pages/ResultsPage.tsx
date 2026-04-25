@@ -331,8 +331,14 @@ export const ResultsPage = () => {
         return chips.slice(0, 6);
       };
 
-      // Extract executive summary from insights
+      // Extract executive summary from insights.
+      // Backend writes snake_case to:
+      //   - missions.executive_summary  (top-level column, most authoritative)
+      //   - missions.insights.executive_summary  (JSONB key)
+      // Older client code also looked for camelCase variants; preserved as last-resort.
       const execSummary =
+        mission.executive_summary ||
+        data.insights?.executive_summary ||
         data.insights?.executiveSummary ||
         data.insights?.summary ||
         data.insights?.overview ||
