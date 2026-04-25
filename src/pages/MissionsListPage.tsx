@@ -31,6 +31,10 @@ interface Mission {
   qualified_respondent_count?: number | null;
   qualification_rate?: number | null;
   price_estimated?: number | null;
+  // Pass 21 Bug 8: actual paid price (set at checkout). For any mission past
+  // the draft stage, this is the truth — `price_estimated` is just the
+  // pre-checkout quote and may not match what was charged.
+  total_price_usd?: number | string | null;
   created_at: string;
   questions: unknown[];
   // Legacy backend field names — kept optional for graceful fallback.
@@ -206,6 +210,29 @@ export const MissionsListPage = () => {
     // Active or other in-progress states: keep the live progress format.
     const actual = mission.responses_collected ?? 0;
     return `${actual}/${target} respondents`;
+  };
+
+  /**
+   * Pass 21 Bug 8: card price label.
+   *
+   *   DRAFT          → price_estimated (pre-checkout quote — nothing has been charged)
+   *   anything else  → total_price_usd (what the user actually paid)
+   *                    fall back to price_estimated only if paid is missing
+   *
+   * Forensic: 3/6 completed missions have paid ≠ estimated (e.g. $9 paid vs
+   * $35 estimated after promo discount). The card was overstating spend by
+   * up to 4× because it always read price_estimated.
+   */
+  const getMissionPriceLabel = (mission: Mission): string => {
+    const statusUp = (mission.status || '').toUpperCase();
+    const estimated = Number(mission.price_estimated ?? mission.estimated_price ?? 0);
+    if (statusUp === 'DRAFT') return `$${estimated || 0}`;
+    const paid = mission.total_price_usd != null ? Number(mission.total_price_usd) : NaN;
+    if (Number.isFinite(paid) && paid > 0) {
+      // Strip trailing .00 for whole-dollar amounts; keep cents otherwise.
+      return Number.isInteger(paid) ? `$${paid}` : `$${paid.toFixed(2)}`;
+    }
+    return `$${estimated || 0}`;
   };
 
   const getEstimatedTime = (mission: Mission) => {
@@ -386,7 +413,11 @@ export const MissionsListPage = () => {
                   <div className="pt-4 border-t border-white/5 mt-auto">
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-black text-white">
-                        ${mission.price_estimated ?? mission.estimated_price ?? 0}
+                        {/* Pass 21 Bug 8: prefer total_price_usd (actually
+                            charged) for non-draft missions; price_estimated
+                            is just the pre-checkout quote and may diverge
+                            from the final charge by up to 4× after promos. */}
+                        {getMissionPriceLabel(mission)}
                       </span>
                       <div className="flex items-center gap-2 text-primary group-hover:translate-x-1 transition-transform">
                         {mission.status === 'DRAFT' ? (
