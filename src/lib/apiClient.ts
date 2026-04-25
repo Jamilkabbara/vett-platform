@@ -46,9 +46,17 @@ export const api = {
     return handleResponse(res);
   },
 
-  async delete(path: string) {
+  // Pass 21 Bug 12: extend DELETE to accept an optional JSON body so
+  // destructive endpoints (e.g. /api/auth/account) can require an
+  // explicit { confirm: 'DELETE' } token. Spec-compliant — RFC 9110
+  // permits a body on DELETE.
+  async delete(path: string, body?: unknown) {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}${path}`, { method: 'DELETE', headers });
+    const res = await fetch(`${API_URL}${path}`, {
+      method: 'DELETE',
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
     return handleResponse(res);
   },
 };

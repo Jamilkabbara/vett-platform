@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Shield, Smartphone, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/apiClient';
 import toast from 'react-hot-toast';
 
 export const SecurityTab = () => {
@@ -10,6 +11,7 @@ export const SecurityTab = () => {
   const [showConfirm, setShowConfirm]       = useState(false);
   const [pwLoading, setPwLoading]           = useState(false);
   const [deleteConfirm, setDeleteConfirm]   = useState('');
+  const [deleteLoading, setDeleteLoading]   = useState(false);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,13 +39,36 @@ export const SecurityTab = () => {
     }
   };
 
-  const handleDeleteAccount = () => {
+  // Pass 21 Bug 12: real account deletion. Calls DELETE /api/auth/account
+  // which wipes user-owned rows in dependency order (ai_calls →
+  // chat_sessions → missions → profiles → auth.users) then signs out
+  // locally and bounces back to the landing page. The "type DELETE"
+  // gate is enforced both client- and server-side.
+  const handleDeleteAccount = async () => {
     if (deleteConfirm !== 'DELETE') {
       toast.error('Type DELETE to confirm');
       return;
     }
-    toast.error('Account deletion — please contact support@vettit.ai');
-    setDeleteConfirm('');
+    if (!window.confirm('This permanently deletes your account, missions, and results. This cannot be undone. Continue?')) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      const result = await api.delete('/api/auth/account', { confirm: 'DELETE' });
+      if (Array.isArray(result?.partialErrors) && result.partialErrors.length > 0) {
+        // Backend logged them; we surface a soft-warning but still sign out.
+        console.warn('Account deletion partial errors:', result.partialErrors);
+      }
+      toast.success('Your account has been deleted.');
+      await supabase.auth.signOut();
+      // Hard redirect — easier than wiping every cached store.
+      window.location.href = '/';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete account';
+      toast.error(msg + ' — contact hello@vettit.ai if this persists.');
+      setDeleteLoading(false);
+    }
   };
 
   return (
@@ -145,10 +170,10 @@ export const SecurityTab = () => {
           />
           <button
             onClick={handleDeleteAccount}
-            disabled={deleteConfirm !== 'DELETE'}
+            disabled={deleteConfirm !== 'DELETE' || deleteLoading}
             className="px-5 py-3 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-bold rounded-xl border border-red-600/40 hover:border-red-600/60 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Delete
+            {deleteLoading ? 'Deleting…' : 'Delete'}
           </button>
         </div>
       </div>
