@@ -97,19 +97,82 @@ export const Navbar = ({ onSignInClick, showPreviewButton, onPreviewClick }: Nav
         <div className="flex items-center gap-2 md:gap-4">
           {isLandingPage ? (
             <>
+              {/* Pass 21 Bug 13: landing header now reflects auth state.
+                  Previously the navbar always rendered "Sign In" + "VETT IT"
+                  on the landing page, even if the user was already logged
+                  in — bouncing them through the auth modal for no reason.
+                  Authed users now see the avatar dropdown (My Missions,
+                  Account, Log Out) and a "Dashboard" pill instead of the
+                  Sign In CTA. The "VETT IT" gradient CTA stays for both
+                  states because /setup is a perfectly valid action for an
+                  authed user (start a new mission). */}
               <div className="flex items-center gap-2 md:gap-4">
-                <button
-                  onClick={onSignInClick}
-                  className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/30 text-gray-300 hover:text-white font-medium px-3 py-1.5 md:px-5 md:py-2.5 rounded-full transition-all text-xs md:text-sm tracking-wide"
-                >
-                  Sign In
-                </button>
+                {user ? (
+                  <Link
+                    to="/missions"
+                    className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/30 text-gray-300 hover:text-white font-medium px-3 py-1.5 md:px-5 md:py-2.5 rounded-full transition-all text-xs md:text-sm tracking-wide"
+                  >
+                    Dashboard
+                  </Link>
+                ) : (
+                  <button
+                    onClick={onSignInClick}
+                    className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/30 text-gray-300 hover:text-white font-medium px-3 py-1.5 md:px-5 md:py-2.5 rounded-full transition-all text-xs md:text-sm tracking-wide"
+                  >
+                    Sign In
+                  </button>
+                )}
                 <Link
                   to="/setup"
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold uppercase tracking-wider text-xs md:text-sm px-3 py-1.5 md:px-6 md:py-2.5 rounded-full shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:shadow-[0_0_25px_rgba(124,58,237,0.7)] hover:scale-105 transition-all"
                 >
                   VETT IT
                 </Link>
+                {user && (
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      onClick={() => setIsMenuOpen(!isMenuOpen)}
+                      className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg hover:ring-2 hover:ring-purple-500 transition-all text-xs md:text-sm"
+                    >
+                      {getUserInitials()}
+                    </button>
+
+                    {isMenuOpen && (
+                      <div className="absolute top-12 right-0 w-56 bg-[#0f172a] border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-50">
+                        <div className="px-4 py-3 border-b border-gray-800">
+                          <p className="text-sm text-white font-medium">{getUserDisplayName()}</p>
+                          <p className="text-xs text-gray-500">{user?.email || 'user@vettit.ai'}</p>
+                        </div>
+                        <div className="py-1">
+                          <button
+                            onClick={() => {
+                              setIsMenuOpen(false);
+                              navigate('/missions');
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 transition-colors"
+                          >
+                            My Missions
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsMenuOpen(false);
+                              navigate('/profile');
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 transition-colors"
+                          >
+                            Account Settings
+                          </button>
+                          <button
+                            onClick={handleLogout}
+                            className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                          >
+                            Log Out
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </>
           ) : (
