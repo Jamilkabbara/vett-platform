@@ -1,18 +1,22 @@
 import { useState } from 'react';
-import { User, Receipt, CreditCard, Lock } from 'lucide-react';
+import { User, Receipt, Lock } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { AccountTab }        from '../components/profile/AccountTab';
 import { BillingInvoicesTab } from '../components/profile/BillingInvoicesTab';
-import { PaymentMethodsTab }  from '../components/profile/PaymentMethodsTab';
 import { SecurityTab }        from '../components/profile/SecurityTab';
 
-type TabId = 'account' | 'billing' | 'payment' | 'security';
+// Pass 21 Bug 11: removed the "Payment Methods" tab. The PaymentMethodsTab
+// was vaporware — DEMO_CARDS = [], "Add card coming soon" toast, "contact
+// support" remove handler — and shipping a non-functional surface in
+// production was misleading. Real card management happens at Stripe
+// Checkout per-mission; saved-card UX can come back when there's an
+// actual list_payment_methods integration to back it.
+type TabId = 'account' | 'billing' | 'security';
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'account',  label: 'Account',          icon: User        },
-  { id: 'billing',  label: 'Billing',           icon: Receipt     },
-  { id: 'payment',  label: 'Payment Methods',   icon: CreditCard  },
-  { id: 'security', label: 'Security',          icon: Lock        },
+  { id: 'account',  label: 'Account',  icon: User    },
+  { id: 'billing',  label: 'Billing',  icon: Receipt },
+  { id: 'security', label: 'Security', icon: Lock    },
 ];
 
 export const ProfilePage = () => {
@@ -21,7 +25,6 @@ export const ProfilePage = () => {
   const ActiveComponent = {
     account:  AccountTab,
     billing:  BillingInvoicesTab,
-    payment:  PaymentMethodsTab,
     security: SecurityTab,
   }[activeTab];
 
