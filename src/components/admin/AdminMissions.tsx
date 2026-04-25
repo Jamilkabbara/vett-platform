@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, BarChart2, CheckCircle2, Trash2, Loader2, Search } from 'lucide-react';
+import { RefreshCw, BarChart2, CheckCircle2, Trash2, Loader2, Search, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface AdminMission {
@@ -95,6 +95,23 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
     setBusy(false);
   };
 
+  const reanalyze = async (id: string) => {
+    setBusy(true);
+    const t = toast.loading('Reanalyzing mission…');
+    try {
+      const res = await apiFetch(`/api/admin/missions/${id}/reanalyze`, { method: 'POST' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'Reanalyze failed');
+      }
+      const j = await res.json();
+      toast.success(`Reanalyzed (summary ${j.executive_summary_length || 0} chars)`, { id: t });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Reanalyze failed', { id: t });
+    }
+    setBusy(false);
+  };
+
   const STATUS_OPTIONS = ['', 'draft', 'paid', 'processing', 'completed', 'failed'];
 
   return (
@@ -180,6 +197,16 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
                           className="p-1.5 rounded-lg text-gray-500 hover:text-green-400 hover:bg-green-400/10 transition-colors"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {m.status === 'completed' && (
+                        <button
+                          onClick={() => reanalyze(m.id)}
+                          disabled={busy}
+                          title="Reanalyze insights"
+                          className="p-1.5 rounded-lg text-gray-500 hover:text-violet-400 hover:bg-violet-400/10 transition-colors"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
                         </button>
                       )}
                       <button
