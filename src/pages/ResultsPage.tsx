@@ -832,7 +832,34 @@ export const ResultsPage = () => {
 
   const renderChart = (result: QuestionResult) => {
     switch (result.type) {
-      case 'single_choice':
+      case 'single_choice': {
+        // Pass 21 Bug 9: when every qualifying respondent picked the same
+        // option, the donut renders as a single full-circle slice — visually
+        // anemic and harder to read than the underlying signal ("100%
+        // answered X"). Fall back to a callout card in that case. Forensic:
+        // 8 question-level distributions on production missions hit this
+        // case (e.g. 077b6e23 q1, e18c9802 q1/q3, c69001d9 q1–q5).
+        if (result.data.length === 1) {
+          const only = result.data[0];
+          const tint = only.color || COLORS[0];
+          return (
+            <div className="flex flex-col items-center justify-center text-center py-10 px-6 rounded-xl border border-white/10 bg-white/5">
+              <div
+                className="text-6xl md:text-7xl font-black tracking-tight"
+                style={{ color: tint }}
+              >
+                {Number(only.percentage ?? only.value ?? 100)}%
+              </div>
+              <div className="mt-3 text-base md:text-lg font-semibold text-white max-w-md">
+                answered <span className="text-white">“{only.name}”</span>
+              </div>
+              <div className="mt-1 text-xs uppercase tracking-wider text-white/40">
+                Unanimous response
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="space-y-6">
             <div className="flex justify-center items-center">
@@ -875,6 +902,7 @@ export const ResultsPage = () => {
             </div>
           </div>
         );
+      }
 
       case 'multi_select':
         const maxCount = Math.max(...result.data.map(item => item.count));
