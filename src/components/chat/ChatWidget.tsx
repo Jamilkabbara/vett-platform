@@ -42,11 +42,41 @@ interface ChatWidgetProps {
   title?: string;
 }
 
+/**
+ * Pass 21 Bug 17 — every scope's quota resets on a different cadence.
+ * Surface that explicitly so the user knows whether they're spending
+ * forever-budget or burnable-this-month budget.
+ *
+ *   results   → 30 messages, resets per mission (new mission = fresh quota)
+ *   dashboard → 30 messages, resets monthly on the 1st (rolling month)
+ *   setup     → 20 messages, resets per setup draft (one budget per mission)
+ *
+ * `resetWindow` is the short label shown next to the quota pill and in the
+ * tooltip; `resetSentence` is the full microcopy for the empty/overage states.
+ */
 const scopeMeta = (scope: ChatScope) => {
   switch (scope) {
-    case 'results':   return { title: 'Results Copilot', blurb: 'Ask anything about this mission.' };
-    case 'dashboard': return { title: 'Dashboard Copilot', blurb: 'Your research portfolio, on call.' };
-    case 'setup':     return { title: 'Setup Advisor', blurb: 'Coach me through this mission.' };
+    case 'results':
+      return {
+        title: 'Results Copilot',
+        blurb: 'Ask anything about this mission.',
+        resetWindow: 'per mission',
+        resetSentence: 'You have 30 messages for this mission. The quota resets when you open a new mission.',
+      };
+    case 'dashboard':
+      return {
+        title: 'Dashboard Copilot',
+        blurb: 'Your research portfolio, on call.',
+        resetWindow: 'this month',
+        resetSentence: 'You have 30 messages this calendar month. The quota resets on the 1st of next month.',
+      };
+    case 'setup':
+      return {
+        title: 'Setup Advisor',
+        blurb: 'Coach me through this mission.',
+        resetWindow: 'this setup',
+        resetSentence: 'You have 20 messages for this setup draft. The quota resets each time you start a new mission.',
+      };
   }
 };
 
@@ -271,15 +301,21 @@ export const ChatWidget = ({
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {/*
+            Pass 21 Bug 17 — the pill itself stays compact (e.g. "27/30")
+            but the tooltip now names the reset window so users understand
+            whether burning a message hurts forever or just this month.
+          */}
           <span
             className={`text-[11px] px-2 py-0.5 rounded-full border ${
               quota.remaining <= 3
                 ? 'bg-red-500/10 text-red-300 border-red-500/30'
                 : 'bg-primary/10 text-primary border-primary/30'
             }`}
-            title={`${quota.remaining} of ${quota.limit} messages left`}
+            title={`${quota.remaining} of ${quota.limit} messages left ${meta.resetWindow}. ${meta.resetSentence}`}
           >
-            {quota.remaining}/{quota.limit}
+            {quota.remaining}/{quota.limit}{' '}
+            <span className="text-white/40">{meta.resetWindow}</span>
           </span>
           <button
             onClick={close}
@@ -300,6 +336,10 @@ export const ChatWidget = ({
             </div>
             <p className="text-white/80 font-bold text-sm mb-1">{meta.title}</p>
             <p className="text-white/40 text-xs leading-relaxed">{meta.blurb}</p>
+            {/* Pass 21 Bug 17 — quota reset window inline on the empty state. */}
+            <p className="text-white/30 text-[11px] leading-relaxed mt-3">
+              {meta.resetSentence}
+            </p>
           </div>
         )}
 
@@ -322,11 +362,20 @@ export const ChatWidget = ({
       {/* Composer */}
       <div className="border-t border-white/10 px-3 py-3 bg-black/40">
         {quota.remaining === 0 ? (
+          /*
+            Pass 21 Bug 17 — when out of quota, name the reset window so users
+            know whether to wait it out or buy an overage pack.
+          */
           <div className="flex items-center justify-between gap-3">
-            <div className="text-xs text-white/60">You've used all your messages.</div>
+            <div className="text-xs text-white/60 flex-1 min-w-0">
+              <div>You've used all your messages {meta.resetWindow}.</div>
+              <div className="text-[10px] text-white/40 mt-0.5 truncate" title={meta.resetSentence}>
+                {meta.resetSentence}
+              </div>
+            </div>
             <button
               onClick={() => setShowOverage(true)}
-              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-primary text-black hover:bg-primary-hover transition-colors"
+              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-primary text-black hover:bg-primary-hover transition-colors shrink-0"
             >
               Get 50 more · $5
             </button>
