@@ -26,6 +26,10 @@ interface Mission {
   respondent_count: number;
   /** Actual collected responses (from mission_responses join). */
   responses_collected?: number;
+  // Pass 21 Bug 5/6: persisted qualification aggregates.
+  total_simulated_count?: number | null;
+  qualified_respondent_count?: number | null;
+  qualification_rate?: number | null;
   price_estimated?: number | null;
   created_at: string;
   questions: unknown[];
@@ -174,12 +178,34 @@ export const MissionsListPage = () => {
     return mission.title || mission.brief || mission.context || 'Untitled Mission';
   };
 
+  /**
+   * Pass 21 Bug 6 (Option B): mission-card respondent label.
+   *
+   *   DRAFT          → "{respondent_count} respondents"   (no slash, no rate)
+   *   COMPLETED mixed→ "{total} respondents · {rate}% qualified"
+   *   COMPLETED full → "{total} respondents"             (rate >= 99.9%)
+   *   ACTIVE/other   → "{collected}/{target}" — preserved live-progress UI
+   */
   const getRespondentProgress = (mission: Mission) => {
-    const target = mission.respondent_count;
     const statusUp = (mission.status || '').toUpperCase();
-    // Use live join count when available, fall back to heuristics.
-    const actual = mission.responses_collected ?? (statusUp === 'COMPLETED' ? target : 0);
-    return `${actual}/${target}`;
+    const target   = mission.respondent_count || 0;
+
+    if (statusUp === 'COMPLETED') {
+      const total = Number(mission.total_simulated_count ?? target) || target;
+      const rate  = mission.qualification_rate;
+      const showRate = rate != null && Number.isFinite(rate) && rate < 0.999;
+      return showRate
+        ? `${total} respondents · ${Math.round(Number(rate) * 100)}% qualified`
+        : `${total} respondents`;
+    }
+
+    if (statusUp === 'DRAFT') {
+      return `${target} respondents`;
+    }
+
+    // Active or other in-progress states: keep the live progress format.
+    const actual = mission.responses_collected ?? 0;
+    return `${actual}/${target} respondents`;
   };
 
   const getEstimatedTime = (mission: Mission) => {
@@ -343,7 +369,10 @@ export const MissionsListPage = () => {
                     <div className="flex items-center gap-3 text-sm">
                       <Users className="w-4 h-4 text-white/40" />
                       <span className="text-white/70">
-                        {getRespondentProgress(mission)} Respondents
+                        {/* Pass 21 Bug 6: helper now returns the full label
+                            including the word "respondents" so we can vary
+                            it per status (drafts vs completed vs active). */}
+                        {getRespondentProgress(mission)}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">

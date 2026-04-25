@@ -106,6 +106,15 @@ interface MissionData {
   executiveSummary?: string;
   personaChips?: PersonaChip[];
   missionBrief?: string;
+  // Pass 21 Bug 6 (Option B): qualification metadata for the header /
+  // per-question sub-labels. `hasScreening` is true when at least one
+  // question on the mission was marked isScreening — sub-labels switch
+  // to "X of N respondents answered" only on missions that screen.
+  qualifiedRespondents?: number;
+  qualificationRate?: number; // 0..1; null/undefined if no screening
+  hasScreening?: boolean;
+  /** Per-question id → boolean tag from backend's aggregatedByQuestion. */
+  screeningQuestionIds?: Set<string>;
 }
 
 
@@ -359,6 +368,37 @@ export const ResultsPage = () => {
         data.insights?.overview ||
         (typeof data.insights === 'string' ? data.insights : null);
 
+      // Pass 21 Bug 6 (Option B): pull qualification metadata persisted by
+      // runMission (see backend Bug 5). Falls back to screeningFunnel when
+      // present, then to respondent_count, so older missions still render.
+      const totalSimulated =
+        Number(mission.total_simulated_count ?? 0) ||
+        Number(data.screeningFunnel?.total ?? 0) ||
+        Number(mission.respondent_count ?? 0) ||
+        respondentCount ||
+        0;
+      const qualifiedCount =
+        mission.qualified_respondent_count != null
+          ? Number(mission.qualified_respondent_count)
+          : data.screeningFunnel?.passed != null
+            ? Number(data.screeningFunnel.passed)
+            : undefined;
+      const qualificationRate =
+        mission.qualification_rate != null
+          ? Number(mission.qualification_rate)
+          : qualifiedCount != null && totalSimulated > 0
+            ? qualifiedCount / totalSimulated
+            : undefined;
+      const hasScreening = Boolean(
+        data.screeningFunnel ||
+        (Array.isArray(mission.questions) && mission.questions.some((q: any) => q?.isScreening || q?.is_screening))
+      );
+      const screeningQuestionIds = new Set<string>(
+        Object.entries(agg)
+          .filter(([, b]: [string, any]) => b && b.is_screening === true)
+          .map(([qid]) => qid)
+      );
+
       const loaded: MissionData = {
         // Canonical columns on `public.missions` are `title` + `brief`.
         // `mission_statement`, `name`, and `context` never existed on the DB;
@@ -375,11 +415,16 @@ export const ResultsPage = () => {
         completedAt: mission.completed_at
           ? new Date(mission.completed_at).toLocaleString()
           : 'Just now',
-        totalRespondents: respondentCount,
+        // totalRespondents = total simulated personas (Option B primary metric).
+        totalRespondents: totalSimulated || respondentCount,
         targeting: { demographics: [] },
         questions,
         executiveSummary: execSummary || undefined,
         personaChips: parsePersonaChips(mission.target_audience),
+        qualifiedRespondents: qualifiedCount,
+        qualificationRate: qualificationRate,
+        hasScreening,
+        screeningQuestionIds,
       };
 
       setMissionData(loaded);
@@ -1120,7 +1165,27 @@ export const ResultsPage = () => {
               <div className="flex flex-wrap items-center gap-3 text-sm text-white/60 mb-4">
                 <span className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
-                  {filteredRespondentCount} {hasActiveFilters && `of ${mission.totalRespondents}`} Responses
+                  {/*
+                    Pass 21 Bug 6 (Option B):
+                      • Mixed-screening (rate < 100%): "10 respondents · 40% qualified"
+                      • All-qualified or no-screening:  "10 respondents"
+                      • Filter active:                  "X of 10 respondents" (preserves
+                                                                   prior filter affordance)
+                  */}
+                  {hasActiveFilters
+                    ? `${filteredRespondentCount} of ${mission.totalRespondents} respondents`
+                    : (() => {
+                        const total = mission.totalRespondents;
+                        const rate  = mission.qualificationRate;
+                        const showRate = mission.hasScreening
+                          && rate != null
+                          && Number.isFinite(rate)
+                          && rate < 0.999;
+                        return showRate
+                          ? `${total} respondents · ${Math.round(rate * 100)}% qualified`
+                          : `${total} respondents`;
+                      })()
+                  }
                 </span>
                 <span className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
@@ -1457,7 +1522,28 @@ export const ResultsPage = () => {
                             {question.type === 'open_text' && 'Open Text'}
                           </span>
                         </div>
-                        <div className="text-white/40 text-sm">{filteredRespondentCount} responses</div>
+                        {/*
+                          Pass 21 Bug 6 (Option B) per-question sub-header:
+                            • Screener Q (or no screening on mission): "N responses"
+                            • Non-screener Q on screening mission:     "X of N respondents answered"
+                              where X = qualified, N = total simulated
+                          When a filter is active we still show the filtered count
+                          on the left to preserve the prior interaction.
+                        */}
+                        <div className="text-white/40 text-sm">
+                          {(() => {
+                            const isScreener   = mission.screeningQuestionIds?.has(question.id);
+                            const total        = mission.totalRespondents;
+                            const qualified    = mission.qualifiedRespondents ?? total;
+                            if (hasActiveFilters) {
+                              return `${filteredRespondentCount} of ${total} responses`;
+                            }
+                            if (!mission.hasScreening || isScreener) {
+                              return `${total} responses`;
+                            }
+                            return `${qualified} of ${total} respondents answered`;
+                          })()}
+                        </div>
                       </div>
 
                       {renderChart(question)}
