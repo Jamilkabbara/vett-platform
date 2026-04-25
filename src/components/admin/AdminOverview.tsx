@@ -54,7 +54,21 @@ interface OverviewData {
     completed?:        number;
   };
   segments: Array<{ segment: string; count: number }>;
-  activity: Array<{ type: string; description: string; created_at: string }>;
+  /**
+   * Pass 21 Bug — field names are dictated by the `admin_activity_feed` RPC
+   * RETURNS TABLE clause. The previous shape `{type, description, created_at}`
+   * never matched the wire payload, so every pill rendered UNKNOWN and the
+   * timestamp/title were both blank. Real columns: event_type, event_icon,
+   * title, meta, amount_usd, occurred_at.
+   */
+  activity: Array<{
+    event_type: string;
+    event_icon?: string | null;
+    title: string;
+    meta?: string | null;
+    amount_usd?: number | null;
+    occurred_at: string;
+  }>;
   missionTypeMix: Array<{ type: string; count: number; pct: number }>;
   gross_margin_pct: number;
   last_updated: string;
@@ -179,12 +193,17 @@ function Section({
  */
 function ActivityTypePill({ type }: { type: string | undefined | null }) {
   const safeType = typeof type === 'string' && type.length > 0 ? type : 'unknown';
+  // Pass 21 Bug — match the actual event_type values emitted by
+  // admin_activity_feed (`mission_completed`, `payment_received`) plus
+  // legacy keys kept for forward-compat with future feed sources.
   const colorMap: Record<string, string> = {
-    mission_created: 'bg-blu/10 text-blu border-blu/20',
-    payment:         'bg-grn/10 text-grn border-grn/20',
-    completed:       'bg-lime/10 text-lime border-lime/20',
-    signup:          'bg-pur/10 text-pur border-pur/20',
-    refund:          'bg-red/10 text-red  border-red/20',
+    mission_completed: 'bg-lime/10 text-lime border-lime/20',
+    payment_received:  'bg-grn/10 text-grn border-grn/20',
+    mission_created:   'bg-blu/10 text-blu border-blu/20',
+    payment:           'bg-grn/10 text-grn border-grn/20',
+    completed:         'bg-lime/10 text-lime border-lime/20',
+    signup:            'bg-pur/10 text-pur border-pur/20',
+    refund:            'bg-red/10 text-red  border-red/20',
   };
   const cls = colorMap[safeType] ?? 'bg-b1 text-t3 border-b2';
   return (
@@ -524,13 +543,16 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
                     key={i}
                     className="flex items-start gap-2.5 py-2 border-b border-gray-800/60 last:border-0"
                   >
-                    <ActivityTypePill type={item.type} />
+                    <ActivityTypePill type={item.event_type} />
                     <div className="flex-1 min-w-0">
                       <p className="text-t1 text-[11px] leading-snug truncate">
-                        {item.description}
+                        {item.event_icon ? `${item.event_icon} ` : ''}{item.title}
                       </p>
                       <p className="text-t4 text-[10px] font-mono mt-0.5">
-                        {fmtRelative(item.created_at)}
+                        {fmtRelative(item.occurred_at)}
+                        {typeof item.amount_usd === 'number' && item.amount_usd > 0
+                          ? ` · $${item.amount_usd.toFixed(2)}`
+                          : ''}
                       </p>
                     </div>
                   </div>
