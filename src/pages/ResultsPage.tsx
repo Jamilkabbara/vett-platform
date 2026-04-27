@@ -132,10 +132,82 @@ interface MissionData {
       tension_description?: string;
       severity?: 'high' | 'medium' | 'low';
     }>;
+    // Pass 22 Bug 22.15 — cross-cut segmentation by demographic-ish axes.
+    segment_breakdowns?: Array<{
+      axis?: string;
+      segments?: Array<{
+        name?: string;
+        n?: number;
+        key_findings?: string;
+      }>;
+    }>;
     [key: string]: unknown;
   };
 }
 
+
+// Pass 22 Bug 22.15 — Cross-Cut Analysis card. Renders backend-supplied
+// segment_breakdowns as a tab-style axis selector with per-segment findings.
+function CrossCutCard({
+  breakdowns,
+}: {
+  breakdowns: Array<{
+    axis?: string;
+    segments?: Array<{ name?: string; n?: number; key_findings?: string }>;
+  }>;
+}) {
+  const validBreakdowns = breakdowns.filter(
+    b => b.segments && b.segments.length > 0,
+  );
+  const [activeIdx, setActiveIdx] = useState(0);
+  if (validBreakdowns.length === 0) return null;
+  const active = validBreakdowns[Math.min(activeIdx, validBreakdowns.length - 1)];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2 }}
+      className="mb-8 bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-500/15">
+          <Filter className="w-5 h-5 text-purple-300" />
+        </div>
+        <h2 className="text-xl md:text-2xl font-bold text-white">Cross-Cut Analysis</h2>
+      </div>
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        {validBreakdowns.map((b, i) => (
+          <button
+            key={(b.axis || `axis-${i}`) + i}
+            onClick={() => setActiveIdx(i)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              i === activeIdx
+                ? 'bg-purple-500/25 text-purple-200 border border-purple-400/40'
+                : 'bg-white/5 text-white/60 hover:text-white border border-white/10'
+            }`}
+          >
+            {b.axis || `Axis ${i + 1}`}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-3">
+        {(active.segments || []).map((seg, i) => (
+          <div key={(seg.name || '') + i} className="border-l-2 border-purple-400/30 pl-4 py-1">
+            <div className="flex items-center gap-3 mb-1">
+              <span className="text-white font-bold text-sm">{seg.name || 'Unnamed segment'}</span>
+              {typeof seg.n === 'number' && (
+                <span className="text-white/50 text-xs font-mono">n={seg.n}</span>
+              )}
+            </div>
+            {seg.key_findings && (
+              <p className="text-white/80 text-sm leading-relaxed">{seg.key_findings}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
 
 const COLORS = [
   '#8B5CF6',
@@ -157,6 +229,18 @@ export const ResultsPage = () => {
   const [isFilterLoading, setIsFilterLoading] = useState(false);
   const [filteredRespondentCount, setFilteredRespondentCount] = useState(0);
   const [filteredQuestions, setFilteredQuestions] = useState<QuestionResult[]>([]);
+  // Pass 22 Bug 22.14 — sample-reasoning modal state.
+  const [reasoningModal, setReasoningModal] = useState<{
+    open: boolean;
+    questionId?: string;
+    questionText?: string;
+  }>({ open: false });
+  const [reasoningRows, setReasoningRows] = useState<Array<{
+    persona_id: string;
+    response_value: string | null;
+    reasoning_text: string;
+  }> | null>(null);
+  const [reasoningLoading, setReasoningLoading] = useState(false);
   const [toast, setToast] = useState<ToastState>({
     show: false,
     message: '',
@@ -1604,6 +1688,17 @@ export const ResultsPage = () => {
                   </motion.div>
                 )}
 
+                {/* Pass 22 Bug 22.15 — Cross-Cut Analysis card. Renders only
+                    when insights.segment_breakdowns has at least one axis with
+                    segments. Tab-style axis selector lets the user pick which
+                    cut to view. */}
+                {Array.isArray((mission.insights as { segment_breakdowns?: unknown })?.segment_breakdowns) &&
+                 ((mission.insights as { segment_breakdowns: Array<{ axis?: string; segments?: Array<{ name?: string; n?: number; key_findings?: string }> }> }).segment_breakdowns.length > 0) && (
+                  <CrossCutCard
+                    breakdowns={(mission.insights as { segment_breakdowns: Array<{ axis?: string; segments?: Array<{ name?: string; n?: number; key_findings?: string }> }> }).segment_breakdowns}
+                  />
+                )}
+
                 {/* Screening Funnel card — only shown when mission has a screening question */}
                 {screeningFunnel && (
                   <motion.div
@@ -1717,6 +1812,19 @@ export const ResultsPage = () => {
                           </div>
                         </div>
                       </div>
+
+                      {/* Pass 22 Bug 22.14 — sample-reasoning click-through.
+                          Opens a modal listing up to 5 persona-level reasoning
+                          quotes for this question. Granular per-slice filtering
+                          is a Pass 23 nice-to-have. Only renders for missions
+                          where reasoning was generated (<=50 personas). */}
+                      <button
+                        onClick={() => setReasoningModal({ open: true, questionId: question.id, questionText: question.question })}
+                        className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-purple-300 hover:text-purple-200 transition-colors"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Show sample reasoning
+                      </button>
                     </motion.div>
                   ))}
                 </motion.div>
@@ -1814,6 +1922,128 @@ export const ResultsPage = () => {
       </div>
 
       {missionId && <ChatWidget scope="results" missionId={missionId} />}
+
+      {/* Pass 22 Bug 22.14 — sample-reasoning modal */}
+      <AnimatePresence>
+        {reasoningModal.open && missionId && (
+          <ReasoningModal
+            missionId={missionId}
+            questionId={reasoningModal.questionId || ''}
+            questionText={reasoningModal.questionText || ''}
+            rows={reasoningRows}
+            loading={reasoningLoading}
+            onClose={() => {
+              setReasoningModal({ open: false });
+              setReasoningRows(null);
+            }}
+            onLoad={async (qid) => {
+              setReasoningLoading(true);
+              try {
+                const { api } = await import('../lib/apiClient');
+                const res = await api.get(
+                  `/api/results/${missionId}/reasoning?question_id=${encodeURIComponent(qid)}&limit=5`
+                );
+                setReasoningRows(Array.isArray(res?.rows) ? res.rows : []);
+              } catch {
+                setReasoningRows([]);
+              } finally {
+                setReasoningLoading(false);
+              }
+            }}
+          />
+        )}
+      </AnimatePresence>
     </DashboardLayout>
   );
 };
+
+// Pass 22 Bug 22.14 — modal listing up to 5 persona-level reasoning quotes
+// for one question. Persona ids are anonymized to "Persona 1, 2, 3..." for
+// privacy; reasoning_text is shown verbatim.
+function ReasoningModal({
+  missionId,
+  questionId,
+  questionText,
+  rows,
+  loading,
+  onClose,
+  onLoad,
+}: {
+  missionId: string;
+  questionId: string;
+  questionText: string;
+  rows: Array<{ persona_id: string; response_value: string | null; reasoning_text: string }> | null;
+  loading: boolean;
+  onClose: () => void;
+  onLoad: (questionId: string) => Promise<void>;
+}) {
+  useEffect(() => {
+    if (questionId) onLoad(questionId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionId, missionId]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="relative w-full max-w-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl border border-white/20 shadow-2xl max-h-[85vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 p-6 border-b border-white/10">
+          <div>
+            <div className="text-purple-300 text-xs font-bold uppercase tracking-widest mb-1">
+              Sample Reasoning
+            </div>
+            <h3 className="text-white font-bold text-lg leading-snug">{questionText}</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+            aria-label="Close"
+          >
+            <span className="text-white/70">✕</span>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-white/40 text-sm">
+              Loading sample reasoning...
+            </div>
+          ) : !rows || rows.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-white/60 text-sm">No reasoning data for this question yet.</p>
+              <p className="text-white/40 text-xs mt-2">
+                Reasoning is captured for missions with up to 50 personas.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {rows.map((r, i) => (
+                <div key={r.persona_id + i} className="border-l-2 border-purple-400/40 pl-4">
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-white font-semibold text-sm">Persona {i + 1}</span>
+                    {r.response_value && (
+                      <span className="text-purple-300 text-xs font-mono">
+                        chose &quot;{r.response_value}&quot;
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-white/80 text-sm leading-relaxed italic">{r.reasoning_text}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
