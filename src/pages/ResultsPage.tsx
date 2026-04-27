@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
@@ -24,7 +24,12 @@ import {
   Bot,
   Target
 } from 'lucide-react';
-import { ChatWidget } from '../components/chat/ChatWidget';
+// Pass 22 Bug 22.28 — lazy ChatWidget. react-markdown (~30KB gz) + chat
+// state machinery only load when the user opens the chat for the first
+// time on /results.
+const ChatWidget = lazy(() =>
+  import('../components/chat/ChatWidget').then(m => ({ default: m.ChatWidget })),
+);
 import {
   PieChart,
   Pie,
@@ -1921,7 +1926,11 @@ export const ResultsPage = () => {
       </AnimatePresence>
       </div>
 
-      {missionId && <ChatWidget scope="results" missionId={missionId} />}
+      {missionId && (
+        <Suspense fallback={null}>
+          <ChatWidget scope="results" missionId={missionId} />
+        </Suspense>
+      )}
 
       {/* Pass 22 Bug 22.14 — sample-reasoning modal */}
       <AnimatePresence>

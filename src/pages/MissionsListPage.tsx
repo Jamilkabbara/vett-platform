@@ -1,12 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Zap, Plus, BarChart3, Clock, Users, ArrowRight, Trash2, Eye, X, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/apiClient';
-import { ChatWidget } from '../components/chat/ChatWidget';
 import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
+
+// Pass 22 Bug 22.28 — lazy ChatWidget keeps react-markdown + chat deps
+// out of the initial Missions page bundle. Loaded only when the user opens
+// the chat for the first time on this route.
+const ChatWidget = lazy(() =>
+  import('../components/chat/ChatWidget').then(m => ({ default: m.ChatWidget })),
+);
 
 const BANNER_DISMISSED_KEY = 'vett_dashboard_banner_dismissed';
 
@@ -488,7 +494,11 @@ export const MissionsListPage = () => {
         </div>
       </div>
 
-      {user && <ChatWidget scope="dashboard" />}
+      {user && (
+        <Suspense fallback={null}>
+          <ChatWidget scope="dashboard" />
+        </Suspense>
+      )}
     </DashboardLayout>
   );
 };
