@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, LayoutDashboard, DollarSign, Cpu, Users, Target,
-  HeadphonesIcon, FileText, Tag, Menu, X,
+  HeadphonesIcon, FileText, Tag, Menu, X, AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
@@ -17,6 +17,7 @@ import { AdminCRM }       from '../components/admin/AdminCRM';
 import { AdminSupport }   from '../components/admin/AdminSupport';
 import { AdminBlog }      from '../components/admin/AdminBlog';
 import { PromosPanel }    from '../components/admin/PromosPanel';
+import { AdminPaymentErrors } from '../components/admin/AdminPaymentErrors';
 import { ErrorBoundary }  from '../components/shared/ErrorBoundary';
 
 const API_URL    = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
@@ -24,31 +25,33 @@ const ADMIN_EMAIL = 'kabbarajamil@gmail.com';
 
 type SidebarTab =
   | 'overview' | 'revenue' | 'ai-costs'
-  | 'users' | 'missions'
+  | 'users' | 'missions' | 'payment-errors'
   | 'crm' | 'support' | 'blog' | 'promos';
 
 const NAV_ITEMS: { id: SidebarTab; label: string; icon: React.ComponentType<{ className?: string }>; group?: string }[] = [
-  { id: 'overview',  label: 'Overview',   icon: LayoutDashboard, group: 'Analytics' },
-  { id: 'revenue',   label: 'Revenue',    icon: DollarSign,      group: 'Analytics' },
-  { id: 'ai-costs',  label: 'AI Costs',   icon: Cpu,             group: 'Analytics' },
-  { id: 'users',     label: 'Users',      icon: Users,           group: 'Data' },
-  { id: 'missions',  label: 'Missions',   icon: Target,          group: 'Data' },
-  { id: 'crm',       label: 'CRM',        icon: Users,           group: 'Growth' },
-  { id: 'support',   label: 'Support',    icon: HeadphonesIcon,  group: 'Growth' },
-  { id: 'blog',      label: 'Blog',       icon: FileText,        group: 'Content' },
-  { id: 'promos',    label: 'Promos',     icon: Tag,             group: 'Content' },
+  { id: 'overview',       label: 'Overview',       icon: LayoutDashboard, group: 'Analytics' },
+  { id: 'revenue',        label: 'Revenue',        icon: DollarSign,      group: 'Analytics' },
+  { id: 'ai-costs',       label: 'AI Costs',       icon: Cpu,             group: 'Analytics' },
+  { id: 'users',          label: 'Users',          icon: Users,           group: 'Data' },
+  { id: 'missions',       label: 'Missions',       icon: Target,          group: 'Data' },
+  { id: 'payment-errors', label: 'Payment Errors', icon: AlertTriangle,   group: 'Data' },
+  { id: 'crm',            label: 'CRM',            icon: Users,           group: 'Growth' },
+  { id: 'support',        label: 'Support',        icon: HeadphonesIcon,  group: 'Growth' },
+  { id: 'blog',           label: 'Blog',           icon: FileText,        group: 'Content' },
+  { id: 'promos',         label: 'Promos',         icon: Tag,             group: 'Content' },
 ];
 
 const TAB_TITLES: Record<SidebarTab, string> = {
-  'overview':  'Overview',
-  'revenue':   'Revenue',
-  'ai-costs':  'AI Costs',
-  'users':     'Users',
-  'missions':  'Missions',
-  'crm':       'CRM Leads',
-  'support':   'Support',
-  'blog':      'Blog',
-  'promos':    'Promo Codes',
+  'overview':       'Overview',
+  'revenue':        'Revenue',
+  'ai-costs':       'AI Costs',
+  'users':          'Users',
+  'missions':       'Missions',
+  'payment-errors': 'Payment Errors',
+  'crm':            'CRM Leads',
+  'support':        'Support',
+  'blog':           'Blog',
+  'promos':         'Promo Codes',
 };
 
 export function AdminPage() {
@@ -101,6 +104,7 @@ export function AdminPage() {
       case 'ai-costs':  return wrap('AI Costs',  <AdminAICosts   {...props} />);
       case 'users':     return wrap('Users',     <AdminUsers     {...props} />);
       case 'missions':  return wrap('Missions',  <AdminMissions  {...props} />);
+      case 'payment-errors': return wrap('Payment Errors', <AdminPaymentErrors {...props} />);
       case 'crm':       return wrap('CRM',       <AdminCRM       {...props} />);
       case 'support':   return wrap('Support',   <AdminSupport   {...props} />);
       case 'blog':      return wrap('Blog',      <AdminBlog      {...props} />);

@@ -20,6 +20,7 @@ import { api } from '../../lib/apiClient';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { trackFunnel } from '../../lib/funnelTrack';
+import { logPaymentError, shapeStripeError } from '../../lib/paymentErrorLogger';
 import { AuthModal } from '../layout/AuthModal';
 import { StripeElementsWrapper } from './StripeElementsWrapper';
 
@@ -319,6 +320,22 @@ const PaymentForm = ({
         setErrorMessage(msg);
         toast.error(msg, { id: toastId });
         console.error('[payment] wallet charge failed', err);
+
+        // Pass 22 Bug 22.9 — log to payment_errors so the admin viewer
+        // sees Apple/Google Pay failures with full context (event.paymentMethod
+        // type, last_payment_error code, viewport, UA).
+        const shaped = shapeStripeError(err);
+        logPaymentError({
+          stage:                 'client_wallet_payment_method',
+          missionId:             missionId ?? null,
+          stripePaymentIntentId: null,
+          errorCode:             shaped.errorCode,
+          errorMessage:          shaped.errorMessage || msg,
+          declineCode:           shaped.declineCode,
+          paymentMethod:         shaped.paymentMethod || event.paymentMethod?.type || null,
+          amountCents:           Math.round(discountedPrice * 100),
+          currency:              'usd',
+        });
       }
     };
 
@@ -440,6 +457,11 @@ const PaymentForm = ({
     // CardNumberElement before we call elements.getElement().
     let toastId = '';
 
+    // Tracks the in-flight Stripe PI id so payment_errors logs can correlate
+    // with the Stripe Dashboard. Set after /api/payments/create-intent returns
+    // and before confirmCardPayment runs.
+    let activePaymentIntentId: string | null = null;
+
     const fail = (msg: string, err?: unknown) => {
       setIsProcessing(false);
       setStage('payment');
@@ -450,6 +472,22 @@ const PaymentForm = ({
         toast.error(msg);
       }
       if (err !== undefined) console.error('[payment] card charge failed', err);
+
+      // Pass 22 Bug 22.9 — every failure point in the card flow funnels
+      // through fail(), so this is the single instrumentation point for
+      // client-side card-flow telemetry.
+      const shaped = shapeStripeError(err);
+      logPaymentError({
+        stage:                 'client_confirm_card',
+        missionId:             missionId ?? null,
+        stripePaymentIntentId: activePaymentIntentId,
+        errorCode:             shaped.errorCode,
+        errorMessage:          shaped.errorMessage || msg,
+        declineCode:           shaped.declineCode,
+        paymentMethod:         shaped.paymentMethod || 'card',
+        amountCents:           Math.round(discountedPrice * 100),
+        currency:              'usd',
+      });
     };
 
     try {
@@ -519,6 +557,9 @@ const PaymentForm = ({
         const res = await api.post('/api/payments/create-intent', { missionId });
         clientSecret = res?.clientSecret;
         paymentIntentId = res?.paymentIntentId;
+        // Pass 22 Bug 22.9: stash for the fail() telemetry path. Survives
+        // through the awaits below without needing to re-thread it.
+        activePaymentIntentId = paymentIntentId ?? null;
       } catch (apiErr) {
         return fail(extractErrorMessage(apiErr), apiErr);
       }

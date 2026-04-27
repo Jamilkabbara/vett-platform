@@ -22,6 +22,7 @@ import {
 } from '@stripe/react-stripe-js';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { logPaymentError, shapeStripeError } from '../../lib/paymentErrorLogger';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
 
@@ -96,15 +97,61 @@ function OverageForm({ sessionId, onClose, onSuccess }: Omit<OverageModalProps, 
   const [stage, setStage] = useState<'details' | 'processing' | 'success'>('details');
   const [error, setError] = useState<string | null>(null);
 
+  // Pass 22 Bug 22.23 — ready-event parity with VettingPaymentModal.
+  // Stripe's "Element is not mounted yet" error fires when confirmCardPayment
+  // is called before the card iframe has emitted its 'ready' event. Disable
+  // Pay until all three Elements are ready.
+  const [cardNumberReady, setCardNumberReady] = useState(false);
+  const [cardExpiryReady, setCardExpiryReady] = useState(false);
+  const [cardCvcReady,    setCardCvcReady]    = useState(false);
+  const allElementsReady = cardNumberReady && cardExpiryReady && cardCvcReady;
+
   useEffect(() => { setError(null); }, [sessionId]);
 
   async function handlePay() {
     if (!stripe || !elements || !sessionId) return;
+
+    // Pass 22 Bug 22.23 — belt-and-suspenders ready check (button is also
+    // disabled below; this guards a timing edge case where the click slips
+    // through before the disabled prop applies).
+    if (!allElementsReady) {
+      setError('Card form is still loading — please wait a moment and try again.');
+      logPaymentError({
+        stage:                 'client_element_not_ready',
+        missionId:             null,
+        stripePaymentIntentId: null,
+        errorCode:             'element_not_ready',
+        errorMessage:          'OverageModal: handlePay invoked before all Elements ready',
+        amountCents:           500,
+        currency:              'usd',
+      });
+      return;
+    }
+
+    // Pass 22 Bug 22.23 — capture the CardNumber ref BEFORE setStage('processing')
+    // queues a re-render. Same pattern as VettingPaymentModal: avoid the unmount
+    // race that returns null from elements.getElement after the await yields.
     const cardNumber = elements.getElement(CardNumberElement);
-    if (!cardNumber) { setError('Card form not ready.'); return; }
+    if (!cardNumber) {
+      setError('Card form not ready.');
+      logPaymentError({
+        stage:                 'client_element_not_ready',
+        missionId:             null,
+        stripePaymentIntentId: null,
+        errorCode:             'card_number_element_null',
+        errorMessage:          'OverageModal: elements.getElement(CardNumberElement) returned null',
+        amountCents:           500,
+        currency:              'usd',
+      });
+      return;
+    }
 
     setError(null);
     setStage('processing');
+
+    // Pass 22 Bug 22.9 — track PI id so the catch block can correlate the
+    // payment_errors row with the Stripe Dashboard.
+    let activePaymentIntentId: string | null = null;
 
     try {
       // 1) Create the $5 PaymentIntent
@@ -118,12 +165,13 @@ function OverageForm({ sessionId, onClose, onSuccess }: Omit<OverageModalProps, 
         throw new Error(err.error || 'Could not start payment.');
       }
       const { clientSecret, paymentIntentId } = await createRes.json();
+      activePaymentIntentId = paymentIntentId ?? null;
 
       // 2) Confirm card payment
       const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: { card: cardNumber },
       });
-      if (confirmError) throw new Error(confirmError.message || 'Card declined.');
+      if (confirmError) throw confirmError;
       if (paymentIntent?.status !== 'succeeded') {
         throw new Error(`Payment status: ${paymentIntent?.status || 'unknown'}`);
       }
@@ -143,8 +191,24 @@ function OverageForm({ sessionId, onClose, onSuccess }: Omit<OverageModalProps, 
       toast.success('+50 messages added');
       setTimeout(() => { onSuccess(); setStage('details'); }, 1200);
     } catch (err: any) {
-      setError(err?.message || 'Payment failed.');
+      const msg = err?.message || 'Payment failed.';
+      setError(msg);
       setStage('details');
+
+      // Pass 22 Bug 22.9 — log to payment_errors so the admin viewer
+      // surfaces chat-overage failures alongside mission-payment failures.
+      const shaped = shapeStripeError(err);
+      logPaymentError({
+        stage:                 'client_chat_overage',
+        missionId:             null,
+        stripePaymentIntentId: activePaymentIntentId,
+        errorCode:             shaped.errorCode,
+        errorMessage:          shaped.errorMessage || msg,
+        declineCode:           shaped.declineCode,
+        paymentMethod:         shaped.paymentMethod || 'card',
+        amountCents:           500,
+        currency:              'usd',
+      });
     }
   }
 
@@ -200,20 +264,29 @@ function OverageForm({ sessionId, onClose, onSuccess }: Omit<OverageModalProps, 
         <div>
           <label className="text-[11px] text-white/50 uppercase tracking-wider mb-1.5 block">Card number</label>
           <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 focus-within:border-primary/40 transition-colors">
-            <CardNumberElement options={CARD_STYLE} />
+            <CardNumberElement
+              options={CARD_STYLE}
+              onReady={() => setCardNumberReady(true)}
+            />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-[11px] text-white/50 uppercase tracking-wider mb-1.5 block">Expiry</label>
             <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 focus-within:border-primary/40 transition-colors">
-              <CardExpiryElement options={CARD_STYLE} />
+              <CardExpiryElement
+                options={CARD_STYLE}
+                onReady={() => setCardExpiryReady(true)}
+              />
             </div>
           </div>
           <div>
             <label className="text-[11px] text-white/50 uppercase tracking-wider mb-1.5 block">CVC</label>
             <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 focus-within:border-primary/40 transition-colors">
-              <CardCvcElement options={CARD_STYLE} />
+              <CardCvcElement
+                options={CARD_STYLE}
+                onReady={() => setCardCvcReady(true)}
+              />
             </div>
           </div>
         </div>
@@ -226,13 +299,18 @@ function OverageForm({ sessionId, onClose, onSuccess }: Omit<OverageModalProps, 
 
         <button
           onClick={handlePay}
-          disabled={!stripe || stage === 'processing'}
+          disabled={!stripe || stage === 'processing' || !allElementsReady}
           className="w-full flex items-center justify-center gap-2 mt-2 px-5 py-3 rounded-xl bg-primary text-black font-bold hover:bg-primary-hover disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
           {stage === 'processing' ? (
             <>
               <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               Processing…
+            </>
+          ) : !allElementsReady ? (
+            <>
+              <CreditCard className="w-4 h-4" />
+              Loading payment form…
             </>
           ) : (
             <>
