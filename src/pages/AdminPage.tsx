@@ -90,6 +90,11 @@ export function AdminPage() {
   if (authLoading) return null;
   if (!user || user.email !== ADMIN_EMAIL) return null;
 
+  // Pass 22 Bug 22.18 — admin is desktop-only by design. The dashboard renders
+  // dense KPI tiles, multi-column tables, and side-by-side charts that don't
+  // condense usefully on mobile. Gate with an explicit message <lg breakpoint
+  // rather than ship a half-broken layout. Documented in PASS_22_MOBILE_AUDIT.md.
+
   // Wrap each panel in its own ErrorBoundary so a downstream payload
   // surprise (undefined field, malformed shape) only blacks out one tab
   // instead of the whole /admin route. Pass 20 Hotfix Round 2 (SEV-1).
@@ -164,7 +169,19 @@ export function AdminPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex h-screen overflow-hidden bg-[#0a0b14]">
+      {/* Pass 22 Bug 22.18 — desktop-only gate at <lg breakpoint */}
+      <div className="lg:hidden flex flex-col items-center justify-center h-[calc(100vh-80px)] p-8 text-center bg-[#0a0b14]">
+        <div className="w-16 h-16 rounded-2xl bg-primary/15 flex items-center justify-center mb-4">
+          <Shield className="w-8 h-8 text-primary" />
+        </div>
+        <h2 className="text-white text-xl font-black mb-2">Admin is desktop-only</h2>
+        <p className="text-white/60 text-sm max-w-sm leading-relaxed">
+          The admin dashboard renders dense KPIs, tables, and side-by-side charts
+          that don&apos;t condense usefully on mobile. Open this page on a screen
+          1024px wide or larger.
+        </p>
+      </div>
+      <div className="hidden lg:flex h-screen overflow-hidden bg-[#0a0b14]">
         {/* Desktop sidebar */}
         <aside className="hidden lg:flex flex-col w-52 border-r border-gray-800 bg-[#0d0e1a] flex-shrink-0">
           <SidebarContent />
