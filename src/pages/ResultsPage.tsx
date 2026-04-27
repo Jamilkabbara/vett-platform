@@ -17,6 +17,7 @@ import {
   Rocket,
   Filter,
   AlertCircle,
+  AlertTriangle,
   MessageSquare,
   Share2,
   FileDown,
@@ -77,6 +78,12 @@ interface QuestionResult {
   sentiment?: number;
   averageScore?: number;
   verbatims?: string[];
+  // Pass 22 Bug 22.17 — confidence interval fields for rating questions.
+  // Backend insights.aggregate computes these; null if n<2.
+  ci_low?: number;
+  ci_high?: number;
+  stddev?: number;
+  rating_n?: number;
 }
 
 interface FilterOption {
@@ -115,6 +122,18 @@ interface MissionData {
   hasScreening?: boolean;
   /** Per-question id → boolean tag from backend's aggregatedByQuestion. */
   screeningQuestionIds?: Set<string>;
+  // Pass 22 Bug 22.16 — full insights object surfaced for the Tensions Flagged
+  // card. Typed loosely because backend may add fields over time; UI guards
+  // each use behind Array.isArray / typeof checks.
+  insights?: {
+    contradictions?: Array<{
+      question_a?: string;
+      question_b?: string;
+      tension_description?: string;
+      severity?: 'high' | 'medium' | 'low';
+    }>;
+    [key: string]: unknown;
+  };
 }
 
 
@@ -289,7 +308,18 @@ export const ResultsPage = () => {
           });
           const weightedSum = ratingData.reduce((s, r, i) => s + (i + 1) * r.count, 0);
           const avg = total ? weightedSum / total : 0;
-          return { id: qid, question: qText, type: 'rating', data: ratingData, averageScore: avg, aiInsight };
+          // Pass 22 Bug 22.17 — pull CI fields from the backend bucket if
+          // present (backend insights.aggregate persists ci_low/ci_high/stddev/rating_n).
+          // Falls back gracefully on legacy missions where these are absent.
+          const ci_low   = typeof bucket.ci_low   === 'number' ? bucket.ci_low   : undefined;
+          const ci_high  = typeof bucket.ci_high  === 'number' ? bucket.ci_high  : undefined;
+          const stddev   = typeof bucket.stddev   === 'number' ? bucket.stddev   : undefined;
+          const rating_n = typeof bucket.rating_n === 'number' ? bucket.rating_n : undefined;
+          return {
+            id: qid, question: qText, type: 'rating', data: ratingData,
+            averageScore: avg, aiInsight,
+            ci_low, ci_high, stddev, rating_n,
+          };
         }
 
         if (fType === 'multi_select') {
@@ -425,6 +455,11 @@ export const ResultsPage = () => {
         qualificationRate: qualificationRate,
         hasScreening,
         screeningQuestionIds,
+        // Pass 22 Bug 22.16 — surface raw insights so the Tensions Flagged
+        // card can read insights.contradictions.
+        insights: typeof data.insights === 'object' && data.insights !== null
+          ? (data.insights as MissionData['insights'])
+          : undefined,
       };
 
       setMissionData(loaded);
@@ -959,6 +994,30 @@ export const ResultsPage = () => {
                   <div className="text-6xl font-black text-white mb-2">{result.averageScore.toFixed(1)}</div>
                   <div className="text-white/60 text-sm font-medium">Average Score</div>
                   <div className="text-white/40 text-xs">out of 5.0</div>
+                  {/* Pass 22 Bug 22.17 — render 95% CI when backend supplies it.
+                      Persisted on insights.per_question_insights[*].ci_low/high/stddev/rating_n
+                      (see backend insights.aggregate). For tiny samples (n<8)
+                      we still show the CI but flag low confidence. */}
+                  {(() => {
+                    const ci = (result as { ci_low?: number; ci_high?: number; stddev?: number; rating_n?: number }).ci_low != null
+                      ? result as { ci_low: number; ci_high: number; stddev: number; rating_n: number }
+                      : null;
+                    if (!ci || ci.ci_low == null || ci.ci_high == null) return null;
+                    const margin = ((ci.ci_high - ci.ci_low) / 2).toFixed(1);
+                    const lowConfidence = (ci.rating_n ?? 0) < 8;
+                    return (
+                      <div className="mt-3">
+                        <div className="text-white/70 text-xs font-mono">
+                          ± {margin} (95% CI: {ci.ci_low.toFixed(1)}–{ci.ci_high.toFixed(1)}, n={ci.rating_n ?? '?'})
+                        </div>
+                        {lowConfidence && (
+                          <div className="text-amber-300/80 text-[10px] mt-1 italic">
+                            Low confidence, small sample
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -1482,13 +1541,68 @@ export const ResultsPage = () => {
                       </div>
 
                       {mission.executiveSummary ? (
-                        <p className="text-white/80 text-lg leading-relaxed">{mission.executiveSummary}</p>
+                        // Pass 22 Bug 22.13 — narrative 4-paragraph executive
+                        // summary. Render as proper paragraphs (split on blank
+                        // lines) with reading-friendly typography. Falls back to
+                        // a single paragraph for legacy single-block summaries.
+                        <div className="space-y-4 max-w-prose">
+                          {mission.executiveSummary
+                            .split(/\n\s*\n/)
+                            .map((para, i) => (
+                              <p key={i} className="text-white/80 text-base md:text-lg leading-relaxed">
+                                {para.trim()}
+                              </p>
+                            ))}
+                        </div>
                       ) : (
                         <p className="text-white/50 text-base italic">Executive summary is being generated...</p>
                       )}
                     </div>
                   </div>
                 </motion.div>
+
+                {/* Pass 22 Bug 22.16 — Tensions Flagged card. Renders only if
+                    insights.contradictions has at least one entry. Amber accent
+                    (observations, not bugs). */}
+                {Array.isArray((mission.insights as { contradictions?: unknown })?.contradictions) &&
+                  ((mission.insights as { contradictions: Array<{ tension_description?: string; severity?: string; question_a?: string; question_b?: string }> }).contradictions.length > 0) && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="mb-8 bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6"
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/15">
+                        <AlertTriangle className="w-5 h-5 text-amber-400" />
+                      </div>
+                      <h2 className="text-xl md:text-2xl font-bold text-white">Tensions Flagged</h2>
+                    </div>
+                    <div className="space-y-3">
+                      {(mission.insights as { contradictions: Array<{ tension_description?: string; severity?: string; question_a?: string; question_b?: string }> }).contradictions.map((c, idx) => (
+                        <div key={idx} className="border-l-2 border-amber-500/40 pl-4 py-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${
+                              c.severity === 'high'   ? 'text-amber-300' :
+                              c.severity === 'medium' ? 'text-amber-400/80' :
+                                                        'text-amber-400/60'
+                            }`}>
+                              {c.severity || 'note'}
+                            </span>
+                            {c.question_a && c.question_b && (
+                              <span className="text-white/40 text-xs font-mono">
+                                {c.question_a} ↔ {c.question_b}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-white/80 text-sm leading-relaxed">
+                            {c.tension_description}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Screening Funnel card — only shown when mission has a screening question */}
                 {screeningFunnel && (
