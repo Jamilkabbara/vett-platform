@@ -227,6 +227,21 @@ function ActivityTypePill({ type }: { type: string | undefined | null }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+interface MicroFunnel {
+  landing_view: number;
+  signup_completed: number;
+  mission_setup_started: number;
+  checkout_opened: number;
+  mission_paid: number;
+  mission_completed: number;
+}
+
+interface SessionFunnel {
+  landing_view_sessions: number;
+  sessions_with_signup: number;
+  conversion_pct: number;
+}
+
 export function AdminOverview({ apiFetch }: AdminOverviewProps) {
   const [range, setRange]   = useState<Range>('30d');
   const [data, setData]     = useState<OverviewData | null>(null);
@@ -234,6 +249,14 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
   const [error, setError]   = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastTick, setLastTick] = useState(Date.now());
+
+  // Pass 22 Bug 22.2 + 22.3 — new behavioural funnel sections (events-based).
+  // Sit alongside the existing mission-based Conversion Funnel rather than
+  // replacing it, since the existing one is the authoritative mission
+  // lifecycle and the new one shows funnel-event coverage (whose reliability
+  // we just fixed in Bug 22.1; the two will converge over the next weeks).
+  const [microFunnel, setMicroFunnel]     = useState<MicroFunnel | null>(null);
+  const [sessionFunnel, setSessionFunnel] = useState<SessionFunnel | null>(null);
 
   const rangeRef = useRef(range);
   rangeRef.current = range;
@@ -246,10 +269,25 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
       else setRefreshing(true);
       setError(null);
       try {
-        const res = await apiFetch(`/api/admin/overview?range=${rangeRef.current}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json: OverviewData = await res.json();
+        const [overviewRes, microRes, sessionRes] = await Promise.all([
+          apiFetch(`/api/admin/overview?range=${rangeRef.current}`),
+          apiFetch(`/api/admin/micro-funnel?range=${rangeRef.current}`).catch(() => null),
+          apiFetch(`/api/admin/session-funnel?range=${rangeRef.current}`).catch(() => null),
+        ]);
+        if (!overviewRes.ok) throw new Error(`HTTP ${overviewRes.status}`);
+        const json: OverviewData = await overviewRes.json();
         setData(json);
+
+        // Pass 22 Bug 22.2 — micro-funnel (best-effort; null on fetch failure
+        // so the existing Conversion Funnel still renders).
+        if (microRes && microRes.ok) {
+          try { setMicroFunnel(await microRes.json()); } catch { setMicroFunnel(null); }
+        }
+        // Pass 22 Bug 22.3 — landing→signup session conversion.
+        if (sessionRes && sessionRes.ok) {
+          try { setSessionFunnel(await sessionRes.json()); } catch { setSessionFunnel(null); }
+        }
+
         setLastTick(Date.now());
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load overview');
@@ -528,6 +566,80 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
               conversion is now visible as the cvr label between Mission
               attempts → Completed in the funnel itself.
             */}
+          </Section>
+          </ErrorBoundary>
+
+          {/* Pass 22 Bug 22.2 + 22.3 — Behavioural funnel (event-based) */}
+          <ErrorBoundary label="Behavioural Funnel">
+          <Section title="Behavioural Funnel (events)" icon={<Target className="w-4 h-4" />}>
+            <p className="text-t4 text-[10px] mb-3 leading-snug">
+              Stage counts pulled from <span className="font-mono">funnel_events</span>.
+              Pass 22 Bug 22.1 fixed the emit reliability gap; numbers will converge
+              with the mission-based Conversion Funnel above as events accumulate.
+            </p>
+            {!microFunnel ? (
+              <p className="text-t4 text-[12px] text-center py-6">
+                No micro-funnel data yet (waiting for events to land post-deploy).
+              </p>
+            ) : (
+              <div className="space-y-2.5">
+                {(() => {
+                  const stages: Array<{ key: keyof MicroFunnel; label: string }> = [
+                    { key: 'landing_view',          label: 'Landing view' },
+                    { key: 'signup_completed',      label: 'Signed up' },
+                    { key: 'mission_setup_started', label: 'Mission setup started' },
+                    { key: 'checkout_opened',       label: 'Checkout opened' },
+                    { key: 'mission_paid',          label: 'Paid' },
+                    { key: 'mission_completed',    label: 'Completed' },
+                  ];
+                  const max = stages.reduce((m, s) => Math.max(m, microFunnel[s.key] || 0), 1);
+                  return stages.map((s, idx) => {
+                    const val = microFunnel[s.key] || 0;
+                    const pct = max > 0 ? (val / max) * 100 : 0;
+                    const prev = idx > 0 ? stages[idx - 1] : null;
+                    const prevVal = prev ? (microFunnel[prev.key] || 0) : 0;
+                    const conv = prev && prevVal > 0
+                      ? Math.round(100 * val / prevVal)
+                      : null;
+                    return (
+                      <div key={s.key}>
+                        {prev && conv !== null && (
+                          <div className="flex items-center gap-2 mb-1.5 ml-1">
+                            <div className="w-px h-3 bg-gray-700 ml-1" />
+                            <span className="text-t4 text-[10px] font-mono">
+                              {conv}% of {prev.label.toLowerCase()}
+                            </span>
+                          </div>
+                        )}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-t2 text-[11px] font-bold">{s.label}</span>
+                            <span className="text-lime font-mono font-bold text-[11px]">
+                              {fmtNumber(val)}
+                            </span>
+                          </div>
+                          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-lime transition-all duration-500"
+                              style={{ width: `${pct}%`, opacity: 1 - idx * 0.10 }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
+            {sessionFunnel && (
+              <div className="mt-4 pt-3 border-t border-gray-800 text-t3 text-[11px]">
+                <span className="font-mono">Session-level landing→signup:</span>{' '}
+                <span className="text-white font-bold">
+                  {sessionFunnel.sessions_with_signup} / {sessionFunnel.landing_view_sessions}
+                </span>{' '}
+                <span className="text-lime font-mono">({sessionFunnel.conversion_pct}%)</span>
+              </div>
+            )}
           </Section>
           </ErrorBoundary>
 

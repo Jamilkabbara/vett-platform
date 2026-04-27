@@ -195,6 +195,18 @@ const PaymentForm = ({
     return () => { cancelled = true; };
   }, [isOpen, missionId]);
 
+  // Pass 22 Bug 22.1 — emit checkout_opened once when the modal opens.
+  // This is the new mid-funnel stage between mission_setup_completed and
+  // mission_paid; it lets us measure setup→checkout drop-off (the user
+  // completed setup but didn't reach the pay screen).
+  useEffect(() => {
+    if (!isOpen || !missionId) return;
+    const tier = respondentCount >= 100 ? 'large' : respondentCount >= 50 ? 'medium' : 'small';
+    trackFunnel('checkout_opened', {
+      tier, respondent_count: respondentCount,
+    }, { mission_id: missionId });
+  }, [isOpen, missionId, respondentCount]);
+
   /**
    * Set up Apple Pay / Google Pay via Stripe's Payment Request API.
    *
@@ -302,7 +314,14 @@ const PaymentForm = ({
         event.complete('success');
         await api.post('/api/payments/confirm', { missionId, paymentIntentId });
         await activateMission(missionId);
-        trackFunnel('mission_paid', { mission_id: missionId, method: 'wallet' });
+        // Pass 22 Bug 22.4 — enrich with tier + promo for admin segment view.
+        trackFunnel('mission_paid', {
+          method: 'wallet',
+          tier:   respondentCount >= 100 ? 'large' : respondentCount >= 50 ? 'medium' : 'small',
+          respondent_count: respondentCount,
+          promo_code: promoApplied ? (promoCode || null) : null,
+          amount_cents: Math.round(discountedPrice * 100),
+        }, { mission_id: missionId });
 
         setStage('success');
         toast.success('Mission Launched!', { id: toastId });
@@ -601,7 +620,14 @@ const PaymentForm = ({
       }
 
       await activateMission(missionId);
-      trackFunnel('mission_paid', { mission_id: missionId, method: 'card' });
+      // Pass 22 Bug 22.4 — enrich with tier + promo for admin segment view.
+      trackFunnel('mission_paid', {
+        method: 'card',
+        tier:   respondentCount >= 100 ? 'large' : respondentCount >= 50 ? 'medium' : 'small',
+        respondent_count: respondentCount,
+        promo_code: promoApplied ? (promoCode || null) : null,
+        amount_cents: Math.round(discountedPrice * 100),
+      }, { mission_id: missionId });
 
       setStage('success');
       toast.success('Mission Launched Successfully!', { id: toastId });

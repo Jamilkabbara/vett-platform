@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ScrollToTop } from './components/shared/ScrollToTop';
 import { PageLoader } from './components/shared/PageLoader';
+import { replayFunnelQueue } from './lib/funnelTrack';
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded pages — each becomes its own async chunk.
@@ -35,6 +36,13 @@ const CreativeAttentionPage         = lazy(() => import('./pages/CreativeAttenti
 const CreativeAttentionResultsPage  = lazy(() => import('./pages/CreativeAttentionResultsPage').then(m => ({ default: m.CreativeAttentionResultsPage })));
 
 function App() {
+  // Pass 22 Bug 22.1 — drain any funnel events that got queued in
+  // localStorage during a prior session (offline / network blip / browser
+  // crash mid-emit). Best-effort; never blocks render.
+  useEffect(() => {
+    replayFunnelQueue().catch(() => {});
+  }, []);
+
   return (
     <BrowserRouter>
       <Toaster

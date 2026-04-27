@@ -209,7 +209,9 @@ export const MissionSetupPage = () => {
   // Draft hydration + one-shot ?q= consumption.
   useEffect(() => {
     window.scrollTo(0, 0);
-    trackFunnel('mission_setup_started');
+    // Pass 22 Bug 22.4 — pass query-prefill flag so the admin can see whether
+    // the setup started from a landing-page query or fresh mission-control nav.
+    trackFunnel('mission_setup_started', { source: queryPrefill ? 'landing_query' : 'fresh' });
 
     if (queryPrefill) {
       const next = new URLSearchParams(searchParams);

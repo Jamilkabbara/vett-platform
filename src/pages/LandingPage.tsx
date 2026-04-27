@@ -19,7 +19,7 @@ import {
 import { FileUpload, type UploadedFile } from '../components/shared/FileUpload';
 
 import { useAuth } from '../contexts/AuthContext';
-import { trackFunnel } from '../lib/funnelTrack';
+import { trackFunnel, landingMetadata } from '../lib/funnelTrack';
 import { Logo } from '../components/ui/Logo';
 import { TopNav } from '../components/ui/TopNav';
 import { Button } from '../components/ui/Button';
@@ -177,8 +177,9 @@ export function LandingPage() {
   }, []);
   const [idea, setIdea] = useState(initialQuery);
 
-  // Track landing page view (once per mount)
-  useEffect(() => { trackFunnel('landing_view'); }, []);
+  // Track landing page view (once per mount). Pass 22 Bug 22.4 — capture
+  // referrer + UTM + viewport so the admin micro-funnel can segment by source.
+  useEffect(() => { trackFunnel('landing_view', landingMetadata()); }, []);
 
   // Keep the input in sync if the URL changes (e.g. back/forward navigation)
   useEffect(() => {
