@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Sparkles, Minimize2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { supabase } from '../../lib/supabase';
 import { OverageModal } from './OverageModal';
 
@@ -422,21 +423,67 @@ export const ChatWidget = ({
 
 // ─ Bits ────────────────────────────────────────────────────
 
+// Pass 22 Bug 22.26 — chat-bubble Markdown rendering. Forensic from
+// chat_messages.content showed the AI emitting **bold**, ##, ---, bullet
+// lists, etc., but the bubble was rendering as plain text. Users saw
+// literal asterisks. Now we render through react-markdown (already a dep
+// from ResultsPage) with chat-bubble-tuned components: tighter margins,
+// no top margin on the first child, smaller heading sizes than ResultsPage.
 function Bubble({ role, content, streaming = false }: { role: 'user' | 'assistant'; content: string; streaming?: boolean }) {
   const isUser = role === 'user';
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
         className={[
-          'max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words',
+          'max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words',
           isUser
-            ? 'bg-primary text-black rounded-br-md'
+            ? 'bg-primary text-black rounded-br-md whitespace-pre-wrap'
             : 'bg-white/5 border border-white/10 text-white/90 rounded-bl-md',
         ].join(' ')}
       >
-        {content}
+        {isUser ? (
+          // User messages render as plain text (no markdown parsing — user
+          // input shouldn't be re-interpreted as formatting).
+          content
+        ) : (
+          <ChatMarkdown content={content} />
+        )}
         {streaming && <span className="inline-block w-2 h-4 align-middle bg-white/60 animate-pulse ml-1" />}
       </div>
+    </div>
+  );
+}
+
+function ChatMarkdown({ content }: { content: string }) {
+  return (
+    <div className="space-y-2">
+      <ReactMarkdown
+        components={{
+          // first:mt-0 so the very first paragraph sits flush against the
+          // bubble's top padding (no awkward extra gap).
+          p:        ({ children }) => <p className="first:mt-0 leading-relaxed">{children}</p>,
+          strong:   ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+          em:       ({ children }) => <em className="italic">{children}</em>,
+          h1:       ({ children }) => <h3 className="text-base font-bold first:mt-0 mt-3 mb-1">{children}</h3>,
+          h2:       ({ children }) => <h3 className="text-base font-semibold first:mt-0 mt-3 mb-1">{children}</h3>,
+          h3:       ({ children }) => <h4 className="text-sm font-semibold first:mt-0 mt-2 mb-1">{children}</h4>,
+          ul:       ({ children }) => <ul className="list-disc pl-5 space-y-0.5 my-2">{children}</ul>,
+          ol:       ({ children }) => <ol className="list-decimal pl-5 space-y-0.5 my-2">{children}</ol>,
+          li:       ({ children }) => <li className="leading-relaxed">{children}</li>,
+          hr:       () => <hr className="my-3 border-t border-white/15" />,
+          code:     ({ children }) => <code className="px-1 py-0.5 rounded bg-black/30 text-[0.85em] font-mono">{children}</code>,
+          a:        ({ children, href }) => (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary-hover">
+              {children}
+            </a>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-2 border-white/20 pl-3 italic text-white/70 my-2">{children}</blockquote>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }
