@@ -1,10 +1,10 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Rocket, ShieldCheck } from 'lucide-react';
+import { Lock, Rocket, ShieldCheck, Star } from 'lucide-react';
 
 import type { Question } from './QuestionEngine';
 import type { TargetingConfig } from './TargetingEngine';
-import { calculatePricing } from '../../utils/pricingEngine';
+import { calculatePricing, getVolumeTier, VOLUME_TIERS } from '../../utils/pricingEngine';
 import { COUNTRIES } from '../../data/targetingOptions';
 
 /**
@@ -171,6 +171,14 @@ export const MissionControlPricing = ({
 
   const perRespondent = respondentCount > 0 ? pricing.total / respondentCount : 0;
 
+  // Pass 23 Bug 23.14 — active volume tier driven by current respondentCount.
+  // Used to label the slider header, drive the tick markers' active state,
+  // and surface the live $/respondent rate beneath the slider.
+  const activeTier = useMemo(
+    () => getVolumeTier(respondentCount),
+    [respondentCount],
+  );
+
   const handleSlide = useCallback(
     (next: number) => {
       const clamped = Math.max(
@@ -252,9 +260,15 @@ export const MissionControlPricing = ({
         </div>
       )}
 
-      {/* Mirror / slider */}
+      {/* Mirror / slider — Pass 23 Bug 23.14:
+            - tick markers at the 4 tier anchors (5/10/50/250)
+            - "Most popular" badge on Validate (10-anchor)
+            - live $/respondent display below slider
+            - the slider stays continuous (step=5) so users can pick any
+              count between 5 and 5000; pricing applies the rate of the
+              tier the count falls in (see VOLUME_TIERS) */}
       <div className="px-4 py-4 border-b border-b1">
-        <div className="flex items-baseline justify-between mb-2">
+        <div className="flex items-baseline justify-between mb-1">
           <label
             htmlFor="resp-slider"
             className="font-display font-bold text-[10px] text-t3 uppercase tracking-[0.1em]"
@@ -265,6 +279,18 @@ export const MissionControlPricing = ({
             {respondentCount.toLocaleString()}
           </span>
         </div>
+
+        {/* Active tier label — sits between the count and the slider so
+            users always know which package their count falls in. */}
+        <div className="flex items-center justify-between gap-2 mb-2 min-h-[18px]">
+          <span className="font-display font-bold text-[10px] text-t4 uppercase tracking-[0.1em]">
+            Tier
+          </span>
+          <span className="font-display font-bold text-[11px] text-lime tabular-nums">
+            {activeTier.name} · {fmtRate(activeTier.ratePerResp)}/resp
+          </span>
+        </div>
+
         <input
           id="resp-slider"
           type="range"
@@ -275,28 +301,115 @@ export const MissionControlPricing = ({
           onChange={(e) => handleSlide(Number(e.target.value))}
           className="w-full accent-lime"
         />
-        <div className="flex flex-wrap gap-[7px] mt-3">
+
+        {/* Tier tick markers — 4 anchor positions on a tiny pseudo-track.
+            Position is computed as percentage of (anchor - min) / (max - min)
+            so the dots line up with where the slider thumb would land at
+            that value. Clicking a marker jumps to its anchor. */}
+        <div
+          className="relative h-5 mt-1.5"
+          aria-hidden
+          role="presentation"
+        >
+          {(['sniff_test', 'validate', 'confidence', 'deep_dive'] as const).map((id) => {
+            const tier = VOLUME_TIERS.find((v) => v.id === id);
+            if (!tier) return null;
+            const anchor = tier.anchorCount;
+            const pct = Math.max(
+              0,
+              Math.min(
+                100,
+                ((anchor - MIN_RESPONDENTS) / (MAX_RESPONDENTS - MIN_RESPONDENTS)) * 100,
+              ),
+            );
+            const isActive = activeTier.id === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => handlePreset(anchor)}
+                title={`${tier.name} — ${anchor.toLocaleString()} respondents · ${fmt$(tier.packagePrice ?? 0)}`}
+                aria-label={`Snap to ${tier.name} (${anchor.toLocaleString()} respondents)`}
+                className={[
+                  'absolute -translate-x-1/2 top-0',
+                  'h-2 w-2 rounded-full border transition-colors',
+                  isActive
+                    ? 'bg-lime border-lime'
+                    : 'bg-bg2 border-t3 hover:border-lime',
+                ].join(' ')}
+                style={{ left: `${pct}%` }}
+              />
+            );
+          })}
+        </div>
+
+        {/* Live $/respondent display — Bug 23.14 spec. Reflects the
+            volume tier rate applied to the current count, not the
+            displayed average (which would include surcharges). */}
+        <div className="flex items-center justify-between mt-2 mb-3">
+          <span className="font-body text-[11px] text-t3">
+            <strong className="font-display font-bold text-t2 tabular-nums">
+              {fmtRate(activeTier.ratePerResp)}
+            </strong>{' '}
+            / respondent at this volume
+          </span>
+          {activeTier.id !== 'deep_dive' && (
+            <span className="font-display font-bold text-[10px] text-t4 uppercase tracking-[0.08em]">
+              {(() => {
+                const next = VOLUME_TIERS[VOLUME_TIERS.findIndex(t => t.id === activeTier.id) + 1];
+                if (!next) return null;
+                const delta = next.anchorCount - respondentCount;
+                if (delta <= 0) return null;
+                return `+${delta} → ${next.name}`;
+              })()}
+            </span>
+          )}
+        </div>
+
+        {/* Preset chips — labeled with the tier name. The 10-anchor
+            (Validate) chip carries the "★ MOST POPULAR" pill above it. */}
+        <div className="flex flex-wrap gap-[7px] mt-1">
           {PRESETS.map((p) => {
             const active = respondentCount === p;
+            const tier = getVolumeTier(p);
             const approx =
               calculatePricing(p, questions, targeting, isScreeningActive)
                 .total;
+            const isMostPopular = tier.id === 'validate';
             return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => handlePreset(p)}
-                aria-pressed={active}
-                className={[
-                  'font-body text-[11px] rounded-md border transition-colors',
-                  'px-2.5 py-1.5 tabular-nums',
-                  active
-                    ? 'bg-lime text-black border-lime font-bold'
-                    : 'bg-bg3 text-t2 border-b2 hover:border-t3',
-                ].join(' ')}
-              >
-                {p.toLocaleString()} · {fmt$(approx)}
-              </button>
+              <div key={p} className="relative">
+                {isMostPopular && (
+                  <span
+                    aria-hidden
+                    className={[
+                      'absolute -top-2.5 left-1/2 -translate-x-1/2',
+                      'inline-flex items-center gap-0.5',
+                      'px-1.5 py-0.5 rounded-full',
+                      'bg-lime text-black border border-lime',
+                      'font-display font-black text-[8px] uppercase tracking-[0.08em]',
+                      'whitespace-nowrap shadow-lime-soft',
+                    ].join(' ')}
+                  >
+                    <Star className="w-2 h-2" />
+                    Most popular
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handlePreset(p)}
+                  aria-pressed={active}
+                  title={`${tier.name} · ${p.toLocaleString()} respondents · ${fmt$(approx)}`}
+                  className={[
+                    'font-body text-[11px] rounded-md border transition-colors',
+                    'px-2.5 py-1.5 tabular-nums',
+                    active
+                      ? 'bg-lime text-black border-lime font-bold'
+                      : 'bg-bg3 text-t2 border-b2 hover:border-t3',
+                  ].join(' ')}
+                >
+                  {tier.name} · {p.toLocaleString()} · {fmt$(approx)}
+                </button>
+              </div>
             );
           })}
         </div>

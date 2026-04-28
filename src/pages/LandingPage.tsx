@@ -323,7 +323,13 @@ export function LandingPage() {
                 Also added `truncate` semantics so a placeholder longer than
                 the visible field clips with ellipsis instead of bleeding. */}
             <div className="flex flex-col md:flex-row md:items-center gap-3 px-4 py-3.5 md:px-5 md:py-4">
-              <span className="hidden md:inline-block font-mono font-bold text-lime text-[16px] shrink-0 leading-none">
+              {/* Pass 23 Bug 23.13 — restore the `>_` prompt on mobile.
+                  Was hidden via `hidden md:inline-block` since Pass 21 to dodge
+                  the input-overlap regression Bug 14 fixed; with `min-w-0`
+                  + `truncate` on the input below, it now coexists fine on
+                  narrow screens. Sits on its own row above the input on
+                  mobile (column flex), inline on desktop. */}
+              <span className="font-mono font-bold text-lime text-[16px] shrink-0 leading-none">
                 &gt;_
               </span>
               <input
@@ -820,7 +826,11 @@ export function LandingPage() {
             5-persona sniff test for $9 up to a 250-persona deep dive for $299.
           </SecSub>
         </SectionCenter>
-        <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-[1100px] mx-auto">
+        {/* Pass 23 Bug 23.13 — stack vertically on small phones (<640px) so
+            tier price labels don't squeeze into a 2-col grid where the
+            anchored 250 deep-dive tier ($299) wraps awkwardly. Two cards
+            per row on small tablets (sm), four across on tablet+. */}
+        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 max-w-[1100px] mx-auto">
           {PRICING_TIERS.map((t) => (
             <KpiCard
               key={t.label}
@@ -874,7 +884,7 @@ export function LandingPage() {
           </Button>
         </div>
         <p className="mt-4 font-body text-[12px] text-t3">
-          No subscription · Pay per mission · From $35 · 150+ markets · Refund the gap if we fall short
+          No subscription · Pay per mission · From $9 · 150+ markets · Refund the gap if we fall short
         </p>
       </section>
 
