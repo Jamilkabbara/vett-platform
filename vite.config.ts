@@ -15,8 +15,10 @@ export default defineConfig({
           'vendor-charts': ['recharts'],
           // Markdown renderer — Blog pages only
           'vendor-markdown': ['react-markdown'],
-          // Stripe — loaded only in payment flow
-          'vendor-stripe': ['@stripe/react-stripe-js', '@stripe/stripe-js'],
+          // Pass 23 Bug 23.0e v2 — vendor-stripe chunk removed alongside the
+          // @stripe/react-stripe-js + @stripe/stripe-js uninstall. Checkout
+          // is now a redirect to Stripe-hosted pages, so no Stripe SDK
+          // ships in our bundle.
           // Animation library — progressively loaded
           'vendor-motion': ['framer-motion'],
           // Supabase client — auth + DB calls, shared across many pages
