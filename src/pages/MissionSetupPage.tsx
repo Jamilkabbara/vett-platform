@@ -155,7 +155,24 @@ export const MissionSetupPage = () => {
 
   const queryPrefill = searchParams.get('q') || '';
 
+  // Pass 23 Bug 23.54 — goal_type preservation through auth.
+  // Priority order:
+  //   1. ?goal= URL param (survives the /signin?redirect=/setup round-trip)
+  //   2. sessionStorage 'vett_landing_goal' (set by LandingPage CTAs)
+  //   3. router state .intent (legacy named-pricing intents)
+  //   4. fallback 'validate'
+  // sessionStorage is cleared on consumption so a stale value doesn't
+  // bleed into the next visit.
   const [missionGoal, setMissionGoal] = useState<string>(() => {
+    const fromUrl = searchParams.get('goal');
+    if (fromUrl) return fromUrl;
+    try {
+      const fromSession = sessionStorage.getItem('vett_landing_goal');
+      if (fromSession) {
+        sessionStorage.removeItem('vett_landing_goal');
+        return fromSession;
+      }
+    } catch { /* private mode — fall through */ }
     const intent = (location.state as { intent?: string } | null)?.intent;
     if (intent) {
       const intentToGoal: Record<string, string> = {

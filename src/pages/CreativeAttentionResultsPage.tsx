@@ -207,10 +207,12 @@ export function CreativeAttentionResultsPage() {
           <Film className="w-16 h-16 text-purple-400" />
           <Loader2 className="w-6 h-6 text-[var(--lime)] animate-spin absolute -bottom-1 -right-1" />
         </div>
-        <h2 className="text-xl font-bold text-[var(--t1)]">Analyzing your creative…</h2>
+        <h2 className="text-xl font-bold text-[var(--t1)]">VETT is analyzing your creative</h2>
         <p className="text-[var(--t2)] text-sm max-w-sm">
-          Claude AI is reviewing each frame for emotion, attention, and engagement.
-          This takes 1–3 minutes for a 30-second video.
+          Our AI is mapping attention hotspots and emotion peaks across your
+          creative, drawing on millions of ad performance benchmarks. This
+          typically takes 30 seconds for an image or 1–3 minutes for a
+          30-second video; longer videos take proportionally more time.
         </p>
         <div className="mt-2 flex items-center gap-2 text-xs text-[var(--t3)]">
           <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
