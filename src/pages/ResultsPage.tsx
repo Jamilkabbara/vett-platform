@@ -1718,18 +1718,27 @@ export const ResultsPage = () => {
                   </motion.div>
                 )}
 
+                {/* Pass 23 Bug 23.58 — center the Executive Summary card.
+                    The card was full-width inside the parent main; on a
+                    1920px monitor it ran edge-to-edge while the body
+                    paragraphs stayed at max-w-prose, leaving lopsided
+                    whitespace. Constrained to max-w-3xl mx-auto so the
+                    whole card reads as a deliberate magazine pull-quote.
+                    Header centered; paragraphs stay left-aligned within
+                    the centered container (text blocks read better
+                    left-aligned than centered). */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="relative z-0 mb-8"
+                  className="relative z-0 mb-8 max-w-3xl mx-auto"
                 >
                   <div className="relative bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 border border-white/10 rounded-2xl p-8 backdrop-blur-xl overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
 
                     <div className="relative">
-                      <div className="flex items-center gap-3 mb-4">
+                      <div className="flex items-center justify-center gap-3 mb-4">
                         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
                           <Sparkles className="w-5 h-5 text-blue-400" />
                         </div>
@@ -1741,7 +1750,7 @@ export const ResultsPage = () => {
                         // summary. Render as proper paragraphs (split on blank
                         // lines) with reading-friendly typography. Falls back to
                         // a single paragraph for legacy single-block summaries.
-                        <div className="space-y-4 max-w-prose">
+                        <div className="space-y-4">
                           {mission.executiveSummary
                             .split(/\n\s*\n/)
                             .map((para, i) => (

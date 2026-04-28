@@ -400,7 +400,7 @@ export const MissionsListPage = () => {
               </h2>
               <p className="text-white/60 text-base md:text-lg mb-6 max-w-md mx-auto">
                 Launch your first mission to get real feedback from your target audience in hours, not weeks.
-                Pay per mission, refund the gap if we fall short.
+                Pay per mission. Every respondent matches your audience.
               </p>
               <button
                 onClick={() => navigate('/setup')}
