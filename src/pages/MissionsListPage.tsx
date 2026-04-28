@@ -36,6 +36,10 @@ interface Mission {
   total_simulated_count?: number | null;
   qualified_respondent_count?: number | null;
   qualification_rate?: number | null;
+  // Pass 23 Bug 23.25: delivery integrity. 'partial' triggers a badge on
+  // completed missions; 'full' renders nothing (the green completed pill
+  // is enough). null on legacy rows pre-backfill.
+  delivery_status?: 'full' | 'partial' | 'screener_too_restrictive' | null;
   price_estimated?: number | null;
   // Pass 21 Bug 8: actual paid price (set at checkout). For any mission past
   // the draft stage, this is the truth — `price_estimated` is just the
@@ -417,13 +421,27 @@ export const MissionsListPage = () => {
                   className="bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6 hover:border-primary/30 transition-all cursor-pointer group backdrop-blur-xl relative h-full flex flex-col"
                 >
                   <div className="flex items-start justify-between mb-4">
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${getStatusColor(mission.status)}`}>
-                      {mission.status === 'ACTIVE' && (
-                        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${getStatusColor(mission.status)}`}>
+                        {mission.status === 'ACTIVE' && (
+                          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                        )}
+                        <span className="text-xs font-bold uppercase tracking-wider">
+                          {getStatusText(mission.status)}
+                        </span>
+                      </div>
+                      {/* Pass 23 Bug 23.25 — partial-delivery badge. Only on
+                          completed missions where delivery_status='partial'.
+                          'full' renders nothing (the green completed pill is
+                          enough). */}
+                      {(mission.status || '').toUpperCase() === 'COMPLETED'
+                        && mission.delivery_status === 'partial' && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-500/30 bg-amber-500/10">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                            Partial · refund issued
+                          </span>
+                        </div>
                       )}
-                      <span className="text-xs font-bold uppercase tracking-wider">
-                        {getStatusText(mission.status)}
-                      </span>
                     </div>
                     {mission.status === 'DRAFT' && (
                       <button

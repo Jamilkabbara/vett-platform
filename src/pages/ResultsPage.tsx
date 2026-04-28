@@ -127,6 +127,21 @@ interface MissionData {
   hasScreening?: boolean;
   /** Per-question id → boolean tag from backend's aggregatedByQuestion. */
   screeningQuestionIds?: Set<string>;
+  /**
+   * Pass 23 Bug 23.25 — delivery integrity surface.
+   *   deliveryStatus      : 'full' | 'partial' | null (null on legacy rows)
+   *   paidFor             : mission.respondent_count at purchase time
+   *   partialRefundCents  : amount Stripe credited back; null if delivery=full
+   *                         OR delivery=partial but the auto-refund failed
+   *                         (admin processes manually — banner says so)
+   *   refundRequestedCents: proposed refund amount (paidCents * gap / paidFor),
+   *                         used to display the dollar value when the actual
+   *                         Stripe refund hasn't landed yet.
+   */
+  deliveryStatus?: 'full' | 'partial' | null;
+  paidFor?: number;
+  partialRefundCents?: number | null;
+  refundRequestedCents?: number | null;
   // Pass 22 Bug 22.16 — full insights object surfaced for the Tensions Flagged
   // card. Typed loosely because backend may add fields over time; UI guards
   // each use behind Array.isArray / typeof checks.
@@ -518,6 +533,25 @@ export const ResultsPage = () => {
           .map(([qid]) => qid)
       );
 
+      // Pass 23 Bug 23.25 — delivery integrity hydration.
+      // delivery_status is stamped by runMission. paid_amount_cents comes
+      // from the Stripe PI succeed webhook; falls back to total_price_usd
+      // when the row is older or webhook ran on a different code path.
+      // refundRequestedCents is the proportional amount we *should* refund
+      // (used in the banner if delivery=partial but partial_refund_id is
+      // null — i.e., the Stripe call failed and admin is processing).
+      const paidForCount = Number(mission.respondent_count ?? 0);
+      const paidCentsBase = Number.isFinite(mission.paid_amount_cents)
+        ? Number(mission.paid_amount_cents)
+        : Math.round(Number(mission.total_price_usd ?? 0) * 100);
+      const refundRequestedCents =
+        mission.delivery_status === 'partial' &&
+        paidForCount > 0 &&
+        Number.isFinite(qualifiedCount) &&
+        qualifiedCount! < paidForCount
+          ? Math.floor((paidCentsBase * (paidForCount - qualifiedCount!)) / paidForCount)
+          : null;
+
       const loaded: MissionData = {
         // Canonical columns on `public.missions` are `title` + `brief`.
         // `mission_statement`, `name`, and `context` never existed on the DB;
@@ -549,6 +583,15 @@ export const ResultsPage = () => {
         insights: typeof data.insights === 'object' && data.insights !== null
           ? (data.insights as MissionData['insights'])
           : undefined,
+        // Pass 23 Bug 23.25 — delivery integrity.
+        deliveryStatus: mission.delivery_status === 'full' || mission.delivery_status === 'partial'
+          ? mission.delivery_status
+          : null,
+        paidFor: paidForCount || undefined,
+        partialRefundCents: Number.isFinite(mission.partial_refund_amount_cents)
+          ? Number(mission.partial_refund_amount_cents)
+          : null,
+        refundRequestedCents,
       };
 
       setMissionData(loaded);
@@ -1611,6 +1654,70 @@ export const ResultsPage = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
+                {/* Pass 23 Bug 23.25 — partial-delivery banner. Appears above
+                    the Executive Summary when delivery_status='partial'. The
+                    refund-already-issued vs refund-pending copy splits on
+                    whether partial_refund_amount_cents is populated. */}
+                {mission.deliveryStatus === 'partial' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 }}
+                    className="relative z-0 mb-6"
+                  >
+                    <div className="relative bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/20 flex-shrink-0">
+                          <AlertCircle className="w-4 h-4 text-amber-300" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-amber-100 text-sm md:text-base font-bold mb-1">
+                            We delivered{' '}
+                            {mission.qualifiedRespondents ?? 0} of{' '}
+                            {mission.paidFor ?? '—'}{' '}
+                            qualified respondents
+                          </h3>
+                          <p className="text-amber-100/75 text-sm leading-relaxed">
+                            The screener was strict for this audience. We
+                            over-recruited up to 5&times; to try to hit your
+                            target, but the screener kept dropping personas.{' '}
+                            {mission.partialRefundCents != null && mission.partialRefundCents > 0 ? (
+                              <>
+                                We&rsquo;ve refunded{' '}
+                                <strong className="text-white">
+                                  ${(mission.partialRefundCents / 100).toFixed(2)}
+                                </strong>{' '}
+                                proportionally for the gap &mdash; it&rsquo;ll
+                                land on your card in 5&ndash;10 business days.
+                              </>
+                            ) : mission.refundRequestedCents != null && mission.refundRequestedCents > 0 ? (
+                              <>
+                                A{' '}
+                                <strong className="text-white">
+                                  ${(mission.refundRequestedCents / 100).toFixed(2)}
+                                </strong>{' '}
+                                refund for the gap is being processed by our
+                                team and will land within one business day.
+                              </>
+                            ) : (
+                              <>
+                                Our team has been notified about the gap and
+                                will reach out about a refund within one business day.
+                              </>
+                            )}
+                          </p>
+                          <p className="text-amber-100/55 text-xs leading-relaxed mt-2">
+                            Tip for next time: loosen the screener criteria
+                            one notch and we&rsquo;ll likely fill the full target.
+                            The report below is still real signal &mdash; only
+                            qualified respondents counted toward your insights.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
