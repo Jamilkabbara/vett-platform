@@ -1,165 +1,305 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell } from 'lucide-react';
+import { Bell, CheckCircle2, AlertTriangle, XCircle, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from './Toast';
+
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
- * Notification bell + dropdown panel.
+ * Pass 23 A2 (Bug 23.11) — real-data notification bell.
  *
- * Mirrors .notif-btn / .notif-panel from
- * .design-reference/prototype.html (lines ~1200–1260).
+ * Reads + writes to `public.notifications` directly via the supabase anon
+ * client. RLS policy `users_own_notif` (FOR ALL TO authenticated USING
+ * auth.uid() = user_id) scopes both reads and writes to the user's own
+ * rows; realtime subscriptions on the same channel respect the policy.
  *
- * This is a **stub** for Prompt 3 of the redesign. Items are static and
- * local-only — there is no backend yet. "Mark all read" only flips local
- * state, and "View all notifications →" surfaces a `toast.info` pointer
- * until we build a notifications service. Tracked in
- * `.design-reference/PROMPT_3_STUBS.md`.
+ * Wire-up (signed in + bell mounted in AuthedTopNav):
+ *   1. On mount + on window focus → fetch latest 10 notifications.
+ *   2. Subscribe to realtime INSERT events on `public.notifications`
+ *      filtered by user_id; new rows prepend in real time.
+ *   3. Click a row → optimistically mark `read_at = now()` + navigate.
+ *   4. "Mark all as read" → bulk UPDATE all user's unread to read.
  *
- * The shape (`NotifItem`, tab set, "Mark all read") matches the eventual
- * API contract so the UI can swap to live data without re-skinning.
+ * Backend insert templates (Bug 23.12) drive the icon/accent per type:
+ *   mission_complete   ✓ green check  — runMission deliveryFull branch
+ *   mission_partial    ⚠ amber alert  — runMission partial-delivery branch
+ *   mission_failed     ✗ red x        — runMission catch
+ *   payment_received   💳 indigo card — webhooks checkout.session.completed
+ *   payment_failed     ✗ red x        — webhooks payment_intent.payment_failed
+ *
+ * Empty state: "No notifications yet."
+ *
+ * Pre-Pass-23 this component held a static SEED array — every signed-in
+ * user saw the same 5 fake notifications. Production forensic at A2 spec
+ * time showed 9 unread mission_complete rows in the table that NO USER
+ * HAS EVER SEEN. This rewrite plugs that gap.
  */
 
-type NotifKind = 'mission' | 'insight' | 'billing' | 'content' | 'promo';
-type NotifTab = 'all' | 'missions' | 'billing';
+const FETCH_LIMIT = 10;
 
-interface NotifItem {
+type NotifType =
+  | 'mission_complete'
+  | 'mission_partial'
+  | 'mission_failed'
+  | 'payment_received'
+  | 'payment_failed'
+  | string; // tolerate unknown future types — render as a generic bell
+
+interface NotifRow {
   id: string;
-  kind: NotifKind;
-  icon: string;
-  accent: string; // tailwind color token, e.g. 'grn'
-  title: string;
-  body: string;
-  timeLabel: string;
-  href?: string;
-  unread: boolean;
+  user_id: string;
+  type: NotifType;
+  title: string | null;
+  body: string | null;
+  link: string | null;
+  read_at: string | null;
+  created_at: string;
 }
 
-const SEED: NotifItem[] = [
-  {
-    id: 'n1',
-    kind: 'mission',
-    icon: '✓',
-    accent: 'grn',
-    title: 'Mission complete — Meal Kit Validation',
-    body: '100 AI personas analysed · NPS +62 · View results now',
-    timeLabel: '2 min',
-    href: '/dashboard',
-    unread: true,
-  },
-  {
-    id: 'n2',
-    kind: 'insight',
-    icon: '✦',
-    accent: 'lime',
-    title: 'AI insight ready',
-    body: 'Your pricing study revealed a $49 sweet spot — see recommendations',
-    timeLabel: '15 min',
-    unread: true,
-  },
-  {
-    id: 'n3',
-    kind: 'billing',
-    icon: '💳',
-    accent: 'blu',
-    title: 'Payment confirmed',
-    body: '$105 charged to Visa ending 4242 · Invoice INV-2042 sent',
-    timeLabel: '1 hour',
-    href: '/billing',
-    unread: true,
-  },
-  {
-    id: 'n4',
-    kind: 'content',
-    icon: '📰',
-    accent: 'pur',
-    title: 'New blog post',
-    body: 'Price sensitivity in MENA SaaS: the $49 sweet spot',
-    timeLabel: 'Yesterday',
-    href: '/blog',
-    unread: false,
-  },
-  {
-    id: 'n5',
-    kind: 'promo',
-    icon: '🎟',
-    accent: 'org',
-    title: 'Promo code FOLLOW50 unlocked',
-    body: '50% off your next mission — expires in 7 days',
-    timeLabel: '2 days',
-    unread: false,
-  },
-];
+// ── Type → visual mapping ───────────────────────────────────────────────
+// Tailwind-resolvable class strings (no dynamic class names — JIT-safe).
 
-/** Tailwind needs literal class strings for the JIT to include them. */
-const ACCENT_CLASSES: Record<string, string> = {
-  grn: 'bg-grn/15 text-grn border-grn/30',
-  lime: 'bg-lime/15 text-lime border-lime/30',
-  blu: 'bg-blu/15 text-blu border-blu/30',
-  pur: 'bg-pur/15 text-pur border-pur/30',
-  org: 'bg-org/15 text-org border-org/30',
-  red: 'bg-red/15 text-red border-red/30',
+interface TypeVisual {
+  Icon: typeof CheckCircle2;
+  badge: string; // tailwind classes for the icon background pill
+}
+
+const TYPE_VISUALS: Record<string, TypeVisual> = {
+  mission_complete: {
+    Icon: CheckCircle2,
+    badge: 'bg-lime/15 text-lime border-lime/30',
+  },
+  mission_partial: {
+    Icon: AlertTriangle,
+    badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  },
+  mission_failed: {
+    Icon: XCircle,
+    badge: 'bg-red-500/15 text-red-300 border-red-500/30',
+  },
+  payment_received: {
+    Icon: CreditCard,
+    badge: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+  },
+  payment_failed: {
+    Icon: XCircle,
+    badge: 'bg-red-500/15 text-red-300 border-red-500/30',
+  },
 };
 
-function accentClass(token: string): string {
-  return ACCENT_CLASSES[token] ?? ACCENT_CLASSES.lime;
+const FALLBACK_VISUAL: TypeVisual = {
+  Icon: Bell,
+  badge: 'bg-white/10 text-white/80 border-white/15',
+};
+
+function visualFor(type: string): TypeVisual {
+  return TYPE_VISUALS[type] ?? FALLBACK_VISUAL;
 }
 
+// ── Relative-time formatter (no dep) ────────────────────────────────────
+
+function relativeTime(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return '';
+  const seconds = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (seconds < 45) return 'Just now';
+  if (seconds < 90) return '1m ago';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+// ── Component ───────────────────────────────────────────────────────────
+
 export interface NotificationBellProps {
-  /** When provided, label placed in mobile list context (larger hit area). */
+  /** When provided, bell is laid out for the mobile drawer (larger hit area). */
   inDrawer?: boolean;
 }
 
 export function NotificationBell({ inDrawer = false }: NotificationBellProps) {
   const navigate = useNavigate();
-  const toast = useToast();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<NotifTab>('all');
-  const [items, setItems] = useState<NotifItem[]>(SEED);
+  const [items, setItems] = useState<NotifRow[]>([]);
+  const [loading, setLoading] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const userId = user?.id ?? null;
 
-  const unreadCount = items.filter((i) => i.unread).length;
+  const unreadCount = useMemo(
+    () => items.filter((n) => !n.read_at).length,
+    [items],
+  );
 
-  // Close on outside click.
+  /** Pretty badge label. Caps at 99+ per spec. */
+  const badgeLabel = useMemo(() => {
+    if (unreadCount === 0) return null;
+    return unreadCount > 99 ? '99+' : String(unreadCount);
+  }, [unreadCount]);
+
+  // ─── Fetch ────────────────────────────────────────────────────────────
+  const refetch = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      // RLS scopes to user's own rows — no need for an explicit user_id filter,
+      // but we add it anyway as defence-in-depth in case the policy ever
+      // gets dropped (the explicit filter is harmless under correct RLS).
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('id, user_id, type, title, body, link, read_at, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(FETCH_LIMIT);
+      if (!error && Array.isArray(data)) {
+        setItems(data as NotifRow[]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  // Initial fetch + on user change.
+  useEffect(() => {
+    if (!userId) {
+      setItems([]);
+      return;
+    }
+    refetch();
+  }, [userId, refetch]);
+
+  // Refresh on window focus — catches notifications fired while the tab
+  // was backgrounded and the realtime subscription either missed the
+  // INSERT or queued it.
+  useEffect(() => {
+    if (!userId) return;
+    const onFocus = () => refetch();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [userId, refetch]);
+
+  // Realtime subscription — INSERT events on this user's notifications.
+  // Falls back gracefully if the realtime channel can't subscribe (the
+  // initial fetch + window-focus refresh keep the bell roughly live).
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const row = payload.new as NotifRow | null;
+          if (!row) return;
+          setItems((prev) => {
+            // Skip if already present (defensive against double-INSERT).
+            if (prev.some((n) => n.id === row.id)) return prev;
+            // Prepend newest, keep cap at FETCH_LIMIT.
+            return [row, ...prev].slice(0, FETCH_LIMIT);
+          });
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const row = payload.new as NotifRow | null;
+          if (!row) return;
+          setItems((prev) =>
+            prev.map((n) => (n.id === row.id ? { ...n, ...row } : n)),
+          );
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  // ─── Outside-click + Esc to close ────────────────────────────────────
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
       if (!rootRef.current) return;
       if (!rootRef.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, [open]);
-
-  // Close on Escape.
-  useEffect(() => {
-    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
     };
+    document.addEventListener('mousedown', onClick);
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [open]);
 
-  const visible = items.filter((i) => {
-    if (tab === 'all') return true;
-    if (tab === 'missions') return i.kind === 'mission' || i.kind === 'insight';
-    if (tab === 'billing') return i.kind === 'billing' || i.kind === 'promo';
-    return true;
-  });
+  // ─── Mark as read ─────────────────────────────────────────────────────
+  const markRead = useCallback(
+    async (id: string) => {
+      // Optimistic update — UI flips immediately; if the write fails the
+      // realtime UPDATE event won't fire and the next refetch will sync.
+      setItems((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)),
+      );
+      try {
+        await supabase
+          .from('notifications')
+          .update({ read_at: new Date().toISOString() })
+          .eq('id', id)
+          .is('read_at', null);
+      } catch {
+        /* RLS-scoped update failure → next refetch will reconcile */
+      }
+    },
+    [],
+  );
 
-  const markAllRead = () => {
-    setItems((prev) => prev.map((i) => ({ ...i, unread: false })));
-  };
+  const markAllRead = useCallback(async () => {
+    if (!userId || unreadCount === 0) return;
+    const now = new Date().toISOString();
+    setItems((prev) => prev.map((n) => (n.read_at ? n : { ...n, read_at: now })));
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read_at: now })
+        .eq('user_id', userId)
+        .is('read_at', null);
+    } catch {
+      /* fall through — next refetch reconciles */
+    }
+  }, [userId, unreadCount]);
 
-  const handleItemClick = (item: NotifItem) => {
-    setItems((prev) =>
-      prev.map((i) => (i.id === item.id ? { ...i, unread: false } : i)),
-    );
-    setOpen(false);
-    if (item.href) navigate(item.href);
-  };
+  const handleItemClick = useCallback(
+    (item: NotifRow) => {
+      if (!item.read_at) {
+        markRead(item.id);
+      }
+      setOpen(false);
+      if (item.link) navigate(item.link);
+    },
+    [navigate, markRead],
+  );
 
+  // Don't render the bell at all if no user — AuthedTopNav only mounts on
+  // authed routes, but this is a defence in case it's ever placed elsewhere.
+  if (!userId) return null;
+
+  // ── Render ────────────────────────────────────────────────────────────
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -180,7 +320,7 @@ export function NotificationBell({ inDrawer = false }: NotificationBellProps) {
         ].join(' ')}
       >
         <Bell className="w-[18px] h-[18px]" />
-        {unreadCount > 0 && (
+        {badgeLabel !== null && (
           <span
             aria-hidden
             className={[
@@ -192,7 +332,7 @@ export function NotificationBell({ inDrawer = false }: NotificationBellProps) {
               'border-2 border-bg',
             ].join(' ')}
           >
-            {unreadCount}
+            {badgeLabel}
           </span>
         )}
       </button>
@@ -220,6 +360,9 @@ export function NotificationBell({ inDrawer = false }: NotificationBellProps) {
             <div className="flex items-center justify-between px-4 py-3 border-b border-b1">
               <span className="font-display font-black text-white text-[14px] tracking-tight-2">
                 Notifications
+                {loading && items.length === 0 ? (
+                  <span className="ml-2 font-body font-normal text-t4 text-[11px]">loading…</span>
+                ) : null}
               </span>
               <button
                 type="button"
@@ -237,109 +380,65 @@ export function NotificationBell({ inDrawer = false }: NotificationBellProps) {
               </button>
             </div>
 
-            {/* Tabs */}
-            <div
-              role="tablist"
-              aria-label="Notification filter"
-              className="flex items-center gap-1 px-2 pt-2"
-            >
-              {(
-                [
-                  ['all', 'All'],
-                  ['missions', 'Missions'],
-                  ['billing', 'Billing'],
-                ] as const
-              ).map(([id, label]) => {
-                const active = tab === id;
-                return (
-                  <button
-                    key={id}
-                    role="tab"
-                    aria-selected={active}
-                    type="button"
-                    onClick={() => setTab(id)}
-                    className={[
-                      'flex-1 h-8 rounded-md',
-                      'font-display font-bold text-[11px] uppercase tracking-widest',
-                      'transition-colors',
-                      active
-                        ? 'bg-lime/15 text-lime border border-lime/30'
-                        : 'text-t3 hover:text-t2 hover:bg-white/5 border border-transparent',
-                    ].join(' ')}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-
             {/* List */}
-            <ul className="max-h-[380px] overflow-y-auto py-1">
-              {visible.length === 0 ? (
+            <ul className="max-h-[420px] overflow-y-auto py-1">
+              {items.length === 0 ? (
                 <li className="px-4 py-10 text-center font-body text-[13px] text-t3">
-                  You&apos;re all caught up.
+                  {loading ? 'Loading…' : 'No notifications yet.'}
                 </li>
               ) : (
-                visible.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      onClick={() => handleItemClick(item)}
-                      className={[
-                        'w-full text-left flex items-start gap-3',
-                        'px-4 py-3 border-b border-b1/50 last:border-b-0',
-                        'hover:bg-white/[0.03] transition-colors',
-                        item.unread ? 'bg-lime/[0.02]' : '',
-                      ].join(' ')}
-                    >
-                      <span
+                items.map((item) => {
+                  const { Icon, badge } = visualFor(item.type);
+                  const unread = !item.read_at;
+                  return (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleItemClick(item)}
                         className={[
-                          'shrink-0 w-8 h-8 rounded-lg inline-flex items-center justify-center',
-                          'border text-[14px]',
-                          accentClass(item.accent),
+                          'w-full text-left flex items-start gap-3',
+                          'px-4 py-3 border-b border-b1/50 last:border-b-0',
+                          'hover:bg-white/[0.03] transition-colors',
+                          unread ? 'bg-lime/[0.02]' : '',
                         ].join(' ')}
-                        aria-hidden
                       >
-                        {item.icon}
-                      </span>
-                      <span className="flex-1 min-w-0">
-                        <span className="flex items-center justify-between gap-2">
-                          <span className="font-display font-bold text-white text-[13px] leading-tight truncate">
-                            {item.title}
+                        <span
+                          aria-hidden
+                          className={[
+                            'shrink-0 w-8 h-8 rounded-lg inline-flex items-center justify-center',
+                            'border',
+                            badge,
+                          ].join(' ')}
+                        >
+                          <Icon className="w-4 h-4" />
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="font-display font-bold text-white text-[13px] leading-tight truncate">
+                              {item.title || 'Notification'}
+                            </span>
+                            {unread && (
+                              <span
+                                aria-hidden
+                                className="shrink-0 w-1.5 h-1.5 rounded-full bg-lime"
+                              />
+                            )}
                           </span>
-                          {item.unread && (
-                            <span
-                              aria-hidden
-                              className="shrink-0 w-1.5 h-1.5 rounded-full bg-lime"
-                            />
-                          )}
+                          {item.body ? (
+                            <span className="block mt-0.5 font-body text-[12px] text-t3 leading-snug line-clamp-2">
+                              {item.body}
+                            </span>
+                          ) : null}
+                          <span className="block mt-1 font-display font-bold text-[10px] uppercase tracking-widest text-t4">
+                            {relativeTime(item.created_at)}
+                          </span>
                         </span>
-                        <span className="block mt-0.5 font-body text-[12px] text-t3 leading-snug">
-                          {item.body}
-                        </span>
-                        <span className="block mt-1 font-display font-bold text-[10px] uppercase tracking-widest text-t4">
-                          {item.timeLabel}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))
+                      </button>
+                    </li>
+                  );
+                })
               )}
             </ul>
-
-            {/* Footer */}
-            <div className="px-4 py-2.5 border-t border-b1 bg-bg3/40">
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  toast.info('Full notifications inbox coming soon.');
-                }}
-                className="w-full text-center font-display font-bold text-[11px] uppercase tracking-widest text-lime hover:text-lime/80 transition-colors"
-              >
-                View all notifications →
-              </button>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>
