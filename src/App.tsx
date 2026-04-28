@@ -25,6 +25,9 @@ const BlogPostPage        = lazy(() => import('./pages/BlogPostPage').then(m => 
 const ApiPage             = lazy(() => import('./pages/ApiPage').then(m => ({ default: m.ApiPage })));
 const HelpPage            = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const MissionSuccessPage  = lazy(() => import('./pages/MissionSuccessPage').then(m => ({ default: m.MissionSuccessPage })));
+// Pass 23 Bug 23.0e v2 — Stripe Checkout success/cancel landing pages.
+const PaymentSuccessPage  = lazy(() => import('./pages/PaymentSuccessPage').then(m => ({ default: m.PaymentSuccessPage })));
+const PaymentCancelPage   = lazy(() => import('./pages/PaymentCancelPage').then(m => ({ default: m.PaymentCancelPage })));
 const ResultsPage         = lazy(() => import('./pages/ResultsPage').then(m => ({ default: m.ResultsPage })));
 const MissionsListPage    = lazy(() => import('./pages/MissionsListPage').then(m => ({ default: m.MissionsListPage })));
 const SignInPage          = lazy(() => import('./pages/SignInPage').then(m => ({ default: m.SignInPage })));
@@ -105,6 +108,11 @@ function App() {
               <Route path="/mission/:missionId" element={<ActiveMissionPage />} />
               <Route path="/mission/:missionId/live" element={<ActiveMissionPage />} />
               <Route path="/mission-success" element={<MissionSuccessPage />} />
+
+              {/* Pass 23 Bug 23.0e v2 — Stripe Checkout redirect landing pages. */}
+              <Route path="/payment-success" element={<PaymentSuccessPage />} />
+              <Route path="/payment-cancel" element={<PaymentCancelPage />} />
+
               <Route path="/results/:missionId" element={<ResultsPage />} />
               <Route path="/results" element={<ResultsPage />} />
               <Route path="/profile" element={<ProfilePage />} />

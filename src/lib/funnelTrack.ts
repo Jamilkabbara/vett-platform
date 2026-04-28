@@ -45,6 +45,7 @@ export type FunnelEvent =
   | 'mission_setup_completed'
   | 'checkout_opened'
   | 'checkout_completed'
+  | 'checkout_canceled'   // Pass 23 Bug 23.0e v2 — user hit Stripe Checkout cancel
   | 'mission_paid'
   | 'mission_completed';
 

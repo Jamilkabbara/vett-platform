@@ -22,12 +22,18 @@
 import { api } from './apiClient';
 
 export type ClientStage =
+  // Legacy Elements stages — kept for type-safety on historic call sites
+  // and so old payment_errors rows keep their semantic group, even though
+  // the Elements integration was removed in Pass 23 Bug 23.0e v2.
   | 'client_confirm_card'
   | 'client_wallet_payment_method'
   | 'client_chat_overage'
   | 'client_element_not_ready'
   | 'client_element_mount_timeout'
-  | 'elements_provider_error';
+  | 'elements_provider_error'
+  // Pass 23 Bug 23.0e v2 — Checkout redirect flow stages.
+  | 'client_checkout_redirect_failed'   // window.location.href set / network error before redirect
+  | 'client_checkout_polling_timeout';  // /payment-success page gave up polling at 30s
 
 export interface PaymentErrorPayload {
   stage: ClientStage;

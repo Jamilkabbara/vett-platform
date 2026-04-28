@@ -4,8 +4,14 @@
  * Steps:
  *   1. Upload video or image to vett-creatives bucket
  *   2. Fill in brand context form
- *   3. Pay ($90 flat) — mission created + backend job triggered
- *   4. Redirect to /creative-results/:missionId
+ *   3. Pay ($90 flat) — mission created + Stripe Checkout redirect
+ *   4. Stripe Checkout returns to /payment-success which polls and then
+ *      navigates the user to /creative-results/:missionId once paid.
+ *
+ * Pass 23 Bug 23.0e v2 — was an inline VettingPaymentModal. The Bali
+ * Safari forensic forced a full migration to redirect-based Stripe
+ * Checkout, so the "Analyse This Creative" CTA now creates the mission,
+ * spins up a Checkout Session, and bounces the browser to Stripe.
  */
 
 import { useState } from 'react';
@@ -23,7 +29,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/ui/Logo';
 import { Button } from '../components/ui/Button';
 import { FileUpload, type UploadedFile } from '../components/shared/FileUpload';
-import { VettingPaymentModal } from '../components/dashboard/VettingPaymentModal';
+import { api } from '../lib/apiClient';
+import { logPaymentError } from '../lib/paymentErrorLogger';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -52,12 +59,13 @@ export function CreativeAttentionPage() {
   const [selectedEmotions, setSelectedEmotions] = useState<Set<Emotion>>(new Set());
   const [keyMessage,      setKeyMessage]      = useState('');
 
-  // Step 3 — Payment
-  const [missionId,       setMissionId]       = useState<string | null>(null);
-  const [showPayment,     setShowPayment]      = useState(false);
+  // Step 3 — Payment (Pass 23 Bug 23.0e v2: redirect to Stripe Checkout)
   const [creating,        setCreating]         = useState(false);
 
-  const step = !creative ? 1 : !showPayment ? 2 : 3;
+  // step 1 = upload, 2 = context form, 3 = checkout in flight (creating
+  // is true once the user hits the CTA; we never come back from Stripe
+  // Checkout to step 3 inline — the success URL handles that).
+  const step = !creative ? 1 : creating ? 3 : 2;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -82,6 +90,7 @@ export function CreativeAttentionPage() {
     if (!description.trim()) { toast.error('Please describe your creative'); return; }
 
     setCreating(true);
+    let createdMissionId: string | null = null;
     try {
       const { data: mission, error } = await supabase
         .from('missions')
@@ -113,16 +122,34 @@ export function CreativeAttentionPage() {
       if (error || !mission) {
         console.error('[CreativeAttention] mission insert failed', error);
         toast.error('Could not create mission — please try again');
+        setCreating(false);
         return;
       }
 
-      setMissionId(mission.id);
-      setShowPayment(true);
+      createdMissionId = mission.id;
+
+      // Pass 23 Bug 23.0e v2 — create a Stripe Checkout Session and redirect.
+      // PaymentSuccessPage detects goal_type='creative_attention' and
+      // routes the user to /creative-results/:missionId after payment.
+      const result = (await api.post('/api/payments/create-checkout-session', {
+        missionId: mission.id,
+      })) as { url?: string };
+
+      if (!result?.url) {
+        throw new Error('Server did not return a checkout URL');
+      }
+
+      window.location.href = result.url;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Error: ${msg}`);
-    } finally {
+      const msg = err instanceof Error ? err.message : 'Could not start checkout.';
+      toast.error(msg);
       setCreating(false);
+      logPaymentError({
+        stage:        'client_checkout_redirect_failed',
+        missionId:    createdMissionId,
+        errorCode:    'create_session_failed',
+        errorMessage: msg,
+      });
     }
   };
 
@@ -334,18 +361,9 @@ export function CreativeAttentionPage() {
         </div>
       </main>
 
-      {/* Payment Modal */}
-      {missionId && (
-        <VettingPaymentModal
-          isOpen={showPayment}
-          onClose={() => setShowPayment(false)}
-          onComplete={() => {}}
-          totalCost={CREATIVE_PRICE_USD}
-          respondentCount={1}
-          missionId={missionId}
-          successPath={`/creative-results/${missionId}`}
-        />
-      )}
+      {/* Pass 23 Bug 23.0e v2 — checkout is a redirect to Stripe Checkout,
+          so there's no inline modal to render. handleCreateMission above
+          drives the full create-mission → create-session → redirect flow. */}
     </div>
   );
 }
