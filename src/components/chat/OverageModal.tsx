@@ -106,6 +106,55 @@ function OverageForm({ sessionId, onClose, onSuccess }: Omit<OverageModalProps, 
   const [cardCvcReady,    setCardCvcReady]    = useState(false);
   const allElementsReady = cardNumberReady && cardExpiryReady && cardCvcReady;
 
+  // Pass 23 Bug 23.0a — Safari Element mount fix (parity with VettingPaymentModal).
+  const [shouldMountElement, setShouldMountElement] = useState(false);
+  const [mountTimedOut, setMountTimedOut] = useState(false);
+  const [mountAttempt, setMountAttempt] = useState(0);
+
+  useEffect(() => {
+    // OverageModal is always rendered with sessionId truthy when visible;
+    // gate the mount cycle on sessionId presence as the equivalent of isOpen.
+    if (!sessionId) {
+      setShouldMountElement(false);
+      setMountTimedOut(false);
+      return;
+    }
+    let cancelled = false;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled) setShouldMountElement(true);
+      });
+    });
+    return () => { cancelled = true; };
+  }, [sessionId, mountAttempt]);
+
+  useEffect(() => {
+    if (!shouldMountElement || allElementsReady) return;
+    const timeoutId = setTimeout(() => {
+      if (cardNumberReady && cardExpiryReady && cardCvcReady) return;
+      logPaymentError({
+        stage:                 'client_element_mount_timeout',
+        missionId:             null,
+        stripePaymentIntentId: null,
+        errorCode:             'element_ready_timeout_5s',
+        errorMessage:          `OverageModal: Stripe Element did not emit ready event within 5s. cardNumber=${cardNumberReady} expiry=${cardExpiryReady} cvc=${cardCvcReady}`,
+        amountCents:           500,
+        currency:              'usd',
+      });
+      setMountTimedOut(true);
+    }, 5000);
+    return () => clearTimeout(timeoutId);
+  }, [shouldMountElement, allElementsReady, cardNumberReady, cardExpiryReady, cardCvcReady, mountAttempt]);
+
+  const retryMount = () => {
+    setMountTimedOut(false);
+    setShouldMountElement(false);
+    setCardNumberReady(false);
+    setCardExpiryReady(false);
+    setCardCvcReady(false);
+    setMountAttempt(n => n + 1);
+  };
+
   useEffect(() => { setError(null); }, [sessionId]);
 
   async function handlePay() {
@@ -259,37 +308,66 @@ function OverageForm({ sessionId, onClose, onSuccess }: Omit<OverageModalProps, 
         </div>
       </div>
 
-      {/* Card fields */}
+      {/* Card fields — Pass 23 Bug 23.0a: gate behind shouldMountElement
+          and surface a Try Again on 5s mount timeout. */}
       <div className="p-6 space-y-3">
-        <div>
-          <label className="text-[11px] text-white/50 uppercase tracking-wider mb-1.5 block">Card number</label>
-          <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 focus-within:border-primary/40 transition-colors">
-            <CardNumberElement
-              options={CARD_STYLE}
-              onReady={() => setCardNumberReady(true)}
-            />
+        {mountTimedOut ? (
+          <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-4">
+            <p className="text-amber-200 text-sm leading-relaxed mb-3">
+              Card form took longer than expected to load.
+            </p>
+            <button
+              type="button"
+              onClick={retryMount}
+              className="w-full py-2 px-4 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-semibold text-sm transition-colors"
+            >
+              Try again
+            </button>
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[11px] text-white/50 uppercase tracking-wider mb-1.5 block">Expiry</label>
-            <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 focus-within:border-primary/40 transition-colors">
-              <CardExpiryElement
-                options={CARD_STYLE}
-                onReady={() => setCardExpiryReady(true)}
-              />
+        ) : (
+          <>
+            <div>
+              <label className="text-[11px] text-white/50 uppercase tracking-wider mb-1.5 block">Card number</label>
+              <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 focus-within:border-primary/40 transition-colors">
+                {shouldMountElement ? (
+                  <CardNumberElement
+                    key={`overage-num-${mountAttempt}`}
+                    options={CARD_STYLE}
+                    onReady={() => setCardNumberReady(true)}
+                  />
+                ) : (
+                  <div className="text-white/40 text-xs">Loading…</div>
+                )}
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="text-[11px] text-white/50 uppercase tracking-wider mb-1.5 block">CVC</label>
-            <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 focus-within:border-primary/40 transition-colors">
-              <CardCvcElement
-                options={CARD_STYLE}
-                onReady={() => setCardCvcReady(true)}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] text-white/50 uppercase tracking-wider mb-1.5 block">Expiry</label>
+                <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 focus-within:border-primary/40 transition-colors">
+                  {shouldMountElement && (
+                    <CardExpiryElement
+                      key={`overage-exp-${mountAttempt}`}
+                      options={CARD_STYLE}
+                      onReady={() => setCardExpiryReady(true)}
+                    />
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] text-white/50 uppercase tracking-wider mb-1.5 block">CVC</label>
+                <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 focus-within:border-primary/40 transition-colors">
+                  {shouldMountElement && (
+                    <CardCvcElement
+                      key={`overage-cvc-${mountAttempt}`}
+                      options={CARD_STYLE}
+                      onReady={() => setCardCvcReady(true)}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
         {error && (
           <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">

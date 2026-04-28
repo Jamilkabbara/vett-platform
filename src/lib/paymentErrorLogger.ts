@@ -6,13 +6,18 @@
  * a logging failure must never block the user-visible error path.
  *
  * Stage values match the backend's allowed set:
- *   'client_confirm_card'         — confirmCardPayment(card) catch
- *   'client_wallet_payment_method'— Apple/Google Pay PaymentRequest catch
- *   'client_chat_overage'         — OverageModal confirmCardPayment catch
- *   'client_element_not_ready'    — pre-flight Element-mounted guard tripped
+ *   'client_confirm_card'           — confirmCardPayment(card) catch
+ *   'client_wallet_payment_method'  — Apple/Google Pay PaymentRequest catch
+ *   'client_chat_overage'           — OverageModal confirmCardPayment catch
+ *   'client_element_not_ready'      — pre-flight Element-mounted guard tripped
+ *   'client_element_mount_timeout'  — Pass 23 Bug 23.0a: 5s ready-event timeout
+ *   'elements_provider_error'       — Pass 23 Bug 23.0c: Stripe Elements onError
  *
- * The backend route derives user_id from the auth middleware (not spoofable
- * from this body), and stamps user_agent from headers.
+ * Pass 23 Bug 23.0c — backend route is now anon-friendly. user_id is
+ * best-effort resolved from the Authorization Bearer JWT if present; null
+ * otherwise. This lets us capture mount failures that fire pre-auth or
+ * with stale sessions (the Bali Safari forensic showed the original logger
+ * silently 401-ed exactly there).
  */
 import { api } from './apiClient';
 
@@ -20,7 +25,9 @@ export type ClientStage =
   | 'client_confirm_card'
   | 'client_wallet_payment_method'
   | 'client_chat_overage'
-  | 'client_element_not_ready';
+  | 'client_element_not_ready'
+  | 'client_element_mount_timeout'
+  | 'elements_provider_error';
 
 export interface PaymentErrorPayload {
   stage: ClientStage;

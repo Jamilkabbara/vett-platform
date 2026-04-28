@@ -148,6 +148,70 @@ const PaymentForm = ({
   const [cardCvcReady, setCardCvcReady] = useState(false);
   const allElementsReady = cardNumberReady && cardExpiryReady && cardCvcReady;
 
+  // Pass 23 Bug 23.0a — Safari Element mount fix.
+  //
+  // Forensic from Bali Safari reproduction: Stripe iframes never fired their
+  // 'ready' events on Mac Safari, so allElementsReady stayed false forever
+  // and the Pay button never enabled. Two coordinated fixes:
+  //
+  //   1) Defer mounting CardElement until 2 RAFs after the modal opens.
+  //      Safari's iframe initialisation is sensitive to layout thrashing
+  //      during composite. Two requestAnimationFrame ticks ensure the
+  //      modal has fully painted before iframes mount.
+  //
+  //   2) 5-second ready-event timeout that fires the logger AND surfaces a
+  //      "Try again" button. Without this, mount failures had zero
+  //      telemetry (the Pass 22 logger only wrapped confirmCardPayment).
+  const [shouldMountElement, setShouldMountElement] = useState(false);
+  const [mountTimedOut, setMountTimedOut] = useState(false);
+  const [mountAttempt, setMountAttempt] = useState(0); // bumps on retry to remount
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShouldMountElement(false);
+      setMountTimedOut(false);
+      return;
+    }
+    let cancelled = false;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled) setShouldMountElement(true);
+      });
+    });
+    return () => { cancelled = true; };
+  }, [isOpen, mountAttempt]);
+
+  // 5s ready-event timeout. If iframes haven't fired ready, log + flip to
+  // mountTimedOut state which surfaces a "Try again" button.
+  useEffect(() => {
+    if (!shouldMountElement || allElementsReady) return;
+    const timeoutId = setTimeout(() => {
+      if (cardNumberReady && cardExpiryReady && cardCvcReady) return;
+      logPaymentError({
+        stage:                 'client_element_mount_timeout',
+        missionId:             missionId ?? null,
+        stripePaymentIntentId: null,
+        errorCode:             'element_ready_timeout_5s',
+        errorMessage:          `Stripe Element did not emit ready event within 5s. cardNumber=${cardNumberReady} expiry=${cardExpiryReady} cvc=${cardCvcReady}`,
+        amountCents:           Math.round(discountedPrice * 100),
+        currency:              'usd',
+      });
+      setMountTimedOut(true);
+    }, 5000);
+    return () => clearTimeout(timeoutId);
+  }, [shouldMountElement, allElementsReady, cardNumberReady, cardExpiryReady, cardCvcReady, missionId, discountedPrice, mountAttempt]);
+
+  // Try again on mount failure: unmount Elements, reset ready flags, then
+  // remount on the next defer cycle. Bumps mountAttempt as a key.
+  const retryMount = () => {
+    setMountTimedOut(false);
+    setShouldMountElement(false);
+    setCardNumberReady(false);
+    setCardExpiryReady(false);
+    setCardCvcReady(false);
+    setMountAttempt(n => n + 1);
+  };
+
   // Stable options object for PaymentRequestButtonElement — prevents the
   // "options.paymentRequest is not a mutable property" Stripe warning that
   // fires on every render when a fresh object literal is passed inline.
@@ -796,39 +860,73 @@ const PaymentForm = ({
                   </>
                 )}
 
-                {/* Card form — always shown as fallback */}
+                {/* Card form — always shown as fallback.
+                    Pass 23 Bug 23.0a: gate the actual <CardNumberElement>
+                    etc. behind shouldMountElement (2-frame rAF defer) so
+                    Safari iframes mount AFTER the modal has fully painted.
+                    On 5s timeout, surface a Try Again button that retries
+                    the mount cycle. */}
                 {discountedPrice > 0 && (
                   <div className="space-y-3 sm:space-y-4 mb-5">
-                    <div>
-                      <label className="block text-xs sm:text-sm text-white/70 mb-1.5">Card Number</label>
-                      <div className="relative px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
-                        <CardNumberElement
-                          options={CARD_ELEMENT_STYLE}
-                          onReady={() => setCardNumberReady(true)}
-                        />
-                        <CreditCard className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40 pointer-events-none" />
+                    {mountTimedOut ? (
+                      <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-4">
+                        <p className="text-amber-200 text-sm leading-relaxed mb-3">
+                          The card form is taking longer than expected to load.
+                          This sometimes happens on Safari with strict privacy settings.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={retryMount}
+                          className="w-full py-2 px-4 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-semibold text-sm transition-colors"
+                        >
+                          Try again
+                        </button>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs sm:text-sm text-white/70 mb-1.5">MM / YY</label>
-                        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
-                          <CardExpiryElement
-                            options={CARD_ELEMENT_STYLE}
-                            onReady={() => setCardExpiryReady(true)}
-                          />
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-xs sm:text-sm text-white/70 mb-1.5">Card Number</label>
+                          <div className="relative px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
+                            {shouldMountElement ? (
+                              <CardNumberElement
+                                key={`card-num-${mountAttempt}`}
+                                options={CARD_ELEMENT_STYLE}
+                                onReady={() => setCardNumberReady(true)}
+                              />
+                            ) : (
+                              <div className="text-white/40 text-xs">Loading…</div>
+                            )}
+                            <CreditCard className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40 pointer-events-none" />
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs sm:text-sm text-white/70 mb-1.5">CVC</label>
-                        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
-                          <CardCvcElement
-                            options={CARD_ELEMENT_STYLE}
-                            onReady={() => setCardCvcReady(true)}
-                          />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs sm:text-sm text-white/70 mb-1.5">MM / YY</label>
+                            <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
+                              {shouldMountElement && (
+                                <CardExpiryElement
+                                  key={`card-exp-${mountAttempt}`}
+                                  options={CARD_ELEMENT_STYLE}
+                                  onReady={() => setCardExpiryReady(true)}
+                                />
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs sm:text-sm text-white/70 mb-1.5">CVC</label>
+                            <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700/30 border border-white/20 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all">
+                              {shouldMountElement && (
+                                <CardCvcElement
+                                  key={`card-cvc-${mountAttempt}`}
+                                  options={CARD_ELEMENT_STYLE}
+                                  onReady={() => setCardCvcReady(true)}
+                                />
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </div>
                 )}
 
