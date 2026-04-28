@@ -412,6 +412,20 @@ export const MissionSetupPage = () => {
     inflightRef.current = true;
     setIsSubmitting(true);
 
+    // Pass 23 Bug 23.GOAL — Creative Attention has a dedicated setup flow at
+    // /creative-attention/new (upload + brand-context + flat-price checkout).
+    // The standard MissionSetupPage UI doesn't surface the upload, so finishing
+    // here would create a draft mission with no brief_attachment — runMission
+    // would reject it ("No creative file attached") on payment. Production
+    // forensic showed 2 such orphan drafts. Redirect users picking this goal
+    // to the dedicated flow instead of letting them stall.
+    if (missionGoal === 'creative_attention') {
+      inflightRef.current = false;
+      setIsSubmitting(false);
+      navigate('/creative-attention/new');
+      return;
+    }
+
     const goalLabel = selectedGoal?.label ?? missionGoal;
     const briefText = missionDescription.trim();
     const aiContext = `${goalLabel}: ${briefText}`;
