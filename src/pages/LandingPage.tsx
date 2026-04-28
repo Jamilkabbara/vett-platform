@@ -143,12 +143,13 @@ const TESTIMONIALS = [
   },
 ];
 
+// Pass 23 Bug 23.PRICING — four named tiers, anchored on respondent count.
+// Mirrors src/utils/pricingEngine.ts::VOLUME_TIERS exactly.
 const PRICING_TIERS = [
-  { range: '10–200', price: '$0.90', label: 'Starter tier' },
-  { range: '201–500', price: '$0.75', label: 'Growth tier' },
-  { range: '501–1,000', price: '$0.62', label: 'Scale tier' },
-  { range: '1,001–2,000', price: '$0.50', label: 'Volume tier' },
-  { range: '2,001–5,000', price: '$0.40', label: 'Enterprise tier' },
+  { range: '5 personas',   price: '$9',   label: 'Sniff Test', perResp: '$1.80/resp' },
+  { range: '10 personas',  price: '$35',  label: 'Validate',   perResp: '$3.50/resp' },
+  { range: '50 personas',  price: '$99',  label: 'Confidence', perResp: '$1.98/resp' },
+  { range: '250 personas', price: '$299', label: 'Deep Dive',  perResp: '$1.20/resp' },
 ];
 
 const HERO_PLACEHOLDERS = [
@@ -805,7 +806,7 @@ export function LandingPage() {
         </div>
       </Section>
 
-      {/* ── Pricing teaser (5 tiers) ───────────────────────── */}
+      {/* ── Pricing teaser (4 named tiers — Pass 23 Bug 23.PRICING) ─────── */}
       <Section bg="bg2">
         <SectionCenter>
           <SecTag>✦ Pricing</SecTag>
@@ -815,17 +816,17 @@ export function LandingPage() {
             <span className="text-lime">No subscriptions.</span>
           </SecH2>
           <SecSub>
-            Per-respondent pricing. The more you run, the less each respondent
-            costs. No seats, no retainers, no hidden fees.
+            Four packages. Pick the depth your question deserves &mdash; from a
+            5-persona sniff test for $9 up to a 250-persona deep dive for $299.
           </SecSub>
         </SectionCenter>
-        <div className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 max-w-[1100px] mx-auto">
+        <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-[1100px] mx-auto">
           {PRICING_TIERS.map((t) => (
             <KpiCard
-              key={t.range}
+              key={t.label}
               label={t.label}
               value={t.price}
-              sub={`${t.range} respondents`}
+              sub={`${t.range} · ${t.perResp}`}
               valueColor="lime"
             />
           ))}

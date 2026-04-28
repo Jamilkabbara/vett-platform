@@ -56,13 +56,16 @@ import { COUNTRIES } from '../../data/targetingOptions';
 // promo input handles validation on the hosted page.
 // ────────────────────────────────────────────────────────────────────
 
-const PRESETS = [100, 250, 500, 1000, 2500] as const;
-// Phase 4: floor dropped from 50 → 10 so lighter-weight tests can be run
-// without hitting the Pollfish minimum. Step matches the floor so users
-// always stop on a valid multiple of 10.
-const MIN_RESPONDENTS = 10;
+// Pass 23 Bug 23.PRICING — preset chips snap to the four named tier anchors
+// (Sniff Test 5, Validate 10, Confidence 50, Deep Dive 250). The slider still
+// allows arbitrary values between 5 and 5000; pricing applies the rate of
+// the tier the count falls in (see utils/pricingEngine.ts::getVolumeTier).
+const PRESETS = [5, 10, 50, 250] as const;
+const MIN_RESPONDENTS = 5;
 const MAX_RESPONDENTS = 5000;
-const RESPONDENT_STEP = 10;
+// Step of 5 lets the slider land on every anchor + interpolate between
+// them. Old step of 10 skipped 5 entirely.
+const RESPONDENT_STEP = 5;
 
 interface MissionControlPricingProps {
   respondentCount: number;

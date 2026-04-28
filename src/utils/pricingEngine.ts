@@ -1,6 +1,9 @@
 import { Question } from '../components/dashboard/QuestionEngine';
 import { TargetingConfig } from '../components/dashboard/TargetingEngine';
-import { COUNTRIES, BEHAVIORS } from '../data/targetingOptions';
+// COUNTRIES + BEHAVIORS were used by the prior country-tier price model;
+// Pass 23 Bug 23.PRICING moved to volume-tier (rate keyed on respondent
+// count). Imports are no longer needed here. Targeting filter costs are
+// computed from the targeting object directly below.
 
 export interface PricingBreakdown {
   base: number;
@@ -11,18 +14,27 @@ export interface PricingBreakdown {
   filterCount: number;
 }
 
-const getTierPrice = (tier: number): number => {
-  switch (tier) {
-    case 1:
-      return 3.50;
-    case 2:
-      return 2.75;
-    case 3:
-      return 1.90;
-    default:
-      return 1.90;
-  }
-};
+// Pass 23 Bug 23.PRICING — volume-tier ladder. Mirrors backend
+// pricingEngine.js::VOLUME_TIERS exactly. Country-tier removed from the
+// price calculation; rate is determined by respondent count.
+//
+// Sniff Test  — 5 resp     · $9    · $1.80/resp
+// Validate    — 10 resp    · $35   · $3.50/resp   (default first mission)
+// Confidence  — 50 resp    · $99   · $1.98/resp
+// Deep Dive   — 250 resp   · $299  · $1.20/resp   (also covers 250+)
+export const VOLUME_TIERS = [
+  { id: 'sniff_test', name: 'Sniff Test', anchorCount: 5,   maxCount: 5,   ratePerResp: 1.80, packagePrice: 9   },
+  { id: 'validate',   name: 'Validate',   anchorCount: 10,  maxCount: 10,  ratePerResp: 3.50, packagePrice: 35  },
+  { id: 'confidence', name: 'Confidence', anchorCount: 50,  maxCount: 50,  ratePerResp: 1.98, packagePrice: 99  },
+  { id: 'deep_dive',  name: 'Deep Dive',  anchorCount: 250, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 1.20, packagePrice: 299 },
+] as const;
+
+export type VolumeTier = (typeof VOLUME_TIERS)[number];
+
+export function getVolumeTier(respondentCount: number): VolumeTier {
+  const c = Math.max(0, Number(respondentCount) || 0);
+  return VOLUME_TIERS.find(t => c <= t.maxCount) ?? VOLUME_TIERS[VOLUME_TIERS.length - 1];
+}
 
 export const calculatePricing = (
   respondentCount: number,
@@ -30,18 +42,11 @@ export const calculatePricing = (
   targeting: TargetingConfig,
   isScreeningActive: boolean = false
 ): PricingBreakdown => {
-  let highestTier = 3;
-
-  if (targeting.geography.countries && targeting.geography.countries.length > 0) {
-    targeting.geography.countries.forEach(countryCode => {
-      const country = COUNTRIES.find(c => c.value === countryCode);
-      if (country && country.tier < highestTier) {
-        highestTier = country.tier;
-      }
-    });
-  }
-
-  const basePerRespondent = getTierPrice(highestTier);
+  // Country tier is no longer an input to the rate (Pass 23 Bug 23.PRICING).
+  // The targeting countries are still used downstream for filter-cost lookup
+  // and city-targeting flags below.
+  const tier = getVolumeTier(respondentCount);
+  const basePerRespondent = tier.ratePerResp;
   const base = respondentCount * basePerRespondent;
 
   const additionalQuestions = Math.max(0, questions.length - 5);
