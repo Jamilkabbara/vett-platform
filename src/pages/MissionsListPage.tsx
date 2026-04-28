@@ -5,6 +5,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Zap, Plus, BarChart3, Clock, Users, ArrowRight, Trash2, Eye, X, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/apiClient';
+import { VOLUME_TIERS } from '../utils/pricingEngine';
 import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
 
 // Pass 22 Bug 22.28 — lazy ChatWidget keeps react-markdown + chat deps
@@ -389,7 +390,7 @@ export const MissionsListPage = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
-              className="bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-3xl p-12 text-center backdrop-blur-xl"
+              className="bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-3xl p-8 md:p-12 text-center backdrop-blur-xl"
             >
               <div className="w-20 h-20 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-6 -rotate-3">
                 <Zap className="w-10 h-10 text-primary" fill="currentColor" />
@@ -397,8 +398,9 @@ export const MissionsListPage = () => {
               <h2 className="text-xl md:text-2xl font-bold text-white mb-4">
                 Ready to validate your idea?
               </h2>
-              <p className="text-white/60 text-lg mb-8 max-w-md mx-auto">
+              <p className="text-white/60 text-base md:text-lg mb-6 max-w-md mx-auto">
                 Launch your first mission to get real feedback from your target audience in hours, not weeks.
+                Pay per mission, refund the gap if we fall short.
               </p>
               <button
                 onClick={() => navigate('/setup')}
@@ -408,6 +410,50 @@ export const MissionsListPage = () => {
                 Create Your First Mission
                 <ArrowRight className="w-5 h-5" />
               </button>
+
+              {/* Pass 23 Bug 23.31 — tier-shortcut row. Lets new users see
+                  the 4 packages at a glance and click straight into setup
+                  with a tier in mind. Uses the canonical VOLUME_TIERS from
+                  pricingEngine so this stays in sync with the landing
+                  pricing teaser and the Mission Setup slider markers. */}
+              <div className="mt-10 pt-8 border-t border-white/10">
+                <p className="text-white/40 text-xs uppercase tracking-widest font-bold mb-4">
+                  Or pick a depth
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-2xl mx-auto">
+                  {VOLUME_TIERS.map((tier) => {
+                    const isPopular = tier.id === 'validate';
+                    return (
+                      <button
+                        key={tier.id}
+                        type="button"
+                        onClick={() => navigate('/setup')}
+                        className={[
+                          'relative flex flex-col items-center justify-center gap-1',
+                          'px-3 py-3 rounded-lg border transition-colors',
+                          'hover:border-primary/40 hover:bg-white/5',
+                          isPopular
+                            ? 'border-primary/40 bg-primary/5'
+                            : 'border-white/10 bg-white/[0.02]',
+                        ].join(' ')}
+                        aria-label={`Start a ${tier.name} mission (${tier.anchorCount} respondents, $${tier.packagePrice})`}
+                      >
+                        {isPopular && (
+                          <span
+                            aria-hidden
+                            className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-full bg-primary text-gray-900 text-[8px] font-black uppercase tracking-wider whitespace-nowrap"
+                          >
+                            Popular
+                          </span>
+                        )}
+                        <span className="text-white text-sm font-bold">{tier.name}</span>
+                        <span className="text-primary text-base font-black tabular-nums">${tier.packagePrice}</span>
+                        <span className="text-white/50 text-[10px]">{tier.anchorCount} respondents</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </motion.div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
