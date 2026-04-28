@@ -78,7 +78,7 @@ const RESEARCH_TYPES: Array<{
 const LOOP_STEPS = [
   { n: 1, title: 'Describe', body: 'Drop your research question in plain language. Upload an image or video for creative testing. No survey expertise needed.' },
   { n: 2, title: 'Strategy', body: "VETT's AI clarifies your brief with 3 quick questions, then builds a surgical survey with the right question types and targeting." },
-  { n: 3, title: 'Simulate', body: 'AI generates your exact respondent count — distinct personas with unique demographics, behaviours, and opinions. 100% always delivered.' },
+  { n: 3, title: 'Simulate', body: 'AI generates your exact respondent count: distinct personas with unique demographics, behaviours, and opinions. 100% always delivered.' },
   { n: 4, title: 'Insights', body: 'Charts, AI insights per question, executive summary, and two recommended next studies. PDF, PPT, and XLS included free.' },
 ];
 
@@ -91,13 +91,13 @@ const PERSONAS = [
 ];
 
 const AI_FEATS = [
-  { ico: '🎯', title: 'Distinct, realistic personas', body: 'Every respondent is unique — different background, opinion, and voice. No uniform answers, no synthetic patterns.' },
+  { ico: '🎯', title: 'Distinct, realistic personas', body: 'Every respondent is unique, with a different background, opinion, and voice. No uniform answers, no synthetic patterns.' },
   { ico: '📊', title: 'Statistically valid variance', body: 'Rating scales follow bell curves. NPS includes detractors, passives, and promoters in realistic market splits.' },
-  { ico: '⚡', title: '100% always delivered', body: 'You set the number — we deliver it. No drop-offs, no partial studies, no panel recruitment delays.' },
+  { ico: '⚡', title: '100% always delivered', body: 'You set the number, we deliver it. No drop-offs, no partial studies, no panel recruitment delays.' },
 ];
 
 const ATTENTION_FEATS = [
-  { ico: '😮', title: 'Emotion timeline', body: 'Joy, surprise, trust, anticipation, fear — mapped frame by frame across your video.' },
+  { ico: '😮', title: 'Emotion timeline', body: 'Joy, surprise, trust, anticipation, fear, all mapped frame by frame across your video.' },
   { ico: '👁️', title: 'Attention heatmap', body: 'Visual heatmap shows where attention peaks and drops across your image or video frames.' },
   { ico: '📈', title: 'Engagement score', body: 'Overall creative effectiveness score vs category benchmarks. Know if it works before it runs.' },
 ];
@@ -132,7 +132,7 @@ const TESTIMONIALS = [
     role: 'CMO, fintech startup · Dubai',
   },
   {
-    quote: "I've never had research turn around this fast. The AI personas feel startlingly real — opinions, hesitations, caveats and all.",
+    quote: "I've never had research turn around this fast. The AI personas feel startlingly real, with opinions, hesitations, caveats and all.",
     name: 'Ahmed M.',
     role: 'Founder · Riyadh',
   },
@@ -297,7 +297,7 @@ export function LandingPage() {
 
         <p className="mt-5 font-body text-t2 text-[clamp(15px,2vw,17px)] leading-[1.65] max-w-[560px]">
           Describe your research question in plain language. VETT&apos;s AI builds the
-          survey, simulates your exact audience, and delivers insights in minutes —
+          survey, simulates your exact audience, and delivers insights in minutes,
           not weeks.
         </p>
 
@@ -485,7 +485,7 @@ export function LandingPage() {
             signal you need to move fast.
           </SecSub>
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-[900px] mx-auto">
-            <StatCard n="$35" tail="" body="Starting price per mission — no subscriptions, ever." />
+            <StatCard n="$35" tail="" body="Starting price per mission. No subscriptions, ever." />
             <StatCard n="2" tail="min" body="Average time from launch to full research insights." />
             <StatCard n="150" tail="+" body="Markets worldwide. Any country, any city." />
           </div>
@@ -502,7 +502,7 @@ export function LandingPage() {
             <span className="text-lime">One platform.</span>
           </SecH2>
           <SecSub>
-            From product validation to brand lift studies — if you can ask the
+            From product validation to brand lift studies. If you can ask the
             question, VETT can research it. No methodology expertise required.
           </SecSub>
         </SectionCenter>
@@ -590,7 +590,7 @@ export function LandingPage() {
             <SecSub>
               VETT generates distinct, realistic consumer personas calibrated to
               your exact target audience. Each responds independently with
-              authentic variance — the same statistical patterns found in real
+              authentic variance, the same statistical patterns found in real
               market research.
             </SecSub>
             {/* mx-auto centers the feature block on mobile; lg:mx-0 removes on desktop */}
@@ -652,7 +652,7 @@ export function LandingPage() {
           {/* Pass 6C: text-center on mobile, left-align restored at lg (2-col) */}
           <div className="text-center lg:text-left">
             <div className="font-display font-bold text-[10px] text-pur uppercase tracking-[0.12em] mb-3">
-              ✦ New — Creative Attention Analysis
+              ✦ New: Creative Attention Analysis
             </div>
             <SecH2>
               Know how your creative
@@ -661,7 +661,7 @@ export function LandingPage() {
             </SecH2>
             <SecSub>
               Upload a video or image creative. VETT&apos;s AI simulates how your
-              target audience emotionally responds — second by second. Attention,
+              target audience emotionally responds, second by second. Attention,
               emotion, and engagement mapped before you spend on media.
             </SecSub>
             {/* mx-auto centers the feature block on mobile; lg:mx-0 removes on desktop */}
@@ -690,7 +690,7 @@ export function LandingPage() {
           </div>
           <Card className="!p-6 space-y-4">
             <div className="font-display font-bold text-[11px] text-t2 uppercase tracking-[0.08em]">
-              Emotion response — Meal Kit ad (30s)
+              Emotion response, Meal Kit ad (30s)
             </div>
             <div className="space-y-2.5">
               {EMOTION_BARS.map((b) => (
@@ -721,7 +721,7 @@ export function LandingPage() {
                 ))}
               </div>
               <p className="mt-2 font-body text-[10px] text-t3">
-                Frame-by-frame attention score — green = high attention · red = low
+                Frame-by-frame attention score (green = high attention · red = low)
               </p>
             </div>
 
@@ -750,7 +750,7 @@ export function LandingPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr>
-                <th className="font-display font-extrabold text-[13px] text-t2 border-b border-b1 px-3 md:px-5 py-3.5">—</th>
+                <th className="font-display font-extrabold text-[13px] text-t2 border-b border-b1 px-3 md:px-5 py-3.5"></th>
                 <th className="font-display font-extrabold text-[13px] text-lime bg-lime/[0.04] border-b border-b1 px-3 md:px-5 py-3.5">VETT</th>
                 <th className="font-display font-extrabold text-[13px] text-t2 border-b border-b1 px-3 md:px-5 py-3.5">Research Agency</th>
                 <th className="font-display font-extrabold text-[13px] text-t2 border-b border-b1 px-3 md:px-5 py-3.5">DIY Survey Tool</th>
@@ -785,7 +785,7 @@ export function LandingPage() {
           <SecH2>
             Research this fast feels
             <br />
-            <span className="text-lime">unfair — in the best way.</span>
+            <span className="text-lime">unfair, in the best way.</span>
           </SecH2>
         </SectionCenter>
         <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-3.5 max-w-[1100px] mx-auto">
@@ -816,7 +816,7 @@ export function LandingPage() {
           </SecH2>
           <SecSub>
             Per-respondent pricing. The more you run, the less each respondent
-            costs — no seats, no retainers, no hidden fees.
+            costs. No seats, no retainers, no hidden fees.
           </SecSub>
         </SectionCenter>
         <div className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 max-w-[1100px] mx-auto">
