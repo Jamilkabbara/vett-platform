@@ -21,9 +21,13 @@ import { COUNTRIES } from '../../data/targetingOptions';
  *     "coming soon" toast.  There is intentionally no client-side discount
  *     math until the server-side /api/pricing/quote endpoint exists (see
  *     inline TODO below).  Charging the user less than we display would be
- *     a trust-breaker; charging more would be illegal.
- *   · The VETT IT CTA reuses the existing `VettingPaymentModal` via a
- *     callback — we don't plumb Stripe Elements here.
+ *     a trust-breaker; charging more would be illegal. Pass 23 Bug 23.0e v2
+ *     note: Stripe Checkout has `allow_promotion_codes: true`, so users can
+ *     enter valid codes on Stripe's hosted page even though this Apply
+ *     button is still a stub here.
+ *   · The VETT IT CTA fires the parent's `onLaunch` callback, which now
+ *     creates a Stripe Checkout Session and redirects to checkout.stripe.com
+ *     (Pass 23 Bug 23.0e v2). Earlier passes used an inline VettingPaymentModal.
  *
  * ── Mobile (verified at 375px) ──────────────────────────────────
  *
@@ -41,17 +45,15 @@ import { COUNTRIES } from '../../data/targetingOptions';
  */
 
 // ────────────────────────────────────────────────────────────────────
-// TODO(server-side pricing): replace this file's client-side call into
-// `calculatePricing()` with a server-authoritative /api/pricing/quote
-// endpoint.  Until that exists:
-//   - the client call MUST remain the single source of truth for what we
-//     show the user and what we charge via Stripe (VettingPaymentModal
-//     receives the same `total`),
-//   - promo codes must not mutate `total` — they only render a visual
-//     "coming soon" toast.
-// Once the endpoint lands, swap `calculatePricing()` for a debounced fetch
-// and propagate the server's discount back into both the UI and
-// `VettingPaymentModal.totalCost`.
+// Server-side pricing is now authoritative at the moment of charge:
+// /api/payments/create-checkout-session computes the total from the
+// mission row and pricingEngine, so what Stripe charges is derived from
+// the same code path on the server. This client-side `calculatePricing()`
+// call is what the user sees in the panel, and DashboardPage calls
+// /api/pricing/quote on the Launch click to toast the user if the server
+// total has drifted from the client total before redirecting to Checkout.
+// The promo "Apply" button is still a UI stub — Stripe Checkout's own
+// promo input handles validation on the hosted page.
 // ────────────────────────────────────────────────────────────────────
 
 const PRESETS = [100, 250, 500, 1000, 2500] as const;

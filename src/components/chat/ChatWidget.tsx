@@ -9,7 +9,9 @@
  * Protocol:
  *   - On open: GET /api/chat/session?scope=...&missionId=... (creates if missing)
  *   - Send:    POST /api/chat/stream (SSE), falls back to /api/chat/message
- *   - Block:   server returns {blocked:true, reason:'quota_exceeded'} → open overage modal
+ *   - Block:   server returns {blocked:true, reason:'quota_exceeded'} → quota
+ *              flips to remaining=0 and the composer renders the "Get 50 more"
+ *              CTA, which redirects to Stripe Checkout (Pass 23 Bug 23.0e v2).
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -17,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Sparkles, Minimize2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '../../lib/supabase';
-import { OverageModal } from './OverageModal';
+import { logPaymentError } from '../../lib/paymentErrorLogger';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
 
@@ -106,7 +108,11 @@ export const ChatWidget = ({
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingDraft, setStreamingDraft] = useState('');
-  const [showOverage, setShowOverage] = useState(false);
+  // Pass 23 Bug 23.0e v2 — `purchasing` gates the buy-overage button so a
+  // double-click can't spawn two Checkout Sessions before the redirect
+  // takes hold. There is no inline modal anymore; we go straight to
+  // checkout.stripe.com and bounce back via /payment-success.
+  const [purchasing, setPurchasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -160,11 +166,13 @@ export const ChatWidget = ({
         body: JSON.stringify({ scope, missionId, message: trimmed }),
       });
 
-      // 402 = quota_exceeded (server-side guard)
+      // 402 = quota_exceeded (server-side guard). Pass 23 Bug 23.0e v2 —
+      // we no longer pop a modal; clamping quota.remaining to the server's
+      // value (typically 0) flips the composer into the "Get 50 more" CTA
+      // which redirects to Stripe Checkout when clicked.
       if (res.status === 402) {
         const blocked = await res.json();
         setQuota(blocked.quota || quota);
-        setShowOverage(true);
         setIsStreaming(false);
         // Remove optimistic user message so they don't see it "sent"
         setMessages((prev) => prev.slice(0, -1));
@@ -211,8 +219,9 @@ export const ChatWidget = ({
       }
 
       if (blocked) {
+        // See 402 comment above — quota update is what flips the composer
+        // into the buy-overage CTA. No modal anymore.
         setQuota(finalQuota || quota);
-        setShowOverage(true);
         setMessages((prev) => prev.slice(0, -1));
         setInput(trimmed);
       } else {
@@ -229,8 +238,9 @@ export const ChatWidget = ({
         });
         const data = await res.json();
         if (res.status === 402 || data.blocked) {
+          // See 402 comment above — no modal; the composer renders the
+          // buy-overage CTA when quota.remaining hits 0.
           setQuota(data.quota || quota);
-          setShowOverage(true);
           setMessages((prev) => prev.slice(0, -1));
           setInput(trimmed);
         } else if (!res.ok) {
@@ -255,10 +265,44 @@ export const ChatWidget = ({
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   }
 
-  async function handleOverageSuccess() {
-    setShowOverage(false);
-    // Reload the session to pick up the new purchased overage
-    await loadSession();
+  /**
+   * Pass 23 Bug 23.0e v2 — buy more chat messages.
+   *
+   * POSTs to /api/chat/buy-overage which creates a Stripe Checkout Session
+   * tagged with the chat session id (and a `?return=` so we land back
+   * here). Then redirects to checkout.stripe.com. /payment-success picks
+   * up the bounce, calls /api/chat/confirm-overage idempotently, and
+   * sends the user back via `return`. On reload, loadSession() picks up
+   * the new quota automatically.
+   */
+  async function buyOverage() {
+    if (purchasing || !sessionId) return;
+    setPurchasing(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/api/chat/buy-overage`, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({
+          sessionId,
+          returnUrl: window.location.href,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.url) {
+        throw new Error(data?.error || `buy-overage failed: ${res.status}`);
+      }
+      window.location.href = data.url;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not start checkout.';
+      setError(msg);
+      setPurchasing(false);
+      logPaymentError({
+        stage:        'client_checkout_redirect_failed',
+        errorCode:    'create_overage_session_failed',
+        errorMessage: msg,
+      });
+    }
   }
 
   // ─ Render ─────────────────────────────────────────────────
@@ -375,10 +419,11 @@ export const ChatWidget = ({
               </div>
             </div>
             <button
-              onClick={() => setShowOverage(true)}
-              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-primary text-black hover:bg-primary-hover transition-colors shrink-0"
+              onClick={buyOverage}
+              disabled={purchasing || !sessionId}
+              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-primary text-black hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
             >
-              Get 50 more · $5
+              {purchasing ? 'Redirecting…' : 'Get 50 more · $5'}
             </button>
           </div>
         ) : (
@@ -411,12 +456,6 @@ export const ChatWidget = ({
     <>
       {launcher}
       <AnimatePresence>{open && panel}</AnimatePresence>
-      <OverageModal
-        isOpen={showOverage}
-        sessionId={sessionId}
-        onClose={() => setShowOverage(false)}
-        onSuccess={handleOverageSuccess}
-      />
     </>
   );
 };

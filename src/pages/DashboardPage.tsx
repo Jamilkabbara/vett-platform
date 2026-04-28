@@ -5,7 +5,8 @@ import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthedTopNav } from '../components/layout/AuthedTopNav';
-import { VettingPaymentModal } from '../components/dashboard/VettingPaymentModal';
+import { api } from '../lib/apiClient';
+import { logPaymentError } from '../lib/paymentErrorLogger';
 import { MissionControlQuestions } from '../components/dashboard/MissionControlQuestions';
 import { MissionControlTargeting } from '../components/dashboard/MissionControlTargeting';
 import {
@@ -32,8 +33,14 @@ import type { SuggestedTargeting } from '../services/aiService';
  * Mission Control — /dashboard/:missionId.
  *
  * The redesigned, wired-up version: LEFT column owns the Question Engine
- * + Targeting accordion; RIGHT column is the sticky Pricing panel that
- * launches checkout through the shared VettingPaymentModal.
+ * + Targeting accordion; RIGHT column is the sticky Pricing panel.
+ *
+ * Pass 23 Bug 23.0e v2 — checkout is now a redirect to Stripe-hosted
+ * Checkout instead of an inline Elements modal. The Launch CTA POSTs to
+ * /api/payments/create-checkout-session and bounces the user to
+ * checkout.stripe.com; the user lands back on /payment-success or
+ * /payment-cancel which finishes the flow. No more inline iframe race
+ * conditions (Bali Safari forensic).
  *
  * Route: /dashboard/:missionId  (also mounted at /mission-control in
  * App.tsx as a legacy alias — that route has no :missionId and therefore
@@ -270,14 +277,9 @@ export const DashboardPage = () => {
   // questions that reference them, so we keep add/remove on the setup page.
   const [missionAssets, setMissionAssets] = useState<MissionAsset[]>([]);
 
-  // Payment modal — wired to the Pricing panel's VETT IT CTA (Commit 8).
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  // Phase 12 — server-verified total the Stripe modal actually charges.
-  // Starts null so the modal falls back to client `pricing.total`; on
-  // every Launch click we fetch /api/pricing/quote and snap the server
-  // value in if it diverges by >$0.01. Cleared on modal close so the
-  // next launch re-verifies with fresh targeting/question state.
-  const [verifiedTotal, setVerifiedTotal] = useState<number | null>(null);
+  // Pass 23 Bug 23.0e v2 — VETT IT CTA now creates a Stripe Checkout
+  // Session and redirects to checkout.stripe.com. We still gate the click
+  // with a "verifying" flag so a double-click doesn't spawn two sessions.
   const [verifyingQuote, setVerifyingQuote] = useState(false);
 
   // Debounce timer for question-list saves — one pending write at a time.
@@ -599,23 +601,27 @@ export const DashboardPage = () => {
   );
 
   /**
-   * Phase 12 — pre-checkout server quote verification. Runs on every
-   * VETT IT click. Reconciles the client total against /api/pricing/quote
-   * and, if the server disagrees by more than a penny, (a) toasts the
-   * corrected price so the user isn't surprised and (b) stores the server
-   * total in `verifiedTotal` so the Stripe modal charges the authoritative
-   * amount. Network failures/timeouts silently fall through to the client
-   * total so a Railway hiccup doesn't block checkout.
+   * Pass 23 Bug 23.0e v2 — Launch flow:
+   *   1) Verify the quote with /api/pricing/quote so we can toast if the
+   *      server total has drifted (e.g. promo expired, targeting changed).
+   *      This is unchanged from Phase 12 — surprise-free pricing matters.
+   *   2) POST /api/payments/create-checkout-session and redirect to
+   *      session.url. The server picks the authoritative total off the
+   *      mission row at session-creation time, so we don't pass a total
+   *      from the client — the user pays whatever the server says.
+   *   3) On any error before the redirect, log to payment_errors with
+   *      stage='client_checkout_redirect_failed' so we can see Stripe
+   *      outages in the same telemetry as backend errors.
    *
-   * The fetchServerQuote() helper has a 5s cache keyed on
-   * {missionId, respondentCount, questionCount, targeting, promoCode},
-   * so double-clicks cost one round-trip, not two.
+   * Network failures on the quote verify silently fall through to the
+   * checkout call — a Railway hiccup must not hold a paying user hostage.
    */
   const handleLaunch = useCallback(async () => {
     if (state.kind !== 'loaded' || !pricing) return;
     if (verifyingQuote) return;
 
     setVerifyingQuote(true);
+    const missionIdForCheckout = state.mission.id;
     try {
       const {
         data: { session },
@@ -627,7 +633,7 @@ export const DashboardPage = () => {
 
       const quote = await fetchServerQuote({
         apiUrl: API_URL,
-        missionId: state.mission.id,
+        missionId: missionIdForCheckout,
         respondentCount,
         questions,
         targeting,
@@ -641,24 +647,29 @@ export const DashboardPage = () => {
             `Price updated to $${quote.total.toFixed(2)} — our server recalculated your quote.`,
             { icon: '🔄', duration: 4000 },
           );
-          setVerifiedTotal(quote.total);
-        } else {
-          // Server agrees within tolerance — use client total so the UI
-          // doesn't visibly re-render by a rounding cent.
-          setVerifiedTotal(null);
         }
-      } else {
-        // Quote endpoint unreachable → proceed with client total. Not a
-        // blocker: we'd rather complete a legitimate checkout on a
-        // transient outage than hold the user hostage to Railway uptime.
-        setVerifiedTotal(null);
       }
+
+      // Create the Stripe Checkout Session and redirect.
+      const result = (await api.post('/api/payments/create-checkout-session', {
+        missionId: missionIdForCheckout,
+      })) as { url?: string };
+
+      if (!result?.url) {
+        throw new Error('Server did not return a checkout URL');
+      }
+
+      window.location.href = result.url;
     } catch (err) {
-      console.warn('[handleLaunch] quote verify failed', err);
-      setVerifiedTotal(null);
-    } finally {
+      const message = err instanceof Error ? err.message : 'Could not start checkout.';
+      toast.error(message);
       setVerifyingQuote(false);
-      setShowPaymentModal(true);
+      logPaymentError({
+        stage:        'client_checkout_redirect_failed',
+        missionId:    missionIdForCheckout,
+        errorCode:    'create_session_failed',
+        errorMessage: message,
+      });
     }
   }, [
     state,
@@ -864,25 +875,9 @@ export const DashboardPage = () => {
         />
       )}
 
-      {/* Payment modal — Stripe Elements + vetting animation live inside.
-          totalCost is the single live number from calculatePricing so what
-          the user sees in the panel ≡ what Stripe charges. */}
-      <VettingPaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => {
-          setShowPaymentModal(false);
-          setVerifiedTotal(null);
-        }}
-        onComplete={() => {
-          setShowPaymentModal(false);
-          setVerifiedTotal(null);
-        }}
-        totalCost={
-          verifiedTotal !== null ? verifiedTotal : pricing ? pricing.total : 0
-        }
-        respondentCount={respondentCount}
-        missionId={state.kind === 'loaded' ? state.mission.id : null}
-      />
+      {/* Pass 23 Bug 23.0e v2 — checkout is now a redirect to Stripe Checkout,
+          so there's no inline modal to mount. handleLaunch above is the
+          full flow. */}
     </div>
   );
 };
