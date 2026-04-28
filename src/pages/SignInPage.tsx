@@ -134,13 +134,19 @@ export function SignInPage() {
 
       // Non-blocking: create profile row + send welcome email via backend.
       // Matches the legacy AuthModal side effect.
+      //
+      // Pass 23 Bug 23.33 — backend /api/auth/register reads `name` (single
+      // string), not `firstName`/`lastName`. The mismatch meant the welcome
+      // email went out without a name interpolation. Building the combined
+      // name on this side preserves the existing two-input UX without
+      // changing the backend contract.
       if (data.user) {
+        const fullName = `${firstName} ${lastName}`.trim() || undefined;
         api
           .post('/api/auth/register', {
             userId: data.user.id,
             email: data.user.email,
-            firstName,
-            lastName,
+            name: fullName,
           })
           .catch(() => {});
       }
