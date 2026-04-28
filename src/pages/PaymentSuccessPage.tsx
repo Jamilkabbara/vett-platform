@@ -39,8 +39,15 @@ interface CheckoutSessionResponse {
   currency: string | null;
 }
 
+// Pass 23 Bug 23.0f — 30s was too tight on cold-start Railway deploys; the
+// Stripe webhook + runMission claim guard could land just past the timeout
+// and strand the user on "processing delayed" when in fact everything was
+// already running. Doubled to 60s (30 polls × 2s) which catches every
+// observed real-world arrival in production. Past 60s we fall through to
+// the 'delayed' state with manual CTAs to /dashboard/:missionId or
+// /missions — no auto-bounce to /setup or /landing on timeout.
 const POLL_INTERVAL_MS = 2000;
-const POLL_MAX_MS = 30_000;
+const POLL_MAX_MS = 60_000;
 
 export function PaymentSuccessPage() {
   const [searchParams] = useSearchParams();
@@ -204,8 +211,10 @@ export function PaymentSuccessPage() {
             </div>
             <h1 className="text-white text-xl font-black mb-2">Payment received</h1>
             <p className="text-white/70 text-sm leading-relaxed mb-4">
-              Your mission is queued but processing is taking longer than expected.
-              We will email you when the results are ready.
+              Your mission is paid and queued. Processing is taking a little
+              longer than usual to start. You can open the mission now to
+              watch progress live, or we&rsquo;ll email you when the report
+              is ready.
             </p>
             <div className="flex flex-col gap-2">
               {missionId && (
