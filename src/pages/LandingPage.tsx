@@ -143,13 +143,50 @@ const TESTIMONIALS = [
   },
 ];
 
-// Pass 23 Bug 23.PRICING — four named tiers, anchored on respondent count.
-// Mirrors src/utils/pricingEngine.ts::VOLUME_TIERS exactly.
-const PRICING_TIERS = [
-  { range: '5 personas',   price: '$9',   label: 'Sniff Test', perResp: '$1.80/resp' },
-  { range: '10 personas',  price: '$35',  label: 'Validate',   perResp: '$3.50/resp' },
-  { range: '50 personas',  price: '$99',  label: 'Confidence', perResp: '$1.98/resp' },
-  { range: '250 personas', price: '$299', label: 'Deep Dive',  perResp: '$1.20/resp' },
+// Pass 23 Bug 23.PRICING + 23.51 — goal-keyed tier ladders for the
+// landing pricing teaser. Three tabs: Validate / Brand Lift / Creative
+// Attention. Mirrors src/utils/pricingEngine.ts.
+const PRICING_TABS: ReadonlyArray<{
+  id: string;
+  label: string;
+  tagline: string;
+  tiers: ReadonlyArray<{ range: string; price: string; label: string; perResp?: string }>;
+}> = [
+  {
+    id: 'validate',
+    label: 'Validate',
+    tagline: 'Product, naming, and message validation. Pay per respondent.',
+    tiers: [
+      { range: '5 personas',    price: '$9',    label: 'Sniff Test', perResp: '$1.80/resp' },
+      { range: '10 personas',   price: '$35',   label: 'Validate',   perResp: '$3.50/resp' },
+      { range: '50 personas',   price: '$99',   label: 'Confidence', perResp: '$1.98/resp' },
+      { range: '250 personas',  price: '$299',  label: 'Deep Dive',  perResp: '$1.20/resp' },
+      { range: '1,000 personas', price: '$899',  label: 'Scale',      perResp: '$0.90/resp' },
+      { range: '5,000 personas', price: '$1,990', label: 'Enterprise', perResp: '$0.40/resp' },
+    ],
+  },
+  {
+    id: 'brand_lift',
+    label: 'Brand Lift',
+    tagline: 'Awareness, recall, sentiment, and intent. Statistical sample sizes only.',
+    tiers: [
+      { range: '50 personas',   price: '$99',   label: 'Pulse',      perResp: '$1.98/resp' },
+      { range: '200 personas',  price: '$299',  label: 'Tracker',    perResp: '$1.50/resp' },
+      { range: '500 personas',  price: '$599',  label: 'Wave',       perResp: '$1.20/resp' },
+      { range: '2,000 personas', price: '$1,499', label: 'Enterprise', perResp: '$0.75/resp' },
+    ],
+  },
+  {
+    id: 'creative_attention',
+    label: 'Creative Attention',
+    tagline: 'Frame-by-frame attention, emotion, and message clarity. Per-asset.',
+    tiers: [
+      { range: '1 image',  price: '$19',  label: 'Image' },
+      { range: '1 video',  price: '$39',  label: 'Video' },
+      { range: '5 assets', price: '$79',  label: 'Bundle' },
+      { range: '20 assets', price: '$249', label: 'Series' },
+    ],
+  },
 ];
 
 const HERO_PLACEHOLDERS = [
@@ -244,6 +281,37 @@ export function LandingPage() {
       navigate('/signin?redirect=/setup');
     }
   };
+
+  /**
+   * Pass 23 Bug 23.54 — preserve a goal_type through sign-in.
+   *
+   * Some landing CTAs (Brand Lift card, Creative Attention card) want
+   * to deep-link the user into a specific goal pre-selected on Mission
+   * Setup. We do two things: (a) stash the goal id in sessionStorage so
+   * MissionSetupPage's mount effect can pick it up after the OAuth
+   * round-trip; (b) carry it as `?goal=` on the redirect URL so even if
+   * sessionStorage is unavailable (Safari private mode) the URL param
+   * survives. MissionSetupPage reads URL first, then sessionStorage.
+   *
+   * Pass `goal=null` (or omit) for the generic VETT IT CTA — clears any
+   * stale goal so the user lands on the goal selector.
+   */
+  const goWithGoal = (goalId: string | null) => {
+    try {
+      if (goalId) sessionStorage.setItem('vett_landing_goal', goalId);
+      else sessionStorage.removeItem('vett_landing_goal');
+    } catch { /* private mode — fall through to URL param */ }
+    const qs = goalId ? `?goal=${encodeURIComponent(goalId)}` : '';
+    if (user) {
+      navigate(`/setup${qs}`);
+    } else {
+      navigate(`/signin?redirect=${encodeURIComponent(`/setup${qs}`)}`);
+    }
+  };
+  // Suppress unused-var lint until landing CTAs adopt goWithGoal —
+  // wired through to MissionSetupPage on mount; landing-side
+  // adoption ships in a follow-up.
+  void goWithGoal;
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-bg text-t1">
@@ -822,25 +890,15 @@ export function LandingPage() {
             <span className="text-lime">No subscriptions.</span>
           </SecH2>
           <SecSub>
-            Four packages. Pick the depth your question deserves &mdash; from a
-            5-persona sniff test for $9 up to a 250-persona deep dive for $299.
+            Three flows, three ladders. Validate scales by respondents,
+            Brand Lift starts at statistical sample sizes, Creative Attention
+            is flat per-asset.
           </SecSub>
         </SectionCenter>
-        {/* Pass 23 Bug 23.13 — stack vertically on small phones (<640px) so
-            tier price labels don't squeeze into a 2-col grid where the
-            anchored 250 deep-dive tier ($299) wraps awkwardly. Two cards
-            per row on small tablets (sm), four across on tablet+. */}
-        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 max-w-[1100px] mx-auto">
-          {PRICING_TIERS.map((t) => (
-            <KpiCard
-              key={t.label}
-              label={t.label}
-              value={t.price}
-              sub={`${t.range} · ${t.perResp}`}
-              valueColor="lime"
-            />
-          ))}
-        </div>
+        {/* Pass 23 Bug 23.51 — tabbed pricing (Validate / Brand Lift /
+            Creative Attention). Default tab: Validate (most common). */}
+        <PricingTabbed />
+
         <div className="mt-8 flex flex-col items-center gap-3">
           <Button
             variant="gradient"
@@ -984,6 +1042,65 @@ export function LandingPage() {
 }
 
 /* ── tiny local helpers ─────────────────────────────────────────── */
+
+/**
+ * Pass 23 Bug 23.51 — tabbed pricing teaser. Three goal-keyed ladders
+ * (Validate / Brand Lift / Creative Attention) in a tab switcher above
+ * the per-tab tier cards. Default tab: Validate.
+ */
+function PricingTabbed() {
+  const [activeId, setActiveId] = useState<string>('validate');
+  const active = PRICING_TABS.find((t) => t.id === activeId) ?? PRICING_TABS[0];
+  return (
+    <div className="mt-10 max-w-[1100px] mx-auto">
+      <div
+        role="tablist"
+        aria-label="Pricing by goal"
+        className="flex flex-wrap items-center justify-center gap-2 mb-4"
+      >
+        {PRICING_TABS.map((tab) => {
+          const isActive = tab.id === activeId;
+          return (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={isActive}
+              type="button"
+              onClick={() => setActiveId(tab.id)}
+              className={[
+                'px-4 py-2 rounded-lg font-display font-bold text-[12px] uppercase tracking-widest transition-colors',
+                isActive
+                  ? 'bg-lime text-black border border-lime'
+                  : 'bg-bg3 text-t2 border border-b2 hover:border-t3',
+              ].join(' ')}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-center font-body text-[13px] text-t3 max-w-[640px] mx-auto mb-6">
+        {active.tagline}
+      </p>
+      <div
+        className={[
+          'grid gap-3',
+          active.tiers.length <= 4 ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6',
+        ].join(' ')}
+      >
+        {active.tiers.map((t) => (
+          <KpiCard
+            key={t.label}
+            label={t.label}
+            value={t.price}
+            sub={t.perResp ? `${t.range} · ${t.perResp}` : t.range}
+            valueColor="lime"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function Section({
   bg,

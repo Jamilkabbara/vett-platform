@@ -207,7 +207,7 @@ export function CreativeAttentionPage() {
               <span className="text-purple-400">AI maps attention frame by frame.</span>
             </h1>
             <p className="mt-3 text-[var(--t2)] text-sm leading-relaxed max-w-lg">
-              Upload a video or image. Claude AI analyzes every frame for emotion,
+              Upload a video or image. Our AI analyzes every frame for emotion,
               attention hotspots, and engagement — then synthesizes executive insights.
             </p>
           </div>

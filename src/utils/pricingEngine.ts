@@ -14,22 +14,54 @@ export interface PricingBreakdown {
   filterCount: number;
 }
 
-// Pass 23 Bug 23.PRICING — volume-tier ladder. Mirrors backend
-// pricingEngine.js::VOLUME_TIERS exactly. Country-tier removed from the
-// price calculation; rate is determined by respondent count.
+// Pass 23 Bug 23.PRICING + 23.51 — goal-type-keyed tier ladders.
+// Mirrors backend pricingEngine.js exactly.
 //
-// Sniff Test  — 5 resp     · $9    · $1.80/resp
-// Validate    — 10 resp    · $35   · $3.50/resp   (default first mission)
-// Confidence  — 50 resp    · $99   · $1.98/resp
-// Deep Dive   — 250 resp   · $299  · $1.20/resp   (also covers 250+)
+// Default ladder (validate / naming_messaging / marketing):
+//   Sniff Test  5    $9    $1.80/resp   Validate   10   $35   $3.50/resp
+//   Confidence  50   $99   $1.98/resp   Deep Dive  250  $299  $1.20/resp
+//   Scale       1000 $899  $0.90/resp   Enterprise 5000 $1990 $0.40/resp
+//
+// Brand Lift (statistical-sample sizes only — no Sniff/Validate):
+//   Pulse 50 $99 · Tracker 200 $299 · Wave 500 $599 · Enterprise 2000 $1499
+//
+// Creative Attention (flat per-asset, NOT per-respondent):
+//   Image 1 $19 · Video 1 $39 · Bundle 5 $79 · Series 20 $249
 export const VOLUME_TIERS = [
-  { id: 'sniff_test', name: 'Sniff Test', anchorCount: 5,   maxCount: 5,   ratePerResp: 1.80, packagePrice: 9   },
-  { id: 'validate',   name: 'Validate',   anchorCount: 10,  maxCount: 10,  ratePerResp: 3.50, packagePrice: 35  },
-  { id: 'confidence', name: 'Confidence', anchorCount: 50,  maxCount: 50,  ratePerResp: 1.98, packagePrice: 99  },
-  { id: 'deep_dive',  name: 'Deep Dive',  anchorCount: 250, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 1.20, packagePrice: 299 },
+  { id: 'sniff_test', name: 'Sniff Test', anchorCount: 5,    maxCount: 5,    ratePerResp: 1.80, packagePrice: 9    },
+  { id: 'validate',   name: 'Validate',   anchorCount: 10,   maxCount: 10,   ratePerResp: 3.50, packagePrice: 35   },
+  { id: 'confidence', name: 'Confidence', anchorCount: 50,   maxCount: 50,   ratePerResp: 1.98, packagePrice: 99   },
+  { id: 'deep_dive',  name: 'Deep Dive',  anchorCount: 250,  maxCount: 250,  ratePerResp: 1.20, packagePrice: 299  },
+  { id: 'scale',      name: 'Scale',      anchorCount: 1000, maxCount: 1000, ratePerResp: 0.90, packagePrice: 899  },
+  { id: 'enterprise', name: 'Enterprise', anchorCount: 5000, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 0.40, packagePrice: 1990 },
+] as const;
+
+export const BRAND_LIFT_TIERS = [
+  { id: 'pulse',      name: 'Pulse',      anchorCount: 50,   maxCount: 50,   ratePerResp: 1.98, packagePrice: 99,   minRespondents: 50 },
+  { id: 'tracker',    name: 'Tracker',    anchorCount: 200,  maxCount: 200,  ratePerResp: 1.50, packagePrice: 299,  minRespondents: 50 },
+  { id: 'wave',       name: 'Wave',       anchorCount: 500,  maxCount: 500,  ratePerResp: 1.20, packagePrice: 599,  minRespondents: 50 },
+  { id: 'enterprise', name: 'Enterprise', anchorCount: 2000, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 0.75, packagePrice: 1499, minRespondents: 50 },
+] as const;
+
+export const CREATIVE_ATTENTION_TIERS = [
+  { id: 'image',  name: 'Image',  assetCount: 1,  packagePrice: 19,  mediaType: 'image'  },
+  { id: 'video',  name: 'Video',  assetCount: 1,  packagePrice: 39,  mediaType: 'video'  },
+  { id: 'bundle', name: 'Bundle', assetCount: 5,  packagePrice: 79,  mediaType: 'bundle' },
+  { id: 'series', name: 'Series', assetCount: 20, packagePrice: 249, mediaType: 'series' },
 ] as const;
 
 export type VolumeTier = (typeof VOLUME_TIERS)[number];
+export type BrandLiftTier = (typeof BRAND_LIFT_TIERS)[number];
+export type CreativeAttentionTier = (typeof CREATIVE_ATTENTION_TIERS)[number];
+export type AnyTier = VolumeTier | BrandLiftTier | CreativeAttentionTier;
+
+export function getPricingForGoalType(goalType: string | null | undefined): readonly AnyTier[] {
+  switch (goalType) {
+    case 'brand_lift':         return BRAND_LIFT_TIERS;
+    case 'creative_attention': return CREATIVE_ATTENTION_TIERS;
+    default:                   return VOLUME_TIERS;
+  }
+}
 
 export function getVolumeTier(respondentCount: number): VolumeTier {
   const c = Math.max(0, Number(respondentCount) || 0);
