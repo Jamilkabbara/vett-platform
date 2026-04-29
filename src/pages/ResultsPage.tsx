@@ -909,7 +909,15 @@ export const ResultsPage = () => {
         });
       }
     });
-    const csv = rows.map((r) => r.join(',')).join('\n');
+    // Pass 23 Bug 23.62 — UTF-8 BOM (﻿) + RFC-4180 \r\n line endings.
+    //   - BOM: Excel for Mac and Windows both auto-detect encoding from
+    //     the BOM. Without it, Arabic / accented chars (Lebanese mission
+    //     verbatims, French/Spanish persona names) open as mojibake. The
+    //     BOM is invisible to RFC-4180 parsers and standard tooling.
+    //   - \r\n: RFC 4180 §2.1 mandates CRLF between records. Excel for
+    //     Windows tolerates \n but Excel for Mac and some legacy parsers
+    //     break on it; \r\n is the universally-safe choice.
+    const csv = '﻿' + rows.map((r) => r.join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
