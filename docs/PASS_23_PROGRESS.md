@@ -34,6 +34,38 @@
 | **A9** admin completeness | `e4f7059` | `c022086` | Bug 23.29 admin revenue cache fresh; 23.30 Mission Type Mix arithmetic; 23.34 already in place; 23.27 deferred (UX); 23.28 audited clean; 3 cleanups shipped (notifications routes deleted, preconnect strip merged, missions.tier confirmed). |
 | **23.55** collapse Creative Attention flow | — | — | ✅ **CLOSED — already-satisfied.** Existing `/creative-attention/new` is already a single-page upload + brand-context + flat-price form. Spec was based on misobservation of the live UX. Keep dedicated route (different pricing model — per-asset vs per-respondent). No code change. |
 | **23.56** storage-model note | — | — | **Forensic clarification (not a bug).** Bug 23.56 categories live as a top-level `category` field on each question object inside the `missions.questions` JSONB array. There is **no separate `mission_questions` table** in this schema — questions are denormalised into `missions.questions` (per Pass 21+). To query for brand_lift questions by category: `SELECT m.id, q.* FROM missions m, jsonb_array_elements(m.questions) q WHERE m.goal_type='brand_lift' AND q->>'category' = 'purchase_intent'`. Frontend reads via `mission.questions[i].category`. |
+| **23.79** vision API MIME hardcoded | `6210a58` → merged `86751ae` | `7bf5880` | Backend `creativeAttention.js` was sending `media_type: 'image/jpeg'` regardless of actual upload. WebP uploads (Nike Air Jordan, mission `dcbc3b6f`, $19) hard-failed on Anthropic Vision call → mission failed → user got nothing. Fix: magic-byte sniffer (`detectImageMime`) for JPEG/PNG/GIF/WebP; threaded mediaType through `analyzeFrame` and `analyzeCreative`. Frontend defensive: `CreativeAttentionPage` now reads file's first 12 bytes via `arrayBuffer()` after upload, deletes orphan blob from storage if magic bytes don't match supported formats — bad files never reach mission INSERT. |
+| **23.80** auto-refund on hard pipeline failure | `6210a58` → merged `86751ae` | `e5c78c4` | `runMission` catch block now: (1) eligibility check (paid + no prior partial_refund + has PI), (2) idempotent Stripe refund (`auto_refund:${missionId}`), (3) persist `partial_refund_id` + `partial_refund_amount_cents`, (4) admin_alert (`mission_pipeline_failure`, severity=critical), (5) user notification + new `sendMissionFailedRefundEmail` with branched copy. New `friendlyFailureReason` helper sanitizes raw errors. Frontend: new `MissionFailureCard` shared component, branched messaging (refund/no-refund), stack-trace detection. ResultsPage extends `missionFailed` state with refund metadata + replaces bare-bones failure block with the card. DashboardPage redirects failed missions to `/results/:id` (alongside existing 'completed' redirect). MissionsListPage red status pill + "Failed" label + correct route. |
+| **23.77 cleanup** em-dash sweep (final) | — | `bf77e39` | Final pass replacing Unicode em-dash (—) with ASCII hyphen-space ( - ) across 19 files: toasts, aria-labels, document.title, JSX prose, marketing copy. Skipped: single-em-dash placeholders for empty cells (admin tables); comments. Note: legacy DB rows whose `mission.title` was created before the colon fix may still render em-dashes — that's a backfill UPDATE, not a code fix. |
+
+---
+
+## Mission `dcbc3b6f` — backfill placeholder
+
+The Nike Air Jordan WebP mission (`dcbc3b6f`) is the canonical Bug 23.79 + 23.80 incident:
+
+- **Charged:** $19 (paid, `latest_payment_intent_id` populated)
+- **Status:** `failed` (after Bug 23.79 fix went out, was previously stuck in `pending`)
+- **`partial_refund_id`:** `NULL` — pre-dates Bug 23.80 auto-refund; refund must be issued **manually in Stripe** by Jamil, then this column backfilled.
+- **`partial_refund_amount_cents`:** `NULL` — same.
+- **`failure_reason`:** should read something like "Anthropic Vision API rejected media type" or "Unsupported image format" once status flip is applied.
+
+### Backfill SQL (run after Stripe refund completes)
+
+```sql
+UPDATE missions
+SET
+  partial_refund_id           = '<re_xxx_from_stripe>',
+  partial_refund_amount_cents = 1900,  -- the original $19 charge
+  failure_reason              = 'Anthropic Vision API hard-failed on WebP upload (pre-23.79 fix)'
+WHERE id = 'dcbc3b6f-...';
+```
+
+### Sanity check before running
+
+- Confirm Stripe refund object's `payment_intent` matches `missions.latest_payment_intent_id` for this row.
+- Confirm `paid_amount_cents` equals 1900 (or whatever Stripe says) — if not, backfill the actual paid amount, not 1900 hardcoded.
+- After UPDATE, the user (Jamil) should see the auto-refund failure card on `/results/dcbc3b6f-...` with the "We've automatically refunded $19.00" branch.
 
 ---
 
