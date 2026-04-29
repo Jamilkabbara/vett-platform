@@ -4,7 +4,7 @@
  * Steps:
  *   1. Upload video or image to vett-creatives bucket
  *   2. Fill in brand context form
- *   3. Pay ($90 flat) — mission created + Stripe Checkout redirect
+ *   3. Pay (Image $19 / Video $39) — mission created + Stripe Checkout redirect
  *   4. Stripe Checkout returns to /payment-success which polls and then
  *      navigates the user to /creative-results/:missionId once paid.
  *
@@ -12,9 +12,17 @@
  * Safari forensic forced a full migration to redirect-based Stripe
  * Checkout, so the "Analyse This Creative" CTA now creates the mission,
  * spins up a Checkout Session, and bounces the browser to Stripe.
+ *
+ * Pass 23 Bug 23.61 — INSERT now stamps `tier` + `media_type` derived
+ * from the uploaded asset's mimeType so the backend's pricing engine
+ * routes to the Creative Attention ladder ($19 / $39 / $79 / $249) and
+ * not the default Volume ladder Sniff Test rate ($1.80). The forensic:
+ * mission a24d3776 paid $1.80 instead of $19 because the INSERT was
+ * leaving tier+media_type NULL and the backend was reading
+ * respondent_count=1 against the default ladder.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -34,7 +42,12 @@ import { logPaymentError } from '../lib/paymentErrorLogger';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CREATIVE_PRICE_USD = 90;
+// Pass 23 Bug 23.51 + 23.61 — Creative Attention tier prices live as the
+// canonical source of truth in src/utils/pricingEngine.ts::CREATIVE_ATTENTION_TIERS.
+// Mirroring the image/video flat prices here so the UI doesn't import a
+// constant just to display the badge — frontend is the only caller.
+const CA_PRICE_IMAGE_USD = 19;
+const CA_PRICE_VIDEO_USD = 39;
 
 const EMOTION_OPTIONS = [
   'Joy', 'Trust', 'Surprise', 'Anticipation',
@@ -48,6 +61,15 @@ type Emotion = (typeof EMOTION_OPTIONS)[number];
 export function CreativeAttentionPage() {
   const navigate  = useNavigate();
   const { user }  = useAuth();
+
+  // Pass 23 Bug 23.63 — clear the landing-side goal cookie on mount so a
+  // stale 'creative_attention' value doesn't bleed into the next visit
+  // after the user finishes here. URL ?goal= is also benign on this
+  // route — we don't read it (this page is implicitly the
+  // creative_attention destination).
+  useEffect(() => {
+    try { sessionStorage.removeItem('vett_landing_goal'); } catch { /* no-op */ }
+  }, []);
 
   // Step 1 — Upload
   const [creative, setCreative] = useState<UploadedFile | null>(null);
@@ -92,6 +114,14 @@ export function CreativeAttentionPage() {
     setCreating(true);
     let createdMissionId: string | null = null;
     try {
+      // Pass 23 Bug 23.61 — derive tier + media_type from the upload
+      // mime so the backend pricing engine routes to the correct
+      // Creative Attention ladder ($19 image / $39 video) instead of
+      // falling back to Sniff Test ($1.80 × 1 respondent).
+      const isVideo = (creative.mimeType || '').toLowerCase().startsWith('video/');
+      const tierId: 'image' | 'video' = isVideo ? 'video' : 'image';
+      const tierPrice = isVideo ? CA_PRICE_VIDEO_USD : CA_PRICE_IMAGE_USD;
+
       const { data: mission, error } = await supabase
         .from('missions')
         .insert([{
@@ -101,7 +131,10 @@ export function CreativeAttentionPage() {
           goal_type:        'creative_attention',
           status:           'draft',
           respondent_count: 1,   // creative missions don't use respondent count
-          price_estimated:  CREATIVE_PRICE_USD,
+          price_estimated:  tierPrice,
+          // Pass 23 Bug 23.61 — REQUIRED columns for backend pricing.
+          tier:             tierId,
+          media_type:       tierId,  // image or video
           brand_name:       brandName.trim(),
           target_audience:  targetAudience.trim() || null,
           desired_emotions: selectedEmotions.size > 0
@@ -319,20 +352,26 @@ export function CreativeAttentionPage() {
             </section>
           )}
 
-          {/* Pricing + CTA */}
-          {creative && (
+          {/* Pricing + CTA — Pass 23 Bug 23.61: price reflects the
+              uploaded asset's mime (image $19 / video $39), driven by
+              the Creative Attention tier ladder. */}
+          {creative && (() => {
+            const isVideo = (creative.mimeType || '').toLowerCase().startsWith('video/');
+            const tierName = isVideo ? 'Video' : 'Image';
+            const tierPrice = isVideo ? CA_PRICE_VIDEO_USD : CA_PRICE_IMAGE_USD;
+            return (
             <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm text-[var(--t2)]">Creative Attention Analysis</p>
+                  <p className="text-sm text-[var(--t2)]">Creative Attention · {tierName} tier</p>
                   <p className="text-2xl font-bold text-[var(--t1)]">
-                    $90
+                    ${tierPrice}
                     <span className="text-sm font-normal text-[var(--t3)] ml-1.5">flat</span>
                   </p>
                 </div>
                 <ul className="text-xs text-[var(--t3)] space-y-1 text-right">
-                  <li>✓ Frame-by-frame emotion scoring</li>
-                  <li>✓ Attention arc analysis</li>
+                  <li>✓ {isVideo ? 'Frame-by-frame emotion scoring' : 'Per-image emotion scoring'}</li>
+                  <li>✓ Attention {isVideo ? 'arc' : 'hotspots'} analysis</li>
                   <li>✓ Strengths + recommendations</li>
                   <li>✓ Platform fit suggestions</li>
                 </ul>
@@ -348,7 +387,7 @@ export function CreativeAttentionPage() {
                 {creating ? (
                   <><Loader2 className="w-4 h-4 animate-spin mr-2" />Creating mission…</>
                 ) : (
-                  'Analyse This Creative — $90'
+                  `Pay $${tierPrice} & Analyse — ${tierName}`
                 )}
               </Button>
               {!canProceed && (
@@ -357,7 +396,8 @@ export function CreativeAttentionPage() {
                 </p>
               )}
             </section>
-          )}
+            );
+          })()}
         </div>
       </main>
 
