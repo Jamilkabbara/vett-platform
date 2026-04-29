@@ -53,6 +53,10 @@ const TICKER_ITEMS = [
 
 const COMPANY_LOGOS = ['Google', 'Uber', 'Stripe', 'Airbnb', 'Noon', 'Careem'];
 
+// Pass 23 Bug 23.63 — every research-type card now carries a goalId
+// matching the canonical mission goal_type values (see
+// src/data/missionGoals.ts). The card onClick wires through goWithGoal
+// so the user lands on the right setup flow with the goal pre-selected.
 const RESEARCH_TYPES: Array<{
   emoji: string;
   title: string;
@@ -60,19 +64,20 @@ const RESEARCH_TYPES: Array<{
   tag: string;
   tagColor?: 'lime' | 'pur';
   featured?: boolean;
+  goalId: string;  // canonical mission goal_type
 }> = [
-  { emoji: '🚀', title: 'Product Validation', desc: 'Test if your idea has real demand before building. Find your PMF signal fast.', tag: 'From $35' },
-  { emoji: '💰', title: 'Pricing Research', desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.', tag: 'From $45' },
-  { emoji: '📣', title: 'Creative & Ad Testing', desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.', tag: 'From $35' },
-  { emoji: '⭐', title: 'Customer Satisfaction', desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.', tag: 'From $90' },
-  { emoji: '🗺️', title: 'Feature Roadmap', desc: 'Let your users tell you what to build next. Kano model prioritisation.', tag: 'From $45' },
-  { emoji: '🌍', title: 'Market Entry', desc: 'Validate demand in new geographies before expanding. Test any country, any city.', tag: 'From $90' },
-  { emoji: '📡', title: 'Brand Lift Study', desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.', tag: 'From $180' },
-  { emoji: '🎬', title: 'Creative Attention Analysis', desc: 'Measure emotional response, attention, and engagement on your video or image creatives. Daivid-style emotion mapping.', tag: 'NEW · From $90', tagColor: 'pur', featured: true },
-  { emoji: '🔄', title: 'Churn Research', desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.', tag: 'From $45' },
-  { emoji: '🔍', title: 'Competitor Analysis', desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.', tag: 'From $45' },
-  { emoji: '🎯', title: 'Audience Profiling', desc: 'Build a deep psychographic and behavioural profile of your target customer segment.', tag: 'From $45' },
-  { emoji: '✍️', title: 'Naming & Messaging', desc: 'Test product names, taglines, and positioning across your target audience.', tag: 'From $35' },
+  { emoji: '🚀', title: 'Product Validation',           desc: 'Test if your idea has real demand before building. Find your PMF signal fast.',                       tag: 'From $9',                   goalId: 'validate' },
+  { emoji: '💰', title: 'Pricing Research',             desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.',                  tag: 'From $99',                  goalId: 'pricing_research' },
+  { emoji: '📣', title: 'Creative & Ad Testing',        desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                            tag: 'From $35',                  goalId: 'marketing' },
+  { emoji: '⭐', title: 'Customer Satisfaction',        desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                        tag: 'From $99',                  goalId: 'customer_satisfaction' },
+  { emoji: '🗺️', title: 'Feature Roadmap',              desc: 'Let your users tell you what to build next. Kano model prioritisation.',                            tag: 'From $99',                  goalId: 'feature_roadmap' },
+  { emoji: '🌍', title: 'Market Entry',                 desc: 'Validate demand in new geographies before expanding. Test any country, any city.',                    tag: 'From $99',                  goalId: 'market_entry' },
+  { emoji: '📡', title: 'Brand Lift Study',             desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',           tag: 'From $99',                  goalId: 'brand_lift' },
+  { emoji: '🎬', title: 'Creative Attention Analysis',  desc: 'Measure emotional response, attention, and engagement on your video or image creatives. Daivid-style emotion mapping.', tag: 'NEW · From $19', tagColor: 'pur', featured: true, goalId: 'creative_attention' },
+  { emoji: '🔄', title: 'Churn Research',               desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',         tag: 'From $99',                  goalId: 'churn_research' },
+  { emoji: '🔍', title: 'Competitor Analysis',          desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',               tag: 'From $99',                  goalId: 'competitor_analysis' },
+  { emoji: '🎯', title: 'Audience Profiling',           desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',                  tag: 'From $99',                  goalId: 'audience_profiling' },
+  { emoji: '✍️', title: 'Naming & Messaging',           desc: 'Test product names, taglines, and positioning across your target audience.',                          tag: 'From $35',                  goalId: 'naming_messaging' },
 ];
 
 const LOOP_STEPS = [
@@ -283,24 +288,39 @@ export function LandingPage() {
   };
 
   /**
-   * Pass 23 Bug 23.54 — preserve a goal_type through sign-in.
+   * Pass 23 Bug 23.54 + 23.63 — preserve a goal_type through sign-in.
    *
-   * Some landing CTAs (Brand Lift card, Creative Attention card) want
-   * to deep-link the user into a specific goal pre-selected on Mission
-   * Setup. We do two things: (a) stash the goal id in sessionStorage so
-   * MissionSetupPage's mount effect can pick it up after the OAuth
-   * round-trip; (b) carry it as `?goal=` on the redirect URL so even if
-   * sessionStorage is unavailable (Safari private mode) the URL param
-   * survives. MissionSetupPage reads URL first, then sessionStorage.
+   * Routes goal-aware:
+   *   creative_attention → /creative-attention/new (dedicated upload flow,
+   *                        per-asset pricing, no Mission Setup AI survey-gen)
+   *   anything else      → /setup?goal=<goalId>  (Mission Setup with
+   *                        the goal preselected)
    *
-   * Pass `goal=null` (or omit) for the generic VETT IT CTA — clears any
-   * stale goal so the user lands on the goal selector.
+   * For unauthed users, we wrap the destination in /signin?redirect=...
+   * so the post-auth round-trip lands on the right setup flow.
+   *
+   * Persistence:
+   *   sessionStorage('vett_landing_goal') is set as a fallback for
+   *   browsers that drop URL params during OAuth (some embedded webviews,
+   *   Safari private mode). MissionSetupPage + CreativeAttentionPage both
+   *   read URL first, then sessionStorage.
+   *
+   * Pass `goalId=null` for generic CTAs that should clear any stale goal.
    */
   const goWithGoal = (goalId: string | null) => {
     try {
       if (goalId) sessionStorage.setItem('vett_landing_goal', goalId);
       else sessionStorage.removeItem('vett_landing_goal');
     } catch { /* private mode — fall through to URL param */ }
+    // Creative Attention has its own dedicated upload flow with per-asset
+    // pricing — must NOT route through /setup (would create an orphan
+    // mission with no media_type, blocked by the Bug 23.61 validator).
+    if (goalId === 'creative_attention') {
+      const dest = '/creative-attention/new';
+      if (user) navigate(dest);
+      else navigate(`/signin?redirect=${encodeURIComponent(dest)}`);
+      return;
+    }
     const qs = goalId ? `?goal=${encodeURIComponent(goalId)}` : '';
     if (user) {
       navigate(`/setup${qs}`);
@@ -308,10 +328,6 @@ export function LandingPage() {
       navigate(`/signin?redirect=${encodeURIComponent(`/setup${qs}`)}`);
     }
   };
-  // Suppress unused-var lint until landing CTAs adopt goWithGoal —
-  // wired through to MissionSetupPage on mount; landing-side
-  // adoption ships in a follow-up.
-  void goWithGoal;
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-bg text-t1">
@@ -586,7 +602,7 @@ export function LandingPage() {
             <button
               key={rt.title}
               type="button"
-              onClick={goVettIt}
+              onClick={() => goWithGoal(rt.goalId)}
               className={[
                 'text-left bg-bg3 border rounded-xl p-4 transition-colors',
                 rt.featured
@@ -896,8 +912,11 @@ export function LandingPage() {
           </SecSub>
         </SectionCenter>
         {/* Pass 23 Bug 23.51 — tabbed pricing (Validate / Brand Lift /
-            Creative Attention). Default tab: Validate (most common). */}
-        <PricingTabbed />
+            Creative Attention). Default tab: Validate (most common).
+            Pass 23 Bug 23.63 — `goWithGoal` threaded through so the per-
+            tab CTA sets the goal_type before routing to /setup or
+            /creative-attention/new. */}
+        <PricingTabbed goWithGoal={goWithGoal} />
 
         <div className="mt-8 flex flex-col items-center gap-3">
           <Button
@@ -1044,13 +1063,20 @@ export function LandingPage() {
 /* ── tiny local helpers ─────────────────────────────────────────── */
 
 /**
- * Pass 23 Bug 23.51 — tabbed pricing teaser. Three goal-keyed ladders
- * (Validate / Brand Lift / Creative Attention) in a tab switcher above
- * the per-tab tier cards. Default tab: Validate.
+ * Pass 23 Bug 23.51 + 23.63 — tabbed pricing teaser with goal-keyed
+ * CTA. Three ladders (Validate / Brand Lift / Creative Attention) in a
+ * tab switcher above the per-tab tier cards. Per-tab CTA below the
+ * grid so the user can jump into the right setup flow without scrolling
+ * back up to the goal-card grid.
  */
-function PricingTabbed() {
+function PricingTabbed({ goWithGoal }: { goWithGoal: (goalId: string | null) => void }) {
   const [activeId, setActiveId] = useState<string>('validate');
   const active = PRICING_TABS.find((t) => t.id === activeId) ?? PRICING_TABS[0];
+  const ctaCopy = active.id === 'creative_attention'
+    ? 'Start a Creative Attention analysis'
+    : active.id === 'brand_lift'
+      ? 'Start a Brand Lift study'
+      : 'Start a Validate mission';
   return (
     <div className="mt-10 max-w-[1100px] mx-auto">
       <div
@@ -1097,6 +1123,17 @@ function PricingTabbed() {
             valueColor="lime"
           />
         ))}
+      </div>
+      {/* Pass 23 Bug 23.63 — per-tab CTA. Wires through goWithGoal so the
+          right goal_type is preserved through any sign-in round-trip. */}
+      <div className="mt-6 flex justify-center">
+        <button
+          type="button"
+          onClick={() => goWithGoal(active.id)}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-lime/10 border border-lime/30 text-lime hover:bg-lime hover:text-black font-display font-bold text-[12px] uppercase tracking-widest transition-colors"
+        >
+          {ctaCopy} →
+        </button>
       </div>
     </div>
   );
