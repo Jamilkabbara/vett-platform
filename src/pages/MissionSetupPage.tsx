@@ -305,6 +305,31 @@ export const MissionSetupPage = () => {
     }
   }, [showUpload, uploadedAsset, uploadingName]);
 
+  // Pass 23 Bug 23.65 — Creative Attention has a dedicated upload flow at
+  // /creative-attention/new with per-asset pricing (Image $19 / Video $39 /
+  // Bundle $79 / Series $249). It does NOT need the AI clarify or the AI
+  // survey-question generation steps that the standard /setup flow runs:
+  //
+  //   - Clarify produces "what's your audience? what stage? what price band?"
+  //     None of those map to CA (the AI is analyzing one asset, not surveying
+  //     a population).
+  //   - Survey-question generation produces 5 multiple-choice questions to
+  //     ask respondents. CA has zero respondents — the survey questions are
+  //     dead weight that confuse the user.
+  //
+  // The Bug 23.GOAL fix already redirects on submit. Bug 23.65 redirects
+  // EARLIER — on goal change — so the user never burns time on the steps
+  // that don't apply. Falls through silently if the user navigated here
+  // already on creative_attention from /landing's goWithGoal helper (which
+  // routes directly to /creative-attention/new and would never have hit
+  // this page).
+  useEffect(() => {
+    if (missionGoal === 'creative_attention') {
+      navigate('/creative-attention/new', { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missionGoal]);
+
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
