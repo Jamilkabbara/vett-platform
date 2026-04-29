@@ -67,6 +67,55 @@ the Jamil-driven (6 historical orphans), and the obsoleted set.
 
 ---
 
+## Doctrine
+
+The full shipped-verification doctrine + 5-regression audit lives in
+`docs/PASS_23_REGRESSION_AUDIT.md`. The five rules summarized:
+
+1. Code pushed + deploy succeeded.
+2. End-to-end user-journey reproduced.
+3. Original symptom verifiably absent.
+4. Screenshot / recording / `funnel_events` trace as proof.
+5. Regression-of-shipped escalated to higher severity than the original.
+
+### Calibration rule — diagnostic-first supersedes speculation
+
+**When the same symptom resurfaces after 2+ targeted fixes, STOP patching
+and instrument first.** The Bug 23.0f → 23.52 → 23.64 chain demonstrated
+this concretely: speculative polling-timeout / anon-polling / signed-out
+branch fixes burned days of work because no diagnostic data existed (the
+funnel allowlist was silently dropping all `payment_success_*` emits).
+One SELECT query against `funnel_events` found zero emits, which
+immediately pointed to the allowlist as the real root cause. Future
+passes apply this rule: **if speculation fails twice, instrument THIRD
+before patching.**
+
+Operationally:
+- **Iteration 1:** ship the most-likely targeted fix.
+- **Iteration 2:** if symptom returns, ship a second targeted fix
+  *plus* the diagnostic instrumentation (funnel_events, payment_errors,
+  structured logs) you'd need to confirm the next iteration.
+- **Iteration 3:** mandatory data pull before any code change. The
+  failure mode at this point is rarely the surface symptom.
+
+The rule applies to both backend and frontend symptoms.
+
+### Sub-rules from the regression audit
+
+- **Audit-doc bugs get `audit-complete` status, not `shipped`.** Bug 23.18
+  was the trigger: a closed audit doc was treated as a fix when no code
+  shipped. The user-facing symptom stays `in-flight` until code or
+  process changes resolve it.
+- **Cross-stack enums must stay synced.** Frontend `FunnelEvent` union
+  ↔ backend `ALLOWED_EVENT_TYPES` set. Future event additions land in
+  *both*. Bug 23.64 was the trigger.
+- **Lint-suppressing `void X;` lines are an immediate code-review flag.**
+  Bug 23.63 hid behind `void goWithGoal;` for a week. Helpers added with
+  "wired in a follow-up" comments need the follow-up to land in the
+  same PR or be tracked as an explicit todo.
+
+---
+
 ## Architectural decisions (this pass)
 
 | # | Decision | Rationale |
