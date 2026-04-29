@@ -37,6 +37,10 @@ const AdminPage           = lazy(() => import('./pages/AdminPage').then(m => ({ 
 const DesignSystemPreview           = lazy(() => import('./pages/DesignSystemPreview').then(m => ({ default: m.DesignSystemPreview })));
 const CreativeAttentionPage         = lazy(() => import('./pages/CreativeAttentionPage').then(m => ({ default: m.CreativeAttentionPage })));
 const CreativeAttentionResultsPage  = lazy(() => import('./pages/CreativeAttentionResultsPage').then(m => ({ default: m.CreativeAttentionResultsPage })));
+// Pass 23 B2 — comparison pages. SurveyMonkey is the template; the
+// other 4 (typeform, usertesting, pollfish, traditional) ship after
+// Jamil's voice/tone review.
+const VsSurveyMonkeyPage            = lazy(() => import('./pages/vs/VsSurveyMonkeyPage').then(m => ({ default: m.VsSurveyMonkeyPage })));
 
 function App() {
   // Pass 22 Bug 22.1 — drain any funnel events that got queued in
@@ -142,6 +146,9 @@ function App() {
               {/* Creative Attention Analysis */}
               <Route path="/creative-attention/new" element={<CreativeAttentionPage />} />
               <Route path="/creative-results/:missionId" element={<CreativeAttentionResultsPage />} />
+
+              {/* Pass 23 B2 — comparison pages */}
+              <Route path="/vs/surveymonkey" element={<VsSurveyMonkeyPage />} />
 
               {/* Internal design-system preview — not linked from the app. */}
               <Route path="/__design" element={<DesignSystemPreview />} />
