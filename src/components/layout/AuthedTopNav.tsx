@@ -93,7 +93,7 @@ export function AuthedTopNav({ rightExtras, className }: AuthedTopNavProps) {
     <TopNav
       className={className}
       left={
-        <Link to="/dashboard" aria-label="VETT — Dashboard">
+        <Link to="/dashboard" aria-label="VETT - Dashboard">
           <Logo responsive />
         </Link>
       }

@@ -154,7 +154,7 @@ export function SignInPage() {
       // Supabase returns a session immediately when email confirmation is
       // disabled, and null when it requires verification. Handle both.
       if (data.session) {
-        toast.success('Account created — welcome to VETT!');
+        toast.success('Account created - welcome to VETT!');
         navigate(redirectPath, { replace: true });
       } else {
         toast.success('Check your email to verify your account.');

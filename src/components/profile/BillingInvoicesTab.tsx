@@ -79,7 +79,7 @@ export const BillingInvoicesTab = () => {
       );
     } catch (err) {
       console.error('[invoice-pdf]', err);
-      toast.error('Could not generate PDF — please try again');
+      toast.error('Could not generate PDF - please try again');
     } finally {
       setDownloading(null);
     }
@@ -113,7 +113,7 @@ export const BillingInvoicesTab = () => {
       );
     } catch (err) {
       console.error('[invoice-ppt]', err);
-      toast.error('Could not generate PPT — please try again');
+      toast.error('Could not generate PPT - please try again');
     } finally {
       setPptLoading(null);
     }

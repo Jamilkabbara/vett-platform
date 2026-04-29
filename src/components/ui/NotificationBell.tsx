@@ -307,7 +307,7 @@ export function NotificationBell({ inDrawer = false }: NotificationBellProps) {
         onClick={() => setOpen((v) => !v)}
         aria-label={
           unreadCount > 0
-            ? `Notifications — ${unreadCount} unread`
+            ? `Notifications - ${unreadCount} unread`
             : 'Notifications'
         }
         aria-expanded={open}

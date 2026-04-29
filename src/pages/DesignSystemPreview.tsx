@@ -230,7 +230,7 @@ export function DesignSystemPreview() {
               <Button variant="danger" size="sm" onClick={() => toast.error('Something went wrong')}>
                 error
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => toast.info('Heads up — new feature')}>
+              <Button variant="ghost" size="sm" onClick={() => toast.info('Heads up - new feature')}>
                 info
               </Button>
               <Button variant="ghost" size="sm" onClick={() => {
@@ -251,10 +251,10 @@ export function DesignSystemPreview() {
               Resize the viewport to verify each breakpoint. Reference frames:
             </p>
             <ul className="font-body text-t2 text-[13px] space-y-1 list-disc list-inside marker:text-lime">
-              <li><span className="text-white">375px</span> — mobile: Logo 36px, hamburger menu, stacked buttons.</li>
-              <li><span className="text-white">768px</span> — tablet: desktop nav unlocks, padding 40px.</li>
-              <li><span className="text-white">1024px</span> — desktop: multi-column grids fill.</li>
-              <li><span className="text-white">1280px+</span> — large: hero clamp caps at 72px, KPI row = 4 columns.</li>
+              <li><span className="text-white">375px</span> - mobile: Logo 36px, hamburger menu, stacked buttons.</li>
+              <li><span className="text-white">768px</span> - tablet: desktop nav unlocks, padding 40px.</li>
+              <li><span className="text-white">1024px</span> - desktop: multi-column grids fill.</li>
+              <li><span className="text-white">1280px+</span> - large: hero clamp caps at 72px, KPI row = 4 columns.</li>
             </ul>
           </Card>
         </section>

@@ -223,7 +223,7 @@ export function CreativeAttentionPage() {
 
       if (error || !mission) {
         console.error('[CreativeAttention] mission insert failed', error);
-        toast.error('Could not create mission — please try again');
+        toast.error('Could not create mission - please try again');
         setCreating(false);
         return;
       }
@@ -401,7 +401,7 @@ export function CreativeAttentionPage() {
           {creative && (
             <section className="mb-8 space-y-5">
               <h2 className="text-sm font-semibold text-[var(--t2)] uppercase tracking-wider">
-                Step 2 — Give the AI Context
+                Step 2. Give the AI Context
               </h2>
 
               {/* Brand name */}
@@ -547,7 +547,7 @@ export function CreativeAttentionPage() {
                 {creating ? (
                   <><Loader2 className="w-4 h-4 animate-spin mr-2" />Creating mission…</>
                 ) : (
-                  `Pay $${tierPrice} & Analyse — ${tierName}`
+                  `Pay $${tierPrice} & Analyse - ${tierName}`
                 )}
               </Button>
               {!canProceed && (

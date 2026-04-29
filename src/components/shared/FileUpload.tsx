@@ -70,7 +70,7 @@ export function FileUpload({
     async (file: File) => {
       // Client-side size guard
       if (file.size > maxSizeMB * 1024 * 1024) {
-        toast.error(`File too large — max ${maxSizeMB} MB`);
+        toast.error(`File too large - max ${maxSizeMB} MB`);
         return;
       }
 

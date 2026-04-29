@@ -379,7 +379,7 @@ export const MissionsListPage = () => {
                   <Sparkles className="w-5 h-5 text-lime shrink-0" />
                   <div>
                     <p className="text-white font-bold text-[14px] leading-tight">Ship faster with VETT Pro</p>
-                    <p className="text-white/50 text-[12px] mt-0.5">Unlimited missions, priority synthesis, and team sharing — coming soon.</p>
+                    <p className="text-white/50 text-[12px] mt-0.5">Unlimited missions, priority synthesis, and team sharing - coming soon.</p>
                   </div>
                 </div>
                 <LeadCaptureForm

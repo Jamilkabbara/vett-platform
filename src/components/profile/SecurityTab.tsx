@@ -66,7 +66,7 @@ export const SecurityTab = () => {
       window.location.href = '/';
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete account';
-      toast.error(msg + ' — contact hello@vettit.ai if this persists.');
+      toast.error(msg + ' - contact hello@vettit.ai if this persists.');
       setDeleteLoading(false);
     }
   };

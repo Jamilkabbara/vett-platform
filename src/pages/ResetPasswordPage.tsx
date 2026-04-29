@@ -121,7 +121,7 @@ export function ResetPasswordPage() {
       setTimeout(() => navigate('/signin'), 1500);
     } catch (err) {
       const pretty = prettifyAuthError(err, {
-        fallback: 'Could not update password. The link may have expired — request a new one.',
+        fallback: 'Could not update password. The link may have expired - request a new one.',
       });
       setErrorMsg(pretty);
       setPageState('error');

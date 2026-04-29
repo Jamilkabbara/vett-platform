@@ -66,11 +66,11 @@ export function OAuthButtons({
       // than the generic fallback.
       if (isProviderNotEnabledError(err)) {
         toast.error(
-          `${label} Sign-In is being configured — try email sign-up instead.`,
+          `${label} Sign-In is being configured - try email sign-up instead.`,
         );
       } else {
         toast.error(
-          `${label} sign-in failed — ${prettifyAuthError(err, {
+          `${label} sign-in failed - ${prettifyAuthError(err, {
             fallback: `Could not connect to ${label}.`,
           })}`,
         );
@@ -83,7 +83,7 @@ export function OAuthButtons({
     if (APPLE_OAUTH_ENABLED) {
       start('apple', 'Apple');
     } else {
-      toast.info('Apple Sign-In coming soon — use Google or email for now.');
+      toast.info('Apple Sign-In coming soon - use Google or email for now.');
     }
   };
 

@@ -163,7 +163,7 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
       if (failed === 0) {
         toast.success(`Reanalyzed ${succeeded} mission${succeeded === 1 ? '' : 's'}`, { id: t2 });
       } else {
-        toast.error(`Reanalyzed ${succeeded}, failed ${failed} — check Railway logs`, { id: t2 });
+        toast.error(`Reanalyzed ${succeeded}, failed ${failed} - check Railway logs`, { id: t2 });
       }
       // Refresh the table so updated rows show their new state.
       fetchMissions(search, statusFilter, offset);

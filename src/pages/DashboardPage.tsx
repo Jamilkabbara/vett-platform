@@ -652,7 +652,7 @@ export const DashboardPage = () => {
         const diff = Math.abs(quote.total - pricing.total);
         if (diff > SERVER_QUOTE_TOAST_TOLERANCE_USD) {
           toast(
-            `Price updated to $${quote.total.toFixed(2)} — our server recalculated your quote.`,
+            `Price updated to $${quote.total.toFixed(2)} - our server recalculated your quote.`,
             { icon: '🔄', duration: 4000 },
           );
         }
@@ -930,7 +930,7 @@ const DashboardErrorShell = ({
       case 'unauthorized':
         return {
           title: 'Sign in to see this mission',
-          body: "You're not signed in — or your session expired. Sign back in and we'll take you right to it.",
+          body: "You're not signed in - or your session expired. Sign back in and we'll take you right to it.",
           cta: { href: '/signin', label: 'Sign in' },
         };
       case 'not_found':
@@ -942,7 +942,7 @@ const DashboardErrorShell = ({
       default:
         return {
           title: 'Something went wrong loading this mission',
-          body: 'Reload the page. If it keeps happening, try again in a minute — we might be catching our breath.',
+          body: 'Reload the page. If it keeps happening, try again in a minute - we might be catching our breath.',
           cta: { href: '/missions', label: 'Back to missions' },
         };
     }

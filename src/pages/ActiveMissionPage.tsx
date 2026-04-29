@@ -489,7 +489,7 @@ const ActivePanel = ({
               {isComplete
                 ? 'All responses collected'
                 : isPaused
-                  ? 'Mission paused — no responses collected'
+                  ? 'Mission paused - no responses collected'
                   : 'Collecting responses…'}
             </div>
             <div className="font-display text-xs font-bold text-white tabular-nums">
@@ -686,7 +686,7 @@ const ActivePanel = ({
               <TickerRow>Survey distributed to respondent pool</TickerRow>
             </>
           )}
-          {isComplete && <TickerRow done>All responses validated — results ready</TickerRow>}
+          {isComplete && <TickerRow done>All responses validated - results ready</TickerRow>}
         </ul>
       </div>
 

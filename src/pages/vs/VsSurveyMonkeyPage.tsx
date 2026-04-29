@@ -38,7 +38,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Minimum mission cost',            vett: '$9 (Sniff Test, 5 personas)',          competitor: '~$1+/response, panels min ~$200',   vettWins: true  },
   { dimension: 'Geographic reach',                vett: '150+ countries, AI-modelled',          competitor: '~190 countries via Audience panel', vettWins: false },
   { dimension: 'Custom screener',                 vett: 'Constraint-based generation, persona is generated TO the spec', competitor: 'Filter-based on real panelists; longer wait if strict', vettWins: true  },
-  { dimension: 'Real human respondents',          vett: 'No — synthetic personas with realistic distributions',          competitor: 'Yes — verified panel members',  vettWins: false },
+  { dimension: 'Real human respondents',          vett: 'No - synthetic personas with realistic distributions',          competitor: 'Yes - verified panel members',  vettWins: false },
   { dimension: 'Demographic depth',               vett: 'Persona-level: occupation, income, behaviours, decision style', competitor: 'Demographic targeting + screening filters', vettWins: false },
   { dimension: 'AI insight synthesis',            vett: 'Built-in: executive summary, contradictions, cross-cut',        competitor: 'Manual analysis or third-party add-on', vettWins: true  },
   { dimension: 'Creative attention analysis',     vett: 'Frame-by-frame emotion, attention, message clarity for $19+',   competitor: 'Not in core product',           vettWins: true  },
@@ -50,11 +50,11 @@ const COMPARISON_ROWS: ComparisonRow[] = [
 const FAQS = [
   {
     q: 'Can synthetic respondents really replace real panel research?',
-    a: "It depends on what you're trying to learn. For early-stage validation, pre-launch sanity checks, message testing, and brand-lift baselines — yes. AI personas trained on demographic and behavioural distributions match real-panel response distributions to within a few percentage points on 70-80% of survey questions in published comparisons. For high-stakes decisions where you need legally defensible quotes from verified humans, real panels are still the right tool. We recommend VETT for the first 3-5 iterations of an idea, then a real-panel study before launch.",
+    a: "It depends on what you're trying to learn. For early-stage validation, pre-launch sanity checks, message testing, and brand-lift baselines - yes. AI personas trained on demographic and behavioural distributions match real-panel response distributions to within a few percentage points on 70-80% of survey questions in published comparisons. For high-stakes decisions where you need legally defensible quotes from verified humans, real panels are still the right tool. We recommend VETT for the first 3-5 iterations of an idea, then a real-panel study before launch.",
   },
   {
     q: 'How is this different from just asking ChatGPT?',
-    a: "ChatGPT gives you one perspective per prompt. VETT generates a population of 5-5,000 distinct personas, each with their own background, motivations, and decision style, and simulates a full survey flow with screening + branching + open-text + ratings. The output is statistically structured (cross-tabs, segment breakdowns, confidence intervals) the way a market-research report is — not a conversation. Same underlying AI, completely different deliverable.",
+    a: "ChatGPT gives you one perspective per prompt. VETT generates a population of 5-5,000 distinct personas, each with their own background, motivations, and decision style, and simulates a full survey flow with screening + branching + open-text + ratings. The output is statistically structured (cross-tabs, segment breakdowns, confidence intervals) the way a market-research report is - not a conversation. Same underlying AI, completely different deliverable.",
   },
   {
     q: 'How much does VETT cost vs SurveyMonkey?',
@@ -62,15 +62,15 @@ const FAQS = [
   },
   {
     q: "What if my screener is so strict that you can't generate matching personas?",
-    a: "Our generation pipeline tells the AI the exact screener criteria up front, so every persona is generated to satisfy them, not filtered against them. If a generated persona somehow misses the spec (rare; ~2% of the time), we regenerate that slot with stricter constraints. We don't refund-on-partial — the promise is 'you set the number, we deliver it.'",
+    a: "Our generation pipeline tells the AI the exact screener criteria up front, so every persona is generated to satisfy them, not filtered against them. If a generated persona somehow misses the spec (rare; ~2% of the time), we regenerate that slot with stricter constraints. We don't refund-on-partial - the promise is 'you set the number, we deliver it.'",
   },
   {
     q: 'Can I run the same survey on VETT and SurveyMonkey to compare?',
-    a: 'Yes — many of our users do exactly that on a small Sniff Test ($9, 5 personas) before committing to a full SurveyMonkey panel order. The VETT signal is usually directionally identical to the panel result, which is what you want from a sanity check before spending real-panel money.',
+    a: 'Yes - many of our users do exactly that on a small Sniff Test ($9, 5 personas) before committing to a full SurveyMonkey panel order. The VETT signal is usually directionally identical to the panel result, which is what you want from a sanity check before spending real-panel money.',
   },
   {
     q: 'Where does VETT lose to SurveyMonkey?',
-    a: 'Three real things: (1) integrations — SurveyMonkey has a mature marketplace (Salesforce, Marketo, HubSpot); we have CSV / PDF export and an API on the roadmap. (2) Brand recognition — if you need to convince a board or a regulator, "validated by SurveyMonkey panel" carries 20 years of trust. (3) Verified-human quotes — for legal / compliance / press use cases, real respondents are the only acceptable answer. We tell users: use VETT for the iteration loop, then a real-panel study for the launch announcement.',
+    a: 'Three real things: (1) integrations - SurveyMonkey has a mature marketplace (Salesforce, Marketo, HubSpot); we have CSV / PDF export and an API on the roadmap. (2) Brand recognition - if you need to convince a board or a regulator, "validated by SurveyMonkey panel" carries 20 years of trust. (3) Verified-human quotes - for legal / compliance / press use cases, real respondents are the only acceptable answer. We tell users: use VETT for the iteration loop, then a real-panel study for the launch announcement.',
   },
 ];
 
@@ -154,9 +154,9 @@ export function VsSurveyMonkeyPage() {
           <ul className="space-y-3 text-white/80 text-base leading-relaxed">
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Speed:</strong> VETT runs a 50-respondent study in minutes. SurveyMonkey Audience takes hours to days.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Cost:</strong> $9 for 5 personas to $1,990 for 5,000. SurveyMonkey panels start ~$200 minimum and scale faster.</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Screener:</strong> VETT generates personas TO your spec. SurveyMonkey filters real panelists against your spec — strict screeners mean longer waits or attrition.</span></li>
+            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Screener:</strong> VETT generates personas TO your spec. SurveyMonkey filters real panelists against your spec - strict screeners mean longer waits or attrition.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">AI synthesis:</strong> Built into VETT. SurveyMonkey reports are mostly DIY analysis or paid add-on.</span></li>
-            <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Real humans:</strong> SurveyMonkey wins. VETT is synthetic-only — better for iteration, not for legally defensible quotes.</span></li>
+            <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Real humans:</strong> SurveyMonkey wins. VETT is synthetic-only - better for iteration, not for legally defensible quotes.</span></li>
             <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Integrations:</strong> SurveyMonkey wins. Mature Salesforce/HubSpot/Marketo connectors. VETT has CSV + PDF + an API on the roadmap.</span></li>
           </ul>
         </section>

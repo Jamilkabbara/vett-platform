@@ -87,7 +87,7 @@ export const AccountTab = () => {
       <div>
         <label className="block text-sm font-semibold text-gray-300 mb-3">
           Company Logo
-          <span className="ml-2 text-xs text-gray-500 font-normal">optional — used on PDF invoices</span>
+          <span className="ml-2 text-xs text-gray-500 font-normal">optional - used on PDF invoices</span>
         </label>
         <FileUpload
           bucket="vett-uploads"

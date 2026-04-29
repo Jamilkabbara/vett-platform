@@ -358,8 +358,8 @@ export const MissionSetupPage = () => {
       setUploadingName(null);
       toast.info(
         asset.type === 'video'
-          ? 'Video uploaded — the AI will reference it in your survey questions.'
-          : 'Image uploaded — the AI will reference it in your survey questions.',
+          ? 'Video uploaded - the AI will reference it in your survey questions.'
+          : 'Image uploaded - the AI will reference it in your survey questions.',
       );
     } catch (err) {
       setUploadingName(null);
@@ -367,7 +367,7 @@ export const MissionSetupPage = () => {
       const message =
         err instanceof MissionAssetUploadError
           ? err.message
-          : 'Upload failed — please try again.';
+          : 'Upload failed - please try again.';
       toast.error(message);
     }
   };
@@ -390,7 +390,7 @@ export const MissionSetupPage = () => {
     if (!isValid) {
       setAttemptedSubmit(true);
       toast.error(
-        `Add a bit more detail — we need at least ${DESCRIPTION_MIN} characters to brief the AI.`,
+        `Add a bit more detail - we need at least ${DESCRIPTION_MIN} characters to brief the AI.`,
       );
       return;
     }
@@ -481,7 +481,7 @@ export const MissionSetupPage = () => {
     // or clear it before letting generation kick off — otherwise the AI
     // prompt won't know about the asset and the row would ship without it.
     if (uploadingName) {
-      toast.info('Still uploading — hang on a moment.');
+      toast.info('Still uploading - hang on a moment.');
       inflightRef.current = false;
       setIsSubmitting(false);
       return;
@@ -578,8 +578,8 @@ export const MissionSetupPage = () => {
         console.error('Mission insert failed:', error);
         toast.error(
           error?.message?.includes('row-level security')
-            ? 'Sign-in expired — please sign in again.'
-            : 'Could not save mission — try again in a moment.',
+            ? 'Sign-in expired - please sign in again.'
+            : 'Could not save mission - try again in a moment.',
         );
         inflightRef.current = false;
         setIsSubmitting(false);
@@ -844,9 +844,9 @@ export const MissionSetupPage = () => {
               <div className="flex items-center justify-between mt-2 gap-2">
                 <span className="font-body text-[11px] text-t3">
                   {showLengthError
-                    ? `Minimum ${DESCRIPTION_MIN} characters — ${Math.max(0, DESCRIPTION_MIN - charCount)} to go.`
+                    ? `Minimum ${DESCRIPTION_MIN} characters - ${Math.max(0, DESCRIPTION_MIN - charCount)} to go.`
                     : isValid
-                      ? `Looks good — ${charCount} characters of detail.`
+                      ? `Looks good - ${charCount} characters of detail.`
                       : `Minimum ${DESCRIPTION_MIN} characters.`}
                 </span>
               </div>

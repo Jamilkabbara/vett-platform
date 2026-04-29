@@ -286,7 +286,7 @@ export const MissionControlQuestions = ({
         emit(nextList);
       } catch (err) {
         console.error('[MissionControlQuestions] refine failed', err);
-        toast.error("Couldn't refine that question — try again in a sec.");
+        toast.error("Couldn't refine that question - try again in a sec.");
       } finally {
         refineInflight.current = false;
         setRefiningId(null);

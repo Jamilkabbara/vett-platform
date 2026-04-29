@@ -75,7 +75,7 @@ export function BlogPostPage() {
           these would be server-rendered. For SPA they update document.title. */}
       {/* eslint-disable-next-line react-hooks/rules-of-hooks */}
       {typeof document !== 'undefined' && (() => {
-        document.title = `${post.title} — VETT`;
+        document.title = `${post.title} - VETT`;
         // Update og:image meta if tag exists
         const ogImg = document.querySelector('meta[property="og:image"]');
         if (ogImg) ogImg.setAttribute('content', ogImage);
