@@ -305,22 +305,23 @@ export const MissionSetupPage = () => {
     }
   }, [showUpload, uploadedAsset, uploadingName]);
 
-  // Pass 23 Bug 23.65 + 23.68 — Creative Attention short-circuit, defensively
-  // gated. Production audit found ALL 4 RESEARCH_TYPES card paths landing
-  // on /creative-attention/new instead of the goal-correct setup; root cause
-  // narrowed to this useEffect firing on any goal change without confirming
-  // the goal arrived from the deep-link path. Three gates:
+  // Pass 23 Bug 23.65 v3 — Creative Attention has its own dedicated flow
+  // at /creative-attention/new (upload + brand context + flat-price
+  // checkout). MissionSetupPage's textarea + Generate-Survey UI is wrong
+  // for it and produces orphan drafts.
   //
-  //   1. Goal must literally be 'creative_attention'.
-  //   2. We are NOT already on the /creative-attention path (no redirect loop
-  //      if the page somehow rerenders post-navigation).
-  //   3. The goal arrived from URL ?goal=creative_attention OR sessionStorage
-  //      'vett_landing_goal' — proving it's a deep-link, not a user toggling
-  //      goal in the in-page selector. The latter case should let the user
-  //      switch in place; the deep-link case routes to the dedicated flow.
+  // The previous useEffect-based short-circuit (gated on URL ?goal= or
+  // sessionStorage to avoid Bug 23.68 — all card clicks redirecting)
+  // over-corrected: when a user clicked the CA card directly on /setup,
+  // neither gate fired and the redirect was silently skipped, dumping
+  // them on the wrong UI.
   //
-  // sessionStorage is consumed (cleared) after read so a stale CA value from
-  // a previous session doesn't bleed into the next /setup visit.
+  // v3 architecture: route CA at the click site (handleGoalChange below),
+  // not via state observation. The useEffect now ONLY handles the
+  // deep-link case (landed on /setup with ?goal=creative_attention or
+  // sessionStorage carry-over from the landing page) — clicks on the CA
+  // card are intercepted before they hit setMissionGoal so the state
+  // never enters 'creative_attention' on this page.
   useEffect(() => {
     if (missionGoal !== 'creative_attention') return;
     if (location.pathname.startsWith('/creative-attention')) return;
@@ -329,11 +330,25 @@ export const MissionSetupPage = () => {
     try { sessionGoal = sessionStorage.getItem('vett_landing_goal'); } catch { sessionGoal = null; }
     const isDeepLink = urlGoal === 'creative_attention' || sessionGoal === 'creative_attention';
     if (!isDeepLink) return;
-    // Read-and-clear so a refresh doesn't replay the redirect.
     try { sessionStorage.removeItem('vett_landing_goal'); } catch { /* no-op */ }
     navigate('/creative-attention/new', { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missionGoal]);
+
+  // Pass 23 Bug 23.65 v3 — primary CA routing. Intercepts the goal-card
+  // click before it lands in component state. Any other goal is just a
+  // normal in-page toggle (no redirect, no Bug 23.68 regression).
+  const handleGoalChange = (goalId: string) => {
+    if (goalId === 'creative_attention') {
+      // Belt-and-braces: clear any stale landing-page sessionStorage so
+      // a subsequent navigation back to /setup doesn't re-fire the
+      // useEffect deep-link branch.
+      try { sessionStorage.removeItem('vett_landing_goal'); } catch { /* no-op */ }
+      navigate('/creative-attention/new');
+      return;
+    }
+    setMissionGoal(goalId);
+  };
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -659,6 +674,20 @@ export const MissionSetupPage = () => {
     );
   }
 
+  // Pass 23 Bug 23.65 v3 defensive guard. If somehow the missionGoal lands on
+  // 'creative_attention' while we're still rendering /setup (deep-link race
+  // before the useEffect redirect fires, stale state from a prior session,
+  // or any future regression that bypasses handleGoalChange), show a spinner
+  // instead of the textarea + Generate-Survey UI. The useEffect above will
+  // navigate('/creative-attention/new') on the next tick.
+  if (missionGoal === 'creative_attention' && !location.pathname.startsWith('/creative-attention')) {
+    return (
+      <div className="min-h-[100dvh] bg-bg text-t1 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-lime" aria-hidden />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[100dvh] bg-bg text-t1 flex flex-col">
       {topNav}
@@ -706,7 +735,7 @@ export const MissionSetupPage = () => {
             </p>
             <GoalGrid
               value={missionGoal}
-              onChange={setMissionGoal}
+              onChange={handleGoalChange}
               disabled={isSubmitting}
             />
 
