@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
+import { MissionFailureCard } from '../components/shared/MissionFailureCard';
 import {
   ArrowLeft,
   Download,
@@ -306,7 +307,13 @@ export const ResultsPage = () => {
     target: number;
     percent: number;
   } | null>(null);
-  const [missionFailed, setMissionFailed] = useState<{ reason: string } | null>(null);
+  // Pass 23 Bug 23.80: failure state now carries refund metadata so the
+  // failure UI can branch between "we refunded $X" and "we owe you a refund".
+  const [missionFailed, setMissionFailed] = useState<{
+    reason: string;
+    partialRefundId?: string | null;
+    partialRefundAmountCents?: number | null;
+  } | null>(null);
   const [screeningFunnel, setScreeningFunnel] = useState<{ total: number; passed: number; screenedOut: number } | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -374,10 +381,28 @@ export const ResultsPage = () => {
       }
 
       // Pass 20 Bug 7: fatal failure — render error state, stop polling.
+      // Pass 23 Bug 23.80: also fetch refund metadata from missions table so
+      // the failure card can show "we refunded $X" vs "we owe you a refund".
       if (data.status === 'failed') {
-        setMissionFailed({ reason: data.error || 'Mission could not complete.' });
+        const reason = data.error || 'Mission could not complete.';
+        setMissionFailed({ reason });
         setResultsProgress(null);
         firstPollAtRef.current = null;
+        try {
+          const { supabase } = await import('../lib/supabase');
+          const { data: row } = await supabase
+            .from('missions')
+            .select('partial_refund_id, partial_refund_amount_cents')
+            .eq('id', id)
+            .maybeSingle();
+          if (row) {
+            setMissionFailed({
+              reason,
+              partialRefundId: row.partial_refund_id,
+              partialRefundAmountCents: row.partial_refund_amount_cents,
+            });
+          }
+        } catch { /* refund metadata is best-effort */ }
         return;
       }
 
@@ -1379,25 +1404,25 @@ export const ResultsPage = () => {
   const hasNoResults = filteredRespondentCount === 0;
   const hasActiveFilters = getActiveFilterCount() > 0;
 
-  // Pass 20 Bug 7: failed state — surface the persisted reason from the
-  // backend (mission_assets.analysis_error.message, or generic fallback)
-  // and offer a contact email. Polling is already stopped at fetch time.
+  // Pass 20 Bug 7 + Pass 23 Bug 23.80: failed state — render MissionFailureCard
+  // with branched refund messaging. Polling is already stopped at fetch time.
   if (missionFailed) {
     return (
       <DashboardLayout>
-        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900 flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto px-6">
-            <div className="w-16 h-16 rounded-full bg-red-900/40 border border-red-700/60 flex items-center justify-center mx-auto mb-8">
-              <span className="text-3xl">⚠</span>
-            </div>
-            <h2 className="text-3xl font-black text-white mb-3">Mission Failed</h2>
-            <p className="text-white/70 mb-6">{missionFailed.reason}</p>
-            <a
-              href="mailto:hello@vettit.ai"
-              className="inline-block px-5 py-2.5 rounded-lg bg-primary text-black font-semibold hover:bg-primary/90 transition"
+        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900">
+          <div className="max-w-3xl mx-auto px-5 sm:px-6 lg:px-8 pt-20 md:pt-24 pb-24">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-6"
             >
-              Contact support
-            </a>
+              <ArrowLeft className="w-4 h-4" />
+              Back to My Missions
+            </button>
+            <MissionFailureCard
+              failureReason={missionFailed.reason}
+              partialRefundId={missionFailed.partialRefundId}
+              partialRefundAmountCents={missionFailed.partialRefundAmountCents}
+            />
           </div>
         </div>
       </DashboardLayout>

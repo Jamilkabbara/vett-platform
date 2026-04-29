@@ -52,6 +52,10 @@ interface Mission {
   context?: string;
   target?: string;
   estimated_price?: number;
+  // Pass 23 Bug 23.80: auto-refund + failure metadata
+  partial_refund_id?: string | null;
+  partial_refund_amount_cents?: number | null;
+  failure_reason?: string | null;
 }
 
 const MOCK_MISSIONS: Mission[] = [
@@ -168,6 +172,8 @@ export const MissionsListPage = () => {
         return 'text-blue-400 bg-blue-500/10 border-blue-500/30';
       case 'DRAFT':
         return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+      case 'failed':
+        return 'text-red-400 bg-red-500/10 border-red-500/30';
       default:
         return 'text-gray-400 bg-gray-500/10 border-gray-500/30';
     }
@@ -181,6 +187,8 @@ export const MissionsListPage = () => {
         return 'Completed';
       case 'DRAFT':
         return 'Draft';
+      case 'failed':
+        return 'Failed';
       default:
         return status;
     }
@@ -253,7 +261,7 @@ export const MissionsListPage = () => {
   };
 
   const handleMissionClick = (mission: Mission) => {
-    if (mission.status === 'ACTIVE' || mission.status === 'COMPLETED') {
+    if (mission.status === 'ACTIVE' || mission.status === 'COMPLETED' || mission.status === 'failed') {
       navigate(`/results/${mission.id}`);
     } else {
       navigate(`/dashboard/${mission.id}`);

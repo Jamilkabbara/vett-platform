@@ -428,6 +428,14 @@ export const DashboardPage = () => {
           return;
         }
 
+        // Pass 23 Bug 23.80: failed missions belong on the results page where
+        // the failure card + auto-refund messaging lives. Redirect so users
+        // who navigated back to /dashboard/:id after payment fail see it.
+        if (mission.status === 'failed') {
+          navigate(`/results/${mission.id}`, { replace: true });
+          return;
+        }
+
         setState({ kind: 'loaded', mission });
         setQuestions(initialQuestions);
         setTargeting(initialTargeting);
