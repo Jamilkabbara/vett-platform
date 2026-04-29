@@ -100,6 +100,63 @@ export function CreativeAttentionPage() {
     });
   };
 
+  // Pass 23 Bug 23.79 — magic-byte sniff before mission creation. Backend
+  // already does this + auto-refunds, but rejecting upfront avoids a dead
+  // 30s checkout round-trip when a user uploads e.g. a renamed .heic.
+  // file.type and file extensions can lie; bytes don't.
+  const isValidImageMagic = (buf: ArrayBuffer): boolean => {
+    if (buf.byteLength < 12) return false;
+    const b = new Uint8Array(buf);
+    // JPEG: FF D8 FF ??
+    if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return true;
+    // PNG: 89 50 4E 47
+    if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return true;
+    // GIF: 47 49 46 38
+    if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) return true;
+    // WebP: "RIFF" .... "WEBP"
+    if (
+      b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+      b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50
+    ) return true;
+    return false;
+  };
+
+  const handleUploadedFile = async (f: UploadedFile) => {
+    const mime = (f.mimeType || '').toLowerCase();
+    const name = (f.originalName || '').toLowerCase();
+    const isVideo =
+      mime.startsWith('video/') ||
+      /\.(mp4|mov|webm)$/i.test(name);
+
+    if (isVideo) {
+      setCreative(f);
+      return;
+    }
+
+    try {
+      const url = f.publicUrl;
+      if (!url) {
+        toast.error('Upload could not be verified - please try again');
+        await supabase.storage.from('vett-creatives').remove([f.path]).catch(() => {});
+        return;
+      }
+      const resp = await fetch(url);
+      const buf = await resp.arrayBuffer();
+      if (!isValidImageMagic(buf)) {
+        toast.error("This image format isn't supported. Please upload JPG, PNG, WebP, or GIF.");
+        await supabase.storage.from('vett-creatives').remove([f.path]).catch(() => {});
+        return;
+      }
+    } catch (err) {
+      console.error('[CreativeAttention] magic-byte check failed', err);
+      toast.error('Could not verify image - please try a different file');
+      await supabase.storage.from('vett-creatives').remove([f.path]).catch(() => {});
+      return;
+    }
+
+    setCreative(f);
+  };
+
   // Pass 23 Bug 23.76 — brief context textarea is now optional. Brand
   // name still required (AI synthesis needs it for attribution + tone).
   const canProceed = creative && brandName.trim().length > 0;
@@ -308,7 +365,7 @@ export function CreativeAttentionPage() {
                 label="Drop image or video"
                 hint="JPG, PNG, WebP, MP4, MOV, WebM (up to 200 MB)"
                 current={creative}
-                onUpload={(f) => setCreative(f)}
+                onUpload={handleUploadedFile}
                 onRemove={() => setCreative(null)}
               />
             </section>
