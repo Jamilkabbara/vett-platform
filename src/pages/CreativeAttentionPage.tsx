@@ -100,7 +100,9 @@ export function CreativeAttentionPage() {
     });
   };
 
-  const canProceed = creative && brandName.trim().length > 0 && description.trim().length > 0;
+  // Pass 23 Bug 23.76 — brief context textarea is now optional. Brand
+  // name still required (AI synthesis needs it for attribution + tone).
+  const canProceed = creative && brandName.trim().length > 0;
 
   const handleCreateMission = async () => {
     if (!user) {
@@ -109,7 +111,9 @@ export function CreativeAttentionPage() {
     }
     if (!creative) { toast.error('Please upload a creative file first'); return; }
     if (!brandName.trim()) { toast.error('Please enter your brand name'); return; }
-    if (!description.trim()) { toast.error('Please describe your creative'); return; }
+    // Pass 23 Bug 23.76 — description is now optional (replaces the
+    // hard-required prompt that confused users into thinking they had
+    // to spec a survey for an asset analysis).
 
     setCreating(true);
     let createdMissionId: string | null = null;
@@ -135,6 +139,14 @@ export function CreativeAttentionPage() {
           // Pass 23 Bug 23.61 — REQUIRED columns for backend pricing.
           tier:             tierId,
           media_type:       tierId,  // image or video
+          // Pass 23 Bug 23.75 — persist the asset URL so /creative-results/:id
+          // can render the uploaded creative as a hero image (was always
+          // NULL before; results pages displayed text descriptions only,
+          // never the actual creative). The URL is the signed Supabase
+          // Storage URL from FileUpload (1h validity); the storage path
+          // lives in brief_attachment so the page can re-sign on demand
+          // for views past expiry.
+          media_url:        creative.publicUrl || null,
           brand_name:       brandName.trim(),
           target_audience:  targetAudience.trim() || null,
           desired_emotions: selectedEmotions.size > 0
@@ -228,40 +240,105 @@ export function CreativeAttentionPage() {
       {/* Main content */}
       <main className="flex-1 flex items-start justify-center px-5 py-10">
         <div className="w-full max-w-2xl">
-          {/* Hero */}
+          {/* Hero — Pass 23 Bug 23.70: media-aware copy. Pre-upload uses
+              neutral language ("we map what holds attention"), post-upload
+              adapts to image vs video so users see the right time estimate
+              and analysis pitch. All em-dashes replaced with commas. */}
           <div className="mb-10">
             <div className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-xs font-semibold uppercase tracking-wider">
               <Film className="w-3.5 h-3.5" />
               Creative Attention Analysis
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-[var(--t1)] leading-tight">
-              Upload your creative.
-              <br />
-              <span className="text-purple-400">AI maps attention frame by frame.</span>
-            </h1>
-            <p className="mt-3 text-[var(--t2)] text-sm leading-relaxed max-w-lg">
-              Upload a video or image. Our AI analyzes every frame for emotion,
-              attention hotspots, and engagement — then synthesizes executive insights.
-            </p>
+            {!creative ? (
+              <>
+                <h1 className="text-3xl md:text-4xl font-bold text-[var(--t1)] leading-tight">
+                  Upload your creative.
+                  <br />
+                  <span className="text-purple-400">We map what holds attention.</span>
+                </h1>
+                <p className="mt-3 text-[var(--t2)] text-sm leading-relaxed max-w-lg">
+                  Drop an image or video. Our AI analyzes emotion, attention,
+                  and message clarity, then delivers executive insights tied to
+                  ad performance benchmarks.
+                </p>
+              </>
+            ) : (creative.mimeType || '').toLowerCase().startsWith('video/') ? (
+              <>
+                <h1 className="text-3xl md:text-4xl font-bold text-[var(--t1)] leading-tight">
+                  Tell us about your video.
+                  <br />
+                  <span className="text-purple-400">Then we analyse it frame-by-frame.</span>
+                </h1>
+                <p className="mt-3 text-[var(--t2)] text-sm leading-relaxed max-w-lg">
+                  Our AI is ready to analyse your video frame-by-frame for
+                  attention arcs, emotion peaks, and message retention. Add
+                  brand context below so the analysis lands in your audience.
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-3xl md:text-4xl font-bold text-[var(--t1)] leading-tight">
+                  Tell us about your image.
+                  <br />
+                  <span className="text-purple-400">Then we map attention hotspots.</span>
+                </h1>
+                <p className="mt-3 text-[var(--t2)] text-sm leading-relaxed max-w-lg">
+                  Our AI is ready to map attention hotspots, emotion peaks, and
+                  message clarity across your image. Add brand context below so
+                  the analysis lands in your audience.
+                </p>
+              </>
+            )}
           </div>
 
-          {/* Step 1 — Upload */}
-          <section className="mb-8">
-            <h2 className="text-sm font-semibold text-[var(--t2)] uppercase tracking-wider mb-3">
-              Step 1 — Upload Your Creative
-            </h2>
-            <FileUpload
-              bucket="vett-creatives"
-              folder="creative-attention"
-              accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
-              maxSizeMB={200}
-              label="Drop video or image here"
-              hint="MP4, MOV, WebM (up to 200 MB) · JPG, PNG, WebP (up to 200 MB)"
-              current={creative}
-              onUpload={(f) => setCreative(f)}
-              onRemove={() => setCreative(null)}
-            />
-          </section>
+          {/* Step 1 — Upload. Pass 23 Bug 23.76: hide once file is selected
+              so users aren't presented with the upload zone alongside the
+              context form (cleaner two-step flow). The Replace button on
+              the file chip handles re-upload. */}
+          {!creative && (
+            <section className="mb-8">
+              <h2 className="text-sm font-semibold text-[var(--t2)] uppercase tracking-wider mb-3">
+                Step 1. Upload Your Creative
+              </h2>
+              <FileUpload
+                bucket="vett-creatives"
+                folder="creative-attention"
+                accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+                maxSizeMB={200}
+                label="Drop image or video"
+                hint="JPG, PNG, WebP, MP4, MOV, WebM (up to 200 MB)"
+                current={creative}
+                onUpload={(f) => setCreative(f)}
+                onRemove={() => setCreative(null)}
+              />
+            </section>
+          )}
+
+          {/* Uploaded-asset chip + replace control for the post-upload state. */}
+          {creative && (
+            <section className="mb-8 flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-[var(--b1)] bg-[var(--bg2)]">
+              <div className="flex items-center gap-3 min-w-0">
+                <Film className="w-5 h-5 text-purple-400 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-[var(--t1)] truncate">
+                    {creative.originalName}
+                  </div>
+                  <div className="text-xs text-[var(--t3)]">
+                    {(creative.mimeType || '').toLowerCase().startsWith('video/') ? 'Video' : 'Image'}
+                    {' · '}
+                    {Math.round((creative.sizeBytes || 0) / 1024)} KB
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCreative(null)}
+                className="text-xs text-[var(--t3)] hover:text-[var(--t1)] underline whitespace-nowrap"
+              >
+                Replace
+              </button>
+            </section>
+          )}
 
           {/* Step 2 — Context form (shown once file is uploaded) */}
           {creative && (
@@ -298,10 +375,13 @@ export function CreativeAttentionPage() {
                 />
               </div>
 
-              {/* Description */}
+              {/* Description — Pass 23 Bug 23.76: optional brief context.
+                  AI synthesis runs fine without it; brand_name + target_audience
+                  carry enough signal. Removed the red asterisk + the
+                  description.trim() check from canProceed. */}
               <div>
                 <label className="block text-xs text-[var(--t3)] mb-1.5 font-medium">
-                  What is this creative for? <span className="text-red-400">*</span>
+                  Brief context <span className="text-[var(--t3)] font-normal">(optional)</span>
                 </label>
                 <textarea
                   value={description}
@@ -312,27 +392,50 @@ export function CreativeAttentionPage() {
                 />
               </div>
 
-              {/* Desired emotions */}
-              <div>
-                <label className="block text-xs text-[var(--t3)] mb-2 font-medium">
-                  Emotions you want to evoke (select all that apply)
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {EMOTION_OPTIONS.map((e) => (
-                    <button
-                      key={e}
-                      type="button"
-                      onClick={() => toggleEmotion(e)}
-                      className={[
-                        'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
-                        selectedEmotions.has(e)
-                          ? 'bg-purple-500/20 border-purple-500/60 text-purple-300'
-                          : 'bg-[var(--bg2)] border-[var(--b1)] text-[var(--t2)] hover:border-[var(--b2)]',
-                      ].join(' ')}
-                    >
-                      {e}
-                    </button>
-                  ))}
+              {/* Pass 23 Bug 23.69 — optional desired-emotions picker.
+                  Reframed from "what should the creative evoke?" (which
+                  primed the user to pre-decide an outcome) to "tell us
+                  what you want, optional. We'll measure whether the
+                  creative actually delivers." Empty selection skips the
+                  alignment-vs-actual analysis and the AI describes all
+                  8 emotions descriptively instead. */}
+              <div className="rounded-xl border border-[var(--b1)] bg-[var(--bg2)]/50 p-4 space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-[var(--t1)]">
+                    Tell us what you want <span className="text-[var(--t3)] font-normal">(optional)</span>
+                  </h3>
+                  <p className="text-xs text-[var(--t3)] mt-0.5">
+                    We&rsquo;ll measure whether the creative actually delivers.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--t3)] mb-2 font-medium">
+                    Target emotions (pick up to 3)
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {EMOTION_OPTIONS.map((e) => {
+                      const isSelected = selectedEmotions.has(e);
+                      const atCap = !isSelected && selectedEmotions.size >= 3;
+                      return (
+                        <button
+                          key={e}
+                          type="button"
+                          disabled={atCap}
+                          onClick={() => toggleEmotion(e)}
+                          className={[
+                            'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                            isSelected
+                              ? 'bg-purple-500/20 border-purple-500/60 text-purple-300'
+                              : atCap
+                                ? 'bg-[var(--bg2)] border-[var(--b1)]/40 text-[var(--t3)]/50 cursor-not-allowed'
+                                : 'bg-[var(--bg2)] border-[var(--b1)] text-[var(--t2)] hover:border-[var(--b2)]',
+                          ].join(' ')}
+                        >
+                          {e}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 

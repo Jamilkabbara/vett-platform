@@ -1133,14 +1133,80 @@ export const ResultsPage = () => {
         );
       }
 
-      case 'multi_select':
-        const maxCount = Math.max(...result.data.map(item => item.count));
+      case 'multi_select': {
+        // Pass 23 Bug 23.66 — chart row-height fix. Long multi-select
+        // labels (e.g. "Energy or lives system with optional skip purchases")
+        // wrap to 3-4 lines and overlap the bars at default Recharts row
+        // heights. Two fixes:
+        //   1. Custom YAxisTick that hard-wraps each label at ~22 chars
+        //      and renders one <text> per line, vertically centered
+        //      around the row anchor.
+        //   2. Dynamic chart height computed per-row from line count.
+        const maxCount = Math.max(...result.data.map((item) => item.count));
+        const MAX_CHARS_PER_LINE = 22;
+        const LINE_HEIGHT_PX = 14;
+        const ROW_PADDING_PX = 24;
+        const wrapLabel = (label: string): string[] => {
+          const words = String(label || '').split(/\s+/);
+          const lines: string[] = [];
+          let line = '';
+          for (const word of words) {
+            const tentative = line ? line + ' ' + word : word;
+            if (tentative.length > MAX_CHARS_PER_LINE && line) {
+              lines.push(line);
+              line = word;
+            } else {
+              line = tentative;
+            }
+          }
+          if (line) lines.push(line);
+          // Cap any single line at MAX_CHARS_PER_LINE * 1.5 to handle a
+          // single ungainly word — adds a hyphen-truncate ellipsis.
+          return lines.map((l) =>
+            l.length > MAX_CHARS_PER_LINE * 1.5
+              ? l.slice(0, MAX_CHARS_PER_LINE * 1.5 - 1) + '…'
+              : l,
+          );
+        };
+        const linesPerRow = result.data.map((d) => wrapLabel(String((d as { feature?: string }).feature ?? '')).length);
+        const chartHeight =
+          60 +
+          linesPerRow.reduce((sum, n) => sum + Math.max(n * LINE_HEIGHT_PX + ROW_PADDING_PX, 48), 0);
+        const CustomYAxisTick = (props: { x?: number; y?: number; payload?: { value?: string } }) => {
+          const { x = 0, y = 0, payload } = props;
+          const lines = wrapLabel(String(payload?.value || ''));
+          const offset = -((lines.length - 1) * LINE_HEIGHT_PX) / 2;
+          return (
+            <g transform={`translate(${x},${y})`}>
+              {lines.map((line, i) => (
+                <text
+                  key={i}
+                  x={-8}
+                  y={offset + i * LINE_HEIGHT_PX}
+                  dy={4}
+                  textAnchor="end"
+                  fontSize={11}
+                  fill="rgba(255,255,255,0.85)"
+                >
+                  {line}
+                </text>
+              ))}
+            </g>
+          );
+        };
         return (
-          <ResponsiveContainer width="100%" height={Math.max(300, result.data.length * 50)}>
-            <BarChart data={result.data} layout="vertical">
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart data={result.data} layout="vertical" margin={{ left: 4, right: 24, top: 8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
               <XAxis type="number" stroke="#fff" tick={{ fill: '#fff' }} />
-              <YAxis dataKey="feature" type="category" stroke="#fff" tick={{ fill: '#fff' }} width={150} />
+              <YAxis
+                dataKey="feature"
+                type="category"
+                stroke="#fff"
+                tick={CustomYAxisTick}
+                width={200}
+                interval={0}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'rgba(17, 24, 39, 0.95)',
@@ -1148,14 +1214,11 @@ export const ResultsPage = () => {
                   borderRadius: '8px',
                   color: '#ffffff'
                 }}
-                itemStyle={{
-                  color: '#ffffff'
-                }}
-                labelStyle={{
-                  color: '#ffffff',
-                  fontWeight: 'bold'
-                }}
-                formatter={(value: any, name: any, props: any) => [`${value} (${props.payload.percentage}%)`, 'Responses']}
+                itemStyle={{ color: '#ffffff' }}
+                labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                formatter={(value: number, _name: string, props: { payload?: { percentage?: number } }) =>
+                  [`${value} (${props.payload?.percentage ?? 0}%)`, 'Responses']
+                }
               />
               <Legend formatter={() => 'Number of Responses'} wrapperStyle={{ color: '#ffffff' }} />
               <Bar dataKey="count" fill="#8B5CF6" radius={[0, 8, 8, 0]}>
@@ -1166,6 +1229,7 @@ export const ResultsPage = () => {
             </BarChart>
           </ResponsiveContainer>
         );
+      }
 
       case 'rating':
         return (

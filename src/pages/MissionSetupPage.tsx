@@ -305,28 +305,33 @@ export const MissionSetupPage = () => {
     }
   }, [showUpload, uploadedAsset, uploadingName]);
 
-  // Pass 23 Bug 23.65 — Creative Attention has a dedicated upload flow at
-  // /creative-attention/new with per-asset pricing (Image $19 / Video $39 /
-  // Bundle $79 / Series $249). It does NOT need the AI clarify or the AI
-  // survey-question generation steps that the standard /setup flow runs:
+  // Pass 23 Bug 23.65 + 23.68 — Creative Attention short-circuit, defensively
+  // gated. Production audit found ALL 4 RESEARCH_TYPES card paths landing
+  // on /creative-attention/new instead of the goal-correct setup; root cause
+  // narrowed to this useEffect firing on any goal change without confirming
+  // the goal arrived from the deep-link path. Three gates:
   //
-  //   - Clarify produces "what's your audience? what stage? what price band?"
-  //     None of those map to CA (the AI is analyzing one asset, not surveying
-  //     a population).
-  //   - Survey-question generation produces 5 multiple-choice questions to
-  //     ask respondents. CA has zero respondents — the survey questions are
-  //     dead weight that confuse the user.
+  //   1. Goal must literally be 'creative_attention'.
+  //   2. We are NOT already on the /creative-attention path (no redirect loop
+  //      if the page somehow rerenders post-navigation).
+  //   3. The goal arrived from URL ?goal=creative_attention OR sessionStorage
+  //      'vett_landing_goal' — proving it's a deep-link, not a user toggling
+  //      goal in the in-page selector. The latter case should let the user
+  //      switch in place; the deep-link case routes to the dedicated flow.
   //
-  // The Bug 23.GOAL fix already redirects on submit. Bug 23.65 redirects
-  // EARLIER — on goal change — so the user never burns time on the steps
-  // that don't apply. Falls through silently if the user navigated here
-  // already on creative_attention from /landing's goWithGoal helper (which
-  // routes directly to /creative-attention/new and would never have hit
-  // this page).
+  // sessionStorage is consumed (cleared) after read so a stale CA value from
+  // a previous session doesn't bleed into the next /setup visit.
   useEffect(() => {
-    if (missionGoal === 'creative_attention') {
-      navigate('/creative-attention/new', { replace: true });
-    }
+    if (missionGoal !== 'creative_attention') return;
+    if (location.pathname.startsWith('/creative-attention')) return;
+    const urlGoal = searchParams.get('goal');
+    let sessionGoal: string | null = null;
+    try { sessionGoal = sessionStorage.getItem('vett_landing_goal'); } catch { sessionGoal = null; }
+    const isDeepLink = urlGoal === 'creative_attention' || sessionGoal === 'creative_attention';
+    if (!isDeepLink) return;
+    // Read-and-clear so a refresh doesn't replay the redirect.
+    try { sessionStorage.removeItem('vett_landing_goal'); } catch { /* no-op */ }
+    navigate('/creative-attention/new', { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missionGoal]);
 

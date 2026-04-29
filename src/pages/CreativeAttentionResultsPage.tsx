@@ -306,6 +306,36 @@ export function CreativeAttentionResultsPage() {
           <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
         </div>
 
+        {/* Pass 23 Bug 23.60/23.75 — render the actual creative.
+            Previously the page described the asset in text only; users
+            had no way to see what the AI was scoring. media_url is the
+            signed URL stamped at INSERT time; brief_attachment.path is
+            the storage path for re-signing if the URL has expired. */}
+        {(() => {
+          const mediaUrl = (mission?.media_url as string | undefined) || null;
+          const briefAttachment = mission?.brief_attachment as { mimeType?: string } | undefined;
+          const mimeType = (briefAttachment?.mimeType || '').toLowerCase();
+          const isVideo = mimeType.startsWith('video/') || (mission?.media_type as string) === 'video';
+          if (!mediaUrl) return null;
+          return (
+            <section className="rounded-2xl overflow-hidden border border-[var(--b1)] bg-black/40">
+              {isVideo ? (
+                <video
+                  src={mediaUrl}
+                  controls
+                  className="w-full max-h-[480px] object-contain bg-black"
+                />
+              ) : (
+                <img
+                  src={mediaUrl}
+                  alt={`Creative for ${title}`}
+                  className="w-full max-h-[480px] object-contain bg-black"
+                />
+              )}
+            </section>
+          );
+        })()}
+
         {/* Hero metrics row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 flex flex-col items-center">
@@ -323,15 +353,29 @@ export function CreativeAttentionResultsPage() {
             <p className="text-xs text-[var(--t3)] font-semibold uppercase tracking-wider mb-3">
               Best Platform Fit
             </p>
+            {/* Pass 23 Bug 23.73 — supports both shapes:
+                  - new: array of { platform, rationale }
+                  - legacy: array of strings (pre-Bug-23.73 missions)
+                Hover/focus reveals the per-platform rationale tooltip. */}
             <div className="flex flex-wrap gap-2">
-              {(summary.best_platform_fit || []).map((p) => (
-                <span
-                  key={p}
-                  className="px-3 py-1 rounded-full text-xs font-medium bg-purple-500/15 border border-purple-500/30 text-purple-300"
-                >
-                  {p}
-                </span>
-              ))}
+              {(summary.best_platform_fit || []).map((p, i) => {
+                const isObject = p && typeof p === 'object' && !Array.isArray(p);
+                const platformName = isObject
+                  ? String((p as { platform?: string }).platform ?? '')
+                  : String(p ?? '');
+                const rationale = isObject
+                  ? String((p as { rationale?: string }).rationale ?? '')
+                  : '';
+                return (
+                  <span
+                    key={`${platformName}-${i}`}
+                    title={rationale || undefined}
+                    className="px-3 py-1 rounded-full text-xs font-medium bg-purple-500/15 border border-purple-500/30 text-purple-300 cursor-help"
+                  >
+                    {platformName}
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>
