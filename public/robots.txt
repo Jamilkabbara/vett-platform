@@ -1,0 +1,29 @@
+# VETT — robots.txt
+# Pass 23 B1 — SEO infrastructure.
+
+User-agent: *
+Allow: /
+
+# Block authed-only routes from index — they require login and serve no
+# public content.
+Disallow: /dashboard
+Disallow: /missions
+Disallow: /results
+Disallow: /creative-results
+Disallow: /profile
+Disallow: /admin
+Disallow: /setup
+Disallow: /signin
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /payment-success
+Disallow: /payment-cancel
+Disallow: /__design
+
+# Don't crawl Stripe Checkout or session URLs that may end up in
+# referrer logs.
+Disallow: /*?session_id=
+
+# Sitemap location.
+Sitemap: https://www.vettit.ai/sitemap.xml
