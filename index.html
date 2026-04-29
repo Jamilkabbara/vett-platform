@@ -7,20 +7,78 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0B0C15" />
-    <title>VETT — AI Market Research</title>
+    <title>VETT — AI Market Research in Minutes</title>
 
-    <!-- Open Graph -->
-    <meta property="og:title" content="VETT — AI Market Research" />
-    <meta property="og:description" content="Run synthetic persona research missions in minutes." />
-    <meta property="og:image" content="https://vettit.ai/og-image.png" />
-    <meta property="og:url" content="https://vettit.ai" />
+    <!--
+      Pass 23 B1 — SEO infrastructure.
+      Description tuned for SERP CTR: leads with the value prop, names
+      the differentiator (synthetic personas, no panel), and includes
+      the "minutes not weeks" anchor that performs in product-research
+      query contexts. Length ~150 chars (Google truncates at ~155-160).
+    -->
+    <meta
+      name="description"
+      content="VETT runs market research in minutes, not weeks. AI generates synthetic respondents to your audience spec and delivers insights — no panel, no waiting."
+    />
+    <meta name="keywords" content="market research, AI research, synthetic personas, survey research, brand lift, creative attention, MENA market research" />
+    <link rel="canonical" href="https://www.vettit.ai/" />
+
+    <!-- Open Graph (Pass 23 B1 — upgraded) -->
+    <meta property="og:title" content="VETT — AI Market Research in Minutes" />
+    <meta property="og:description" content="Run real market research in minutes. AI generates synthetic respondents to your audience spec, simulates the survey, and delivers insights — no panel, no waiting, no refunds needed." />
+    <meta property="og:image" content="https://www.vettit.ai/og-image.png" />
+    <meta property="og:url" content="https://www.vettit.ai/" />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="VETT" />
+    <meta property="og:locale" content="en_US" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="VETT — AI Market Research" />
-    <meta name="twitter:description" content="Run synthetic persona research missions in minutes." />
-    <meta name="twitter:image" content="https://vettit.ai/og-image.png" />
+    <meta name="twitter:title" content="VETT — AI Market Research in Minutes" />
+    <meta name="twitter:description" content="Run real market research in minutes. AI generates synthetic respondents to your audience spec — no panel, no waiting." />
+    <meta name="twitter:image" content="https://www.vettit.ai/og-image.png" />
+
+    <!--
+      Pass 23 B1 — Schema.org JSON-LD.
+      Two graph nodes: Organization (the company) + SoftwareApplication
+      (the product). Helps Google's knowledge panel + rich-result eligibility
+      for the homepage. Pricing reflects the canonical Sniff-Test floor;
+      offerCount surfaces all visible tiers across the goal-keyed ladders.
+    -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://www.vettit.ai/#organization",
+          "name": "VETT",
+          "url": "https://www.vettit.ai/",
+          "logo": "https://www.vettit.ai/apple-touch-icon.png",
+          "description": "AI-powered market research platform. Generate synthetic respondent personas, simulate surveys in minutes, and get insights — without recruiting real panels.",
+          "sameAs": []
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://www.vettit.ai/#software",
+          "name": "VETT",
+          "url": "https://www.vettit.ai/",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "description": "AI market research that generates synthetic respondent personas to your audience specification, simulates surveys in minutes, and delivers research-grade insights — no panel recruitment, no fallback, no refunds needed.",
+          "offers": {
+            "@type": "AggregateOffer",
+            "priceCurrency": "USD",
+            "lowPrice": "9",
+            "highPrice": "1990",
+            "offerCount": "14",
+            "description": "Three goal-keyed pricing ladders: Validate (5–5000 personas, $9–$1990), Brand Lift (50–2000 personas, $99–$1499), Creative Attention (per-asset, $19–$249)."
+          },
+          "creator": { "@id": "https://www.vettit.ai/#organization" }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

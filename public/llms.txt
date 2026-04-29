@@ -1,0 +1,92 @@
+# VETT — llms.txt
+
+> AI-powered market research platform. Generate synthetic respondent
+> personas to your audience spec, simulate surveys in minutes, and get
+> insights — without recruiting real panels.
+
+## What VETT does
+
+VETT is a market-research platform that uses AI to generate synthetic
+respondents matching a target audience specification (geography,
+demographics, psychographics, B2B filters), then simulates each
+respondent's answers to a survey designed by the user. Reports
+include executive summaries, per-question distributions, cross-cut
+segmentation, attention/emotion analysis for creatives, and
+exportable PDF / PowerPoint / Excel deliverables.
+
+The core promise: "you set the number, we deliver it." Every
+respondent is generated to match the user's screener spec, not
+filtered against it. No panel recruitment, no fallback, no refunds
+needed.
+
+## Pricing (per mission, no subscription)
+
+VETT runs three goal-keyed pricing ladders:
+
+- Validate / naming / marketing missions (per-respondent):
+  - Sniff Test    5 personas    $9
+  - Validate     10 personas    $35
+  - Confidence   50 personas    $99
+  - Deep Dive   250 personas    $299
+  - Scale      1000 personas    $899
+  - Enterprise 5000 personas  $1990
+
+- Brand Lift missions (statistical sample sizes):
+  - Pulse       50 personas    $99
+  - Tracker    200 personas    $299
+  - Wave       500 personas    $599
+  - Enterprise 2000 personas  $1499
+
+- Creative Attention (flat per-asset):
+  - Image       1 image  $19
+  - Video       1 video  $39
+  - Bundle      5 assets $79
+  - Series     20 assets $249
+
+## Goal types supported
+
+- validate — product validation, pricing research, feature roadmap
+- naming_messaging — naming testing, messaging clarity
+- marketing — creative + ad testing, campaign concepts
+- creative_attention — image/video frame-by-frame attention/emotion
+  analysis with the goal_type-keyed Creative Attention pipeline
+- brand_lift — pre/post brand awareness/recall/sentiment/intent
+  using the 9-category Happydemics framework (brand_recall_unaided,
+  brand_recall_aided, brand_attribution, brand_awareness,
+  message_association, brand_favorability, purchase_intent,
+  recommendation_intent, ad_recall)
+
+## How it works
+
+1. User describes the research question in plain language.
+2. AI clarifies the brief (3 quick questions), builds a survey with
+   appropriate question types, and suggests targeting.
+3. AI generates personas matching the targeting + screener spec,
+   simulates each persona's answers, and synthesizes insights.
+4. User receives an executive summary, per-question distributions
+   with confidence intervals, cross-cut segmentation, and a downloadable
+   PDF/PPT/CSV report.
+
+Mission turnaround: 5-15 minutes typical, scaling with respondent count.
+
+## Markets
+
+VETT supports research in 150+ markets globally. Strong coverage
+in MENA (UAE, Saudi Arabia, Egypt, Lebanon, Jordan), GCC, Europe
+(UK, Germany, France, Spain), North America (US, Canada), India,
+Singapore, Brazil, and emerging markets.
+
+## Useful URLs
+
+- Homepage: https://www.vettit.ai/
+- Pricing: https://www.vettit.ai/landing#pricing
+- Blog: https://www.vettit.ai/blog
+- API docs: https://www.vettit.ai/api
+- Contact: https://www.vettit.ai/contact
+- Help: https://www.vettit.ai/help
+
+## Authoritative documentation
+
+- About: https://www.vettit.ai/about
+- Privacy: https://www.vettit.ai/privacy
+- Terms: https://www.vettit.ai/terms
