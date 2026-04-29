@@ -89,7 +89,37 @@ interface QuestionResult {
   ci_high?: number;
   stddev?: number;
   rating_n?: number;
+  // Pass 23 Bug 23.56 — Brand Lift category framework. Tagged on
+  // brand_lift goal_type missions only (claudeAI.js system prompt
+  // emits the field for every question on those missions). Used by
+  // the per-question card to surface a small category pill so users
+  // see "this Q measures Aided Recall" / "this Q measures Purchase
+  // Intent" without parsing the question text.
+  category?:
+    | 'brand_recall_unaided'
+    | 'brand_recall_aided'
+    | 'brand_attribution'
+    | 'brand_awareness'
+    | 'message_association'
+    | 'brand_favorability'
+    | 'purchase_intent'
+    | 'recommendation_intent'
+    | 'ad_recall';
 }
+
+// Pass 23 Bug 23.56 — humanized labels for the Brand Lift question
+// categories. Used by the small category pill on each per-Q card.
+export const BRAND_LIFT_CATEGORY_LABEL: Record<string, string> = {
+  brand_recall_unaided:  'Brand Recall (Unaided)',
+  brand_recall_aided:    'Brand Recall (Aided)',
+  brand_attribution:     'Brand Attribution',
+  brand_awareness:       'Brand Awareness',
+  message_association:   'Message Association',
+  brand_favorability:    'Brand Favorability',
+  purchase_intent:       'Purchase Intent',
+  recommendation_intent: 'Recommendation Intent (NPS)',
+  ad_recall:             'Ad Recall',
+};
 
 interface FilterOption {
   label: string;
@@ -467,6 +497,18 @@ export const ResultsPage = () => {
           };
         });
         return { id: qid, question: qText, type: 'single_choice', data: arr, aiInsight };
+      });
+
+      // Pass 23 Bug 23.56 — propagate Brand Lift category tags from the
+      // source mission_questions JSONB onto each QuestionResult. The
+      // category is set by claudeAI's brand_lift-aware system prompt
+      // (8-category Happydemics framework). Non-brand_lift missions have
+      // no category field and the map is a no-op.
+      questions.forEach((qr, idx) => {
+        const src = (missionQuestions as Array<{ category?: string }>)[idx];
+        if (src?.category) {
+          (qr as QuestionResult).category = src.category as QuestionResult['category'];
+        }
       });
 
       // Build persona chips from target_audience jsonb
@@ -1883,14 +1925,26 @@ export const ResultsPage = () => {
                       className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl"
                     >
                       <div className="mb-6">
-                        <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-start justify-between mb-2 gap-3">
                           <h3 className="text-xl font-bold text-white flex-1">{question.question}</h3>
-                          <span className="text-xs px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 font-medium border border-blue-500/30">
-                            {question.type === 'single_choice' && 'Single Choice'}
-                            {question.type === 'multi_select' && 'Multi-Select'}
-                            {question.type === 'rating' && 'Rating Scale'}
-                            {question.type === 'open_text' && 'Open Text'}
-                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {/* Pass 23 Bug 23.56 — Brand Lift category pill.
+                                Renders only when the question carries a
+                                category tag (brand_lift goal_type). Tells
+                                the user which Happydemics frame this Q
+                                measures. */}
+                            {question.category && BRAND_LIFT_CATEGORY_LABEL[question.category] && (
+                              <span className="text-[10px] px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-200 font-bold border border-purple-500/30 uppercase tracking-wider whitespace-nowrap">
+                                {BRAND_LIFT_CATEGORY_LABEL[question.category]}
+                              </span>
+                            )}
+                            <span className="text-xs px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 font-medium border border-blue-500/30">
+                              {question.type === 'single_choice' && 'Single Choice'}
+                              {question.type === 'multi_select' && 'Multi-Select'}
+                              {question.type === 'rating' && 'Rating Scale'}
+                              {question.type === 'open_text' && 'Open Text'}
+                            </span>
+                          </div>
                         </div>
                         {/*
                           Pass 21 Bug 6 (Option B) per-question sub-header:
