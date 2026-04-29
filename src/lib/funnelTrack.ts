@@ -47,7 +47,17 @@ export type FunnelEvent =
   | 'checkout_completed'
   | 'checkout_canceled'   // Pass 23 Bug 23.0e v2 — user hit Stripe Checkout cancel
   | 'mission_paid'
-  | 'mission_completed';
+  | 'mission_completed'
+  // Pass 23 Bug 23.52 — PaymentSuccessPage diagnostic trail. Lets us trace
+  // the exact path through the success-page polling loop when a paid
+  // mission ends up redirected somewhere unexpected (e.g. /setup instead
+  // of /dashboard/:id). Each emit carries minimal context so the funnel
+  // table stays readable while still being forensic.
+  | 'payment_success_page_loaded'
+  | 'payment_success_poll_attempt'
+  | 'payment_success_redirect'
+  | 'payment_success_session_expired'
+  | 'payment_success_timeout';
 
 interface QueuedEvent {
   event_type: FunnelEvent;
