@@ -130,7 +130,7 @@ export function CreativeAttentionPage() {
         .from('missions')
         .insert([{
           user_id:          user.id,
-          title:            `Creative Attention — ${brandName.trim()}`,
+          title:            `Creative Attention: ${brandName.trim()}`,
           brief:            description.trim(),
           goal_type:        'creative_attention',
           status:           'draft',

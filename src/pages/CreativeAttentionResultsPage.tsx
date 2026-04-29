@@ -216,7 +216,7 @@ export function CreativeAttentionResultsPage() {
         </p>
         <div className="mt-2 flex items-center gap-2 text-xs text-[var(--t3)]">
           <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-          Processing — this page updates automatically
+          Processing. This page updates automatically.
         </div>
       </div>
     );
@@ -392,7 +392,7 @@ export function CreativeAttentionResultsPage() {
               { label: 'Engagement', value: engagementScore, hint: 'Overall attention captured by the creative.' },
               { label: 'Resonance',  value: resonanceScore,  hint: 'How strongly the creative connects with the target audience.' },
               { label: 'Clarity',    value: clarityScore,    hint: 'How clearly brand and message read in the moment.' },
-              { label: 'Memory',     value: memoryScore,     hint: 'Recall potential — driven by trust, surprise, and anticipation.' },
+              { label: 'Memory',     value: memoryScore,     hint: 'Recall potential, driven by trust, surprise, and anticipation.' },
             ].map((card) => {
               const c =
                 card.value >= 70 ? 'text-green-400 border-green-400/30 bg-green-400/5' :

@@ -419,7 +419,14 @@ export const ResultsPage = () => {
           ? perQList.find((pi: any) => pi && pi.question_id === qid)
           : null;
         const perQText = perQItem
-          ? [perQItem.headline, perQItem.body].filter(Boolean).join(' — ')
+          // Pass 23 Bug 23.77 — was joined with ` — ` which inserted an
+          // em-dash into the rendered insight body. The downstream render
+          // now splits headline from body via the `insightHeadline`
+          // sibling field so we keep them separate elements (lead-sentence
+          // typography per the Bug 23.60 spec). Insight string keeps just
+          // the body for backwards compat with surfaces that read the
+          // raw concatenation.
+          ? [perQItem.headline, perQItem.body].filter(Boolean).join('. ').replace(/\.\.\s/, '. ')
           : '';
         const aiInsight =
           bucket.insight ||
@@ -2051,9 +2058,32 @@ export const ResultsPage = () => {
                           </div>
                           <div className="flex-1">
                             <div className="text-purple-300 text-xs font-bold uppercase tracking-wide mb-1">AI Insight</div>
-                            {question.aiInsight ? (
-                              <p className="text-white/90 text-sm leading-relaxed">{question.aiInsight}</p>
-                            ) : (
+                            {/* Pass 23 Bug 23.77 + 23.60 — lead-sentence
+                                typography. Bold-weight first sentence
+                                (the headline), regular-weight remainder
+                                (the supporting paragraph). Splits the
+                                joined string at the first ". " so we
+                                don't need to plumb headline+body through
+                                the QuestionResult type. */}
+                            {question.aiInsight ? (() => {
+                              const text = question.aiInsight;
+                              const idx = text.indexOf('. ');
+                              if (idx === -1 || idx > 200) {
+                                return (
+                                  <p className="text-white/90 text-sm leading-relaxed">{text}</p>
+                                );
+                              }
+                              const lead = text.slice(0, idx + 1);
+                              const body = text.slice(idx + 2);
+                              return (
+                                <>
+                                  <p className="text-white text-base font-semibold leading-relaxed">{lead}</p>
+                                  {body && (
+                                    <p className="text-white/80 text-sm leading-relaxed mt-2">{body}</p>
+                                  )}
+                                </>
+                              );
+                            })() : (
                               <p className="text-white/40 text-sm italic">AI insight not yet available for this question.</p>
                             )}
                           </div>
@@ -2106,7 +2136,7 @@ export const ResultsPage = () => {
 
                       <p className="text-white/80 text-base leading-relaxed mb-6">
                         Review the patterns in your results and consider launching a follow-up mission to
-                        dig deeper into any question that surfaced unexpected findings — or to test a
+                        dig deeper into any question that surfaced unexpected findings, or to test a
                         specific hypothesis with a more targeted audience segment.
                       </p>
 
