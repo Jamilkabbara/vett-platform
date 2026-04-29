@@ -248,6 +248,38 @@ export function CreativeAttentionResultsPage() {
     .slice(0, 4)
     .map(([e]) => e);
 
+  // Pass 23 Bug 23.57 — Brand Strength Scorecard derivation. 4 axes:
+  //   Engagement = average frame engagement_score (or summary.overall_engagement_score)
+  //   Resonance  = average frame audience_resonance
+  //   Clarity    = average frame message_clarity
+  //   Memory     = average of the recall-driving emotions (trust + surprise +
+  //                anticipation) across frames. Memorability isn't a first-
+  //                class field in the JSONB so we synthesize it from the
+  //                emotions most associated with ad recall in academic
+  //                research (Affectiva-style).
+  const avg = (vals: number[]): number =>
+    vals.length === 0 ? 0 : Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  const engagementScore = summary.overall_engagement_score
+    ?? avg(frame_analyses.map((f) => f.engagement_score));
+  const resonanceScore = avg(frame_analyses.map((f) => f.audience_resonance));
+  const clarityScore = avg(frame_analyses.map((f) => f.message_clarity));
+  const memoryScore = avg(
+    frame_analyses.map((f) => {
+      const e = f.emotions || {};
+      return Math.round(((e.trust || 0) + (e.surprise || 0) + (e.anticipation || 0)) / 3);
+    }),
+  );
+  const isImage = !analysis.is_video || frame_analyses.length <= 1;
+
+  // Single-frame image bar-chart data — emotion peaks rendered as a
+  // vertical bar so users see the emotion mix even when there's no
+  // temporal arc to plot.
+  const imageBarData = isImage && frame_analyses[0]
+    ? Object.entries(frame_analyses[0].emotions || {})
+        .map(([emotion, value]) => ({ emotion, value }))
+        .sort((a, b) => b.value - a.value)
+    : [];
+
   const title = (mission?.title as string) || 'Creative Analysis';
 
   return (
@@ -304,12 +336,77 @@ export function CreativeAttentionResultsPage() {
           </div>
         </div>
 
+        {/* Pass 23 Bug 23.57 — Brand Strength Scorecard. 4 cards drawn
+            from the AI-populated frame_analyses fields + a synthesized
+            "Memory" axis from recall-driving emotions. Renders for both
+            image (single-frame averages = the frame value) and video
+            (averaged across frames). */}
+        <section>
+          <h2 className="text-lg font-bold mb-4">Brand Strength</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Engagement', value: engagementScore, hint: 'Overall attention captured by the creative.' },
+              { label: 'Resonance',  value: resonanceScore,  hint: 'How strongly the creative connects with the target audience.' },
+              { label: 'Clarity',    value: clarityScore,    hint: 'How clearly brand and message read in the moment.' },
+              { label: 'Memory',     value: memoryScore,     hint: 'Recall potential — driven by trust, surprise, and anticipation.' },
+            ].map((card) => {
+              const c =
+                card.value >= 70 ? 'text-green-400 border-green-400/30 bg-green-400/5' :
+                card.value >= 40 ? 'text-amber-400 border-amber-400/30 bg-amber-400/5' :
+                                   'text-red-400 border-red-400/30 bg-red-400/5';
+              return (
+                <div
+                  key={card.label}
+                  className={`bg-[var(--bg2)] border rounded-2xl p-5 ${c.split(' ').slice(1).join(' ')}`}
+                  title={card.hint}
+                >
+                  <div className="text-xs uppercase tracking-wider text-[var(--t3)] font-semibold mb-2">{card.label}</div>
+                  <div className={`text-3xl font-black tabular-nums ${c.split(' ')[0]}`}>{card.value}</div>
+                  <div className="text-[10px] text-[var(--t4)] mt-1">/ 100</div>
+                  <div className="text-[10px] text-[var(--t3)] leading-snug mt-2">{card.hint}</div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         {/* vs Benchmark */}
         {summary.vs_benchmark && (
           <div className="bg-[var(--bg2)] border border-[var(--lime)]/20 rounded-2xl p-5 flex items-start gap-3">
             <TrendIcon value={summary.overall_engagement_score} />
             <p className="text-sm text-[var(--t1)] leading-relaxed">{summary.vs_benchmark}</p>
           </div>
+        )}
+
+        {/* Pass 23 Bug 23.57 — Image-mode emotion bar chart. Single-frame
+            creatives have no temporal arc; render the emotion mix as a
+            horizontal bar chart so the analytics surface still shows
+            structure rather than just a list. */}
+        {isImage && imageBarData.length > 0 && (
+          <section>
+            <h2 className="text-lg font-bold mb-4">Emotion Mix</h2>
+            <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-2.5">
+              {imageBarData.map((row) => (
+                <div key={row.emotion} className="flex items-center gap-3">
+                  <span className="w-24 text-xs text-[var(--t3)] capitalize text-right shrink-0">
+                    {row.emotion}
+                  </span>
+                  <div className="flex-1 h-3 bg-[var(--bg3,#1a2233)] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, row.value))}%`,
+                        background: EMOTION_COLORS[row.emotion] ?? '#9CA3AF',
+                      }}
+                    />
+                  </div>
+                  <span className="w-10 text-xs font-mono text-[var(--t2)] text-right tabular-nums shrink-0">
+                    {row.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Emotion Timeline */}
