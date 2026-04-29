@@ -33,6 +33,7 @@
 | **23.52** PaymentSuccess speculative fix + diagnostic emits | `93bab20` | `06ef617` | Anon-friendly polling endpoint + signed-out branch + 90s window + 5 diagnostic funnel emits. |
 | **A9** admin completeness | `e4f7059` | `c022086` | Bug 23.29 admin revenue cache fresh; 23.30 Mission Type Mix arithmetic; 23.34 already in place; 23.27 deferred (UX); 23.28 audited clean; 3 cleanups shipped (notifications routes deleted, preconnect strip merged, missions.tier confirmed). |
 | **23.55** collapse Creative Attention flow | — | — | ✅ **CLOSED — already-satisfied.** Existing `/creative-attention/new` is already a single-page upload + brand-context + flat-price form. Spec was based on misobservation of the live UX. Keep dedicated route (different pricing model — per-asset vs per-respondent). No code change. |
+| **23.56** storage-model note | — | — | **Forensic clarification (not a bug).** Bug 23.56 categories live as a top-level `category` field on each question object inside the `missions.questions` JSONB array. There is **no separate `mission_questions` table** in this schema — questions are denormalised into `missions.questions` (per Pass 21+). To query for brand_lift questions by category: `SELECT m.id, q.* FROM missions m, jsonb_array_elements(m.questions) q WHERE m.goal_type='brand_lift' AND q->>'category' = 'purchase_intent'`. Frontend reads via `mission.questions[i].category`. |
 
 ---
 

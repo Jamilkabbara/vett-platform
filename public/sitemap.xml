@@ -55,4 +55,11 @@
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
+  <!-- Pass 23 B2 — comparison pages. SurveyMonkey is the template;
+       the other 4 ship after Jamil's voice/tone review. -->
+  <url>
+    <loc>https://www.vettit.ai/vs/surveymonkey</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 </urlset>
