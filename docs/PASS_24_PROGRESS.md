@@ -35,6 +35,8 @@ Operationally:
 
 5. **NEW (Pass 23 Bug 23.79) — Backend code-shipped requires probing a behavior endpoint to confirm runtime SHA matches HEAD.** "Code is pushed to origin/main" is not the same as "code is running in production." For Railway: curl `/version` (returns `process.env.RAILWAY_GIT_COMMIT_SHA`). For Vercel: read the bundle hash on `index.html`. Without this verification, "code-shipped" is "code-pushed-and-hoped." A push that doesn't trigger an auto-deploy looks identical from git's side.
 
+6. **NEW (Pass 24 launch-readiness bundle) — Marketing/sales/legal asset generation requires Jamil review-and-approval before `shipped` status.** These are external-facing artifacts where hallucinated facts have reputational cost. Audit chat verifies copy accuracy against real DB / real product behavior; Jamil verifies tone + business positioning. Applies to: legal pages (privacy, ToS, refunds), sales decks, LinkedIn templates, marketing strategy docs, founder bios, case studies. Internal-only artifacts (admin dashboards, ops runbooks) follow the existing 5-criterion technical doctrine.
+
 ---
 
 ## Bug ledger
@@ -43,6 +45,26 @@ Operationally:
 |---|---|---|---|---|
 | **24.01** Creative Attention v2 (DAIVID + Amplified) | `planned` | — | — | Branch `pass-24-bug-01-creative-attention-v2`. Expand emotion taxonomy 8 → 24, add attention prediction (active vs passive %, predicted seconds, DBA score, decay curve), platform norms, cross-channel benchmarks (TV / social / OOH / CTV / programmatic), Creative Effectiveness Score (0-100 composite). Backwards-compatible JSONB additions only. |
 | **24.02** Admin panel infrastructure costs + renewal calendar | `planned` | — | — | Branch `pass-24-bug-02-admin-cost-tracking`. New tables `infrastructure_subscriptions` + `per_unit_costs`. Admin Costs page with KPIs (revenue / AI / infra / true margin), subscriptions table with renewal alerts, runway calculator. **STOP-AND-ASK Jamil before seeding actual costs** — wrong values would silently corrupt the dashboard. |
+| **24.03** Legal pages (Privacy, ToS, Refunds, Cookie Banner) | `planned` | — | — | Branch `pass-24-bug-03-legal-pages`. **Launch blocker.** New routes `/privacy`, `/terms`, `/refunds`. Cookie banner component mounted globally with `vett:cookie_consent` localStorage key (only key — don't fight existing draft state). Footer links across LandingPage + DashboardPage. Termly/iubenda template customized for: Supabase ap-south-1 residency, Anthropic processing, Stripe data, Resend email, vett-creatives storage, Vercel analytics, GDPR (EU/MENA), 90d retention, UAE jurisdiction. Stripe will eventually flag accounts without these — GDPR liability before then. **Sub-rule 6 applies — Jamil review before shipped.** |
+| **24.04** Sales deck (.pptx, generated from real mission data) | `planned` | — | — | Branch `pass-24-bug-04-sales-deck`. Output: `docs/sales/VETT_Sales_Deck_v1.pptx` via pptxgenjs. 14 slides: Title → Problem → Solution → How It Works (4-step Intelligence Loop) → 14 goal types grid → Creative Attention v2 standout → MENA-first positioning → Real Results (real mission screenshots) → Pricing ladder → Why Now → Comparison matrix (uses Agent 3 Phase B content) → Founder bio + roadmap → Ask → Contact. Generated via `scripts/generate-sales-deck.ts`. Brand kit: bg #0B0C15, lime #BEF264, indigo #6366F1, Manrope/Inter. **Sub-rule 6 applies.** |
+| **24.05** LinkedIn package | `planned` | — | — | Branch `pass-24-bug-05-linkedin-package`. Output: `docs/marketing/LINKEDIN_PACKAGE.md` with 4 sections: (1) Jamil personal profile optimization (headline, About, Featured pinned post, location/contact/skills/services), (2) VETT company page setup checklist (logo, banner spec, tagline, About, industry, size, website, HQ Dubai, founded, specialties, initial 5-post launch sequence), (3) Cold outreach templates (4 audience segments × 3 message variants — brand marketers MENA, agency strategists, solo founders, research buyers escaping SurveyMonkey; <200 chars; tokens `{first_name}` `{company}` `{trigger}`), (4) Content calendar (4-week schedule, 3 posts/week, 12 specific drafts, MENA + EU timezone optimization). **Sub-rule 6 applies.** |
+| **24.06** 90-day marketing strategy | `planned` | — | — | Branch `pass-24-bug-06-marketing-strategy`. Output: `docs/marketing/MARKETING_STRATEGY_90_DAYS.md`. Three phases: Weeks 1-2 Content Foundation (comparison pages live, 5 LI posts, 3 blog posts, company page setup, profile optimized, 50 strategic connections); Weeks 3-6 Outbound + Organic (50 cold DMs/week, 3 posts/week, agency partnership outreach, first case study, AppSumo/PH/G2/Capterra, GSC + sitemap); Weeks 7-12 Paid + Scale ($500 LinkedIn Ads pilot, paid case study, agency reseller deal, webinar/Loom recording, email nurture drip). KPIs weekly/monthly/quarterly. **Sub-rule 6 applies.** |
+| **24.07** Email workspace migration guide (docs only) | `planned` | — | — | Branch `pass-24-bug-07-email-setup`. Output: `docs/ops/EMAIL_WORKSPACE_SETUP.md`. Step-by-step Google Workspace migration from Microsoft 365 (cancel via GoDaddy, sign up Business Starter $6/user/mo, verify domain TXT, update MX, create `jamil@vettit.ai` + `hello@vettit.ai`, configure send-as in Gmail, update Resend From, update Stripe support, update vettit.ai footer). Alternatives section (Cloudflare Email Routing, ProtonMail Custom Domain). Testing checklist (mxtoolbox SPF/DKIM/DMARC). Jamil does the actual setup since it requires GoDaddy login. |
+| **B5** Stripe Subscriptions | **DEFERRED to Phase 2** | — | — | Jamil's decision: NO free tier, NO subscription system at current pricing. Revisit in Phase 2 with substantially higher tier pricing (target Pro ~$99-149/mo, Team ~$299-499/mo) AFTER the platform proves recurring usage at one-shot pricing (first 50-100 paying users). No engineering work happens on this in Pass 24. |
+
+---
+
+## Pass 24 execution order
+
+After Agents 1, 2, 3 close out their Pass 23 deferred work:
+
+1. **Lead session takes Bug 24.01** (CA v2) — 8-10h
+2. **Then Bug 24.02** (admin costs) — 6-8h. **STOP-AND-ASK Jamil for actual subscription amounts + renewal dates BEFORE committing seed migration. Wrong values silently corrupt his runway dashboard.**
+3. **Then Bug 24.03** (legal pages) — 3-4h. Launch blocker.
+4. **Then Bug 24.07** (email setup guide) — 1h. Jamil does the actual migration.
+5. **Then Bug 24.04 / 24.05 / 24.06** (sales deck / LinkedIn / marketing strategy) — these are document/asset generation; can run in any order. Combined ~7-10h.
+
+Marketing/sales/legal artifacts (Bugs 24.03, 24.04, 24.05, 24.06) all gate on **Jamil review-and-approval per Sub-rule 6** before shipped. Audit chat verifies factual accuracy first; Jamil approves tone + positioning second.
 
 ---
 
