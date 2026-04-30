@@ -45,15 +45,39 @@ For shareability (cross-cut):
 
 ---
 
+## Section migration plan (incremental — locked 2026-04-30)
+
+ResultsPage.tsx is **2355 lines**. CreativeAttentionResultsPage.tsx is 631 lines. Redesign ships in 10 chunks of 1-2h each, audit-chat-verified between chunks.
+
+| # | Title | Scope | Risk | Est |
+|---|---|---|---|---|
+| 1 | **Foundation** | Create `src/components/results/` dir. Build `SectionHeader.tsx` (title + optional pill + anchor id). Build `ShareButton.tsx` (copy-summary-as-markdown to clipboard). No JSX changes — components ready to wire. | none | 1h |
+| 2 | **Anchor links + Share button** | Add `id="exec-summary"` etc. to major sections. Mount `ShareButton` in header. Add "Copy executive summary" ghost button next to Executive Summary heading. | low | 1h |
+| 3 | **ExecutiveSummary lead-sentence** | Build `ExecutiveSummary.tsx` (bold lead + paragraph + 3 stat callouts: totalRespondents, qualificationRate, top question signal). Replace inline rendering. | low | 1-2h |
+| 4 | **AIInsight typography** | Build `AIInsight.tsx`. Lead-sentence bold + paragraph. Remove repeated "AI INSIGHT" labels across questions. | low | 1h |
+| 5 | **Tensions backreferences** | Severity pills (high/medium/low). Clickable question-link backreferences scroll-to-anchor. | medium (scroll behavior) | 1h |
+| 6 | **Cross-Cut segmented control** | Replace pill tabs with segmented control. Keyboard nav + focus ring. | medium | 1h |
+| 7 | **Screening Funnel + Recommended Next Step** | Hide screening funnel when `qualifiedRespondents === totalRespondents`. Boost Recommended Next Step CTA prominence. AI disclaimer footer-style. | low | 1h |
+| 8 | **Void gap elimination** | Audit spacing at 320 / 768 / 1280 / 1920 viewports. Tighten margins. Currently 8-10 viewport scrolls of black per spec. | low | 1-2h |
+| 9 | **Brand Lift category grouping** | Detect `goal_type === 'brand_lift'`. Group `mission.questions` by `q.category` (Bug 23.56 storage). Render category headers (Purchase Intent / Awareness / Recall / Sentiment). | medium | 1h |
+| 10 | **CA layout pass** | CreativeAttentionResultsPage section hierarchy refresh, scorecard with above/at/below industry typical, Best Platform Fit tooltip with rationale (Bug 23.73 shape), Frame-by-Frame hidden for images. Coordinate with Agent 2 export menu via inline markers. | medium | 2h |
+
+Total: 11-13h across 10 PR-sized chunks. Each independently verifiable.
+
+### Push cadence
+Every chunk → its own commit (or 1-2 chunks per push if low-risk). Audit chat Chrome-verifies on the deployed branch URL before approving the next chunk. After all 10 chunks land + verify, the branch merges to main as a single PR.
+
+---
+
 ## Tick-off log
 
-*(populate as work progresses)*
+### 2026-04-30 — branch created + plan locked
 
-### 2026-04-30 — branch created
-
-- ✓ Branched off main at `d7bd20d` (Pass 23 close-out + Pass 24 init docs).
+- ✓ Branched off main at `d7bd20d` (Pass 23 close-out + Pass 24 init docs). Rebased on `fa1140b` (Pass 24 expansion).
 - ✓ Created this log file per coordination rules.
-- → Next: audit current ResultsPage.tsx structure (1737+ lines per earlier survey) + draft a section-by-section migration plan that I can verify incrementally rather than ship a single 6-8h diff.
+- ✓ Surveyed ResultsPage structure: 2355 lines, 12 major JSX sections, single component with reasoning modal at the end.
+- ✓ Locked 10-chunk migration plan above.
+- → **Next: Chunk 1 — foundation components, no JSX changes yet.**
 
 ---
 
