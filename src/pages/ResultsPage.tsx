@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef, lazy, Suspense } from 'react';
+import { useEffect, useState, useRef, useMemo, lazy, Suspense } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { MissionFailureCard } from '../components/shared/MissionFailureCard';
+import { ShareButton } from '../components/results';
 import {
   ArrowLeft,
   Download,
@@ -20,7 +21,6 @@ import {
   AlertCircle,
   AlertTriangle,
   MessageSquare,
-  Share2,
   FileDown,
   Bot,
   Target
@@ -315,7 +315,7 @@ export const ResultsPage = () => {
     partialRefundAmountCents?: number | null;
   } | null>(null);
   const [screeningFunnel, setScreeningFunnel] = useState<{ total: number; passed: number; screenedOut: number } | null>(null);
-  const [shareCopied, setShareCopied] = useState(false);
+  // Pass 23 Bug 23.60 Chunk 2 — shareCopied state moved into ShareButton component.
   const dropdownRef = useRef<HTMLDivElement>(null);
   const filterRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -1031,23 +1031,7 @@ export const ResultsPage = () => {
     }
   };
 
-  const handleShareLink = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
-    } catch {
-      // Fallback: select and copy
-      const el = document.createElement('textarea');
-      el.value = window.location.href;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
-    }
-  };
+  // Pass 23 Bug 23.60 Chunk 2 — handleShareLink moved into ShareButton component.
 
   const exportOptions = [
     {
@@ -1498,6 +1482,35 @@ export const ResultsPage = () => {
   // At this point missionData is guaranteed non-null
   const mission = missionData!;
 
+  // Pass 23 Bug 23.60 Chunk 2 — markdown payload for the "Copy summary"
+  // ShareButton next to the Executive Summary heading. Includes the
+  // summary text, total respondents, completion timestamp, and a
+  // permalink. Memoized so we don't rebuild on every filter toggle.
+  const summaryMarkdown = useMemo(() => {
+    const lines = [
+      `# ${mission.name}`,
+      '',
+      '## Executive Summary',
+      mission.executiveSummary?.trim() || '_(not yet generated)_',
+      '',
+      '---',
+      `**Respondents:** ${mission.totalRespondents}` +
+        (mission.qualificationRate != null && mission.hasScreening
+          ? ` (${Math.round(mission.qualificationRate * 100)}% qualified)`
+          : ''),
+      `**Completed:** ${mission.completedAt}`,
+      `**Permalink:** ${typeof window !== 'undefined' ? window.location.href : ''}`,
+    ];
+    return lines.join('\n');
+  }, [
+    mission.name,
+    mission.executiveSummary,
+    mission.totalRespondents,
+    mission.qualificationRate,
+    mission.hasScreening,
+    mission.completedAt,
+  ]);
+
   return (
     <DashboardLayout>
       <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900">
@@ -1590,23 +1603,9 @@ export const ResultsPage = () => {
               )}
             </div>
 
-            {/* Share button */}
-            <button
-              onClick={handleShareLink}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-white/60 hover:text-white hover:border-white/20 transition-all text-sm font-medium shrink-0"
-            >
-              {shareCopied ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-green-400" />
-                  <span className="text-green-400">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-4 h-4" />
-                  Share
-                </>
-              )}
-            </button>
+            {/* Pass 23 Bug 23.60 Chunk 2 — Share button moved to shared component. */}
+            <ShareButton mode="link" />
+
 
             {/* Export Data dropdown — always visible */}
             <div className="relative" ref={dropdownRef}>
@@ -1874,14 +1873,20 @@ export const ResultsPage = () => {
                     the centered container (text blocks read better
                     left-aligned than centered). */}
                 <motion.div
+                  id="exec-summary"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="relative z-0 mb-8 max-w-3xl mx-auto"
+                  className="relative z-0 mb-8 max-w-3xl mx-auto scroll-mt-20"
                 >
                   <div className="relative bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 border border-white/10 rounded-2xl p-8 backdrop-blur-xl overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
+
+                    {/* Pass 23 Bug 23.60 Chunk 2 — floating Copy-summary button. */}
+                    <div className="absolute top-4 right-4 z-10">
+                      <ShareButton mode="summary" summaryMarkdown={summaryMarkdown} label="Copy" />
+                    </div>
 
                     <div className="relative">
                       <div className="flex items-center justify-center gap-3 mb-4">
@@ -1918,10 +1923,11 @@ export const ResultsPage = () => {
                 {Array.isArray((mission.insights as { contradictions?: unknown })?.contradictions) &&
                   ((mission.insights as { contradictions: Array<{ tension_description?: string; severity?: string; question_a?: string; question_b?: string }> }).contradictions.length > 0) && (
                   <motion.div
+                    id="tensions"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
-                    className="mb-8 bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6"
+                    className="mb-8 bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 scroll-mt-20"
                   >
                     <div className="flex items-center gap-3 mb-4">
                       <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/15">
@@ -1961,18 +1967,21 @@ export const ResultsPage = () => {
                     cut to view. */}
                 {Array.isArray((mission.insights as { segment_breakdowns?: unknown })?.segment_breakdowns) &&
                  ((mission.insights as { segment_breakdowns: Array<{ axis?: string; segments?: Array<{ name?: string; n?: number; key_findings?: string }> }> }).segment_breakdowns.length > 0) && (
-                  <CrossCutCard
-                    breakdowns={(mission.insights as { segment_breakdowns: Array<{ axis?: string; segments?: Array<{ name?: string; n?: number; key_findings?: string }> }> }).segment_breakdowns}
-                  />
+                  <div id="cross-cut" className="scroll-mt-20">
+                    <CrossCutCard
+                      breakdowns={(mission.insights as { segment_breakdowns: Array<{ axis?: string; segments?: Array<{ name?: string; n?: number; key_findings?: string }> }> }).segment_breakdowns}
+                    />
+                  </div>
                 )}
 
                 {/* Screening Funnel card — only shown when mission has a screening question */}
                 {screeningFunnel && (
                   <motion.div
+                    id="screening-funnel"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="mb-8 bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl"
+                    className="mb-8 bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl scroll-mt-20"
                   >
                     <div className="flex items-center gap-3 mb-5">
                       <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-lime-400/10">
@@ -2015,10 +2024,11 @@ export const ResultsPage = () => {
                 )}
 
                 <motion.div
+                  id="per-question"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="space-y-8 mb-12"
+                  className="space-y-8 mb-12 scroll-mt-20"
                 >
                   {filteredQuestions.map((question, index) => (
                     <motion.div
@@ -2142,10 +2152,11 @@ export const ResultsPage = () => {
                 </div>
 
                 <motion.div
+                  id="next-step"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 }}
-                  className="mb-8"
+                  className="mb-8 scroll-mt-20"
                 >
                   <div className="relative bg-gradient-to-br from-green-500/10 via-emerald-500/10 to-teal-500/10 border border-green-500/30 rounded-2xl p-8 backdrop-blur-xl overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl" />

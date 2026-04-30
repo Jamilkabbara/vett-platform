@@ -79,6 +79,25 @@ Every chunk → its own commit (or 1-2 chunks per push if low-risk). Audit chat 
 - ✓ Locked 10-chunk migration plan above.
 - → **Next: Chunk 1 — foundation components, no JSX changes yet.**
 
+### 2026-04-30 — Chunk 1 shipped (c8147a1)
+
+- ✓ `SectionHeader.tsx`, `ShareButton.tsx`, `index.ts` barrel created.
+- ✓ Zero TS errors. Components dormant — not yet referenced.
+- ✓ Pushed to origin/pass-23-bug-60-results-redesign with --force-with-lease (rebase upstream).
+
+### 2026-04-30 — Chunk 2 in progress
+
+- ✓ Replaced inline Share button (1593-1609) with `<ShareButton mode="link" />`.
+- ✓ Removed dead `shareCopied` state + `setShareCopied` + `handleShareLink`.
+- ✓ Removed unused `Share2` import (caught by TS).
+- ✓ Anchor IDs added: `#exec-summary` (1876), `#tensions` (1892), `#cross-cut` (1964 wrapper div), `#screening-funnel` (1946), `#per-question` (2017), `#next-step` (2144).
+- ✓ All anchors have `scroll-mt-20` so they don't sit under the top nav.
+- ✓ `summaryMarkdown` builder added via `useMemo` — pulls mission name + executive summary + respondent counts + completion timestamp + permalink.
+- ✓ Floating "Copy" button added at top-right of Executive Summary card (mode='summary').
+- ✓ Zero new TS errors.
+- ✓ Preview server confirmed alive on /landing post-edit.
+- → **Next: push Chunk 2 + wait for audit chat Chrome verification on deployed branch URL.**
+
 ---
 
 ## Coordination notes
