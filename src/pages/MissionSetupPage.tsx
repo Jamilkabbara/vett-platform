@@ -245,18 +245,35 @@ export const MissionSetupPage = () => {
     if (!hasIncomingPrefill) {
       const draft = readDraft();
       if (draft) {
-        // Pass 23 Bug 23.65 v4 — never hydrate draft.missionGoal === 'creative_attention'
-        // into local state. Creative Attention has its own dedicated flow; restoring
-        // it here would (a) trigger the defensive guard spinner indefinitely (no
-        // deep-link gate satisfied → useEffect short-circuit returns early) and
-        // (b) render the wrong UI for any user whose previous draft was CA. v3
-        // ship-fail forensic: Jamil's prior CA draft hydrated /setup into a
-        // permanent spinner state.
+        // Pass 23 Bug 23.65 v5 — never auto-redirect from draft restore.
+        //
+        // v4 navigated to /creative-attention/new whenever the saved draft's
+        // missionGoal was 'creative_attention'. That created a compounding
+        // lockout: any user with an abandoned CA draft (Jamil's failed Nike
+        // WebP test 91be5c7b being the canonical example) was permanently
+        // redirected away from /setup on every visit — "VETT IT" from
+        // /landing, "+ NEW MISSION" from /dashboard, and direct /setup
+        // navigation all bounced to /creative-attention/new.
+        //
+        // The user is now back on /setup; treat the stale CA goal as
+        // abandoned. Strip CA from the persisted draft (preserve description
+        // and clarify answers, which may still be useful) so subsequent
+        // visits don't keep finding the same stale value, and DO NOT call
+        // setMissionGoal — let the default 'validate' state stand. The user
+        // can re-pick from the goal grid.
+        //
+        // Doctrine: passive draft restoration must never auto-navigate.
+        // Active intent (URL ?goal=, sessionStorage from landing CTA) is
+        // handled separately via the useState initializer + useEffect
+        // short-circuit.
         if (draft.missionGoal === 'creative_attention') {
-          navigate('/creative-attention/new', { replace: true });
-          return;
-        }
-        if (draft.missionGoal && getGoalById(draft.missionGoal)) {
+          writeDraft({
+            missionDescription: draft.missionDescription,
+            clarify: draft.clarify,
+            // missionGoal omitted — clears the stale CA goal silently
+          });
+          try { localStorage.removeItem(DRAFT_KEY_OLD); } catch { /* no-op */ }
+        } else if (draft.missionGoal && getGoalById(draft.missionGoal)) {
           setMissionGoal(draft.missionGoal);
         }
         if (typeof draft.missionDescription === 'string') {
