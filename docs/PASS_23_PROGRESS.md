@@ -1,8 +1,46 @@
 # Pass 23 — Progress
 
 **Started:** 2026-04-25
-**Status:** in flight
+**Closed:** 2026-04-30
+**Status:** ✅ closed (deferred Bug 23.60 / 23.62 / 23.74 + Phase B comparison expansion rolled forward to Pass 24 agent fan-out — see [PASS_24_PROGRESS.md](PASS_24_PROGRESS.md))
 **Pass plan:** 71 bugs across Phase A (Stabilize) → Phase B (Grow) → Phase C (Expand)
+
+---
+
+## Final verification close-out (2026-04-30)
+
+Bugs verified live on production, with verification method per the 5-criterion shipped doctrine:
+
+| Bug | Status | Verified | Method | Evidence |
+|---|---|---|---|---|
+| **23.61** Creative Attention pricing engine ($1.80 → $19) | ✅ shipped + verified | 2026-04-30 | Jamil real-card test mission `5e1ea434` charged $19 | DB row `paid_amount_cents=1900`, `tier='image'`, `media_type='image'` |
+| **23.65 v5** CA card click + draft hydration redirect | ✅ shipped + verified | 2026-04-30 | Jamil real-card test (audit chat verified all 9 paths via Chrome) | `+ NEW MISSION` from /dashboard with stale CA draft → /setup renders 14 cards (no auto-redirect); CA card click → /creative-attention/new; localStorage draft `missionGoal` silently stripped from CA |
+| **23.75 v2** media_url race + bucket public | ✅ shipped + verified | 2026-04-30 | Image rendered on `5e1ea434` results page | `mission.media_url` populated; image visible at `<img>` element on /creative-results/:id |
+| **23.77** em-dash JSX sweep (final) | ✅ shipped + verified | 2026-04-29 | grep on production bundle returns 0 user-visible em-dashes | Bundle `index-bf77e39.js` sweep across 19 files, only data-placeholder `'—'` remained |
+| **23.79** vision API magic-byte MIME detection | ✅ shipped + verified | 2026-04-30 | Jamil real-card test on `5e1ea434` (WebP Nike Swarovski) succeeded, `creative_analysis` populated | DB row `status='completed'`, `failure_reason=NULL`, `creative_analysis` JSONB present |
+| **23.80** auto-refund on hard pipeline failure | ✅ shipped (live; not yet exercised) | 2026-04-30 | Code-path verified live via `/version` endpoint, idempotent Stripe refund call wired | Backend SHA `19f69b3` running on Railway; `runMission` catch block + `auto_refund:${missionId}` idempotency key + admin_alert + `sendMissionFailedRefundEmail` all verified in source |
+
+### Refund backfills (user-handled)
+
+- **Mission `dcbc3b6f`** (failed Nike WebP, $19) — Jamil handled refund on his own end. Backfill SQL in this doc remains available if/when refund_id captured.
+- **Mission `91be5c7b`** (failed Nike WebP retry pre-Railway-redeploy, $19) — Jamil handled refund on his own end. Same backfill SQL pattern applies.
+
+### Doctrine validation — three ship-fail catches in Pass 23
+
+1. **Bug 23.79 — Railway stale-deploy.** Jamil's WebP test failed at 17:46 UTC with the *exact* pre-fix Anthropic 400 error, 1.5h after the merge to main. Code was on `origin/main`; runtime was not. Diagnostic: `/version` endpoint exposed `RAILWAY_GIT_COMMIT_SHA`. Manual redeploy fixed it. → **Sub-rule 5 added.**
+
+2. **Bug 23.65 v3 — production-spinner ship-fail.** v3 added a defensive guard `if (missionGoal === 'creative_attention') { return <Spinner /> }`. Preview-server passed clean, but on production cold-load any user with a saved CA draft hit a permanent spinner (draft hydration set state to CA → guard fired → useEffect short-circuit was deep-link-gated and silently skipped redirect). → **Reinforced calibration rule + preview-vs-prod warning.**
+
+3. **Bug 23.65 v4 — stale-localStorage-lockout.** v4 fixed v3 by adding draft-restore redirect. Preview passed, but on production any user with a stale CA draft was permanently routed to `/creative-attention/new` from /setup — "+ NEW MISSION" and "VETT IT" buttons all bounced. → **Sub-rule 4 added: passive state restoration must never auto-navigate.**
+
+v5 (Option A) silently strips stale CA goal from draft on /setup mount. Verified on preview (9 paths) and on production (Jamil's real-user test).
+
+### Discipline held
+
+Doctrine prevented:
+- Speculative ship of v3 → v4 → v5 chain without diagnostic-first probe.
+- "Backend code-shipped" claim without `/version` verification.
+- Conflation of "preview server passes" with "production cold-load passes."
 
 ---
 
