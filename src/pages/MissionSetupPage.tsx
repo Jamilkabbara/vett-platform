@@ -245,6 +245,17 @@ export const MissionSetupPage = () => {
     if (!hasIncomingPrefill) {
       const draft = readDraft();
       if (draft) {
+        // Pass 23 Bug 23.65 v4 — never hydrate draft.missionGoal === 'creative_attention'
+        // into local state. Creative Attention has its own dedicated flow; restoring
+        // it here would (a) trigger the defensive guard spinner indefinitely (no
+        // deep-link gate satisfied → useEffect short-circuit returns early) and
+        // (b) render the wrong UI for any user whose previous draft was CA. v3
+        // ship-fail forensic: Jamil's prior CA draft hydrated /setup into a
+        // permanent spinner state.
+        if (draft.missionGoal === 'creative_attention') {
+          navigate('/creative-attention/new', { replace: true });
+          return;
+        }
         if (draft.missionGoal && getGoalById(draft.missionGoal)) {
           setMissionGoal(draft.missionGoal);
         }
@@ -305,31 +316,26 @@ export const MissionSetupPage = () => {
     }
   }, [showUpload, uploadedAsset, uploadingName]);
 
-  // Pass 23 Bug 23.65 v3 — Creative Attention has its own dedicated flow
+  // Pass 23 Bug 23.65 v4 — Creative Attention has its own dedicated flow
   // at /creative-attention/new (upload + brand context + flat-price
   // checkout). MissionSetupPage's textarea + Generate-Survey UI is wrong
   // for it and produces orphan drafts.
   //
-  // The previous useEffect-based short-circuit (gated on URL ?goal= or
-  // sessionStorage to avoid Bug 23.68 — all card clicks redirecting)
-  // over-corrected: when a user clicked the CA card directly on /setup,
-  // neither gate fired and the redirect was silently skipped, dumping
-  // them on the wrong UI.
+  // v4 architecture (post v3 ship-fail): handleGoalChange intercepts CA
+  // card clicks at the click site (primary path). This effect is the
+  // backup for any path that lands missionGoal in 'creative_attention'
+  // without going through handleGoalChange — deep-link via URL ?goal=
+  // or sessionStorage from the landing page (legitimate), or in theory
+  // any future regression. v3 added a deep-link gate here that excluded
+  // the draft-restored case (Jamil's prior CA draft → permanent spinner).
+  // v4 removes that gate: ANY state path that produces missionGoal ===
+  // 'creative_attention' on a non-CA route should redirect.
   //
-  // v3 architecture: route CA at the click site (handleGoalChange below),
-  // not via state observation. The useEffect now ONLY handles the
-  // deep-link case (landed on /setup with ?goal=creative_attention or
-  // sessionStorage carry-over from the landing page) — clicks on the CA
-  // card are intercepted before they hit setMissionGoal so the state
-  // never enters 'creative_attention' on this page.
+  // The defensive guard below still bridges the one-tick window between
+  // state landing on CA and this effect navigating away.
   useEffect(() => {
     if (missionGoal !== 'creative_attention') return;
     if (location.pathname.startsWith('/creative-attention')) return;
-    const urlGoal = searchParams.get('goal');
-    let sessionGoal: string | null = null;
-    try { sessionGoal = sessionStorage.getItem('vett_landing_goal'); } catch { sessionGoal = null; }
-    const isDeepLink = urlGoal === 'creative_attention' || sessionGoal === 'creative_attention';
-    if (!isDeepLink) return;
     try { sessionStorage.removeItem('vett_landing_goal'); } catch { /* no-op */ }
     navigate('/creative-attention/new', { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
