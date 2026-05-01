@@ -36,6 +36,7 @@ import { EMOTION_COLORS_V2 } from '../types/creativeAnalysis';
 import { EffectivenessDial } from '../components/creative-attention/EffectivenessDial';
 import { AttentionBlock } from '../components/creative-attention/AttentionBlock';
 import { EmotionRadar } from '../components/creative-attention/EmotionRadar';
+import { CrossChannelBenchmarks } from '../components/creative-attention/CrossChannelBenchmarks';
 
 // Legacy alias kept for in-file references; new code imports the v2 map.
 const EMOTION_COLORS: Record<string, string> = EMOTION_COLORS_V2;
@@ -400,6 +401,13 @@ export function CreativeAttentionResultsPage() {
             <p className="text-sm text-[var(--t1)] leading-relaxed">{summary.vs_benchmark}</p>
           </div>
         )}
+
+        {/* Pass 24 Bug 24.01 F5 — Cross-Channel Attention Benchmarks.
+            Renders only when the v2 pipeline returned channel_benchmarks.
+            Old missions skip the section. */}
+        {analysis.channel_benchmarks && analysis.channel_benchmarks.length > 0 ? (
+          <CrossChannelBenchmarks benchmarks={analysis.channel_benchmarks} />
+        ) : null}
 
         {/* Pass 24 Bug 24.01 F4 — 24-emotion radar chart.
             Renders for v2 missions (schema_version === 'v2'). Shows top
