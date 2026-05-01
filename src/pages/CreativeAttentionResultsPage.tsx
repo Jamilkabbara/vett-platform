@@ -33,6 +33,7 @@ import { Logo } from '../components/ui/Logo';
 
 import type { CreativeAnalysis } from '../types/creativeAnalysis';
 import { EMOTION_COLORS_V2 } from '../types/creativeAnalysis';
+import { EffectivenessDial } from '../components/creative-attention/EffectivenessDial';
 
 // Legacy alias kept for in-file references; new code imports the v2 map.
 const EMOTION_COLORS: Record<string, string> = EMOTION_COLORS_V2;
@@ -296,6 +297,14 @@ export function CreativeAttentionResultsPage() {
             </section>
           );
         })()}
+
+        {/* Pass 24 Bug 24.01 F2 — Creative Effectiveness Score dial.
+            Renders only when the v2 pipeline returned the composite
+            score (creative_effectiveness present). Old missions skip
+            this section and proceed to the legacy hero metrics. */}
+        {analysis.creative_effectiveness ? (
+          <EffectivenessDial effectiveness={analysis.creative_effectiveness} />
+        ) : null}
 
         {/* Hero metrics row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
