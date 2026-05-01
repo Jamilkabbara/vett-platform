@@ -1555,7 +1555,12 @@ export const ResultsPage = () => {
         }
       `}</style>
 
-      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-20 md:pt-24 pb-24">
+      {/* Pass 23 Bug 23.60 Chunk 8 — outer container padding tightened.
+          pt: 80px → 48px mobile, 96px → 64px desktop.
+          pb: 96px → 64px both. Saves ~32-48px each side; main results
+          surface fits more on a single laptop viewport without
+          changing card breathing. */}
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-12 md:pt-16 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1988,7 +1993,7 @@ export const ResultsPage = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="space-y-8 mb-12 scroll-mt-20"
+                  className="space-y-6 mb-8 scroll-mt-20"
                 >
                   {filteredQuestions.map((question, index) => (
                     <motion.div
