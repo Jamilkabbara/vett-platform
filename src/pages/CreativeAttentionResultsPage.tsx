@@ -25,56 +25,17 @@ import {
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types (Pass 24 Bug 24.01 — moved to src/types/creativeAnalysis.ts) ──────
+// Single-source types live in `../types/creativeAnalysis`. The local aliases
+// below are kept as a temporary import shim for the Bug 24.01 transition;
+// once F2-F6 are wired, downstream consumers can import the canonical types
+// directly. EMOTION_COLORS extended to cover all 24 emotions in v2.
 
-interface FrameAnalysis {
-  timestamp: number;
-  emotions: Record<string, number>;
-  attention_hotspots: string[];
-  message_clarity: number;
-  audience_resonance: number;
-  engagement_score: number;
-  brief_description: string;
-}
+import type { CreativeAnalysis } from '../types/creativeAnalysis';
+import { EMOTION_COLORS_V2 } from '../types/creativeAnalysis';
 
-interface EmotionPeak {
-  emotion: string;
-  peak_timestamp: number;
-  peak_value: number;
-  interpretation: string;
-}
-
-interface CreativeSummary {
-  overall_engagement_score: number;
-  emotion_peaks: EmotionPeak[];
-  attention_arc: string;
-  strengths: string[];
-  weaknesses: string[];
-  recommendations: string[];
-  vs_benchmark: string;
-  best_platform_fit: string[];
-}
-
-interface CreativeAnalysis {
-  frame_analyses: FrameAnalysis[];
-  summary: CreativeSummary;
-  total_frames: number;
-  is_video: boolean;
-  generated_at: string;
-}
-
-// ── Emotion color map ─────────────────────────────────────────────────────────
-
-const EMOTION_COLORS: Record<string, string> = {
-  joy:          '#BEF264', // lime
-  trust:        '#60A5FA', // blue
-  surprise:     '#F59E0B', // amber
-  anticipation: '#A78BFA', // violet
-  fear:         '#F87171', // red
-  sadness:      '#6B7280', // gray
-  disgust:      '#10B981', // emerald
-  anger:        '#EF4444', // red-500
-};
+// Legacy alias kept for in-file references; new code imports the v2 map.
+const EMOTION_COLORS: Record<string, string> = EMOTION_COLORS_V2;
 
 // ── Gauge component ───────────────────────────────────────────────────────────
 
