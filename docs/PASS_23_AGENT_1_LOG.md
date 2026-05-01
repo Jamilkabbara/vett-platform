@@ -101,16 +101,24 @@ Every chunk → its own commit (or 1-2 chunks per push if low-risk). Audit chat 
 - ✓ Replaced ~44 lines of inline JSX with one component call.
 - ✓ Zero new TS errors. Preview alive.
 
-### 2026-05-01 — Chunk 4 in progress
+### 2026-05-01 — Chunk 4 shipped (5b6a19f)
 
-- ✓ Built `src/components/results/AIInsight.tsx`:
-  - Lead-sentence + body typography preserved from inline impl.
-  - **Removed the repeated "AI INSIGHT" text label per spec.** The Sparkles icon + purple accent already mark this as AI-generated content; repeating the label 8-10 times per mission was visual noise.
-  - Empty state ("AI insight not yet available") still rendered with same icon-badge pattern.
-- ✓ Replaced ~38 lines of inline JSX (purple card + label + IIFE for split) with `<AIInsight text={question.aiInsight} />`.
-- ✓ Removed unused `Sparkles` import (caught by TS — used only by the inline impl).
+- ✓ Built `AIInsight.tsx`. Removed repeated "AI INSIGHT" label per spec (Sparkles icon + purple accent already mark it). Lead-sentence typography preserved.
+- ✓ Replaced ~38 lines of inline JSX with one component call.
+- ✓ Removed unused `Sparkles` import.
+
+### 2026-05-01 — Chunk 5 in progress
+
+- ✓ Built `src/components/results/TensionCard.tsx`:
+  - **Severity pills** (filled bg) replace plain uppercase text: `high` (amber-100), `medium` (amber-200), `low` (amber-300), `note` (white/70).
+  - **Clickable question backreferences** — `question_a ↔ question_b` are now buttons, scroll-target `id="q-${id}"` with smooth-scroll behavior + 1.4s amber outline pulse on the destination card so the eye lands. Plain spans before.
+  - Focus-visible amber ring for keyboard nav.
+  - Exports `Contradiction` type from the barrel for parent's strict typing.
+- ✓ Replaced ~37 lines of inline JSX with `<TensionCard contradictions={...} />`.
+- ✓ Added `id="q-${question.id}"` + `scroll-mt-20` to per-question cards (line 2030) so backref buttons land below the top nav.
+- ✓ Removed unused `AlertTriangle` import (now lives inside TensionCard).
 - ✓ Zero new TS errors. Preview alive.
-- → **Next: push Chunk 4.**
+- → **Next: push Chunk 5.**
 
 ---
 

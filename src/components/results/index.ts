@@ -5,3 +5,5 @@ export { SectionHeader } from './SectionHeader';
 export { ShareButton } from './ShareButton';
 export { ExecutiveSummary } from './ExecutiveSummary';
 export { AIInsight } from './AIInsight';
+export { TensionCard } from './TensionCard';
+export type { Contradiction } from './TensionCard';

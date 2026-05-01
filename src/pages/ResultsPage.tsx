@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { MissionFailureCard } from '../components/shared/MissionFailureCard';
-import { ShareButton, ExecutiveSummary, AIInsight } from '../components/results';
+import { ShareButton, ExecutiveSummary, AIInsight, TensionCard, type Contradiction } from '../components/results';
 import {
   ArrowLeft,
   Download,
@@ -18,7 +18,6 @@ import {
   Rocket,
   Filter,
   AlertCircle,
-  AlertTriangle,
   MessageSquare,
   FileDown,
   Bot,
@@ -1911,48 +1910,14 @@ export const ResultsPage = () => {
                   completedAt={mission.completedAt}
                 />
 
-                {/* Pass 22 Bug 22.16 — Tensions Flagged card. Renders only if
-                    insights.contradictions has at least one entry. Amber accent
-                    (observations, not bugs). */}
+                {/* Pass 22 Bug 22.16 + Pass 23 Bug 23.60 Chunk 5 — moved into
+                    TensionCard component (severity pills + clickable backrefs
+                    that scroll to the per-question card). */}
                 {Array.isArray((mission.insights as { contradictions?: unknown })?.contradictions) &&
-                  ((mission.insights as { contradictions: Array<{ tension_description?: string; severity?: string; question_a?: string; question_b?: string }> }).contradictions.length > 0) && (
-                  <motion.div
-                    id="tensions"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 }}
-                    className="mb-8 bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 scroll-mt-20"
-                  >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/15">
-                        <AlertTriangle className="w-5 h-5 text-amber-400" />
-                      </div>
-                      <h2 className="text-xl md:text-2xl font-bold text-white">Tensions Flagged</h2>
-                    </div>
-                    <div className="space-y-3">
-                      {(mission.insights as { contradictions: Array<{ tension_description?: string; severity?: string; question_a?: string; question_b?: string }> }).contradictions.map((c, idx) => (
-                        <div key={idx} className="border-l-2 border-amber-500/40 pl-4 py-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-[10px] font-black uppercase tracking-widest ${
-                              c.severity === 'high'   ? 'text-amber-300' :
-                              c.severity === 'medium' ? 'text-amber-400/80' :
-                                                        'text-amber-400/60'
-                            }`}>
-                              {c.severity || 'note'}
-                            </span>
-                            {c.question_a && c.question_b && (
-                              <span className="text-white/40 text-xs font-mono">
-                                {c.question_a} ↔ {c.question_b}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-white/80 text-sm leading-relaxed">
-                            {c.tension_description}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
+                  ((mission.insights as { contradictions: Contradiction[] }).contradictions.length > 0) && (
+                  <TensionCard
+                    contradictions={(mission.insights as { contradictions: Contradiction[] }).contradictions}
+                  />
                 )}
 
                 {/* Pass 22 Bug 22.15 — Cross-Cut Analysis card. Renders only
@@ -2027,10 +1992,11 @@ export const ResultsPage = () => {
                   {filteredQuestions.map((question, index) => (
                     <motion.div
                       key={question.id}
+                      id={`q-${question.id}`}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.4 + index * 0.1 }}
-                      className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl"
+                      className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl scroll-mt-20"
                     >
                       <div className="mb-6">
                         <div className="flex items-start justify-between mb-2 gap-3">
