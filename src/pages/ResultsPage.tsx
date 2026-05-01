@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { MissionFailureCard } from '../components/shared/MissionFailureCard';
-import { ShareButton } from '../components/results';
+import { ShareButton, ExecutiveSummary } from '../components/results';
 import {
   ArrowLeft,
   Download,
@@ -1482,6 +1482,34 @@ export const ResultsPage = () => {
   // At this point missionData is guaranteed non-null
   const mission = missionData!;
 
+  // Pass 23 Bug 23.60 Chunk 3 — derive a "top theme" string for the
+  // ExecutiveSummary stat callout. Picks the rating question with the
+  // highest averageScore (≥ 70 of 100, our soft "strong signal" floor)
+  // and uses its question text. Falls back to the first multi-select
+  // question's top option label, then null. Returns null if nothing
+  // crosses the bar — the component renders an em-dash.
+  const topTheme = useMemo<string | null>(() => {
+    if (!Array.isArray(mission.questions) || mission.questions.length === 0) return null;
+    const ratingHits = mission.questions
+      .filter((q): q is QuestionResult => q.type === 'rating' && typeof q.averageScore === 'number')
+      .sort((a, b) => (b.averageScore ?? 0) - (a.averageScore ?? 0));
+    const topRating = ratingHits[0];
+    if (topRating && (topRating.averageScore ?? 0) >= 70) {
+      // Truncate to 70 chars so the callout doesn't wrap awkwardly.
+      const text = topRating.question;
+      return text.length > 70 ? `${text.slice(0, 67).trimEnd()}…` : text;
+    }
+    const ms = mission.questions.find(
+      (q): q is QuestionResult => q.type === 'multi_select' && Array.isArray(q.data) && q.data.length > 0,
+    );
+    if (ms) {
+      const top = (ms.data as Array<{ name?: string; label?: string }>)[0];
+      const label = top?.name || top?.label;
+      if (label) return label.length > 70 ? `${label.slice(0, 67).trimEnd()}…` : label;
+    }
+    return null;
+  }, [mission.questions]);
+
   // Pass 23 Bug 23.60 Chunk 2 — markdown payload for the "Copy summary"
   // ShareButton next to the Executive Summary heading. Includes the
   // summary text, total respondents, completion timestamp, and a
@@ -1872,50 +1900,17 @@ export const ResultsPage = () => {
                     Header centered; paragraphs stay left-aligned within
                     the centered container (text blocks read better
                     left-aligned than centered). */}
-                <motion.div
-                  id="exec-summary"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="relative z-0 mb-8 max-w-3xl mx-auto scroll-mt-20"
-                >
-                  <div className="relative bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 border border-white/10 rounded-2xl p-8 backdrop-blur-xl overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl" />
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
-
-                    {/* Pass 23 Bug 23.60 Chunk 2 — floating Copy-summary button. */}
-                    <div className="absolute top-4 right-4 z-10">
-                      <ShareButton mode="summary" summaryMarkdown={summaryMarkdown} label="Copy" />
-                    </div>
-
-                    <div className="relative">
-                      <div className="flex items-center justify-center gap-3 mb-4">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
-                          <Sparkles className="w-5 h-5 text-blue-400" />
-                        </div>
-                        <h2 className="text-xl md:text-2xl font-bold text-white">Executive Summary</h2>
-                      </div>
-
-                      {mission.executiveSummary ? (
-                        // Pass 22 Bug 22.13 — narrative 4-paragraph executive
-                        // summary. Render as proper paragraphs (split on blank
-                        // lines) with reading-friendly typography. Falls back to
-                        // a single paragraph for legacy single-block summaries.
-                        <div className="space-y-4">
-                          {mission.executiveSummary
-                            .split(/\n\s*\n/)
-                            .map((para, i) => (
-                              <p key={i} className="text-white/80 text-base md:text-lg leading-relaxed">
-                                {para.trim()}
-                              </p>
-                            ))}
-                        </div>
-                      ) : (
-                        <p className="text-white/50 text-base italic">Executive summary is being generated...</p>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
+                {/* Pass 23 Bug 23.60 Chunk 3 — moved into ExecutiveSummary
+                    component (lead-sentence pull-quote + 3 stat callouts). */}
+                <ExecutiveSummary
+                  executiveSummary={mission.executiveSummary}
+                  summaryMarkdown={summaryMarkdown}
+                  totalRespondents={mission.totalRespondents}
+                  qualificationRate={mission.qualificationRate}
+                  hasScreening={mission.hasScreening}
+                  topTheme={topTheme}
+                  completedAt={mission.completedAt}
+                />
 
                 {/* Pass 22 Bug 22.16 — Tensions Flagged card. Renders only if
                     insights.contradictions has at least one entry. Amber accent

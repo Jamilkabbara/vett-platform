@@ -3,3 +3,4 @@
 
 export { SectionHeader } from './SectionHeader';
 export { ShareButton } from './ShareButton';
+export { ExecutiveSummary } from './ExecutiveSummary';

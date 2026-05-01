@@ -85,18 +85,26 @@ Every chunk → its own commit (or 1-2 chunks per push if low-risk). Audit chat 
 - ✓ Zero TS errors. Components dormant — not yet referenced.
 - ✓ Pushed to origin/pass-23-bug-60-results-redesign with --force-with-lease (rebase upstream).
 
-### 2026-04-30 — Chunk 2 in progress
+### 2026-04-30 — Chunk 2 shipped (65c4c0b)
 
-- ✓ Replaced inline Share button (1593-1609) with `<ShareButton mode="link" />`.
-- ✓ Removed dead `shareCopied` state + `setShareCopied` + `handleShareLink`.
-- ✓ Removed unused `Share2` import (caught by TS).
-- ✓ Anchor IDs added: `#exec-summary` (1876), `#tensions` (1892), `#cross-cut` (1964 wrapper div), `#screening-funnel` (1946), `#per-question` (2017), `#next-step` (2144).
-- ✓ All anchors have `scroll-mt-20` so they don't sit under the top nav.
-- ✓ `summaryMarkdown` builder added via `useMemo` — pulls mission name + executive summary + respondent counts + completion timestamp + permalink.
-- ✓ Floating "Copy" button added at top-right of Executive Summary card (mode='summary').
-- ✓ Zero new TS errors.
-- ✓ Preview server confirmed alive on /landing post-edit.
-- → **Next: push Chunk 2 + wait for audit chat Chrome verification on deployed branch URL.**
+- ✓ Replaced inline Share button with `<ShareButton mode="link" />`.
+- ✓ Removed dead `shareCopied` state + `handleShareLink`.
+- ✓ Removed unused `Share2` import.
+- ✓ Anchor IDs on all 6 sections (`#exec-summary`, `#tensions`, `#cross-cut`, `#screening-funnel`, `#per-question`, `#next-step`) with `scroll-mt-20`.
+- ✓ `summaryMarkdown` `useMemo` builder; floating "Copy" button at top-right of Executive Summary card.
+- ✓ Zero new TS errors. Preview alive.
+
+### 2026-05-01 — Chunk 3 in progress
+
+- ✓ Built `src/components/results/ExecutiveSummary.tsx`:
+  - Lead-sentence pull-quote: first sentence at `text-lg md:text-xl font-semibold`. Fallback to entire paragraph if no sentence break before 24 chars (avoids "Mr.", "U.S." false splits).
+  - Supporting paragraphs at base size, left-aligned.
+  - Three stat callouts under the prose: **Respondents** (with qualified % when `hasScreening` + rate < 99.9%), **Top theme**, **Completed**. Icons + uppercase labels + bold values.
+  - Visual contract preserved (gradient bg + blur orbs + centered heading) — typography refresh, not reskin.
+- ✓ `topTheme` derivation in parent: highest-scoring rating question (≥70/100), fallback to first multi-select top option, fallback to null. Truncates to 70 chars.
+- ✓ Replaced ~44 lines of inline JSX with one `<ExecutiveSummary {...} />` call.
+- ✓ Zero new TS errors. Preview alive.
+- → **Next: push Chunk 3.**
 
 ---
 
