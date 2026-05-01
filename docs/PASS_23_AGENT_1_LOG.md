@@ -94,17 +94,23 @@ Every chunk → its own commit (or 1-2 chunks per push if low-risk). Audit chat 
 - ✓ `summaryMarkdown` `useMemo` builder; floating "Copy" button at top-right of Executive Summary card.
 - ✓ Zero new TS errors. Preview alive.
 
-### 2026-05-01 — Chunk 3 in progress
+### 2026-05-01 — Chunk 3 shipped (1fb40ee)
 
-- ✓ Built `src/components/results/ExecutiveSummary.tsx`:
-  - Lead-sentence pull-quote: first sentence at `text-lg md:text-xl font-semibold`. Fallback to entire paragraph if no sentence break before 24 chars (avoids "Mr.", "U.S." false splits).
-  - Supporting paragraphs at base size, left-aligned.
-  - Three stat callouts under the prose: **Respondents** (with qualified % when `hasScreening` + rate < 99.9%), **Top theme**, **Completed**. Icons + uppercase labels + bold values.
-  - Visual contract preserved (gradient bg + blur orbs + centered heading) — typography refresh, not reskin.
-- ✓ `topTheme` derivation in parent: highest-scoring rating question (≥70/100), fallback to first multi-select top option, fallback to null. Truncates to 70 chars.
-- ✓ Replaced ~44 lines of inline JSX with one `<ExecutiveSummary {...} />` call.
+- ✓ Built `ExecutiveSummary.tsx`: lead-sentence pull-quote + 3 stat callouts (Respondents / Top theme / Completed).
+- ✓ `topTheme` derivation in parent: top rating question (≥70/100), fallback to multi-select top option.
+- ✓ Replaced ~44 lines of inline JSX with one component call.
 - ✓ Zero new TS errors. Preview alive.
-- → **Next: push Chunk 3.**
+
+### 2026-05-01 — Chunk 4 in progress
+
+- ✓ Built `src/components/results/AIInsight.tsx`:
+  - Lead-sentence + body typography preserved from inline impl.
+  - **Removed the repeated "AI INSIGHT" text label per spec.** The Sparkles icon + purple accent already mark this as AI-generated content; repeating the label 8-10 times per mission was visual noise.
+  - Empty state ("AI insight not yet available") still rendered with same icon-badge pattern.
+- ✓ Replaced ~38 lines of inline JSX (purple card + label + IIFE for split) with `<AIInsight text={question.aiInsight} />`.
+- ✓ Removed unused `Sparkles` import (caught by TS — used only by the inline impl).
+- ✓ Zero new TS errors. Preview alive.
+- → **Next: push Chunk 4.**
 
 ---
 

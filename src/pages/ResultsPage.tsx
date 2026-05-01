@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { MissionFailureCard } from '../components/shared/MissionFailureCard';
-import { ShareButton, ExecutiveSummary } from '../components/results';
+import { ShareButton, ExecutiveSummary, AIInsight } from '../components/results';
 import {
   ArrowLeft,
   Download,
@@ -13,7 +13,6 @@ import {
   FileSpreadsheet,
   Presentation,
   FileJson,
-  Sparkles,
   Users,
   Clock,
   Rocket,
@@ -2081,43 +2080,12 @@ export const ResultsPage = () => {
 
                       {renderChart(question)}
 
-                      <div className="mt-6 bg-purple-900/20 border border-purple-500/30 rounded-xl p-4 backdrop-blur-xl">
-                        <div className="flex items-start gap-3">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-500/20 flex-shrink-0 mt-0.5">
-                            <Sparkles className="w-4 h-4 text-purple-400" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-purple-300 text-xs font-bold uppercase tracking-wide mb-1">AI Insight</div>
-                            {/* Pass 23 Bug 23.77 + 23.60 — lead-sentence
-                                typography. Bold-weight first sentence
-                                (the headline), regular-weight remainder
-                                (the supporting paragraph). Splits the
-                                joined string at the first ". " so we
-                                don't need to plumb headline+body through
-                                the QuestionResult type. */}
-                            {question.aiInsight ? (() => {
-                              const text = question.aiInsight;
-                              const idx = text.indexOf('. ');
-                              if (idx === -1 || idx > 200) {
-                                return (
-                                  <p className="text-white/90 text-sm leading-relaxed">{text}</p>
-                                );
-                              }
-                              const lead = text.slice(0, idx + 1);
-                              const body = text.slice(idx + 2);
-                              return (
-                                <>
-                                  <p className="text-white text-base font-semibold leading-relaxed">{lead}</p>
-                                  {body && (
-                                    <p className="text-white/80 text-sm leading-relaxed mt-2">{body}</p>
-                                  )}
-                                </>
-                              );
-                            })() : (
-                              <p className="text-white/40 text-sm italic">AI insight not yet available for this question.</p>
-                            )}
-                          </div>
-                        </div>
+                      {/* Pass 23 Bug 23.60 Chunk 4 — moved to AIInsight component.
+                          Removed the repeated "AI INSIGHT" label per spec; the
+                          Sparkles icon + purple accent already mark this as AI-
+                          generated content. */}
+                      <div className="mt-6">
+                        <AIInsight text={question.aiInsight} />
                       </div>
 
                       {/* Pass 22 Bug 22.14 — sample-reasoning click-through.
