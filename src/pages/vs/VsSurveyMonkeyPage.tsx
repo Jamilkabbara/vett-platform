@@ -161,38 +161,70 @@ export function VsSurveyMonkeyPage() {
           </ul>
         </section>
 
-        {/* Side-by-side table */}
+        {/* Side-by-side comparison */}
         <section className="mb-14">
           <h2 className="text-2xl md:text-3xl font-black text-white mb-6">Side-by-side comparison</h2>
-          <div className="rounded-2xl border border-white/10 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-white/5 border-b border-white/10">
-                <tr>
-                  <th className="text-left px-4 py-3 text-white/60 font-bold uppercase tracking-widest text-xs">Dimension</th>
-                  <th className="text-left px-4 py-3 text-primary font-black uppercase tracking-widest text-xs">VETT</th>
-                  <th className="text-left px-4 py-3 text-white/60 font-black uppercase tracking-widest text-xs">SurveyMonkey</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARISON_ROWS.map((row) => (
-                  <tr key={row.dimension} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 text-white/70 font-semibold align-top">{row.dimension}</td>
-                    <td className="px-4 py-3 text-white align-top">
-                      <span className="inline-flex items-start gap-2">
-                        {row.vettWins && <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
-                        <span>{row.vett}</span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-white/60 align-top">
-                      <span className="inline-flex items-start gap-2">
-                        {!row.vettWins && <Check className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />}
-                        <span>{row.competitor}</span>
-                      </span>
-                    </td>
+
+          {/* Mobile (<640px): stacked cards. Avoids horizontal overflow on
+              a 12-row 3-column table at small viewports. */}
+          <div className="sm:hidden space-y-3">
+            {COMPARISON_ROWS.map((row) => (
+              <div key={row.dimension} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <p className="text-white/60 text-[11px] font-bold uppercase tracking-widest mb-3">{row.dimension}</p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    {row.vettWins && <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
+                    <div className="flex-1">
+                      <p className="text-primary text-[10px] font-black uppercase tracking-widest mb-0.5">VETT</p>
+                      <p className="text-white text-sm leading-relaxed">{row.vett}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    {!row.vettWins && <Check className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />}
+                    <div className="flex-1">
+                      <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mb-0.5">SurveyMonkey</p>
+                      <p className="text-white/60 text-sm leading-relaxed">{row.competitor}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tablet/Desktop (>=640px): table inside an overflow-x-auto wrapper
+              with min-w-[600px] so narrow viewports scroll the table inside
+              its own region instead of pushing the whole page. */}
+          <div className="hidden sm:block rounded-2xl border border-white/10 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[600px]">
+                <thead className="bg-white/5 border-b border-white/10">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-white/60 font-bold uppercase tracking-widest text-xs">Dimension</th>
+                    <th className="text-left px-4 py-3 text-primary font-black uppercase tracking-widest text-xs">VETT</th>
+                    <th className="text-left px-4 py-3 text-white/60 font-black uppercase tracking-widest text-xs">SurveyMonkey</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {COMPARISON_ROWS.map((row) => (
+                    <tr key={row.dimension} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02]">
+                      <td className="px-4 py-3 text-white/70 font-semibold align-top">{row.dimension}</td>
+                      <td className="px-4 py-3 text-white align-top">
+                        <span className="inline-flex items-start gap-2">
+                          {row.vettWins && <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
+                          <span>{row.vett}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-white/60 align-top">
+                        <span className="inline-flex items-start gap-2">
+                          {!row.vettWins && <Check className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />}
+                          <span>{row.competitor}</span>
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
