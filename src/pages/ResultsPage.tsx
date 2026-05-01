@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { MissionFailureCard } from '../components/shared/MissionFailureCard';
-import { ShareButton, ExecutiveSummary, AIInsight, TensionCard, SegmentedControl, RecommendedNextStep, type Contradiction } from '../components/results';
+import { ShareButton, ExecutiveSummary, AIInsight, TensionCard, SegmentedControl, RecommendedNextStep, CategoryGroup, type Contradiction } from '../components/results';
 import {
   ArrowLeft,
   Download,
@@ -1988,14 +1988,24 @@ export const ResultsPage = () => {
                   </motion.div>
                 )}
 
-                <motion.div
-                  id="per-question"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="space-y-6 mb-8 scroll-mt-20"
-                >
-                  {filteredQuestions.map((question, index) => (
+                {(() => {
+                  /**
+                   * Pass 23 Bug 23.60 Chunk 9 — Brand Lift category-grouped layout.
+                   *
+                   * If any question carries a category tag (Bug 23.56 storage on
+                   * brand_lift goal_type missions), render the per-question stack
+                   * grouped by category in a logical funnel order: Awareness →
+                   * Recall → Attribution → Message Association → Favorability →
+                   * Purchase Intent → Recommendation → Ad Recall. Questions
+                   * without a category go into a final "Other" group.
+                   *
+                   * For non-Brand-Lift missions (no category tags), render the
+                   * existing flat per-question stack untouched.
+                   *
+                   * Per-question card JSX is identical in both branches — pulled
+                   * out into a local `renderCard` so we don't duplicate.
+                   */
+                  const renderCard = (question: QuestionResult, index: number) => (
                     <motion.div
                       key={question.id}
                       id={`q-${question.id}`}
@@ -2008,11 +2018,6 @@ export const ResultsPage = () => {
                         <div className="flex items-start justify-between mb-2 gap-3">
                           <h3 className="text-xl font-bold text-white flex-1">{question.question}</h3>
                           <div className="flex items-center gap-2 shrink-0">
-                            {/* Pass 23 Bug 23.56 — Brand Lift category pill.
-                                Renders only when the question carries a
-                                category tag (brand_lift goal_type). Tells
-                                the user which Happydemics frame this Q
-                                measures. */}
                             {question.category && BRAND_LIFT_CATEGORY_LABEL[question.category] && (
                               <span className="text-[10px] px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-200 font-bold border border-purple-500/30 uppercase tracking-wider whitespace-nowrap">
                                 {BRAND_LIFT_CATEGORY_LABEL[question.category]}
@@ -2026,14 +2031,6 @@ export const ResultsPage = () => {
                             </span>
                           </div>
                         </div>
-                        {/*
-                          Pass 21 Bug 6 (Option B) per-question sub-header:
-                            • Screener Q (or no screening on mission): "N responses"
-                            • Non-screener Q on screening mission:     "X of N respondents answered"
-                              where X = qualified, N = total simulated
-                          When a filter is active we still show the filtered count
-                          on the left to preserve the prior interaction.
-                        */}
                         <div className="text-white/40 text-sm">
                           {(() => {
                             const isScreener   = mission.screeningQuestionIds?.has(question.id);
@@ -2052,19 +2049,10 @@ export const ResultsPage = () => {
 
                       {renderChart(question)}
 
-                      {/* Pass 23 Bug 23.60 Chunk 4 — moved to AIInsight component.
-                          Removed the repeated "AI INSIGHT" label per spec; the
-                          Sparkles icon + purple accent already mark this as AI-
-                          generated content. */}
                       <div className="mt-6">
                         <AIInsight text={question.aiInsight} />
                       </div>
 
-                      {/* Pass 22 Bug 22.14 — sample-reasoning click-through.
-                          Opens a modal listing up to 5 persona-level reasoning
-                          quotes for this question. Granular per-slice filtering
-                          is a Pass 23 nice-to-have. Only renders for missions
-                          where reasoning was generated (<=50 personas). */}
                       <button
                         onClick={() => setReasoningModal({ open: true, questionId: question.id, questionText: question.question })}
                         className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-purple-300 hover:text-purple-200 transition-colors"
@@ -2073,8 +2061,76 @@ export const ResultsPage = () => {
                         Show sample reasoning
                       </button>
                     </motion.div>
-                  ))}
-                </motion.div>
+                  );
+
+                  // Detect Brand Lift mode: any question carries a category tag.
+                  const isBrandLiftMode = filteredQuestions.some((q) => !!q.category);
+
+                  if (!isBrandLiftMode) {
+                    return (
+                      <motion.div
+                        id="per-question"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="space-y-6 mb-8 scroll-mt-20"
+                      >
+                        {filteredQuestions.map((q, i) => renderCard(q, i))}
+                      </motion.div>
+                    );
+                  }
+
+                  // Funnel-order list of category keys; questions outside this
+                  // ladder fall into "Other".
+                  const CATEGORY_ORDER: Array<keyof typeof BRAND_LIFT_CATEGORY_LABEL> = [
+                    'brand_awareness',
+                    'brand_recall_unaided',
+                    'brand_recall_aided',
+                    'ad_recall',
+                    'brand_attribution',
+                    'message_association',
+                    'brand_favorability',
+                    'purchase_intent',
+                    'recommendation_intent',
+                  ];
+                  const buckets = new Map<string, QuestionResult[]>();
+                  for (const cat of CATEGORY_ORDER) buckets.set(cat, []);
+                  buckets.set('__other__', []);
+                  filteredQuestions.forEach((q) => {
+                    const key = q.category && BRAND_LIFT_CATEGORY_LABEL[q.category] ? q.category : '__other__';
+                    buckets.get(key)!.push(q);
+                  });
+                  // Flatten with running index so animation delay still
+                  // reflects scroll order.
+                  let runningIdx = 0;
+                  const groups = Array.from(buckets.entries()).filter(([, qs]) => qs.length > 0);
+
+                  return (
+                    <motion.div
+                      id="per-question"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                      className="space-y-8 mb-8 scroll-mt-20"
+                    >
+                      {groups.map(([catKey, qs]) => {
+                        const label =
+                          catKey === '__other__'
+                            ? 'Other'
+                            : BRAND_LIFT_CATEGORY_LABEL[catKey];
+                        return (
+                          <CategoryGroup key={catKey} label={label} count={qs.length}>
+                            {qs.map((q) => {
+                              const card = renderCard(q, runningIdx);
+                              runningIdx += 1;
+                              return card;
+                            })}
+                          </CategoryGroup>
+                        );
+                      })}
+                    </motion.div>
+                  );
+                })()}
 
                 {/* Pass 23 Bug 23.60 Chunk 7 — Recommended Next Step is now
                     the last call-to-action in the main content flow (the AI

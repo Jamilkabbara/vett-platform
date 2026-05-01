@@ -9,3 +9,4 @@ export { TensionCard } from './TensionCard';
 export type { Contradiction } from './TensionCard';
 export { SegmentedControl } from './SegmentedControl';
 export { RecommendedNextStep } from './RecommendedNextStep';
+export { CategoryGroup } from './CategoryGroup';

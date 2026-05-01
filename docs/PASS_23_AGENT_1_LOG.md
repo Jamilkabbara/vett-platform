@@ -124,14 +124,26 @@ Every chunk → its own commit (or 1-2 chunks per push if low-risk). Audit chat 
 - ✓ Built `RecommendedNextStep.tsx` with CTA prominence boost (bigger padding, uppercase tracking, scale-on-hover, stronger shadow).
 - ✓ Reordered: Next Step → AI disclaimer (footer-style).
 
-### 2026-05-01 — Chunk 8 in progress
+### 2026-05-01 — Chunk 8 shipped (b7630c9)
 
-- ✓ **Outer container padding tightened**: `pt-20 md:pt-24 pb-24` → `pt-12 md:pt-16 pb-16`. Saves 32-48px each side. Per-mission viewport now fits more content on a single laptop screen.
-- ✓ **Per-question loop spacing**: `space-y-8 mb-12` → `space-y-6 mb-8`. Saves 8px between cards × 8 questions = ~64px of cumulative gap, plus 16px after the loop.
-- ✓ Cards retain their `mb-8` (visual section breathing) — the void-gap symptom was at the page edges and inside the per-question stack, not between top-level cards.
-- ✓ Failed-mission early-return container at line 1392 left at `pt-20 md:pt-24 pb-24` — that page is small and the padding helps it center vertically. Not part of the void-gap symptom.
+- ✓ Outer container padding tightened (pt-20 md:pt-24 pb-24 → pt-12 md:pt-16 pb-16).
+- ✓ Per-question loop: `space-y-8 mb-12` → `space-y-6 mb-8`.
+
+### 2026-05-01 — Chunk 9 in progress
+
+- ✓ Built `src/components/results/CategoryGroup.tsx`:
+  - Section divider with uppercase category label + count pill (e.g. "BRAND AWARENESS · 3 questions").
+  - Subtle gradient horizontal line bridging the label to the right edge.
+  - Quiet enough not to compete with per-question card headings.
+- ✓ Added Brand Lift detection + grouping in ResultsPage:
+  - Detects mode by `filteredQuestions.some(q => !!q.category)` — no need to plumb `goal_type` since the question-level tag is the source of truth.
+  - **Logical funnel order** (top → bottom): Awareness → Recall (Unaided) → Recall (Aided) → Ad Recall → Attribution → Message Association → Favorability → Purchase Intent → Recommendation. Questions outside the ladder fall into a final "Other" bucket.
+  - Empty groups don't render (only categories with at least 1 question get a header).
+  - Running animation index preserved across groups so per-card stagger still feels right top-to-bottom.
+- ✓ Non-Brand-Lift missions render the existing flat stack — zero behavior change for them.
+- ✓ Per-question card JSX extracted into a local `renderCard` helper so both branches share the same render. No prop-drilling or component wrapper needed.
 - ✓ Zero new TS errors. Preview alive.
-- → **Next: push Chunk 8.**
+- → **Next: push Chunk 9.**
 
 ---
 
