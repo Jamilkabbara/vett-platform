@@ -108,7 +108,7 @@ export function VsSurveyMonkeyPage() {
     // FAQPage JSON-LD
     const ld = document.createElement('script');
     ld.type = 'application/ld+json';
-    ld.id = 'pass-23-b2-vs-sm-faq-schema';
+    ld.id = 'vs-surveymonkey-faq-schema';
     ld.text = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'FAQPage',
@@ -124,7 +124,7 @@ export function VsSurveyMonkeyPage() {
       document.title = prevTitle;
       setMeta('description', prevDesc);
       canonical?.setAttribute('href', prevCanonical);
-      document.getElementById('pass-23-b2-vs-sm-faq-schema')?.remove();
+      document.getElementById('vs-surveymonkey-faq-schema')?.remove();
     };
   }, []);
 
