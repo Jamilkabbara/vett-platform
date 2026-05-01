@@ -37,6 +37,7 @@ import { EffectivenessDial } from '../components/creative-attention/Effectivenes
 import { AttentionBlock } from '../components/creative-attention/AttentionBlock';
 import { EmotionRadar } from '../components/creative-attention/EmotionRadar';
 import { CrossChannelBenchmarks } from '../components/creative-attention/CrossChannelBenchmarks';
+import { PlatformFitPanel } from '../components/creative-attention/PlatformFitPanel';
 
 // Legacy alias kept for in-file references; new code imports the v2 map.
 const EMOTION_COLORS: Record<string, string> = EMOTION_COLORS_V2;
@@ -329,36 +330,33 @@ export function CreativeAttentionResultsPage() {
             <p className="text-sm text-[var(--t1)] leading-relaxed">{summary.attention_arc}</p>
           </div>
 
+          {/* Pass 24 Bug 24.01 F6 — Best Platform Fit slot.
+              The hero row's compact pill list is now a stub: PlatformFit
+              moves to a dedicated full-width section below for v2 missions
+              (richer norm-vs-predicted bar UI). For v1 missions without
+              v2 fields, PlatformFitPanel still renders the legacy pill
+              cluster — same behavior as before, just centralized.
+              The hero row keeps a small "see below" label so the layout
+              stays balanced on mobile. */}
           <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6">
             <p className="text-xs text-[var(--t3)] font-semibold uppercase tracking-wider mb-3">
               Best Platform Fit
             </p>
-            {/* Pass 23 Bug 23.73 — supports both shapes:
-                  - new: array of { platform, rationale }
-                  - legacy: array of strings (pre-Bug-23.73 missions)
-                Hover/focus reveals the per-platform rationale tooltip. */}
-            <div className="flex flex-wrap gap-2">
-              {(summary.best_platform_fit || []).map((p, i) => {
-                const isObject = p && typeof p === 'object' && !Array.isArray(p);
-                const platformName = isObject
-                  ? String((p as { platform?: string }).platform ?? '')
-                  : String(p ?? '');
-                const rationale = isObject
-                  ? String((p as { rationale?: string }).rationale ?? '')
-                  : '';
-                return (
-                  <span
-                    key={`${platformName}-${i}`}
-                    title={rationale || undefined}
-                    className="px-3 py-1 rounded-full text-xs font-medium bg-purple-500/15 border border-purple-500/30 text-purple-300 cursor-help"
-                  >
-                    {platformName}
-                  </span>
-                );
-              })}
-            </div>
+            <p className="text-sm text-[var(--t2)] leading-relaxed">
+              {(summary.best_platform_fit || []).length > 0
+                ? `${(summary.best_platform_fit || []).length} platforms recommended — see breakdown below.`
+                : 'No platform recommendations available.'}
+            </p>
           </div>
         </div>
+
+        {/* Pass 24 Bug 24.01 F6 — full-width Platform Fit panel.
+            Auto-detects v2 vs legacy shape internally; renders rich panel
+            with norm-vs-predicted bars + delta + fit_score for v2 missions
+            and falls back to the legacy pill cluster for older rows. */}
+        {(summary.best_platform_fit || []).length > 0 ? (
+          <PlatformFitPanel items={summary.best_platform_fit || []} />
+        ) : null}
 
         {/* Pass 23 Bug 23.57 — Brand Strength Scorecard. 4 cards drawn
             from the AI-populated frame_analyses fields + a synthesized
