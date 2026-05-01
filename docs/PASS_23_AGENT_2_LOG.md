@@ -84,4 +84,40 @@ Verification mission target: `5e1ea434` (Jamil's Nike WebP CA mission, $19, comp
   - `src/routes/results.js` — additive only. Two new routes: `GET /api/results/:id/export/ca/pptx` and `…/xlsx`. Existing survey-shape routes untouched. Imports added in dedicated block. `node -c` syntax check: clean.
 
 ### Push log
-- (none yet — about to commit)
+- **2026-04-30** — FE push `pass-23-bug-74-ca-exports` → `origin` SHA `1a71837` (660 insertions, 5 deletions across 11 files; new exporter dir + agent log + CA page marker blocks).
+- **2026-04-30** — BE push `pass-23-bug-74-ca-exports` → `origin` SHA `36d4fbe` (652 insertions across 4 files; new ca/ subdir + 2 routes appended to results.js).
+- **No PRs opened.** Audit chat is the merge gate per Pass 24 coordination rules; Jamil/audit chat can open PRs when ready.
+
+---
+
+## Verification — pending (steps for Jamil)
+
+### Doctrine 5-criterion update
+
+| Bug | (1) Code pushed + deploy | (2) E2E reproduced | (3) Symptom absent | (4) Visual proof | (5) Regression escalation |
+|---|---|---|---|---|---|
+| **23.74** CA exports | ✅ pushed (FE `1a71837`, BE `36d4fbe`); deploy verification pending | ⏸️ pending Jamil | ⏸️ | ⏸️ | n/a |
+| **23.62** HTML-to-PDF Option B | ✅ pushed (FE `1a71837`); deploy verification pending | ⏸️ pending Jamil | ⏸️ | ⏸️ | escalated from `partial-fix` |
+
+Per doctrine rule 1 (Bug 23.79 origin): pushed ≠ running. **Both repos need deploy verification before this is `shipped`:**
+- **FE (Vercel):** confirm bundle hash on `pass-23-bug-74-ca-exports` preview deploy includes `caExports`. Either visit the Vercel preview URL or curl the bundle and grep.
+- **BE (Railway):** Railway auto-deploys `main` only. The CA backend routes won't be reachable until this branch merges to `main`. Frontend PDF / CSV / JSON will work against any deploy; PPTX / XLSX will 404 until backend merges.
+
+### End-to-end checks (Jamil-side)
+
+Run against mission `5e1ea434` (Jamil's verified Nike WebP CA mission, Pass 23 close-out):
+
+1. **JSON** — load /creative-results/5e1ea434, click Export → JSON. Verify: file downloads, opens in any text editor, contains `creative_analysis.frame_analyses` and `creative_analysis.summary`.
+2. **CSV** — open in Excel for Mac AND Google Sheets. Verify: BOM is silent (no leading character), all section labels render, Arabic / accented text (if any frames have it) is intact.
+3. **PDF (Bug 23.62)** — open in Mac Preview AND Adobe Acrobat. Verify: report fits A4, dark background, charts visible, no text cut mid-line at page breaks. **Trade-off:** the PDF is a rasterized image, so text isn't selectable / searchable. That's intentional (the alternative was committing 1MB of TTF font files for pdfkit Unicode support).
+4. **PPTX** — open in PowerPoint Mac AND Google Slides. Verify: 9 slides, brand strength scorecard renders correctly, frame timeline table truncates at 12 with "... N more in XLSX" footer, lime accent bar present at top of each slide.
+5. **XLSX** — open in Excel Mac AND Google Sheets. Verify: 7 sheets, Cover sheet shows mission meta, Frames sheet has every frame, Emotion Timeline is wide-format with a column per emotion.
+
+### Bug 23.62 specific — Lebanese mission Arabic verbatims
+
+Need to find a CA mission with Arabic verbatim text in `creative_analysis.summary.attention_arc` or `vs_benchmark`. Pass 23 mentions mission `e75a0230` (Lebanon influencer) but that's a Brand Lift mission — not CA. If no Arabic CA mission exists, this verification step is blocked until one is run; document as "deferred — needs an Arabic-content CA mission" if no candidate found.
+
+### Known follow-ups / out of scope this pass
+- `htmlToPdf.ts` not wired into `ResultsPage.tsx` survey-shape PDF button. Bug 23.62 ownership in this pass was the utility + CA wiring; survey-side wiring is a separate edit on a separate file.
+- Backend git remote URL has an embedded GitHub PAT (security finding flagged earlier in this log). Out of this task's scope.
+- `npm install` in the FE worktree warned about Node engine 18 vs required 20. Pre-existing repo state. Not blocking for build but worth tracking.
