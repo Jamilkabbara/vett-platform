@@ -47,8 +47,10 @@ Hybrid mirroring the existing survey-shape pattern in `vettit-backend/src/servic
 
 | Bug | (1) Code pushed + deploy | (2) E2E reproduced | (3) Symptom absent | (4) Visual proof | (5) Regression escalation |
 |---|---|---|---|---|---|
-| **23.74** CA exports | ⏸️ | ⏸️ | ⏸️ | ⏸️ | n/a (first time) |
-| **23.62** HTML-to-PDF Option B | ⏸️ | ⏸️ | ⏸️ | ⏸️ | escalated from `partial-fix` (Pass 23 export audit V2) — Lebanese mission Arabic verbatims now render via DOM rasterization |
+| **23.74** CA exports | ✅ FE `1a71837`+`e8ff3f1`, BE `36d4fbe` | ✅ Jamil 2026-05-02 | ✅ all 5 formats download + open clean | ✅ Jamil verified JSON/CSV/PDF/PPTX/XLSX | n/a (first time) |
+| **23.62** HTML-to-PDF Option B | ✅ FE `1a71837` | ✅ Jamil 2026-05-02 (PDF opens, paginated, dark theme intact) | ✅ DOM-rasterized PDF replaces pdfkit Latin-1 path for CA | ✅ Jamil verified | ✅ escalated from `partial-fix` (Pass 23 export audit V2) → resolved for CA-shape; survey-shape ResultsPage wiring remains a follow-up |
+
+**Status: shipped** for Bug 23.74 + Bug 23.62 (CA-shape).
 
 Verification mission target: `5e1ea434` (Jamil's Nike WebP CA mission, $19, completed clean per Pass 23 close-out). Plus a Lebanese mission for Bug 23.62 Unicode validation if one exists.
 
@@ -86,6 +88,8 @@ Verification mission target: `5e1ea434` (Jamil's Nike WebP CA mission, $19, comp
 ### Push log
 - **2026-04-30** — FE push `pass-23-bug-74-ca-exports` → `origin` SHA `1a71837` (660 insertions, 5 deletions across 11 files; new exporter dir + agent log + CA page marker blocks).
 - **2026-04-30** — BE push `pass-23-bug-74-ca-exports` → `origin` SHA `36d4fbe` (652 insertions across 4 files; new ca/ subdir + 2 routes appended to results.js).
+- **2026-04-30** — FE push log update SHA `e8ff3f1` (push log + verification checklist).
+- **2026-05-02** — Jamil verified JSON/CSV/PDF/PPTX/XLSX end-to-end, no issues reported. Doctrine criteria 1-4 closed; Bug 23.74 + Bug 23.62 (CA-shape) → **shipped**.
 - **No PRs opened.** Audit chat is the merge gate per Pass 24 coordination rules; Jamil/audit chat can open PRs when ready.
 
 ---
