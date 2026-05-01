@@ -113,16 +113,23 @@ Every chunk → its own commit (or 1-2 chunks per push if low-risk). Audit chat 
 - ✓ Per-question cards now have `id="q-${question.id}"` + `scroll-mt-20`.
 - ✓ Removed unused `AlertTriangle` import.
 
-### 2026-05-01 — Chunk 6 in progress
+### 2026-05-01 — Chunk 6 shipped (fcd3a6e)
 
-- ✓ Built `src/components/results/SegmentedControl.tsx`:
-  - Single-container segmented control replacing pill tabs.
-  - Three variants: `purple` (Cross-Cut), `lime` (future Cross-channel benchmarks Bug 24.01), `neutral`.
-  - **Keyboard nav per WAI-ARIA radiogroup pattern**: ←/→ cycle, Home/End jump to first/last. Roving tabIndex (active = 0, others = -1) so focus follows selection.
-  - Focus-visible variant-tinted ring.
-- ✓ Refactored CrossCutCard JSX (lines 227-241) to use the new component. Net -14 lines, +1 import.
+- ✓ Built `SegmentedControl.tsx` with WAI-ARIA radiogroup keyboard nav (←/→/Home/End, roving tabIndex, focus-visible ring).
+- ✓ Refactored CrossCutCard inline pill-tabs → component. Net -14 lines.
+
+### 2026-05-01 — Chunk 7 in progress
+
+- ✓ **Screening Funnel hidden when 100% qualify.** Updated guard from `{screeningFunnel && (...)}` to `{screeningFunnel && screeningFunnel.passed < screeningFunnel.total && (...)}`. Showing a 100/100 pass rate is just noise — only render when there's actual screening drama.
+- ✓ Built `src/components/results/RecommendedNextStep.tsx`:
+  - **CTA prominence boost**: padding `py-4` (was `py-3`), uppercase tracking, `font-black`, scale-on-hover `1.02`, stronger green-500/40 shadow on hover. Heading bumped to `text-2xl md:text-3xl font-black`. Body up to `text-base md:text-lg`. Card padding `p-8 md:p-10`.
+  - Primary CTA navigates to `/setup` (was `/mission-control` — fix: that route alias is fine but `/setup` is the canonical new-mission entry).
+  - focus-visible outlines on both buttons.
+- ✓ **Reordered to AI disclaimer footer-style**: AI disclosure block now renders AFTER Recommended Next Step, not before. CTA is the last action the reader sees in the main content flow; disclaimer reads as a true page footer.
+- ✓ Replaced ~45 lines of inline JSX with `<RecommendedNextStep />` component call.
+- ✓ Removed unused `Rocket` import from ResultsPage (now lives in RecommendedNextStep).
 - ✓ Zero new TS errors. Preview alive.
-- → **Next: push Chunk 6.**
+- → **Next: push Chunk 7.**
 
 ---
 
