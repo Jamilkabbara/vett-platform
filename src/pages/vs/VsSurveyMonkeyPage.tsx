@@ -58,7 +58,7 @@ const FAQS = [
   },
   {
     q: 'How much does VETT cost vs SurveyMonkey?',
-    a: "SurveyMonkey's basic plan is $25/month + per-response panel costs. A 100-person targeted survey on SurveyMonkey Audience typically lands $300-$800 depending on screener strictness. VETT charges $9 for a 5-respondent Sniff Test, $99 for 50 respondents (Confidence tier), or $899 for 1,000 (Scale tier). No subscription required. For first-iteration validation, VETT is roughly 5-10× cheaper.",
+    a: "SurveyMonkey's pricing varies by region and changes periodically; check surveymonkey.com/pricing for current numbers (as of May 2026, their entry tier was AED 129/month - roughly $35 USD/month - in the UAE storefront, with SurveyMonkey Audience responses sold separately at AED 0.50+ per additional response). A 100-person targeted survey on SurveyMonkey Audience typically lands several hundred dollars depending on screener strictness. VETT charges $9 for a 5-respondent Sniff Test, $99 for 50 respondents (Confidence tier), or $899 for 1,000 (Scale tier). No subscription required. For first-iteration validation, VETT is roughly 5-10× cheaper.",
   },
   {
     q: "What if my screener is so strict that you can't generate matching personas?",
