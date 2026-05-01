@@ -38,6 +38,7 @@ import { AttentionBlock } from '../components/creative-attention/AttentionBlock'
 import { EmotionRadar } from '../components/creative-attention/EmotionRadar';
 import { CrossChannelBenchmarks } from '../components/creative-attention/CrossChannelBenchmarks';
 import { PlatformFitPanel } from '../components/creative-attention/PlatformFitPanel';
+import { CreativeExportMenu } from '../components/creative-attention/CreativeExportMenu';
 
 // Legacy alias kept for in-file references; new code imports the v2 map.
 const EMOTION_COLORS: Record<string, string> = EMOTION_COLORS_V2;
@@ -263,13 +264,20 @@ export function CreativeAttentionResultsPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-5 py-10 space-y-12">
-        {/* Title */}
-        <div>
-          <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-xs font-semibold uppercase tracking-wider">
-            <Film className="w-3.5 h-3.5" />
-            Creative Attention Analysis
+        {/* Title row + Export menu (Pass 23 Bug 23.74 quickship). */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-xs font-semibold uppercase tracking-wider">
+              <Film className="w-3.5 h-3.5" />
+              Creative Attention Analysis
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
+          <CreativeExportMenu
+            analysis={analysis}
+            missionId={missionId}
+            brand={(mission?.brand_name as string | undefined) ?? title}
+          />
         </div>
 
         {/* Pass 23 Bug 23.60/23.75 — render the actual creative.
