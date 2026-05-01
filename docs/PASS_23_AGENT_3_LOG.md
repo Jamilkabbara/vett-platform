@@ -69,6 +69,31 @@ Every logical chunk → its own commit. Push to `origin/pass-23-phase-b-comparis
 - ✓ Wrote this log scaffold + gate report `docs/PASS_23_PHASE_B_COMPARISONS_REPORT.md`.
 - → **Next:** push doc-only commit, await Jamil sign-off on the seven derived refinements + the five tone calibrations before any code edits.
 
+### 2026-05-01 — gate-doc shipped (a23e073)
+
+- ✓ Discovered `git checkout` race in main worktree: another active session running `pass-24-bug-01-creative-attention-v2` switched HEAD on the shared checkout mid-flight, silently resetting my staged index. Salvage: created dedicated worktree `.claude/worktrees/agent3-comparisons` (matches Agent 2's pattern) and re-ran via `git -C $WT`.
+- ✓ Pushed `a23e073` (gate report + this log) to `origin/pass-23-phase-b-comparisons`.
+- → **Next:** await Jamil sign-off line on R1-R7 + C1-C5.
+
+### 2026-05-02 — refinement chunks R5 / R3 / R4 / R1 / R2 / R6 (R7 deferred to expansion-pages chunk)
+
+Sign-off received: R1-R7 keep (R4 verify, R6 both steps); C1-C5 keep; §6 yes; blog topics keep.
+
+Workflow note (saved to long-term memory): a Bash permission hook denied my first-batch push because the R4 commit changed a public-facing claim (`150+ countries` -> verified `193`) without the literal new string having been previewed. Sub-rule 6 in action. Re-asked the user with literal new strings for R4 / R1 / R2 / R6 in chat; received explicit acks (R4 ship 193, R1 ship AED-anchored cite, R2 user-supplied softer rewrite, R6 proceed). Then committed.
+
+| # | Commit | Refinement | One-line change |
+|---|---|---|---|
+| 1 | `126638e` | R5 | JSON-LD script id `pass-23-b2-vs-sm-faq-schema` -> `vs-surveymonkey-faq-schema`. |
+| 2 | `c1686e5` | R3 | CA price row: `$19+` -> `$19/asset` to match the "When to use VETT" panel bullet. |
+| 3 | `e96b1f1` | R4 | Geographic-reach row: `150+ countries, AI-modelled` -> `193 countries (full ISO list, AI-modelled)`. Verified against `src/data/targetingOptions.ts` COUNTRIES (193 entries). |
+| 4 | `c83d8d0` | R1 | FAQ #3 answer: cite-with-date the SurveyMonkey-side numbers, AED-anchored for MENA audience, replace stale `$25/month` + `$300-$800` with linkable surveymonkey.com/pricing reference. |
+| 5 | `617f70a` | R2 | FAQ #1 answer: replace unsourced `70-80%` claim with Jamil-supplied directional-alignment framing (em-dashes converted to ` - ` per Bug 23.77 sweep). |
+| 6 | `30dee06` | R6 | Mobile-responsive comparison table: `sm:hidden` stacked-card render below 640px + `overflow-x-auto` wrapper with `min-w-[600px]` table at and above 640px. No copy change. |
+
+R7 ("ship after voice approval" footnote removal + activation of the four cross-link routes) deferred to the expansion-pages commit since it depends on those routes existing. Currently the page still shows the four placeholder links + the "ship after voice approval" footnote, which is correct given the four pages haven't shipped yet.
+
+- → **Next:** push the six-commit batch + start the four expansion-page builds.
+
 ---
 
 ## Coordination notes
