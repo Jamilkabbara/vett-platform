@@ -41,7 +41,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Real human respondents',          vett: 'No - synthetic personas with realistic distributions',          competitor: 'Yes - verified panel members',  vettWins: false },
   { dimension: 'Demographic depth',               vett: 'Persona-level: occupation, income, behaviours, decision style', competitor: 'Demographic targeting + screening filters', vettWins: false },
   { dimension: 'AI insight synthesis',            vett: 'Built-in: executive summary, contradictions, cross-cut',        competitor: 'Manual analysis or third-party add-on', vettWins: true  },
-  { dimension: 'Creative attention analysis',     vett: 'Frame-by-frame emotion, attention, message clarity for $19+',   competitor: 'Not in core product',           vettWins: true  },
+  { dimension: 'Creative attention analysis',     vett: 'Frame-by-frame emotion, attention, message clarity for $19/asset',   competitor: 'Not in core product',           vettWins: true  },
   { dimension: 'Brand lift framework',            vett: 'Built-in 9-category Happydemics-style framework',               competitor: 'DIY in Survey Builder',         vettWins: true  },
   { dimension: 'Integrations (Salesforce, etc.)', vett: 'CSV / PDF export today; API on roadmap',                        competitor: 'Mature integrations marketplace',vettWins: false },
   { dimension: 'Best for…',                       vett: 'Early validation, pre-launch sanity, MENA/emerging markets',    competitor: 'Established research programs with budget for real panels', vettWins: false },
