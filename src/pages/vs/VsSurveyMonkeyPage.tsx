@@ -50,7 +50,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
 const FAQS = [
   {
     q: 'Can synthetic respondents really replace real panel research?',
-    a: "It depends on what you're trying to learn. For early-stage validation, pre-launch sanity checks, message testing, and brand-lift baselines - yes. AI personas trained on demographic and behavioural distributions match real-panel response distributions to within a few percentage points on 70-80% of survey questions in published comparisons. For high-stakes decisions where you need legally defensible quotes from verified humans, real panels are still the right tool. We recommend VETT for the first 3-5 iterations of an idea, then a real-panel study before launch.",
+    a: "For early validation, the directional signals from VETT missions - which option wins, what concerns emerge - often align with the patterns confirmed by real-panel studies run with the same screener. Where they can diverge: open-text emotional nuance and brand-recall depth on niche products, where a real panel still adds confidence. For high-stakes decisions where you need legally defensible quotes from verified humans, real panels are the right tool. We recommend VETT for the first 3-5 validation iterations, then a real-panel study before launch.",
   },
   {
     q: 'How is this different from just asking ChatGPT?',
