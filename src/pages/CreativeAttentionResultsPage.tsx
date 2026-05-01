@@ -25,6 +25,24 @@ import {
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
 
+// {Agent2-EXPORTS-START}
+// Pass 23 Bug 23.74 + 23.62 — Creative Attention export menu.
+// Self-contained subcomponent + dispatcher; no shared state with the
+// parent results page beyond the mission row already in scope.
+import {
+  useRef as useExportRef,
+  useState as useExportState,
+  useEffect as useExportEffect,
+} from 'react';
+import { Download, ChevronDown, FileText, FileSpreadsheet, Presentation, FileJson, Loader2 as ExportSpinner } from 'lucide-react';
+import toast from 'react-hot-toast';
+import {
+  exportCreativeAttention,
+  type CAExportFormat,
+  type CAExportMission,
+} from '../lib/exporters/ca/caExports';
+// {Agent2-EXPORTS-END}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface FrameAnalysis {
@@ -107,6 +125,110 @@ function TrendIcon({ value }: { value: number }) {
   if (value >= 40) return <Minus className="w-4 h-4 text-amber-400" />;
   return <TrendingDown className="w-4 h-4 text-red-400" />;
 }
+
+// {Agent2-EXPORTS-START}
+// ExportMenu — dropdown rendered in the header. Owns its own state so
+// it can be parachuted in/out without affecting Agent 1's layout work.
+function ExportMenu({ mission }: { mission: Record<string, unknown> }) {
+  const [open, setOpen] = useExportState(false);
+  const [busy, setBusy] = useExportState<CAExportFormat | null>(null);
+  const wrapRef = useExportRef<HTMLDivElement | null>(null);
+
+  // Close dropdown on outside click while open.
+  useExportEffect(() => {
+    if (!open) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [open]);
+
+  const run = async (format: CAExportFormat) => {
+    if (busy) return;
+    setBusy(format);
+    setOpen(false);
+    const t = toast.loading(`Generating ${format.toUpperCase()}…`);
+    try {
+      const caMission = mission as unknown as CAExportMission;
+
+      let element: HTMLElement | null = null;
+      let authToken: string | null = null;
+
+      if (format === 'pdf') {
+        element = document.querySelector('main');
+        if (!element) throw new Error('Could not locate the report content.');
+      }
+      if (format === 'pptx' || format === 'xlsx') {
+        const { data } = await supabase.auth.getSession();
+        authToken = data.session?.access_token ?? null;
+        if (!authToken) throw new Error('You need to be signed in to export this format.');
+      }
+
+      await exportCreativeAttention(format, caMission, { element, authToken });
+      toast.success(`${format.toUpperCase()} downloaded`, { id: t });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Export failed';
+      toast.error(msg, { id: t });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const items: Array<{ format: CAExportFormat; label: string; hint: string; Icon: typeof FileText }> = [
+    { format: 'pdf',  label: 'PDF',  hint: 'Visual report',           Icon: FileText },
+    { format: 'pptx', label: 'PPTX', hint: 'Slide deck',              Icon: Presentation },
+    { format: 'xlsx', label: 'XLSX', hint: 'Spreadsheet',             Icon: FileSpreadsheet },
+    { format: 'csv',  label: 'CSV',  hint: 'Flat raw data',           Icon: FileSpreadsheet },
+    { format: 'json', label: 'JSON', hint: 'Raw analysis payload',    Icon: FileJson },
+  ];
+
+  return (
+    <div ref={wrapRef} className="relative ml-auto mr-3">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        disabled={busy !== null}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--b1)] bg-[var(--bg2)] text-sm text-[var(--t1)] hover:border-[var(--lime)]/40 hover:text-[var(--lime)] transition-colors disabled:opacity-60 disabled:cursor-wait"
+      >
+        {busy ? (
+          <ExportSpinner className="w-4 h-4 animate-spin" />
+        ) : (
+          <Download className="w-4 h-4" />
+        )}
+        <span className="hidden sm:inline">{busy ? `Exporting ${busy.toUpperCase()}` : 'Export'}</span>
+        <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+      </button>
+
+      {open && !busy && (
+        <div
+          role="menu"
+          className="absolute right-0 mt-2 w-56 rounded-xl border border-[var(--b1)] bg-[var(--bg2)] shadow-2xl overflow-hidden z-30"
+        >
+          {items.map(({ format, label, hint, Icon }) => (
+            <button
+              key={format}
+              role="menuitem"
+              type="button"
+              onClick={() => run(format)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-[var(--t1)] hover:bg-[var(--bg3,#1a2233)] transition-colors"
+            >
+              <Icon className="w-4 h-4 text-[var(--lime)] shrink-0" />
+              <span className="flex-1">
+                <span className="block font-medium">{label}</span>
+                <span className="block text-xs text-[var(--t3)]">{hint}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+// {Agent2-EXPORTS-END}
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -287,6 +409,9 @@ export function CreativeAttentionResultsPage() {
       {/* Nav */}
       <header className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-[var(--b1)] bg-[var(--bg)]/90 backdrop-blur">
         <Link to="/landing"><Logo /></Link>
+        {/* {Agent2-EXPORTS-START} */}
+        {mission && <ExportMenu mission={mission} />}
+        {/* {Agent2-EXPORTS-END} */}
         <Link
           to="/dashboard"
           className="inline-flex items-center gap-1.5 text-sm text-[var(--t2)] hover:text-[var(--t1)] transition-colors"
