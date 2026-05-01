@@ -34,6 +34,7 @@ import { Logo } from '../components/ui/Logo';
 import type { CreativeAnalysis } from '../types/creativeAnalysis';
 import { EMOTION_COLORS_V2 } from '../types/creativeAnalysis';
 import { EffectivenessDial } from '../components/creative-attention/EffectivenessDial';
+import { AttentionBlock } from '../components/creative-attention/AttentionBlock';
 
 // Legacy alias kept for in-file references; new code imports the v2 map.
 const EMOTION_COLORS: Record<string, string> = EMOTION_COLORS_V2;
@@ -304,6 +305,13 @@ export function CreativeAttentionResultsPage() {
             this section and proceed to the legacy hero metrics. */}
         {analysis.creative_effectiveness ? (
           <EffectivenessDial effectiveness={analysis.creative_effectiveness} />
+        ) : null}
+
+        {/* Pass 24 Bug 24.01 F3 — Attention block (active vs passive
+            split + DBA score + decay curve). Renders only when the
+            v2 pipeline returned the attention prediction. */}
+        {analysis.attention ? (
+          <AttentionBlock attention={analysis.attention} />
         ) : null}
 
         {/* Hero metrics row */}
