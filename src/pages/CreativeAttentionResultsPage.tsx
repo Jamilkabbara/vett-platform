@@ -25,56 +25,22 @@ import {
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types (Pass 24 Bug 24.01 — moved to src/types/creativeAnalysis.ts) ──────
+// Single-source types live in `../types/creativeAnalysis`. The local aliases
+// below are kept as a temporary import shim for the Bug 24.01 transition;
+// once F2-F6 are wired, downstream consumers can import the canonical types
+// directly. EMOTION_COLORS extended to cover all 24 emotions in v2.
 
-interface FrameAnalysis {
-  timestamp: number;
-  emotions: Record<string, number>;
-  attention_hotspots: string[];
-  message_clarity: number;
-  audience_resonance: number;
-  engagement_score: number;
-  brief_description: string;
-}
+import type { CreativeAnalysis } from '../types/creativeAnalysis';
+import { EMOTION_COLORS_V2 } from '../types/creativeAnalysis';
+import { EffectivenessDial } from '../components/creative-attention/EffectivenessDial';
+import { AttentionBlock } from '../components/creative-attention/AttentionBlock';
+import { EmotionRadar } from '../components/creative-attention/EmotionRadar';
+import { CrossChannelBenchmarks } from '../components/creative-attention/CrossChannelBenchmarks';
+import { PlatformFitPanel } from '../components/creative-attention/PlatformFitPanel';
 
-interface EmotionPeak {
-  emotion: string;
-  peak_timestamp: number;
-  peak_value: number;
-  interpretation: string;
-}
-
-interface CreativeSummary {
-  overall_engagement_score: number;
-  emotion_peaks: EmotionPeak[];
-  attention_arc: string;
-  strengths: string[];
-  weaknesses: string[];
-  recommendations: string[];
-  vs_benchmark: string;
-  best_platform_fit: string[];
-}
-
-interface CreativeAnalysis {
-  frame_analyses: FrameAnalysis[];
-  summary: CreativeSummary;
-  total_frames: number;
-  is_video: boolean;
-  generated_at: string;
-}
-
-// ── Emotion color map ─────────────────────────────────────────────────────────
-
-const EMOTION_COLORS: Record<string, string> = {
-  joy:          '#BEF264', // lime
-  trust:        '#60A5FA', // blue
-  surprise:     '#F59E0B', // amber
-  anticipation: '#A78BFA', // violet
-  fear:         '#F87171', // red
-  sadness:      '#6B7280', // gray
-  disgust:      '#10B981', // emerald
-  anger:        '#EF4444', // red-500
-};
+// Legacy alias kept for in-file references; new code imports the v2 map.
+const EMOTION_COLORS: Record<string, string> = EMOTION_COLORS_V2;
 
 // ── Gauge component ───────────────────────────────────────────────────────────
 
@@ -336,6 +302,21 @@ export function CreativeAttentionResultsPage() {
           );
         })()}
 
+        {/* Pass 24 Bug 24.01 F2 — Creative Effectiveness Score dial.
+            Renders only when the v2 pipeline returned the composite
+            score (creative_effectiveness present). Old missions skip
+            this section and proceed to the legacy hero metrics. */}
+        {analysis.creative_effectiveness ? (
+          <EffectivenessDial effectiveness={analysis.creative_effectiveness} />
+        ) : null}
+
+        {/* Pass 24 Bug 24.01 F3 — Attention block (active vs passive
+            split + DBA score + decay curve). Renders only when the
+            v2 pipeline returned the attention prediction. */}
+        {analysis.attention ? (
+          <AttentionBlock attention={analysis.attention} />
+        ) : null}
+
         {/* Hero metrics row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 flex flex-col items-center">
@@ -349,36 +330,33 @@ export function CreativeAttentionResultsPage() {
             <p className="text-sm text-[var(--t1)] leading-relaxed">{summary.attention_arc}</p>
           </div>
 
+          {/* Pass 24 Bug 24.01 F6 — Best Platform Fit slot.
+              The hero row's compact pill list is now a stub: PlatformFit
+              moves to a dedicated full-width section below for v2 missions
+              (richer norm-vs-predicted bar UI). For v1 missions without
+              v2 fields, PlatformFitPanel still renders the legacy pill
+              cluster — same behavior as before, just centralized.
+              The hero row keeps a small "see below" label so the layout
+              stays balanced on mobile. */}
           <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6">
             <p className="text-xs text-[var(--t3)] font-semibold uppercase tracking-wider mb-3">
               Best Platform Fit
             </p>
-            {/* Pass 23 Bug 23.73 — supports both shapes:
-                  - new: array of { platform, rationale }
-                  - legacy: array of strings (pre-Bug-23.73 missions)
-                Hover/focus reveals the per-platform rationale tooltip. */}
-            <div className="flex flex-wrap gap-2">
-              {(summary.best_platform_fit || []).map((p, i) => {
-                const isObject = p && typeof p === 'object' && !Array.isArray(p);
-                const platformName = isObject
-                  ? String((p as { platform?: string }).platform ?? '')
-                  : String(p ?? '');
-                const rationale = isObject
-                  ? String((p as { rationale?: string }).rationale ?? '')
-                  : '';
-                return (
-                  <span
-                    key={`${platformName}-${i}`}
-                    title={rationale || undefined}
-                    className="px-3 py-1 rounded-full text-xs font-medium bg-purple-500/15 border border-purple-500/30 text-purple-300 cursor-help"
-                  >
-                    {platformName}
-                  </span>
-                );
-              })}
-            </div>
+            <p className="text-sm text-[var(--t2)] leading-relaxed">
+              {(summary.best_platform_fit || []).length > 0
+                ? `${(summary.best_platform_fit || []).length} platforms recommended — see breakdown below.`
+                : 'No platform recommendations available.'}
+            </p>
           </div>
         </div>
+
+        {/* Pass 24 Bug 24.01 F6 — full-width Platform Fit panel.
+            Auto-detects v2 vs legacy shape internally; renders rich panel
+            with norm-vs-predicted bars + delta + fit_score for v2 missions
+            and falls back to the legacy pill cluster for older rows. */}
+        {(summary.best_platform_fit || []).length > 0 ? (
+          <PlatformFitPanel items={summary.best_platform_fit || []} />
+        ) : null}
 
         {/* Pass 23 Bug 23.57 — Brand Strength Scorecard. 4 cards drawn
             from the AI-populated frame_analyses fields + a synthesized
@@ -422,11 +400,28 @@ export function CreativeAttentionResultsPage() {
           </div>
         )}
 
-        {/* Pass 23 Bug 23.57 — Image-mode emotion bar chart. Single-frame
-            creatives have no temporal arc; render the emotion mix as a
-            horizontal bar chart so the analytics surface still shows
-            structure rather than just a list. */}
-        {isImage && imageBarData.length > 0 && (
+        {/* Pass 24 Bug 24.01 F5 — Cross-Channel Attention Benchmarks.
+            Renders only when the v2 pipeline returned channel_benchmarks.
+            Old missions skip the section. */}
+        {analysis.channel_benchmarks && analysis.channel_benchmarks.length > 0 ? (
+          <CrossChannelBenchmarks benchmarks={analysis.channel_benchmarks} />
+        ) : null}
+
+        {/* Pass 24 Bug 24.01 F4 — 24-emotion radar chart.
+            Renders for v2 missions (schema_version === 'v2'). Shows top
+            8 by default with a "Show all 24" toggle. Replaces the legacy
+            bar chart below for v2 missions; v1 missions still get the
+            8-emotion bar chart. */}
+        {analysis.schema_version === 'v2' ? (
+          <EmotionRadar frameAnalyses={frame_analyses} />
+        ) : null}
+
+        {/* Pass 23 Bug 23.57 — Image-mode emotion bar chart (LEGACY).
+            Renders only for v1 missions (no schema_version) since v2
+            replaces this with the 24-emotion radar above. Single-frame
+            creatives have no temporal arc; this gives them structure
+            rather than just a list. */}
+        {analysis.schema_version !== 'v2' && isImage && imageBarData.length > 0 && (
           <section>
             <h2 className="text-lg font-bold mb-4">Emotion Mix</h2>
             <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-2.5">
