@@ -35,6 +35,7 @@ import type { CreativeAnalysis } from '../types/creativeAnalysis';
 import { EMOTION_COLORS_V2 } from '../types/creativeAnalysis';
 import { EffectivenessDial } from '../components/creative-attention/EffectivenessDial';
 import { AttentionBlock } from '../components/creative-attention/AttentionBlock';
+import { EmotionRadar } from '../components/creative-attention/EmotionRadar';
 
 // Legacy alias kept for in-file references; new code imports the v2 map.
 const EMOTION_COLORS: Record<string, string> = EMOTION_COLORS_V2;
@@ -400,11 +401,21 @@ export function CreativeAttentionResultsPage() {
           </div>
         )}
 
-        {/* Pass 23 Bug 23.57 — Image-mode emotion bar chart. Single-frame
-            creatives have no temporal arc; render the emotion mix as a
-            horizontal bar chart so the analytics surface still shows
-            structure rather than just a list. */}
-        {isImage && imageBarData.length > 0 && (
+        {/* Pass 24 Bug 24.01 F4 — 24-emotion radar chart.
+            Renders for v2 missions (schema_version === 'v2'). Shows top
+            8 by default with a "Show all 24" toggle. Replaces the legacy
+            bar chart below for v2 missions; v1 missions still get the
+            8-emotion bar chart. */}
+        {analysis.schema_version === 'v2' ? (
+          <EmotionRadar frameAnalyses={frame_analyses} />
+        ) : null}
+
+        {/* Pass 23 Bug 23.57 — Image-mode emotion bar chart (LEGACY).
+            Renders only for v1 missions (no schema_version) since v2
+            replaces this with the 24-emotion radar above. Single-frame
+            creatives have no temporal arc; this gives them structure
+            rather than just a list. */}
+        {analysis.schema_version !== 'v2' && isImage && imageBarData.length > 0 && (
           <section>
             <h2 className="text-lg font-bold mb-4">Emotion Mix</h2>
             <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-2.5">
