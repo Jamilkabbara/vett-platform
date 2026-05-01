@@ -129,21 +129,20 @@ Every chunk → its own commit (or 1-2 chunks per push if low-risk). Audit chat 
 - ✓ Outer container padding tightened (pt-20 md:pt-24 pb-24 → pt-12 md:pt-16 pb-16).
 - ✓ Per-question loop: `space-y-8 mb-12` → `space-y-6 mb-8`.
 
-### 2026-05-01 — Chunk 9 in progress
+### 2026-05-01 — Chunk 9 shipped (c61e22c)
 
-- ✓ Built `src/components/results/CategoryGroup.tsx`:
-  - Section divider with uppercase category label + count pill (e.g. "BRAND AWARENESS · 3 questions").
-  - Subtle gradient horizontal line bridging the label to the right edge.
-  - Quiet enough not to compete with per-question card headings.
-- ✓ Added Brand Lift detection + grouping in ResultsPage:
-  - Detects mode by `filteredQuestions.some(q => !!q.category)` — no need to plumb `goal_type` since the question-level tag is the source of truth.
-  - **Logical funnel order** (top → bottom): Awareness → Recall (Unaided) → Recall (Aided) → Ad Recall → Attribution → Message Association → Favorability → Purchase Intent → Recommendation. Questions outside the ladder fall into a final "Other" bucket.
-  - Empty groups don't render (only categories with at least 1 question get a header).
-  - Running animation index preserved across groups so per-card stagger still feels right top-to-bottom.
-- ✓ Non-Brand-Lift missions render the existing flat stack — zero behavior change for them.
-- ✓ Per-question card JSX extracted into a local `renderCard` helper so both branches share the same render. No prop-drilling or component wrapper needed.
-- ✓ Zero new TS errors. Preview alive.
-- → **Next: push Chunk 9.**
+- ✓ Built `CategoryGroup.tsx` (label + count pill + gradient divider).
+- ✓ Brand Lift detection + funnel-order grouping in ResultsPage. `renderCard` helper shared between flat + grouped branches.
+
+### 2026-05-01 — Chunk 10 in progress (CreativeAttentionResultsPage)
+
+- ✓ **Frame-by-Frame hidden for images** (per spec). Was rendering with 1 card for static images, which is misleading. Now gated on `!isImage && frame_analyses.length > 0`.
+- ✓ **Brand Strength Scorecards: above/at/below industry-typical pill** added to each card. Color matches the score band (green ≥70, amber 40-69, red <40). Placeholder for Bug 24.01 which will swap to real DAIVID/Amplified per-axis benchmarks.
+- ✓ **Agent 2 export-menu slot**: title row restructured as `flex items-start justify-between` and inline marker block `// {Agent2-EXPORTS-START} ... // {Agent2-EXPORTS-END}` placed in the right-aligned slot. Agent 2 (pass-23-bug-74-ca-exports) drops the Export Data menu inside the markers without touching my layout.
+- ✓ **Existing wins preserved** (Bug 23.75v2 hero image, Bug 23.73 Best Platform Fit pill+rationale tooltip via native `title=`, Strengths/Concerns/Recommendations color accents already in place). No regression.
+- ✓ Pre-existing TS error (line 501 chart formatter) shifted by 18 lines but unchanged in cause. Zero new errors.
+- ✓ Preview alive.
+- → **Next: push Chunk 10. Bug 23.60 redesign complete; ready for branch-merge audit.**
 
 ---
 

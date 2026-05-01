@@ -298,12 +298,20 @@ export function CreativeAttentionResultsPage() {
 
       <main className="max-w-5xl mx-auto px-5 py-10 space-y-12">
         {/* Title */}
-        <div>
-          <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-xs font-semibold uppercase tracking-wider">
-            <Film className="w-3.5 h-3.5" />
-            Creative Attention Analysis
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-xs font-semibold uppercase tracking-wider">
+              <Film className="w-3.5 h-3.5" />
+              Creative Attention Analysis
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
+          {/* {Agent2-EXPORTS-START}
+              Pass 23 Bug 23.60 Chunk 10 — Agent 2 (pass-23-bug-74-ca-exports
+              branch) drops the Export Data menu inside this slot. The Agent 1
+              layout work treats this as opaque; Agent 2 owns everything between
+              the START / END markers. */}
+          {/* {Agent2-EXPORTS-END} */}
         </div>
 
         {/* Pass 23 Bug 23.60/23.75 — render the actual creative.
@@ -398,6 +406,13 @@ export function CreativeAttentionResultsPage() {
                 card.value >= 70 ? 'text-green-400 border-green-400/30 bg-green-400/5' :
                 card.value >= 40 ? 'text-amber-400 border-amber-400/30 bg-amber-400/5' :
                                    'text-red-400 border-red-400/30 bg-red-400/5';
+              // Pass 23 Bug 23.60 Chunk 10 — qualitative band relative to a
+              // generic "industry typical" reference (placeholder; Bug 24.01
+              // will swap this for real DAIVID/Amplified per-axis benchmarks).
+              const band =
+                card.value >= 70 ? { label: 'Above industry typical', cls: 'bg-green-400/15 text-green-300 border-green-400/30' } :
+                card.value >= 40 ? { label: 'Around industry typical', cls: 'bg-amber-400/15 text-amber-300 border-amber-400/30' } :
+                                   { label: 'Below industry typical', cls: 'bg-red-400/15 text-red-300 border-red-400/30' };
               return (
                 <div
                   key={card.label}
@@ -407,6 +422,9 @@ export function CreativeAttentionResultsPage() {
                   <div className="text-xs uppercase tracking-wider text-[var(--t3)] font-semibold mb-2">{card.label}</div>
                   <div className={`text-3xl font-black tabular-nums ${c.split(' ')[0]}`}>{card.value}</div>
                   <div className="text-[10px] text-[var(--t4)] mt-1">/ 100</div>
+                  <span className={`inline-block mt-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${band.cls}`}>
+                    {band.label}
+                  </span>
                   <div className="text-[10px] text-[var(--t3)] leading-snug mt-2">{card.hint}</div>
                 </div>
               );
@@ -583,8 +601,11 @@ export function CreativeAttentionResultsPage() {
           </div>
         </div>
 
-        {/* Frame gallery */}
-        {frame_analyses.length > 0 && (
+        {/* Pass 23 Bug 23.60 Chunk 10 — Frame gallery hidden for images.
+            For static images frame_analyses has exactly 1 entry (the image
+            itself); rendering "Frame-by-Frame Breakdown" with one card is
+            misleading. Video missions (multi-frame) keep the gallery. */}
+        {!isImage && frame_analyses.length > 0 && (
           <section>
             <h2 className="text-lg font-bold mb-4">Frame-by-Frame Breakdown</h2>
             <div className="overflow-x-auto">
