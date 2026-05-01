@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { MissionFailureCard } from '../components/shared/MissionFailureCard';
-import { ShareButton, ExecutiveSummary, AIInsight, TensionCard, type Contradiction } from '../components/results';
+import { ShareButton, ExecutiveSummary, AIInsight, TensionCard, SegmentedControl, type Contradiction } from '../components/results';
 import {
   ArrowLeft,
   Download,
@@ -224,20 +224,18 @@ function CrossCutCard({
         </div>
         <h2 className="text-xl md:text-2xl font-bold text-white">Cross-Cut Analysis</h2>
       </div>
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {validBreakdowns.map((b, i) => (
-          <button
-            key={(b.axis || `axis-${i}`) + i}
-            onClick={() => setActiveIdx(i)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              i === activeIdx
-                ? 'bg-purple-500/25 text-purple-200 border border-purple-400/40'
-                : 'bg-white/5 text-white/60 hover:text-white border border-white/10'
-            }`}
-          >
-            {b.axis || `Axis ${i + 1}`}
-          </button>
-        ))}
+      {/* Pass 23 Bug 23.60 Chunk 6 — segmented control replaces pill tabs.
+          Reads as a single unified UI element with internal divisions
+          rather than a row of independent pills. Adds keyboard nav
+          (←/→/Home/End) per WAI-ARIA radiogroup pattern. */}
+      <div className="mb-4">
+        <SegmentedControl
+          ariaLabel="Cross-Cut analysis dimension"
+          options={validBreakdowns.map((b, i) => b.axis || `Axis ${i + 1}`)}
+          activeIdx={activeIdx}
+          onChange={setActiveIdx}
+          variant="purple"
+        />
       </div>
       <div className="space-y-3">
         {(active.segments || []).map((seg, i) => (

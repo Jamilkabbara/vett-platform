@@ -7,3 +7,4 @@ export { ExecutiveSummary } from './ExecutiveSummary';
 export { AIInsight } from './AIInsight';
 export { TensionCard } from './TensionCard';
 export type { Contradiction } from './TensionCard';
+export { SegmentedControl } from './SegmentedControl';

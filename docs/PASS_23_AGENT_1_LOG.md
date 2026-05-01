@@ -107,18 +107,22 @@ Every chunk → its own commit (or 1-2 chunks per push if low-risk). Audit chat 
 - ✓ Replaced ~38 lines of inline JSX with one component call.
 - ✓ Removed unused `Sparkles` import.
 
-### 2026-05-01 — Chunk 5 in progress
+### 2026-05-01 — Chunk 5 shipped (55d9fab)
 
-- ✓ Built `src/components/results/TensionCard.tsx`:
-  - **Severity pills** (filled bg) replace plain uppercase text: `high` (amber-100), `medium` (amber-200), `low` (amber-300), `note` (white/70).
-  - **Clickable question backreferences** — `question_a ↔ question_b` are now buttons, scroll-target `id="q-${id}"` with smooth-scroll behavior + 1.4s amber outline pulse on the destination card so the eye lands. Plain spans before.
-  - Focus-visible amber ring for keyboard nav.
-  - Exports `Contradiction` type from the barrel for parent's strict typing.
-- ✓ Replaced ~37 lines of inline JSX with `<TensionCard contradictions={...} />`.
-- ✓ Added `id="q-${question.id}"` + `scroll-mt-20` to per-question cards (line 2030) so backref buttons land below the top nav.
-- ✓ Removed unused `AlertTriangle` import (now lives inside TensionCard).
+- ✓ Built `TensionCard.tsx` with severity pills + clickable question backreferences (smooth-scroll + 1.4s amber outline pulse).
+- ✓ Per-question cards now have `id="q-${question.id}"` + `scroll-mt-20`.
+- ✓ Removed unused `AlertTriangle` import.
+
+### 2026-05-01 — Chunk 6 in progress
+
+- ✓ Built `src/components/results/SegmentedControl.tsx`:
+  - Single-container segmented control replacing pill tabs.
+  - Three variants: `purple` (Cross-Cut), `lime` (future Cross-channel benchmarks Bug 24.01), `neutral`.
+  - **Keyboard nav per WAI-ARIA radiogroup pattern**: ←/→ cycle, Home/End jump to first/last. Roving tabIndex (active = 0, others = -1) so focus follows selection.
+  - Focus-visible variant-tinted ring.
+- ✓ Refactored CrossCutCard JSX (lines 227-241) to use the new component. Net -14 lines, +1 import.
 - ✓ Zero new TS errors. Preview alive.
-- → **Next: push Chunk 5.**
+- → **Next: push Chunk 6.**
 
 ---
 
