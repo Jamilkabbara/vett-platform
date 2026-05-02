@@ -121,6 +121,30 @@ Win-signal balance across the five `/vs/*` pages:
 
 - → **Next:** Task 6 (3 sample blog drafts) + Task 7 closeout (final report + tag).
 
+### 2026-05-02 — Task 6 (blog drafts) + Task 7 closeout
+
+| # | Commit | Scope |
+|---|---|---|
+| 11 | `a20bdc9` | 3 blog drafts + drafts README in `src/pages/blog/drafts/`. 1 full draft (`validate-product-idea-24-hours-synthetic-research.md`, 1,444 words) + 2 outlines (`synthetic-vs-panel-research-when-each-wins.md`, 612 words; `mena-market-validation-panel-quality-emerging-markets.md`, 697 words). All three frontmatter `published=false`. |
+| 12 | _(this commit)_ | Final close-out: gate report `Status: shipped-awaiting-merge`, Tracker section flipped to all-shipped + closing notes per row, "Next steps (post-merge)" section added (audit-chat Chrome verification, blog-row insertion, quarterly competitor-pricing recheck cadence). This log final-tick-off entry. |
+
+**Branch close-out summary:**
+
+- **Five comparison pages live** on `origin/pass-23-phase-b-comparisons`: `/vs/surveymonkey` (R1-R7 refinements applied) + `/vs/typeform` + `/vs/usertesting` + `/vs/pollfish` + `/vs/traditional`. All five use the same template post-R5/R6: stable JSON-LD id naming, mobile-card-below-640 / scroll-wrapper-above layout, FAQPage Schema.org JSON-LD, page-level useEffect tearing down on unmount.
+- **7 of 7 refinements shipped:** R1 (FAQ #3 cite) / R2 (FAQ #1 softer) / R3 (CA $19/asset) / R4 (193 countries verified) / R5 (id stable) / R6 (mobile-responsive) / R7 (footnote removed). R4 + R1 went through a literal-string preview cycle after the first hook deny.
+- **3 blog drafts in source control**, none yet inserted to `blog_posts`. README in `src/pages/blog/drafts/` documents the publish path.
+- **`public/sitemap.xml`** has 4 new `<url>` entries at priority 0.7. xmllint clean.
+- **No file overlap** with Agents 1 (`pass-23-bug-60-results-redesign`) or 2 (`pass-23-bug-74-ca-exports`). Worktree-isolated to `.claude/worktrees/agent3-comparisons` after the main-checkout race observed during the doc-only push.
+- **Doctrine compliance:** Sub-rule 6 in force throughout. Marketing-copy literal-preview-before-push pattern saved as long-term memory after the first hook deny on R4.
+
+**Awaits:**
+1. Audit-chat Chrome verification at 320 / 768 / 1280 / 1920 viewports across all five `/vs/*` routes.
+2. PR review (gh pr create → audit-chat → merge to main).
+3. Post-merge: blog row insertion for the three drafts; per-slug sitemap commit when each goes `published=true`.
+4. Quarterly recheck calendar entry for competitor-pricing claims on /vs/surveymonkey and /vs/typeform.
+
+- → **Branch close.** No further work in scope.
+
 ---
 
 ## Coordination notes

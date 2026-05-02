@@ -1,9 +1,39 @@
 # Pass 23 Phase B — Comparison-Pages Expansion Gate Report
 
-**Status:** `proposed-awaiting-review`
+**Status:** `shipped-awaiting-merge` (all in-scope work pushed to `origin/pass-23-phase-b-comparisons`; awaits audit-chat Chrome verification + merge to `main`).
 **Owner:** Agent 3 — `pass-23-phase-b-comparisons`
 **Started:** 2026-04-30
-**Gates downstream work on:** Jamil sign-off on (a) the seven derived refinements to `/vs/surveymonkey` and (b) the five tone calibration questions that determine the template for the four expansion pages.
+**Closed:** 2026-05-02 (this branch); awaits merge.
+
+## Shipped summary
+
+| # | Commit | Scope |
+|---|---|---|
+| 1 | `a23e073` | Branch open + this gate report + agent log scaffold |
+| 2 | `126638e` | R5 - JSON-LD script id stabilized |
+| 3 | `c1686e5` | R3 - Creative Attention price harmonized ($19+ -> $19/asset) |
+| 4 | `e96b1f1` | R4 - Geographic reach anchored to verified COUNTRIES list (193) |
+| 5 | `c83d8d0` | R1 - FAQ #3 cite-with-date for SurveyMonkey-side numbers |
+| 6 | `617f70a` | R2 - FAQ #1 unsourced 70-80% claim replaced |
+| 7 | `30dee06` | R6 - mobile-responsive comparison table |
+| 8 | `ee1376d` | Agent log tick-off (R5 / R3 / R4 / R1 / R2 / R6) |
+| 9 | `0a303c8` | VsTypeformPage + /vs/typeform route (template realization #1) |
+| 10 | `7389a35` | VsUserTesting + VsPollfish + VsTraditional pages + their /vs/* routes |
+| 11 | `6d28045` | R7 - removed "ship after voice approval" footnote on /vs/surveymonkey |
+| 12 | `38335e0` | sitemap.xml + 4 new /vs/* URLs |
+| 13 | `2a84b07` | Agent log tick-off (4 expansion pages + R7 + sitemap) |
+| 14 | `a20bdc9` | 3 blog post drafts (1 full + 2 outlines) + drafts README |
+| 15 | _(this commit)_ | Final report close-out + agent log final tick-off |
+
+Total: 5 comparison pages (1 refined + 4 new), 7 of 7 refinements shipped, 3 blog drafts in `src/pages/blog/drafts/` (DB-insertion-pending), `public/sitemap.xml` updated with 4 new URLs, agent log + this report kept in sync per coordination.
+
+## What's NOT shipped in this branch (and why)
+
+- **The four expansion pages' content has not been audit-chat Chrome-verified yet.** That happens after this PR is reviewed and merged - the doctrine's 5-criterion verification path applies, including end-to-end user-journey reproduction at 320 / 768 / 1280 / 1920 viewports (R6 mobile-responsive table needs explicit verification at all four).
+- **Blog drafts are not inserted into Supabase `blog_posts` table.** They're pre-insertion artifacts with `published=false` in frontmatter. DB insertion + flipping `published=true` is a separate ops action requiring DB credentials.
+- **Blog post URLs are not in sitemap.xml.** Adding them would point Googlebot at 404s before the DB rows go live. Each blog goes-live event is a follow-up sitemap commit per slug.
+- **Pollfish-side pricing claims are hedged**, not cited. `pollfish.com` returned a TLS cert error twice on WebFetch during the build; the file's docstring documents this and the FAQ + table point readers at the live page for current numbers.
+- **`/privacy` and `/terms`** routes are referenced in the existing sitemap (Pass 23 B1 era) but the actual page content is gated on Pass 24 Bug 24.03 (Legal pages). Not in this branch's scope.
 
 ---
 
@@ -215,11 +245,17 @@ Anything you flag with `change` or `alternate` I rewrite the impact in this doc 
 
 ## Tracker
 
-| Section | Status | Next action |
+| Section | Status | Closing note |
 |---|---|---|
-| §1 Refinements | `proposed` | Jamil R1-R7 decisions |
-| §2 Calibrations | `awaiting-decision` | Jamil C1-C5 decisions |
-| §3 Expansion pages | `blocked-on §1+§2` | After both gate, scaffold + ship per page |
-| §4 Blog drafts | `blocked-on §2` | After §2 gates, ship 1 full + 2 outlines |
-| §5 Sitemap | `blocked-on §3` | One sitemap commit per logical chunk |
-| §6 Ownership | `proposed` | Jamil yes/no |
+| §1 Refinements | `shipped` | R1-R7 all live on `origin/pass-23-phase-b-comparisons`. R4 swap (150+ -> 193) survived a hook deny + literal-string preview cycle; that workflow is now the documented pattern for marketing-copy refinements (see Agent 3 log + memory). |
+| §2 Calibrations | `kept-as-is` | C1 (generous-to-competitor) / C2 (MENA emphasis) / C3 (synthetic-vs-real honesty) / C4 (pricing transparency) / C5 (bridge framing) all signed off in their original SurveyMonkey-template form. The four expansion pages render against this voice. |
+| §3 Expansion pages | `shipped` | typeform / usertesting / pollfish / traditional all live with full template structure (TL;DR / 12-row table / when-to-use diptych / 6 FAQs / CTA / cross-links footer + page-level SEO + FAQPage Schema.org). Routes wired. |
+| §4 Blog drafts | `shipped` | 1 full draft (1,444 words) + 2 outlines (612 / 697 words) + drafts README in `src/pages/blog/drafts/`. `published=false` in frontmatter; awaits DB insertion. |
+| §5 Sitemap | `shipped` | 4 new `<url>` entries at priority 0.7 / monthly. `xmllint` clean. Blog URLs deferred until DB-insert. |
+| §6 Ownership | `as-decided` | `src/pages/vs/` kept (no rename to `/comparisons/*`); `src/pages/blog/drafts/` for markdown drafts. Documented in the agent log's Architectural Decisions section. |
+
+## Next steps (post-merge)
+
+- Audit-chat Chrome verifies `/vs/surveymonkey`, `/vs/typeform`, `/vs/usertesting`, `/vs/pollfish`, `/vs/traditional` at 320 / 768 / 1280 / 1920px. R6 mobile-card render below 640px is the most viewport-sensitive surface.
+- Insert the three blog drafts into `blog_posts` (Supabase). Flip `published=true` per post; add the corresponding `<url>` entry to `public/sitemap.xml` per slug.
+- Schedule a quarterly recheck of competitor-pricing claims on `/vs/surveymonkey` and `/vs/typeform` (cite-with-date pattern from R1). Recommended cadence: every 90 days or on a price-change announcement, whichever first.
