@@ -227,6 +227,13 @@ export const Footer = ({ onAboutClick, onContactClick, onTermsClick, onCareersCl
                 Terms of Service
               </Link>
             )}
+            {/* Pass 24 Bug 24.03 — Refund Policy link */}
+            <Link
+              to="/refunds"
+              className="text-white/40 hover:text-white transition-colors text-xs font-medium"
+            >
+              Refunds
+            </Link>
           </div>
         </div>
       </div>

@@ -1052,6 +1052,10 @@ export function LandingPage() {
               <Link to="/terms" className="font-body text-[12px] text-t3 hover:text-lime transition-colors">
                 Terms of Service
               </Link>
+              {/* Pass 24 Bug 24.03 — Refund Policy link */}
+              <Link to="/refunds" className="font-body text-[12px] text-t3 hover:text-lime transition-colors">
+                Refunds
+              </Link>
             </div>
           </div>
         </div>

@@ -18,8 +18,11 @@ const ProfilePage         = lazy(() => import('./pages/ProfilePage').then(m => (
 const AboutPage           = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
 const CareersPage         = lazy(() => import('./pages/CareersPage').then(m => ({ default: m.CareersPage })));
 const ContactPage         = lazy(() => import('./pages/ContactPage').then(m => ({ default: m.ContactPage })));
-const PrivacyPage         = lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
-const TermsPage           = lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
+// Pass 24 Bug 24.03 — legal pages backed by canonical markdown in
+// src/content/legal/*.md. Old PrivacyPage / TermsPage stubs replaced.
+const PrivacyPolicyPage   = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
+const TermsOfServicePage  = lazy(() => import('./pages/legal/TermsOfServicePage').then(m => ({ default: m.TermsOfServicePage })));
+const RefundPolicyPage    = lazy(() => import('./pages/legal/RefundPolicyPage').then(m => ({ default: m.RefundPolicyPage })));
 const BlogPage            = lazy(() => import('./pages/BlogPage').then(m => ({ default: m.BlogPage })));
 const BlogPostPage        = lazy(() => import('./pages/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
 const ApiPage             = lazy(() => import('./pages/ApiPage').then(m => ({ default: m.ApiPage })));
@@ -140,8 +143,10 @@ function App() {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/careers" element={<CareersPage />} />
               <Route path="/contact" element={<ContactPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/terms" element={<TermsPage />} />
+              {/* Pass 24 Bug 24.03 — legal pages */}
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms" element={<TermsOfServicePage />} />
+              <Route path="/refunds" element={<RefundPolicyPage />} />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:slug" element={<BlogPostPage />} />
               <Route path="/api" element={<ApiPage />} />
