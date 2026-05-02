@@ -36,12 +36,12 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Time to first insight',          vett: 'Minutes',                              competitor: 'Days to weeks (panel recruit)',     vettWins: true  },
   { dimension: 'Cost per respondent',             vett: '$0.40 – $3.50',                        competitor: '$1 – $5 (basic) / $10+ (qualified)', vettWins: true  },
   { dimension: 'Minimum mission cost',            vett: '$9 (Sniff Test, 5 personas)',          competitor: '~$1+/response, panels min ~$200',   vettWins: true  },
-  { dimension: 'Geographic reach',                vett: '150+ countries, AI-modelled',          competitor: '~190 countries via Audience panel', vettWins: false },
+  { dimension: 'Geographic reach',                vett: '193 countries (full ISO list, AI-modelled)', competitor: '~190 countries via Audience panel', vettWins: false },
   { dimension: 'Custom screener',                 vett: 'Constraint-based generation, persona is generated TO the spec', competitor: 'Filter-based on real panelists; longer wait if strict', vettWins: true  },
   { dimension: 'Real human respondents',          vett: 'No - synthetic personas with realistic distributions',          competitor: 'Yes - verified panel members',  vettWins: false },
   { dimension: 'Demographic depth',               vett: 'Persona-level: occupation, income, behaviours, decision style', competitor: 'Demographic targeting + screening filters', vettWins: false },
   { dimension: 'AI insight synthesis',            vett: 'Built-in: executive summary, contradictions, cross-cut',        competitor: 'Manual analysis or third-party add-on', vettWins: true  },
-  { dimension: 'Creative attention analysis',     vett: 'Frame-by-frame emotion, attention, message clarity for $19+',   competitor: 'Not in core product',           vettWins: true  },
+  { dimension: 'Creative attention analysis',     vett: 'Frame-by-frame emotion, attention, message clarity for $19/asset',   competitor: 'Not in core product',           vettWins: true  },
   { dimension: 'Brand lift framework',            vett: 'Built-in 9-category Happydemics-style framework',               competitor: 'DIY in Survey Builder',         vettWins: true  },
   { dimension: 'Integrations (Salesforce, etc.)', vett: 'CSV / PDF export today; API on roadmap',                        competitor: 'Mature integrations marketplace',vettWins: false },
   { dimension: 'Best for…',                       vett: 'Early validation, pre-launch sanity, MENA/emerging markets',    competitor: 'Established research programs with budget for real panels', vettWins: false },
@@ -50,7 +50,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
 const FAQS = [
   {
     q: 'Can synthetic respondents really replace real panel research?',
-    a: "It depends on what you're trying to learn. For early-stage validation, pre-launch sanity checks, message testing, and brand-lift baselines - yes. AI personas trained on demographic and behavioural distributions match real-panel response distributions to within a few percentage points on 70-80% of survey questions in published comparisons. For high-stakes decisions where you need legally defensible quotes from verified humans, real panels are still the right tool. We recommend VETT for the first 3-5 iterations of an idea, then a real-panel study before launch.",
+    a: "For early validation, the directional signals from VETT missions - which option wins, what concerns emerge - often align with the patterns confirmed by real-panel studies run with the same screener. Where they can diverge: open-text emotional nuance and brand-recall depth on niche products, where a real panel still adds confidence. For high-stakes decisions where you need legally defensible quotes from verified humans, real panels are the right tool. We recommend VETT for the first 3-5 validation iterations, then a real-panel study before launch.",
   },
   {
     q: 'How is this different from just asking ChatGPT?',
@@ -58,7 +58,7 @@ const FAQS = [
   },
   {
     q: 'How much does VETT cost vs SurveyMonkey?',
-    a: "SurveyMonkey's basic plan is $25/month + per-response panel costs. A 100-person targeted survey on SurveyMonkey Audience typically lands $300-$800 depending on screener strictness. VETT charges $9 for a 5-respondent Sniff Test, $99 for 50 respondents (Confidence tier), or $899 for 1,000 (Scale tier). No subscription required. For first-iteration validation, VETT is roughly 5-10× cheaper.",
+    a: "SurveyMonkey's pricing varies by region and changes periodically; check surveymonkey.com/pricing for current numbers (as of May 2026, their entry tier was AED 129/month - roughly $35 USD/month - in the UAE storefront, with SurveyMonkey Audience responses sold separately at AED 0.50+ per additional response). A 100-person targeted survey on SurveyMonkey Audience typically lands several hundred dollars depending on screener strictness. VETT charges $9 for a 5-respondent Sniff Test, $99 for 50 respondents (Confidence tier), or $899 for 1,000 (Scale tier). No subscription required. For first-iteration validation, VETT is roughly 5-10× cheaper.",
   },
   {
     q: "What if my screener is so strict that you can't generate matching personas?",
@@ -108,7 +108,7 @@ export function VsSurveyMonkeyPage() {
     // FAQPage JSON-LD
     const ld = document.createElement('script');
     ld.type = 'application/ld+json';
-    ld.id = 'pass-23-b2-vs-sm-faq-schema';
+    ld.id = 'vs-surveymonkey-faq-schema';
     ld.text = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'FAQPage',
@@ -124,7 +124,7 @@ export function VsSurveyMonkeyPage() {
       document.title = prevTitle;
       setMeta('description', prevDesc);
       canonical?.setAttribute('href', prevCanonical);
-      document.getElementById('pass-23-b2-vs-sm-faq-schema')?.remove();
+      document.getElementById('vs-surveymonkey-faq-schema')?.remove();
     };
   }, []);
 
@@ -161,38 +161,70 @@ export function VsSurveyMonkeyPage() {
           </ul>
         </section>
 
-        {/* Side-by-side table */}
+        {/* Side-by-side comparison */}
         <section className="mb-14">
           <h2 className="text-2xl md:text-3xl font-black text-white mb-6">Side-by-side comparison</h2>
-          <div className="rounded-2xl border border-white/10 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-white/5 border-b border-white/10">
-                <tr>
-                  <th className="text-left px-4 py-3 text-white/60 font-bold uppercase tracking-widest text-xs">Dimension</th>
-                  <th className="text-left px-4 py-3 text-primary font-black uppercase tracking-widest text-xs">VETT</th>
-                  <th className="text-left px-4 py-3 text-white/60 font-black uppercase tracking-widest text-xs">SurveyMonkey</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARISON_ROWS.map((row) => (
-                  <tr key={row.dimension} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 text-white/70 font-semibold align-top">{row.dimension}</td>
-                    <td className="px-4 py-3 text-white align-top">
-                      <span className="inline-flex items-start gap-2">
-                        {row.vettWins && <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
-                        <span>{row.vett}</span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-white/60 align-top">
-                      <span className="inline-flex items-start gap-2">
-                        {!row.vettWins && <Check className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />}
-                        <span>{row.competitor}</span>
-                      </span>
-                    </td>
+
+          {/* Mobile (<640px): stacked cards. Avoids horizontal overflow on
+              a 12-row 3-column table at small viewports. */}
+          <div className="sm:hidden space-y-3">
+            {COMPARISON_ROWS.map((row) => (
+              <div key={row.dimension} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <p className="text-white/60 text-[11px] font-bold uppercase tracking-widest mb-3">{row.dimension}</p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    {row.vettWins && <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
+                    <div className="flex-1">
+                      <p className="text-primary text-[10px] font-black uppercase tracking-widest mb-0.5">VETT</p>
+                      <p className="text-white text-sm leading-relaxed">{row.vett}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    {!row.vettWins && <Check className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />}
+                    <div className="flex-1">
+                      <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mb-0.5">SurveyMonkey</p>
+                      <p className="text-white/60 text-sm leading-relaxed">{row.competitor}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tablet/Desktop (>=640px): table inside an overflow-x-auto wrapper
+              with min-w-[600px] so narrow viewports scroll the table inside
+              its own region instead of pushing the whole page. */}
+          <div className="hidden sm:block rounded-2xl border border-white/10 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[600px]">
+                <thead className="bg-white/5 border-b border-white/10">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-white/60 font-bold uppercase tracking-widest text-xs">Dimension</th>
+                    <th className="text-left px-4 py-3 text-primary font-black uppercase tracking-widest text-xs">VETT</th>
+                    <th className="text-left px-4 py-3 text-white/60 font-black uppercase tracking-widest text-xs">SurveyMonkey</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {COMPARISON_ROWS.map((row) => (
+                    <tr key={row.dimension} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02]">
+                      <td className="px-4 py-3 text-white/70 font-semibold align-top">{row.dimension}</td>
+                      <td className="px-4 py-3 text-white align-top">
+                        <span className="inline-flex items-start gap-2">
+                          {row.vettWins && <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
+                          <span>{row.vett}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-white/60 align-top">
+                        <span className="inline-flex items-start gap-2">
+                          {!row.vettWins && <Check className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />}
+                          <span>{row.competitor}</span>
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -284,9 +316,6 @@ export function VsSurveyMonkeyPage() {
               </Link>
             ))}
           </div>
-          <p className="text-white/40 text-xs mt-3">
-            (Other comparison pages ship after the SurveyMonkey template gets voice approval.)
-          </p>
         </section>
       </div>
     </OverlayPage>
