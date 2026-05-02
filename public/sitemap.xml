@@ -40,6 +40,12 @@
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
+  <!-- Pass 24 Bug 24.03 — Refund Policy. -->
+  <url>
+    <loc>https://www.vettit.ai/refunds</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
   <url>
     <loc>https://www.vettit.ai/blog</loc>
     <changefreq>weekly</changefreq>
