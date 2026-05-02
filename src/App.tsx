@@ -37,10 +37,11 @@ const AdminPage           = lazy(() => import('./pages/AdminPage').then(m => ({ 
 const DesignSystemPreview           = lazy(() => import('./pages/DesignSystemPreview').then(m => ({ default: m.DesignSystemPreview })));
 const CreativeAttentionPage         = lazy(() => import('./pages/CreativeAttentionPage').then(m => ({ default: m.CreativeAttentionPage })));
 const CreativeAttentionResultsPage  = lazy(() => import('./pages/CreativeAttentionResultsPage').then(m => ({ default: m.CreativeAttentionResultsPage })));
-// Pass 23 B2 — comparison pages. SurveyMonkey is the template; the
-// other 4 (typeform, usertesting, pollfish, traditional) ship after
-// Jamil's voice/tone review.
+// Pass 23 B2 — comparison pages. SurveyMonkey is the template;
+// expansion pages (typeform / usertesting / pollfish / traditional)
+// ship via Pass 23 Agent 3 fan-out after voice/tone sign-off.
 const VsSurveyMonkeyPage            = lazy(() => import('./pages/vs/VsSurveyMonkeyPage').then(m => ({ default: m.VsSurveyMonkeyPage })));
+const VsTypeformPage                = lazy(() => import('./pages/vs/VsTypeformPage').then(m => ({ default: m.VsTypeformPage })));
 
 function App() {
   // Pass 22 Bug 22.1 — drain any funnel events that got queued in
@@ -149,6 +150,7 @@ function App() {
 
               {/* Pass 23 B2 — comparison pages */}
               <Route path="/vs/surveymonkey" element={<VsSurveyMonkeyPage />} />
+              <Route path="/vs/typeform" element={<VsTypeformPage />} />
 
               {/* Internal design-system preview — not linked from the app. */}
               <Route path="/__design" element={<DesignSystemPreview />} />
