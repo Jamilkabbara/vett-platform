@@ -94,6 +94,33 @@ R7 ("ship after voice approval" footnote removal + activation of the four cross-
 
 - → **Next:** push the six-commit batch + start the four expansion-page builds.
 
+### 2026-05-02 — expansion pages + R7 + sitemap (Task 5 + Task 7 first half)
+
+After the six-refinement push (`a23e073..ee1376d`), shipped the four expansion pages and closed out the SurveyMonkey page's R7 footnote. Cadence followed Option X agreed with Jamil: full literal-copy preview for typeform (template realization), then much shorter previews for usertesting / pollfish / traditional once the template was acked.
+
+| # | Commit | Scope | One-line |
+|---|---|---|---|
+| 7 | `0a303c8` | VsTypeformPage + /vs/typeform | First expansion. 12-row table (7 VETT / 5 Typeform), 6 FAQs, "No audience? No problem." CTA. Pricing cite from typeform.com/pricing as of May 2026 (Basic $39 / Plus $79 / Business $129). |
+| 8 | `7389a35` | VsUserTesting + VsPollfish + VsTraditional + 3 routes | Three remaining expansion pages bundled. UserTesting framed as "different category" (video usability vs survey research). Pollfish framed as closer head-to-head (mobile real-respondent vs synthetic). Traditional framed as a category piece (Kantar / Ipsos / Nielsen / boutique-MENA), bridge framing - "sharpen the brief before you sign the SOW". |
+| 9 | `6d28045` | R7 | Removed `(Other comparison pages ship after the SurveyMonkey template gets voice approval.)` footnote on /vs/surveymonkey. The four cross-link cards above it are now live routes; previously 404. |
+| 10 | `38335e0` | sitemap.xml | Added /vs/typeform, /vs/usertesting, /vs/pollfish, /vs/traditional at priority 0.7 / changefreq monthly. xmllint clean. Blog drafts not yet sitemapped (drafts != published rows, would 404). |
+
+Pricing cite policy across the four pages:
+- Typeform: precise USD numbers cited with date (typeform.com WebFetch returned USD).
+- SurveyMonkey: AED + USD-equivalent cited with date (surveymonkey.com WebFetch returned AED, regional storefront).
+- UserTesting: hedged (no published per-session pricing; enterprise-sales-only).
+- Pollfish: hedged (pollfish.com returned a TLS cert error on WebFetch; readers pointed at live page for current).
+- Traditional: range-anchored ($5K-$50K+ per study, 4-12 weeks) - category piece, not single competitor.
+
+Win-signal balance across the five `/vs/*` pages:
+- SurveyMonkey: 8 VETT / 4 SurveyMonkey
+- Typeform:     7 VETT / 5 Typeform
+- UserTesting:  5 VETT / 7 UserTesting (concedes core video-usability category)
+- Pollfish:     6 VETT / 6 Pollfish (most balanced; closest direct competition)
+- Traditional:  5 VETT / 7 Agencies (concedes methodology + analyst + polish + supply)
+
+- → **Next:** Task 6 (3 sample blog drafts) + Task 7 closeout (final report + tag).
+
 ---
 
 ## Coordination notes
