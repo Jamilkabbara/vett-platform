@@ -316,9 +316,6 @@ export function VsSurveyMonkeyPage() {
               </Link>
             ))}
           </div>
-          <p className="text-white/40 text-xs mt-3">
-            (Other comparison pages ship after the SurveyMonkey template gets voice approval.)
-          </p>
         </section>
       </div>
     </OverlayPage>
