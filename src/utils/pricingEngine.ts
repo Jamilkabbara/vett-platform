@@ -25,8 +25,18 @@ export interface PricingBreakdown {
 // Brand Lift (statistical-sample sizes only — no Sniff/Validate):
 //   Pulse 50 $99 · Tracker 200 $299 · Wave 500 $599 · Enterprise 2000 $1499
 //
-// Creative Attention (flat per-asset, NOT per-respondent):
-//   Image 1 $19 · Video 1 $39 · Bundle 5 $79 · Series 20 $249
+// Pass 25 Phase 0.3 — Creative Attention is now a respondent ladder
+// (was flat per-asset). 1-respondent missions have no statistical signal.
+// Floor stays at $19 / 10 respondents. Per-respondent cost is slightly
+// higher than the validate ladder because CA runs frame-by-frame Claude
+// Vision analysis per respondent.
+//   Sniff Test  10  $19   $1.90/resp
+//   Validate    25  $39   $1.56/resp
+//   Confidence  50  $69   $1.38/resp
+//   Deep Dive   100 $129  $1.29/resp
+//   Deep Dive XL 250 $299 $1.20/resp
+export const CA_MIN_RESPONDENTS = 10;
+
 export const VOLUME_TIERS = [
   { id: 'sniff_test', name: 'Sniff Test', anchorCount: 5,    maxCount: 5,    ratePerResp: 1.80, packagePrice: 9    },
   { id: 'validate',   name: 'Validate',   anchorCount: 10,   maxCount: 10,   ratePerResp: 3.50, packagePrice: 35   },
@@ -43,11 +53,16 @@ export const BRAND_LIFT_TIERS = [
   { id: 'enterprise', name: 'Enterprise', anchorCount: 2000, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 0.75, packagePrice: 1499, minRespondents: 50 },
 ] as const;
 
+// Pass 25 Phase 0.3 — Creative Attention now mirrors the volume ladder
+// shape (anchorCount + maxCount + ratePerResp + packagePrice). Old per-
+// asset table is replaced; min respondent count enforced by setup flow
+// + backend validation.
 export const CREATIVE_ATTENTION_TIERS = [
-  { id: 'image',  name: 'Image',  assetCount: 1,  packagePrice: 19,  mediaType: 'image'  },
-  { id: 'video',  name: 'Video',  assetCount: 1,  packagePrice: 39,  mediaType: 'video'  },
-  { id: 'bundle', name: 'Bundle', assetCount: 5,  packagePrice: 79,  mediaType: 'bundle' },
-  { id: 'series', name: 'Series', assetCount: 20, packagePrice: 249, mediaType: 'series' },
+  { id: 'sniff_test',   name: 'Sniff Test',   anchorCount: 10,  maxCount: 10,  ratePerResp: 1.90, packagePrice: 19  },
+  { id: 'validate',     name: 'Validate',     anchorCount: 25,  maxCount: 25,  ratePerResp: 1.56, packagePrice: 39  },
+  { id: 'confidence',   name: 'Confidence',   anchorCount: 50,  maxCount: 50,  ratePerResp: 1.38, packagePrice: 69  },
+  { id: 'deep_dive',    name: 'Deep Dive',    anchorCount: 100, maxCount: 100, ratePerResp: 1.29, packagePrice: 129 },
+  { id: 'deep_dive_xl', name: 'Deep Dive XL', anchorCount: 250, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 1.20, packagePrice: 299 },
 ] as const;
 
 export type VolumeTier = (typeof VOLUME_TIERS)[number];

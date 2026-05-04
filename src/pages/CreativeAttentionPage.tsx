@@ -39,15 +39,14 @@ import { Button } from '../components/ui/Button';
 import { FileUpload, type UploadedFile } from '../components/shared/FileUpload';
 import { api } from '../lib/apiClient';
 import { logPaymentError } from '../lib/paymentErrorLogger';
+import { CREATIVE_ATTENTION_TIERS } from '../utils/pricingEngine';
+import { CreativeAttentionTierSlider } from '../components/creative-attention/CreativeAttentionTierSlider';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// Pass 23 Bug 23.51 + 23.61 — Creative Attention tier prices live as the
-// canonical source of truth in src/utils/pricingEngine.ts::CREATIVE_ATTENTION_TIERS.
-// Mirroring the image/video flat prices here so the UI doesn't import a
-// constant just to display the badge — frontend is the only caller.
-const CA_PRICE_IMAGE_USD = 19;
-const CA_PRICE_VIDEO_USD = 39;
+// Pass 25 Phase 0.3 — flat image/video price constants removed; CA now
+// uses the respondent ladder via CREATIVE_ATTENTION_TIERS imported from
+// utils/pricingEngine.
 
 const EMOTION_OPTIONS = [
   'Joy', 'Trust', 'Surprise', 'Anticipation',
@@ -73,6 +72,8 @@ export function CreativeAttentionPage() {
 
   // Step 1 — Upload
   const [creative, setCreative] = useState<UploadedFile | null>(null);
+  // Pass 25 Phase 0.3 — respondent ladder. Default to Sniff Test floor.
+  const [respondentCount, setRespondentCount] = useState(10);
 
   // Step 2 — Context form
   const [brandName,       setBrandName]       = useState('');
@@ -177,11 +178,13 @@ export function CreativeAttentionPage() {
     try {
       // Pass 23 Bug 23.61 — derive tier + media_type from the upload
       // mime so the backend pricing engine routes to the correct
-      // Creative Attention ladder ($19 image / $39 video) instead of
-      // falling back to Sniff Test ($1.80 × 1 respondent).
+      // Pass 25 Phase 0.3 — CA now uses respondent ladder; tier picked
+      // by sample size, not by media mime. media_type still tracks
+      // image vs video for the analysis pipeline.
       const isVideo = (creative.mimeType || '').toLowerCase().startsWith('video/');
-      const tierId: 'image' | 'video' = isVideo ? 'video' : 'image';
-      const tierPrice = isVideo ? CA_PRICE_VIDEO_USD : CA_PRICE_IMAGE_USD;
+      const mediaType: 'image' | 'video' = isVideo ? 'video' : 'image';
+      const caTier = CREATIVE_ATTENTION_TIERS.find(t => respondentCount <= t.maxCount)
+                  || CREATIVE_ATTENTION_TIERS[CREATIVE_ATTENTION_TIERS.length - 1];
 
       const { data: mission, error } = await supabase
         .from('missions')
@@ -191,11 +194,10 @@ export function CreativeAttentionPage() {
           brief:            description.trim(),
           goal_type:        'creative_attention',
           status:           'draft',
-          respondent_count: 1,   // creative missions don't use respondent count
-          price_estimated:  tierPrice,
-          // Pass 23 Bug 23.61 — REQUIRED columns for backend pricing.
-          tier:             tierId,
-          media_type:       tierId,  // image or video
+          respondent_count: respondentCount,
+          price_estimated:  caTier.packagePrice,
+          tier:             caTier.id,
+          media_type:       mediaType,  // image or video
           // Pass 23 Bug 23.75 — persist the asset URL so /creative-results/:id
           // can render the uploaded creative as a hero image (was always
           // NULL before; results pages displayed text descriptions only,
@@ -512,49 +514,56 @@ export function CreativeAttentionPage() {
             </section>
           )}
 
-          {/* Pricing + CTA — Pass 23 Bug 23.61: price reflects the
-              uploaded asset's mime (image $19 / video $39), driven by
-              the Creative Attention tier ladder. */}
+          {/* Pass 25 Phase 0.3 — respondent slider replaces the flat
+              image/video price card. Sample size drives the tier. */}
           {creative && (() => {
             const isVideo = (creative.mimeType || '').toLowerCase().startsWith('video/');
-            const tierName = isVideo ? 'Video' : 'Image';
-            const tierPrice = isVideo ? CA_PRICE_VIDEO_USD : CA_PRICE_IMAGE_USD;
+            const caTier = CREATIVE_ATTENTION_TIERS.find(t => respondentCount <= t.maxCount)
+                        || CREATIVE_ATTENTION_TIERS[CREATIVE_ATTENTION_TIERS.length - 1];
+            const tierPrice = caTier.packagePrice;
             return (
-            <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-sm text-[var(--t2)]">Creative Attention · {tierName} tier</p>
-                  <p className="text-2xl font-bold text-[var(--t1)]">
-                    ${tierPrice}
-                    <span className="text-sm font-normal text-[var(--t3)] ml-1.5">flat</span>
-                  </p>
-                </div>
-                <ul className="text-xs text-[var(--t3)] space-y-1 text-right">
-                  <li>✓ {isVideo ? 'Frame-by-frame emotion scoring' : 'Per-image emotion scoring'}</li>
-                  <li>✓ Attention {isVideo ? 'arc' : 'hotspots'} analysis</li>
-                  <li>✓ Strengths + recommendations</li>
-                  <li>✓ Platform fit suggestions</li>
-                </ul>
-              </div>
+            <section className="space-y-4">
+              <CreativeAttentionTierSlider
+                respondentCount={respondentCount}
+                onChange={setRespondentCount}
+              />
 
-              <Button
-                variant="gradient"
-                size="lg"
-                fullWidth
-                disabled={!canProceed || creating}
-                onClick={handleCreateMission}
-              >
-                {creating ? (
-                  <><Loader2 className="w-4 h-4 animate-spin mr-2" />Creating mission…</>
-                ) : (
-                  `Pay $${tierPrice} & Analyse - ${tierName}`
+              <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-[var(--t2)]">{isVideo ? 'Video' : 'Image'} creative · {caTier.name}</p>
+                    <p className="text-2xl font-bold text-[var(--t1)]">
+                      ${tierPrice}
+                      <span className="text-sm font-normal text-[var(--t3)] ml-1.5">{respondentCount} respondents</span>
+                    </p>
+                  </div>
+                  <ul className="text-xs text-[var(--t3)] space-y-1 text-right">
+                    <li>✓ {isVideo ? 'Frame-by-frame emotion scoring' : 'Per-image emotion scoring'}</li>
+                    <li>✓ Attention {isVideo ? 'arc' : 'hotspots'} analysis</li>
+                    <li>✓ Strengths + recommendations</li>
+                    <li>✓ Platform fit suggestions</li>
+                  </ul>
+                </div>
+
+                <Button
+                  variant="gradient"
+                  size="lg"
+                  fullWidth
+                  disabled={!canProceed || creating}
+                  onClick={handleCreateMission}
+                >
+                  {creating ? (
+                    <><Loader2 className="w-4 h-4 animate-spin mr-2" />Creating mission…</>
+                  ) : (
+                    `Pay $${tierPrice} & Analyse · ${respondentCount} respondents`
+                  )}
+                </Button>
+                {!canProceed && (
+                  <p className="text-xs text-[var(--t3)] text-center mt-2">
+                    Upload a file and fill in brand name + description to continue
+                  </p>
                 )}
-              </Button>
-              {!canProceed && (
-                <p className="text-xs text-[var(--t3)] text-center mt-2">
-                  Upload a file and fill in brand name + description to continue
-                </p>
-              )}
+              </div>
             </section>
             );
           })()}
