@@ -90,6 +90,9 @@ interface QuestionResult {
   ci_high?: number;
   stddev?: number;
   rating_n?: number;
+  // Pass 25 Phase 0.1 Bug F — denominator for multi-select percentages.
+  // Multi-select pct = count / n_respondents (NOT / sum of clicks).
+  n_respondents?: number;
   // Pass 23 Bug 23.56 — Brand Lift category framework. Tagged on
   // brand_lift goal_type missions only (claudeAI.js system prompt
   // emits the field for every question on those missions). Used by
@@ -489,14 +492,22 @@ export const ResultsPage = () => {
         }
 
         if (fType === 'multi_select') {
+          // Pass 25 Phase 0.1 Bug F — multi-select percentages MUST use
+          // n_respondents as denominator, not the sum of clicks (each persona
+          // can pick multiple options, so sum-of-clicks is meaningless).
+          // Backend persists n_respondents on bucket (insights.aggregate);
+          // fall back to data.responseCount only if missing.
           const dist: Record<string, number> = bucket.distribution || bucket.counts || {};
-          const total = respondentCount || Object.values(dist).reduce((a: number, b: any) => a + Number(b || 0), 0) || 1;
-          const arr = Object.entries(dist).map(([feature, count]) => ({
-            feature,
-            count: Number(count || 0),
-            percentage: Math.round((Number(count || 0) / total) * 100),
-          })).sort((a, b) => b.count - a.count);
-          return { id: qid, question: qText, type: 'multi_select', data: arr, aiInsight };
+          const nResp = Number(bucket.n_respondents ?? respondentCount ?? 0);
+          const arr = Object.entries(dist).map(([feature, count]) => {
+            const c = Number(count || 0);
+            return {
+              feature,
+              count: c,
+              percentage: nResp > 0 ? Math.round((c / nResp) * 100) : 0,
+            };
+          }).sort((a, b) => b.count - a.count);
+          return { id: qid, question: qText, type: 'multi_select', data: arr, aiInsight, n_respondents: nResp };
         }
 
         if (fType === 'open_text') {
@@ -517,14 +528,22 @@ export const ResultsPage = () => {
         }
 
         // single_choice
+        // Pass 25 Phase 0.1 Bug G — keep `count` as a separate field from
+        // `value`. The pie chart and tooltip read `value` (percentage) to
+        // size slices and render labels; the CSV exporter and any downstream
+        // consumer that wants raw counts must read `count`. Previously both
+        // fields held the percentage, which made the CSV "Count" column
+        // print 100/X instead of the integer respondent count.
         const dist: Record<string, number> = bucket.distribution || bucket.counts || {};
         const total = Object.values(dist).reduce((a: number, b: any) => a + Number(b || 0), 0) || respondentCount || 1;
         const arr = Object.entries(dist).map(([name, count], i) => {
-          const value = Math.round((Number(count || 0) / total) * 100);
+          const c = Number(count || 0);
+          const pct = Math.round((c / total) * 100);
           return {
             name,
-            value,
-            percentage: value,
+            count: c,
+            value: pct,
+            percentage: pct,
             color: COLORS[i % COLORS.length],
           };
         });
@@ -907,12 +926,17 @@ export const ResultsPage = () => {
     const rows: string[][] = [['Question', 'Type', 'Choice / Label', 'Count / Value', 'Percentage']];
     filteredQuestions.forEach((q) => {
       if (q.type === 'single_choice' || q.type === 'multi_select') {
+        // Pass 25 Phase 0.1 Bug F + G — read `d.count` for the Count column
+        // (integer respondent count) and `d.percentage` for the Percentage
+        // column. Reading `d.value ?? d.count` previously caused the Count
+        // cell to print the percentage on single-choice rows because both
+        // fields held the percentage upstream.
         q.data.forEach((d: any) => {
           rows.push([
             `"${(q.question || '').replace(/"/g, '""')}"`,
             q.type,
             `"${String(d.name || d.feature || '').replace(/"/g, '""')}"`,
-            String(d.value ?? d.count ?? ''),
+            String(d.count ?? ''),
             String(d.percentage ?? '') + '%',
           ]);
         });
