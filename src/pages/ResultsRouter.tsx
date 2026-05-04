@@ -4,6 +4,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ResultsPage } from './ResultsPage';
 import { CreativeAttentionResultsPage } from './CreativeAttentionResultsPage';
+import { BrandLiftResultsPage } from './BrandLiftResultsPage';
 
 /**
  * Pass 25 Phase 0.2 — central router for /results/:missionId.
@@ -17,7 +18,7 @@ import { CreativeAttentionResultsPage } from './CreativeAttentionResultsPage';
  * Both downstream pages do their own data fetching, so this component
  * stays minimal: probe → dispatch → render.
  *
- * TODO Pass 25 Phase 1: route to BrandLiftResultsPage when goal_type === 'brand_lift'.
+ * Pass 25 Phase 1E: brand_lift routes to BrandLiftResultsPage.
  */
 export function ResultsRouter() {
   const { missionId } = useParams<{ missionId: string }>();
@@ -69,10 +70,9 @@ export function ResultsRouter() {
   if (goalType === 'creative_attention') {
     return <CreativeAttentionResultsPage />;
   }
-
-  // brand_lift will route to BrandLiftResultsPage in Phase 1; for now falls
-  // through to the generic ResultsPage so existing brand_lift missions
-  // stay readable.
+  if (goalType === 'brand_lift') {
+    return <BrandLiftResultsPage />;
+  }
   return <ResultsPage />;
 }
 
