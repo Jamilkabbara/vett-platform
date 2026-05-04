@@ -65,3 +65,32 @@ needs to probe `goal_type`. Minimal change, no major refactors.
 Open `/results/3348d47b-54ac-496e-9e2f-528cf26cb53e` (Balenciaga). Should
 show the Creative Attention layout with engagement gauge, attention
 arc, frame analyses, etc. — not "Executive summary is being generated…".
+
+## Field-path verification (post-commit 2)
+
+Queried the 5 affected missions in Supabase. All have:
+- `creative_analysis.summary` populated
+- `creative_analysis.frame_analyses` array (1 frame each — these are
+  image creatives, not video)
+- `summary.overall_engagement_score` between 65 and 81
+
+`CreativeAttentionResultsPage` already reads from these paths (line
+108 reads `data.creative_analysis`, line 194 destructures
+`{ summary, frame_analyses }`). Only `3348d47b` (Balenciaga) has the
+Pass 24 v2 schema (`schema_version: 'v2'` + `attention` + `channel_benchmarks`
++ `creative_effectiveness`); the other 4 are v1. Page handles both via
+the `analysis.schema_version === 'v2'` conditional.
+
+No field-path patches needed. Wiring CA page in commit 2 is sufficient
+for all 5 listed missions.
+
+## Status
+
+- Commit 1: audit doc (this file) ✅
+- Commit 2: ResultsRouter mounted at /results/:missionId ✅
+- Commit 3 (spec): "wire CA + patch field paths" — wiring is in commit 2,
+  no field-path patches needed (verified via DB query). Folding into
+  this audit-doc update commit.
+- Commit 4 (spec): brand_lift TODO marker — already inline in
+  ResultsRouter.tsx from commit 2.
+
