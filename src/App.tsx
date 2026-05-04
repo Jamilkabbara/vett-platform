@@ -32,6 +32,10 @@ const MissionSuccessPage  = lazy(() => import('./pages/MissionSuccessPage').then
 const PaymentSuccessPage  = lazy(() => import('./pages/PaymentSuccessPage').then(m => ({ default: m.PaymentSuccessPage })));
 const PaymentCancelPage   = lazy(() => import('./pages/PaymentCancelPage').then(m => ({ default: m.PaymentCancelPage })));
 const ResultsPage         = lazy(() => import('./pages/ResultsPage').then(m => ({ default: m.ResultsPage })));
+// Pass 25 Phase 0.2 — central router that probes mission.goal_type and
+// dispatches to the right results page. /results/:id used to mount
+// ResultsPage directly which broke for creative_attention missions.
+const ResultsRouter       = lazy(() => import('./pages/ResultsRouter').then(m => ({ default: m.ResultsRouter })));
 const MissionsListPage    = lazy(() => import('./pages/MissionsListPage').then(m => ({ default: m.MissionsListPage })));
 const SignInPage          = lazy(() => import('./pages/SignInPage').then(m => ({ default: m.SignInPage })));
 const ForgotPasswordPage  = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
@@ -124,7 +128,7 @@ function App() {
               <Route path="/payment-success" element={<PaymentSuccessPage />} />
               <Route path="/payment-cancel" element={<PaymentCancelPage />} />
 
-              <Route path="/results/:missionId" element={<ResultsPage />} />
+              <Route path="/results/:missionId" element={<ResultsRouter />} />
               <Route path="/results" element={<ResultsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
 

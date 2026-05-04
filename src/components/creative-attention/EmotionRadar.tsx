@@ -104,7 +104,7 @@ export function EmotionRadar({ frameAnalyses }: EmotionRadarProps) {
             <h2 className="text-lg font-bold text-white">Emotional Profile</h2>
             <p className="text-white/40 text-xs">
               {showAll
-                ? '24 emotions (Plutchik 8 + DAIVID 16 nuanced)'
+                ? '24 emotions (Plutchik 8 basic + 16 nuanced research-derived)'
                 : `Top 8 of 24 emotions ranked by average score`}
             </p>
           </div>

@@ -111,7 +111,7 @@ export function CrossChannelBenchmarks({ benchmarks }: CrossChannelBenchmarksPro
       <header className="mb-5">
         <h2 className="text-lg font-bold text-white">Cross-Channel Benchmarks</h2>
         <p className="text-white/40 text-xs mt-1">
-          Predicted attention seconds vs industry norm (DAIVID/Amplified) across 5 channels
+          Predicted attention seconds vs industry norms across 5 channels
         </p>
       </header>
 
