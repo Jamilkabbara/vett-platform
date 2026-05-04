@@ -553,7 +553,7 @@ export const ResultsPage = () => {
       // Pass 23 Bug 23.56 — propagate Brand Lift category tags from the
       // source mission_questions JSONB onto each QuestionResult. The
       // category is set by claudeAI's brand_lift-aware system prompt
-      // (8-category Happydemics framework). Non-brand_lift missions have
+      // (8-category industry-standard framework). Non-brand_lift missions have
       // no category field and the map is a no-op.
       questions.forEach((qr, idx) => {
         const src = (missionQuestions as Array<{ category?: string }>)[idx];
@@ -2059,8 +2059,8 @@ export const ResultsPage = () => {
                             {/* Pass 23 Bug 23.56 — Brand Lift category pill.
                                 Renders only when the question carries a
                                 category tag (brand_lift goal_type). Tells
-                                the user which Happydemics frame this Q
-                                measures. */}
+                                the user which brand-lift category frame
+                                this Q measures. */}
                             {question.category && BRAND_LIFT_CATEGORY_LABEL[question.category] && (
                               <span className="text-[10px] px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-200 font-bold border border-purple-500/30 uppercase tracking-wider whitespace-nowrap">
                                 {BRAND_LIFT_CATEGORY_LABEL[question.category]}

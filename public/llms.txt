@@ -51,7 +51,7 @@ VETT runs three goal-keyed pricing ladders:
 - creative_attention — image/video frame-by-frame attention/emotion
   analysis with the goal_type-keyed Creative Attention pipeline
 - brand_lift — pre/post brand awareness/recall/sentiment/intent
-  using the 9-category Happydemics framework (brand_recall_unaided,
+  using a 9-category industry-standard framework (brand_recall_unaided,
   brand_recall_aided, brand_attribution, brand_awareness,
   message_association, brand_favorability, purchase_intent,
   recommendation_intent, ad_recall)

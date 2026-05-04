@@ -5,7 +5,7 @@
  * AI-pipeline output for Creative Attention missions. v1 (shipped
  * through Pass 23) carried frame analyses + a summary. v2 adds:
  *
- *   - 24 emotion taxonomy (Plutchik 8 + 16 nuanced DAIVID-style)
+ *   - 24 emotion taxonomy (Plutchik 8 basic + 16 nuanced research-derived)
  *   - Attention prediction block (active vs passive split, DBA
  *     score, decay curve)
  *   - Cross-channel benchmarks (TV / Social / OOH / CTV /
@@ -169,7 +169,7 @@ export type CreativeAnalysis = CreativeAnalysisV2;
 // ── Constants the frontend needs to render ────────────────────────────────────
 
 /**
- * Plutchik 8 + DAIVID-style 16 nuanced. The backend prompt instructs
+ * Plutchik 8 basic + 16 nuanced research-derived. The backend prompt instructs
  * the model to score every emotion 0-100; missing keys default to 0
  * for rendering.
  */
@@ -183,7 +183,7 @@ export const EMOTION_TAXONOMY_V2 = [
   'disgust',
   'anger',
   'anticipation',
-  // DAIVID-style nuanced 16
+  // Nuanced 16 (research-derived)
   'amusement',
   'awe',
   'contentment',
