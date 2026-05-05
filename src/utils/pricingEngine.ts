@@ -396,3 +396,56 @@ export async function fetchServerQuote(
 export function _clearServerQuoteCache() {
   serverQuoteCache.clear();
 }
+
+// ───────────────────────────────────────────────────────────────────
+// Pass 27 — Brand Lift uplift tiers (market + channel)
+// ───────────────────────────────────────────────────────────────────
+
+export const MARKET_UPLIFT_TIERS = [
+  { min: 1,  max: 1,        name: 'single_market',  upliftUSD: 0   },
+  { min: 2,  max: 3,        name: 'small_multi',    upliftUSD: 10  },
+  { min: 4,  max: 7,        name: 'regional',       upliftUSD: 25  },
+  { min: 8,  max: 15,       name: 'multi_regional', upliftUSD: 50  },
+  { min: 16, max: Infinity, name: 'global',         upliftUSD: 100 },
+] as const;
+
+export const CHANNEL_UPLIFT_TIERS = [
+  { min: 1,   max: 10,       name: 'starter',    upliftUSD: 0  },
+  { min: 11,  max: 25,       name: 'standard',   upliftUSD: 10 },
+  { min: 26,  max: 50,       name: 'plus',       upliftUSD: 20 },
+  { min: 51,  max: 100,      name: 'pro',        upliftUSD: 35 },
+  { min: 101, max: Infinity, name: 'enterprise', upliftUSD: 50 },
+] as const;
+
+export function calculateMarketUplift(marketCount: number): number {
+  const c = Math.max(0, Math.floor(marketCount));
+  if (c === 0) return 0;
+  return MARKET_UPLIFT_TIERS.find(t => c >= t.min && c <= t.max)?.upliftUSD ?? 0;
+}
+
+export function calculateChannelUplift(channelCount: number): number {
+  const c = Math.max(0, Math.floor(channelCount));
+  if (c === 0) return 0;
+  return CHANNEL_UPLIFT_TIERS.find(t => c >= t.min && c <= t.max)?.upliftUSD ?? 0;
+}
+
+export function calculateBrandLiftMissionPrice(input: {
+  respondentBaseUSD: number;
+  marketCount: number;
+  channelCount: number;
+}): {
+  base: number;
+  marketUplift: number;
+  channelUplift: number;
+  total: number;
+  breakdown: string;
+} {
+  const base = Math.max(0, Number(input.respondentBaseUSD) || 0);
+  const marketUplift = calculateMarketUplift(input.marketCount);
+  const channelUplift = calculateChannelUplift(input.channelCount);
+  const total = base + marketUplift + channelUplift;
+  const parts: string[] = [`$${base.toFixed(2)} base`];
+  if (input.marketCount > 0) parts.push(`+$${marketUplift.toFixed(2)} markets (${input.marketCount})`);
+  if (input.channelCount > 0) parts.push(`+$${channelUplift.toFixed(2)} channels (${input.channelCount})`);
+  return { base, marketUplift, channelUplift, total, breakdown: parts.join(' '), };
+}
