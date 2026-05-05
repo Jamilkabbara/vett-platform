@@ -21,7 +21,22 @@ interface Props {
   selected: SelectedChannel[];
   onChange: (next: SelectedChannel[]) => void;
   aiSuggestedIds?: string[];
+  /**
+   * Pass 27 — only show channels whose markets[] intersects with
+   * `selectedMarkets` (or where is_global = TRUE). Empty array
+   * blocks rendering and shows the "select markets first" empty
+   * state.
+   */
+  selectedMarkets?: string[];
 }
+
+const CHANNEL_UPLIFT_TIERS = [
+  { min: 1, max: 10, name: 'Starter', upliftUSD: 0 },
+  { min: 11, max: 25, name: 'Standard', upliftUSD: 10 },
+  { min: 26, max: 50, name: 'Plus', upliftUSD: 20 },
+  { min: 51, max: 100, name: 'Pro', upliftUSD: 35 },
+  { min: 101, max: Infinity, name: 'Enterprise', upliftUSD: 50 },
+];
 
 const CATEGORY_LABELS: Record<string, string> = {
   tv: 'TV (Linear)',
@@ -45,21 +60,28 @@ const CATEGORY_LABELS: Record<string, string> = {
  * Loads channels_master, groups by category, supports search, AI-suggested
  * highlight, custom-channel input. Min 1 required.
  */
-export function ChannelPicker({ selected, onChange, aiSuggestedIds = [] }: Props) {
+export function ChannelPicker({ selected, onChange, aiSuggestedIds = [], selectedMarkets = [] }: Props) {
   const [channels, setChannels] = useState<ChannelMaster[]>([]);
   const [search, setSearch] = useState('');
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({ tv: true, ctv: true });
   const [customInput, setCustomInput] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    if (selectedMarkets.length === 0) {
+      setChannels([]);
+      return;
+    }
     (async () => {
+      // Pass 27 — filter by markets[] && selected OR is_global = TRUE.
+      // PostgREST `or` filter syntax: column.op.value
       const { data } = await supabase
         .from('channels_master')
-        .select('id, display_name, category, is_mena_specific, display_order')
+        .select('id, display_name, category, is_mena_specific, display_order, markets, is_global')
+        .or(`markets.ov.{${selectedMarkets.join(',')}},is_global.eq.true`)
         .order('display_order');
       if (data) setChannels(data as ChannelMaster[]);
     })();
-  }, []);
+  }, [selectedMarkets.join(',')]);
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -91,12 +113,33 @@ export function ChannelPicker({ selected, onChange, aiSuggestedIds = [] }: Props
     setCustomInput({ ...customInput, [category]: '' });
   };
 
+  // Pass 27 — uplift tier indicator.
+  const tier = CHANNEL_UPLIFT_TIERS.find(t => selectedCount >= t.min && selectedCount <= t.max);
+  const tierColor = (tier?.upliftUSD || 0) === 0
+    ? 'bg-[var(--lime)]/10 text-[var(--lime)]'
+    : (tier?.upliftUSD || 0) <= 20
+    ? 'bg-[var(--lime)]/10 text-[var(--lime)]'
+    : 'bg-amber-500/10 text-amber-400';
+
+  if (selectedMarkets.length === 0) {
+    return (
+      <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6">
+        <h3 className="text-sm font-semibold text-[var(--t1)]">Campaign Channels</h3>
+        <p className="text-xs text-[var(--t3)] mt-2">
+          Select at least 1 market above to see relevant channels.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-[var(--t1)]">Campaign Channels</h3>
-          <p className="text-xs text-[var(--t3)] mt-0.5">Select every channel where this campaign runs · min 1</p>
+          <p className="text-xs text-[var(--t3)] mt-0.5">
+            Showing {channels.length} channels for {selectedMarkets.length} market{selectedMarkets.length === 1 ? '' : 's'} · min 1
+          </p>
         </div>
         <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--lime)]/10 text-[var(--lime)] font-semibold">
           {selectedCount} selected
@@ -188,6 +231,17 @@ export function ChannelPicker({ selected, onChange, aiSuggestedIds = [] }: Props
           </div>
         ))}
       </div>
+
+      {tier && (
+        <div className="border-t border-[var(--b1)]/60 pt-3 flex items-center justify-between">
+          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${tierColor}`} title="Tier pricing applies on top of respondent cost. Helps cover the AI compute for sophisticated multi-channel attribution.">
+            {tier.name} channel uplift · {tier.upliftUSD === 0 ? '$0.00' : `+$${tier.upliftUSD}.00`}
+          </span>
+          <span className="text-[10px] text-[var(--t3)] cursor-help" title="Tier brackets: 1-10 free / 11-25 +$10 / 26-50 +$20 / 51-100 +$35 / 101+ +$50">
+            ⓘ Tier pricing
+          </span>
+        </div>
+      )}
     </div>
   );
 }

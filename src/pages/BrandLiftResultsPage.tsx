@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
 import {
@@ -14,6 +14,49 @@ import {
   AIRecommendationCard,
   WaveComparison,
 } from '../components/brand-lift/results';
+import {
+  MarketFilterDropdown,
+  ChannelCategoryFilterDropdown,
+  GenderFilterDropdown,
+  AgeFilterDropdown,
+  IncrementalityFilterDropdown,
+  WaveFilterDropdown,
+} from '../components/brand-lift/filters/FilterDropdowns';
+import type { ExposureMode } from '../components/brand-lift/filters/FilterDropdowns';
+
+// Pass 27 F20 — multi-dim filter state lifted to the page.
+interface BrandLiftFilters {
+  markets: string[];
+  channels: string[];
+  channelCategories: string[];
+  genders: string | null;
+  ageGroups: string[];
+  exposureMode: ExposureMode;
+  wave: string | null;
+}
+
+const DEFAULT_FILTERS: BrandLiftFilters = {
+  markets: [], channels: [], channelCategories: [],
+  genders: null, ageGroups: [], exposureMode: 'all', wave: null,
+};
+
+const AGE_BUCKETS = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
+const CHANNEL_CATEGORIES = [
+  { value: 'tv', label: 'TV (Linear)' },
+  { value: 'ctv', label: 'CTV / Streaming' },
+  { value: 'cinema', label: 'Cinema' },
+  { value: 'digital_video', label: 'Digital Video' },
+  { value: 'social', label: 'Social Ads' },
+  { value: 'display', label: 'Display' },
+  { value: 'audio', label: 'Digital Audio' },
+  { value: 'radio', label: 'Radio' },
+  { value: 'ooh', label: 'OOH' },
+  { value: 'dooh', label: 'DOOH' },
+  { value: 'influencer', label: 'Influencer' },
+  { value: 'press', label: 'Press' },
+  { value: 'retail_media', label: 'Retail Media' },
+  { value: 'in_game', label: 'In-Game' },
+];
 
 /**
  * Pass 25 Phase 1E — Brand Lift Study v2 results page.
@@ -36,6 +79,12 @@ export function BrandLiftResultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [channelFilter, setChannelFilter] = useState<string | null>(null);
+  // Pass 27 F20 — multi-dim filter state. Filters compose with AND.
+  const [filters, setFilters] = useState<BrandLiftFilters>(DEFAULT_FILTERS);
+  const filtersActive = filters.markets.length > 0 || filters.channels.length > 0
+    || filters.channelCategories.length > 0 || filters.genders !== null
+    || filters.ageGroups.length > 0 || filters.exposureMode !== 'all'
+    || filters.wave !== null;
 
   useEffect(() => {
     if (!missionId) return;
@@ -105,13 +154,71 @@ export function BrandLiftResultsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)]">
-      <header className="px-6 pt-6 pb-4 flex items-center justify-between">
-        <Logo />
-        <ChannelFilterDropdown
-          channels={(blr.channels || []).map(c => ({ id: c.id, display_name: c.display_name }))}
-          value={channelFilter}
-          onChange={setChannelFilter}
-        />
+      <header className="px-6 pt-6 pb-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <Logo />
+          <ChannelFilterDropdown
+            channels={(blr.channels || []).map(c => ({ id: c.id, display_name: c.display_name }))}
+            value={channelFilter}
+            onChange={setChannelFilter}
+          />
+        </div>
+        {/* Pass 27 F20 — multi-dim filter row. AND composition. */}
+        <div className="flex items-center gap-3 flex-wrap text-xs bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl px-4 py-2">
+          <span className="text-[var(--t3)] font-semibold">Filters:</span>
+          <MarketFilterDropdown
+            label="Markets"
+            options={(blr.geography || []).map(g => ({ value: g.region, label: g.region }))}
+            value={filters.markets}
+            onChange={(v) => setFilters({ ...filters, markets: v })}
+            disabled={!(blr.geography && blr.geography.length > 1)}
+            disabledHint="single-market"
+          />
+          <ChannelCategoryFilterDropdown
+            label="Categories"
+            options={CHANNEL_CATEGORIES}
+            value={filters.channelCategories}
+            onChange={(v) => setFilters({ ...filters, channelCategories: v })}
+          />
+          <GenderFilterDropdown
+            label="Gender"
+            options={[{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'non_binary', label: 'Non-binary' }]}
+            value={filters.genders}
+            onChange={(v) => setFilters({ ...filters, genders: v })}
+          />
+          <AgeFilterDropdown
+            label="Age"
+            options={AGE_BUCKETS.map(b => ({ value: b, label: b }))}
+            value={filters.ageGroups}
+            onChange={(v) => setFilters({ ...filters, ageGroups: v })}
+          />
+          <IncrementalityFilterDropdown
+            value={filters.exposureMode}
+            onChange={(v) => setFilters({ ...filters, exposureMode: v })}
+          />
+          <WaveFilterDropdown
+            label="Wave"
+            options={(blr.waves || []).map(w => ({ value: w.label, label: w.label }))}
+            value={filters.wave}
+            onChange={(v) => setFilters({ ...filters, wave: v })}
+            disabled={!(blr.waves && blr.waves.length > 1)}
+            disabledHint="single-wave"
+          />
+          {filtersActive && (
+            <button
+              type="button"
+              onClick={() => setFilters(DEFAULT_FILTERS)}
+              className="ml-auto inline-flex items-center gap-1 text-[var(--lime)] hover:opacity-70"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Reset filters
+            </button>
+          )}
+        </div>
+        {filters.exposureMode === 'lift' && (
+          <p className="text-[11px] text-[var(--t3)] italic px-1">
+            ⓘ Lift mode active — every metric below shows Exposed − Control deltas instead of absolute values. Positive = the campaign drove the outcome above baseline.
+          </p>
+        )}
       </header>
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
         <BrandLiftScoreDial score={blr.score || 0} bandExplanation={blr.band_explanation} />

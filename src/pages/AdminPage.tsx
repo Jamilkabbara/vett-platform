@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { AdminOverview }  from '../components/admin/AdminOverview';
 import { AdminRevenue }   from '../components/admin/AdminRevenue';
 import { AdminAICosts }   from '../components/admin/AdminAICosts';
+import { AdminCosts }     from '../components/admin/AdminCosts';
 import { AdminUsers }     from '../components/admin/AdminUsers';
 import { AdminMissions }  from '../components/admin/AdminMissions';
 import { AdminCRM }       from '../components/admin/AdminCRM';
@@ -24,7 +25,7 @@ const API_URL    = import.meta.env.VITE_API_URL || 'https://vettit-backend-produ
 const ADMIN_EMAIL = 'kabbarajamil@gmail.com';
 
 type SidebarTab =
-  | 'overview' | 'revenue' | 'ai-costs'
+  | 'overview' | 'revenue' | 'ai-costs' | 'costs'
   | 'users' | 'missions' | 'payment-errors'
   | 'crm' | 'support' | 'blog' | 'promos';
 
@@ -32,6 +33,8 @@ const NAV_ITEMS: { id: SidebarTab; label: string; icon: React.ComponentType<{ cl
   { id: 'overview',       label: 'Overview',       icon: LayoutDashboard, group: 'Analytics' },
   { id: 'revenue',        label: 'Revenue',        icon: DollarSign,      group: 'Analytics' },
   { id: 'ai-costs',       label: 'AI Costs',       icon: Cpu,             group: 'Analytics' },
+  // Pass 24 Bug 24.02 — admin costs panel (vendors + fixed/variable + per-mission)
+  { id: 'costs',          label: 'Costs',          icon: DollarSign,      group: 'Analytics' },
   { id: 'users',          label: 'Users',          icon: Users,           group: 'Data' },
   { id: 'missions',       label: 'Missions',       icon: Target,          group: 'Data' },
   { id: 'payment-errors', label: 'Payment Errors', icon: AlertTriangle,   group: 'Data' },
@@ -45,6 +48,7 @@ const TAB_TITLES: Record<SidebarTab, string> = {
   'overview':       'Overview',
   'revenue':        'Revenue',
   'ai-costs':       'AI Costs',
+  'costs':          'Costs & Economics',
   'users':          'Users',
   'missions':       'Missions',
   'payment-errors': 'Payment Errors',
@@ -107,6 +111,7 @@ export function AdminPage() {
       case 'overview':  return wrap('Overview',  <AdminOverview  {...props} />);
       case 'revenue':   return wrap('Revenue',   <AdminRevenue   {...props} />);
       case 'ai-costs':  return wrap('AI Costs',  <AdminAICosts   {...props} />);
+      case 'costs':     return wrap('Costs',     <AdminCosts />);
       case 'users':     return wrap('Users',     <AdminUsers     {...props} />);
       case 'missions':  return wrap('Missions',  <AdminMissions  {...props} />);
       case 'payment-errors': return wrap('Payment Errors', <AdminPaymentErrors {...props} />);

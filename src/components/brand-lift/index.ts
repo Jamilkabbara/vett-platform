@@ -1,4 +1,6 @@
-// Pass 25 Phase 1C — Brand Lift setup component barrel export.
+// Pass 25 Phase 1C / Pass 27 — Brand Lift setup component barrel export.
+export { MarketPicker } from './MarketPicker';
+export type { Market } from './MarketPicker';
 export { CreativeUploader } from './CreativeUploader';
 export type { CreativeMetadata } from './CreativeUploader';
 export { ChannelPicker } from './ChannelPicker';
