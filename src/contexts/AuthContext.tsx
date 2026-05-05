@@ -56,6 +56,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await supabase.auth.signOut();
       setUser(null);
+      // Pass 27 I — clear cached initials so the next sign-in by a
+      // different user doesn't briefly flash the previous user's letters.
+      try { localStorage.removeItem('vett_cached_initials'); } catch { /* ignore */ }
       toast('Signed out successfully', { icon: '👋' });
     } catch (error) {
       console.error('Sign out error:', error);

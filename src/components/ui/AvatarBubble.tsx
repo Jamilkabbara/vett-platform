@@ -5,6 +5,7 @@ import { LogOut, User as UserIcon, Receipt, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { User } from '@supabase/supabase-js';
 import { useAuth } from '../../contexts/AuthContext';
+import { readCachedInitials, writeCachedInitials } from '../../lib/initials';
 
 /**
  * Lime-on-black initials avatar with a dropdown menu.
@@ -72,7 +73,25 @@ export function AvatarBubble({
   const navigate = useNavigate();
   const auth = useAuth();
   const user = userProp ?? auth.user;
-  const initials = deriveInitials(user);
+  // Pass 27 I — race fix. Auth state hydrates AFTER first paint, so the
+  // bubble briefly shows the 'VT' fallback. Cache initials in
+  // localStorage on first successful auth and read it back optimistically
+  // for subsequent visits. The genuine 'first-ever-login' case still
+  // renders the skeleton until auth resolves; clears on sign-out.
+  const cached = readCachedInitials();
+  const liveInitials = user ? deriveInitials(user) : null;
+  // Use live initials when available; fall back to cache; fall back to
+  // 'VT' literal only when cache is empty AND no user (logged-out state).
+  const initials = liveInitials || cached || 'VT';
+  const showSkeleton = !liveInitials && !cached;
+
+  // Persist live initials to cache the moment we have them so the next
+  // cold load reads the cached value.
+  useEffect(() => {
+    if (liveInitials && liveInitials !== 'VT') {
+      writeCachedInitials(liveInitials);
+    }
+  }, [liveInitials]);
 
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -95,7 +114,16 @@ export function AvatarBubble({
     };
   }, [open]);
 
-  const bubble = (
+  const bubble = showSkeleton ? (
+    <span
+      aria-label="Loading profile"
+      className={[
+        'inline-flex items-center justify-center',
+        'w-9 h-9 rounded-lg border border-lime/40',
+        'animate-pulse',
+      ].join(' ')}
+    />
+  ) : (
     <span
       aria-hidden={!plain}
       className={[
