@@ -35,6 +35,19 @@ import {
   BRAND_LIFT_DEFAULT_STATE,
   type BrandLiftSetupState,
 } from '../components/setup/BrandLiftSetupSection';
+// Pass 29 B2 / B4 — universal inputs and methodology collectors.
+import {
+  UniversalMissionInputs,
+  UNIVERSAL_INPUTS_DEFAULT,
+  validateUniversalInputs,
+  type UniversalInputsState,
+} from '../components/setup/UniversalMissionInputs';
+import {
+  PricingInputs,
+  PRICING_DEFAULT_STATE,
+  validatePricingInputs,
+  type PricingInputsState,
+} from '../components/setup/PricingInputs';
 import {
   GOALS_WITH_UPLOAD,
   getGoalById,
@@ -227,6 +240,21 @@ export const MissionSetupPage = () => {
     BRAND_LIFT_DEFAULT_STATE,
   );
   const isBrandLift = missionGoal === 'brand_lift';
+
+  // Pass 29 B2 / B4 — universal inputs (brand / category / audience /
+  // competitors) plus the per-methodology collector. Rendered when
+  // goal_type matches a methodology-bound type. brand_lift +
+  // creative_attention skip these (their deep pickers already
+  // collect equivalents).
+  const isPricing = missionGoal === 'pricing';
+  const isUniversalShown = !isBrandLift && missionGoal !== 'creative_attention'
+    && missionGoal !== 'research';
+  const [universalInputs, setUniversalInputs] = useState<UniversalInputsState>(
+    UNIVERSAL_INPUTS_DEFAULT,
+  );
+  const [pricingInputs, setPricingInputs] = useState<PricingInputsState>(
+    PRICING_DEFAULT_STATE,
+  );
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -534,6 +562,18 @@ export const MissionSetupPage = () => {
       }
     }
 
+    // Pass 29 B4 — Pricing Research methodology validation.
+    if (isPricing) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const pricingMissing = validatePricingInputs(pricingInputs);
+      if (universalMissing.length || pricingMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...pricingMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -604,12 +644,38 @@ export const MissionSetupPage = () => {
               creative_mime: brandLiftState.creative?.mimeType ?? '',
             }
           : {};
+        // Pass 29 B4 — pricing context fed to the backend
+        // VW + GG generator via the same clarify_answers contract.
+        const pricingPromptCtx: Record<string, string> = isPricing
+          ? {
+              pricing_product_description: pricingInputs.productDescription,
+              pricing_currency: pricingInputs.currency,
+              pricing_model: pricingInputs.pricingModel,
+              pricing_context: pricingInputs.pricingContext,
+              pricing_expected_min: pricingInputs.expectedMin,
+              pricing_expected_max: pricingInputs.expectedMax,
+            }
+          : {};
+        // Pass 29 B2 — universal inputs forwarded for every methodology.
+        const universalPromptCtx: Record<string, string> = isUniversalShown
+          ? {
+              brand_name: universalInputs.brand,
+              category: universalInputs.category,
+              audience_description: universalInputs.audienceDescription,
+              competitors: universalInputs.competitors.join('|'),
+            }
+          : {};
         aiResult = await generateSurvey({
           goal: missionGoal,
           subject: briefText,
           objective: goalLabel,
           assets: missionAssets,
-          clarifyAnswers: { ...clarifyForPrompt, ...brandLiftPromptCtx },
+          clarifyAnswers: {
+            ...clarifyForPrompt,
+            ...universalPromptCtx,
+            ...brandLiftPromptCtx,
+            ...pricingPromptCtx,
+          },
         });
       } catch (aiErr) {
         // generateSurvey swallows its own errors — catch here is defensive.
@@ -645,6 +711,42 @@ export const MissionSetupPage = () => {
         // is empty (i.e. the user hasn't made any manual targeting edits yet).
         aiTargeting: aiResult?.suggestedTargeting ?? null,
       };
+
+      // Pass 29 B2 — universal inputs persisted on every
+      // methodology-bound mission. brand_name + category are required;
+      // audience_description optional. competitor_brands JSONB column
+      // exists from Pass 28 A; we write the same shape (string array).
+      const universalFields: Record<string, unknown> = isUniversalShown
+        ? {
+            brand_name: universalInputs.brand || null,
+            category: universalInputs.category || null,
+            audience_description: universalInputs.audienceDescription || null,
+            // Don't clobber Brand Lift's competitor_brands which is set
+            // separately via brandLiftFields below.
+            ...(isBrandLift
+              ? {}
+              : { competitor_brands: universalInputs.competitors }),
+          }
+        : {};
+
+      // Pass 29 B4 — pricing schema columns. Methodology fixed to
+      // van_westendorp_plus_gabor_granger for now (the Pass 29 prompt
+      // generator's only branch).
+      const pricingFields: Record<string, unknown> = isPricing
+        ? {
+            pricing_product_description: pricingInputs.productDescription,
+            pricing_currency: pricingInputs.currency,
+            pricing_model: pricingInputs.pricingModel,
+            pricing_context: pricingInputs.pricingContext || null,
+            pricing_expected_min: pricingInputs.expectedMin
+              ? Number(pricingInputs.expectedMin)
+              : null,
+            pricing_expected_max: pricingInputs.expectedMax
+              ? Number(pricingInputs.expectedMax)
+              : null,
+            pricing_methodology: 'van_westendorp_plus_gabor_granger',
+          }
+        : {};
 
       // Pass 28 A — brand_lift mission rows must populate the schema
       // columns that have existed since Pass 25 Phase 1A + Pass 27.
@@ -700,6 +802,8 @@ export const MissionSetupPage = () => {
         // can render a preview and the future survey renderer can show
         // respondents exactly what they're evaluating.
         mission_assets: missionAssets,
+        ...universalFields,
+        ...pricingFields,
         ...brandLiftFields,
       };
 
@@ -1026,12 +1130,33 @@ export const MissionSetupPage = () => {
               )
             ) : (
               <>
+                {/* Pass 29 B2 / B4 — universal inputs + pricing collector
+                    rendered above the Generate Survey CTA when the goal
+                    is methodology-bound. brand_lift / creative_attention /
+                    research are handled by the surrounding conditionals. */}
+                {isUniversalShown && (
+                  <div className="mt-5">
+                    <UniversalMissionInputs
+                      state={universalInputs}
+                      onChange={setUniversalInputs}
+                    />
+                  </div>
+                )}
+                {isPricing && (
+                  <div className="mt-4">
+                    <PricingInputs
+                      state={pricingInputs}
+                      onChange={setPricingInputs}
+                    />
+                  </div>
+                )}
+
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={handleRevealClarify}
+                      onClick={isPricing ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       className={[
                         'w-full h-12 rounded-xl',
