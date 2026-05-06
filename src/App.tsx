@@ -5,12 +5,20 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ScrollToTop } from './components/shared/ScrollToTop';
 import { PageLoader } from './components/shared/PageLoader';
 import { replayFunnelQueue } from './lib/funnelTrack';
+// Pass 29 A3 — LandingPage imported eagerly. It's the canonical entry
+// point for cold visitors (every other page is gated on auth or a
+// direct link), so the lazy-load round-trip costs an unavoidable
+// extra RTT on the most common LCP path. Importing eagerly merges
+// the LandingPage chunk into the main bundle, dropping one fetch
+// from the cold-load critical path on /landing. Other pages stay
+// lazy — direct visitors to /dashboard / /setup / /vs/* still pay
+// only their own chunk's cost.
+import { LandingPage } from './pages/LandingPage';
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded pages — each becomes its own async chunk.
 // All pages use named exports, so we must re-export as `default`.
 // ---------------------------------------------------------------------------
-const LandingPage         = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const ActiveMissionPage   = lazy(() => import('./pages/ActiveMissionPage').then(m => ({ default: m.ActiveMissionPage })));
 const MissionSetupPage    = lazy(() => import('./pages/MissionSetupPage').then(m => ({ default: m.MissionSetupPage })));
 const DashboardPage       = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
