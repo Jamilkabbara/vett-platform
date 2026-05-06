@@ -31,10 +31,19 @@ import {
 } from '../components/setup/ClarifySection';
 import { DynamicClarifySection } from '../components/setup/DynamicClarifySection';
 import {
+  BrandLiftSetupSection,
+  BRAND_LIFT_DEFAULT_STATE,
+  type BrandLiftSetupState,
+} from '../components/setup/BrandLiftSetupSection';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
 } from '../data/missionGoals';
+import {
+  BRAND_LIFT_TIERS,
+  calculateBrandLiftMissionPrice,
+} from '../utils/pricingEngine';
 
 /**
  * Mission Setup — Commit 4 of the redesign (Prompt 3).
@@ -210,6 +219,14 @@ export const MissionSetupPage = () => {
   const [clarifyAnswers, setClarifyAnswers] = useState<ClarifyAnswers>(
     CLARIFY_DEFAULTS,
   );
+
+  // Pass 28 A — Brand Lift Studies skip the generic clarify flow and
+  // render 6 deep pickers (creative / market / channel / wave /
+  // competitor / KPI template) inline below the brief textarea.
+  const [brandLiftState, setBrandLiftState] = useState<BrandLiftSetupState>(
+    BRAND_LIFT_DEFAULT_STATE,
+  );
+  const isBrandLift = missionGoal === 'brand_lift';
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -493,6 +510,30 @@ export const MissionSetupPage = () => {
       return;
     }
 
+    // Pass 28 A — Brand Lift requires the 6 deep-picker fields before
+    // we let the AI call + insert run. The button itself is gated on
+    // these in BrandLiftSetupSection; this is a defense-in-depth check.
+    if (isBrandLift) {
+      const bl = brandLiftState;
+      const wavesNeedDates = bl.wave.mode !== 'single_wave';
+      const datesValid =
+        !wavesNeedDates ||
+        (bl.wave.campaignStart &&
+          bl.wave.campaignEnd &&
+          new Date(bl.wave.campaignEnd) > new Date(bl.wave.campaignStart));
+      if (
+        !bl.creative ||
+        bl.markets.length < 1 ||
+        bl.channels.length < 1 ||
+        !datesValid ||
+        bl.competitors.length < 2 ||
+        !bl.kpiTemplate
+      ) {
+        toast.error('Please complete all required brand-lift fields.');
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -547,12 +588,28 @@ export const MissionSetupPage = () => {
 
       let aiResult: Awaited<ReturnType<typeof generateSurvey>> | null = null;
       try {
+        // Pass 28 A — when brand_lift, fold the deep-picker context into
+        // clarifyAnswers so the backend brand_lift question-gen branch
+        // (Pass 28 B) can read markets / channels / competitors / KPI
+        // template / wave structure without a new endpoint contract.
+        const brandLiftPromptCtx: Record<string, string> = isBrandLift
+          ? {
+              brand_lift_template: brandLiftState.kpiTemplate,
+              markets: brandLiftState.markets.join(','),
+              channel_ids: brandLiftState.channels.map((c) => c.id).join(','),
+              channel_count: String(brandLiftState.channels.length),
+              competitors: brandLiftState.competitors.join('|'),
+              wave_mode: brandLiftState.wave.mode,
+              creative_url: brandLiftState.creative?.url ?? '',
+              creative_mime: brandLiftState.creative?.mimeType ?? '',
+            }
+          : {};
         aiResult = await generateSurvey({
           goal: missionGoal,
           subject: briefText,
           objective: goalLabel,
           assets: missionAssets,
-          clarifyAnswers: clarifyForPrompt,
+          clarifyAnswers: { ...clarifyForPrompt, ...brandLiftPromptCtx },
         });
       } catch (aiErr) {
         // generateSurvey swallows its own errors — catch here is defensive.
@@ -589,6 +646,45 @@ export const MissionSetupPage = () => {
         aiTargeting: aiResult?.suggestedTargeting ?? null,
       };
 
+      // Pass 28 A — brand_lift mission rows must populate the schema
+      // columns that have existed since Pass 25 Phase 1A + Pass 27.
+      // Compute the uplift-aware price_breakdown so the dashboard can
+      // show the same total the user just confirmed on /setup; the
+      // backend remains canonical at payment time.
+      const brandLiftFields: Record<string, unknown> = isBrandLift
+        ? (() => {
+            const bl = brandLiftState;
+            const respCount = aiResult?.suggestedRespondentCount ?? bl.respondentCount;
+            const tier =
+              [...BRAND_LIFT_TIERS].find((t) => respCount <= t.maxCount) ??
+              BRAND_LIFT_TIERS[BRAND_LIFT_TIERS.length - 1];
+            const breakdown = calculateBrandLiftMissionPrice({
+              respondentBaseUSD: tier.packagePrice,
+              marketCount: bl.markets.length,
+              channelCount: bl.channels.length,
+            });
+            return {
+              creative_metadata: bl.creative,
+              targeted_markets: bl.markets,
+              campaign_channels: bl.channels,
+              wave_config: bl.wave,
+              competitor_brands: bl.competitors,
+              brand_lift_template: bl.kpiTemplate,
+              price_breakdown: {
+                base_usd: breakdown.base,
+                market_uplift_usd: breakdown.marketUplift,
+                channel_uplift_usd: breakdown.channelUplift,
+                total_usd: breakdown.total,
+                market_count: bl.markets.length,
+                channel_count: bl.channels.length,
+                ladder_version: 'pass_27_v1',
+              },
+              price_estimated: breakdown.total,
+              respondent_count: respCount,
+            };
+          })()
+        : {};
+
       const insertPayload = {
         user_id: user.id,
         title: deriveTitle(briefText, goalLabel),
@@ -604,6 +700,7 @@ export const MissionSetupPage = () => {
         // can render a preview and the future survey renderer can show
         // respondents exactly what they're evaluating.
         mission_assets: missionAssets,
+        ...brandLiftFields,
       };
 
       const { data: missionData, error } = await supabase
@@ -904,68 +1001,95 @@ export const MissionSetupPage = () => {
               </div>
             </div>
 
-            {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
-            {!showClarify && (
-              <div className="mt-5">
-                <button
-                  type="button"
-                  onClick={handleRevealClarify}
-                  disabled={isSubmitting || revealingClarify}
-                  className={[
-                    'w-full h-12 rounded-xl',
-                    'inline-flex items-center justify-center gap-2',
-                    'font-display font-black text-[14px] uppercase tracking-widest',
-                    'transition-colors',
-                    'disabled:opacity-60 disabled:cursor-not-allowed',
-                    isValid
-                      ? 'bg-lime text-black hover:bg-lime/90 shadow-lime-soft'
-                      : 'bg-lime/20 text-lime/70',
-                  ].join(' ')}
-                >
-                  {revealingClarify ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-                      <span>Thinking…</span>
-                    </>
-                  ) : (
-                    <>
-                      <span aria-hidden>✦</span>
-                      <span>Generate Survey</span>
-                    </>
-                  )}
-                </button>
-                <p className="mt-2.5 text-center font-body text-[11px] text-t4">
-                  You&apos;ll refine questions + targeting on the next screen before
-                  paying anything.
-                </p>
-              </div>
-            )}
+            {/* Pass 28 A — Brand Lift uses the deep picker stack; other
+                goals keep the existing clarify reveal. */}
+            {isBrandLift ? (
+              user ? (
+                <BrandLiftSetupSection
+                  userId={user.id}
+                  state={brandLiftState}
+                  onChange={setBrandLiftState}
+                  onGenerate={handleGenerate}
+                  submitting={isSubmitting}
+                  briefValid={isValid}
+                />
+              ) : (
+                <div className="mt-5">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/signin?redirect=/setup?goal=brand_lift')}
+                    className="w-full h-12 rounded-xl bg-lime text-black font-display font-black text-[14px] uppercase tracking-widest hover:bg-lime/90"
+                  >
+                    Sign in to set up your Brand Lift
+                  </button>
+                </div>
+              )
+            ) : (
+              <>
+                {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
+                {!showClarify && (
+                  <div className="mt-5">
+                    <button
+                      type="button"
+                      onClick={handleRevealClarify}
+                      disabled={isSubmitting || revealingClarify}
+                      className={[
+                        'w-full h-12 rounded-xl',
+                        'inline-flex items-center justify-center gap-2',
+                        'font-display font-black text-[14px] uppercase tracking-widest',
+                        'transition-colors',
+                        'disabled:opacity-60 disabled:cursor-not-allowed',
+                        isValid
+                          ? 'bg-lime text-black hover:bg-lime/90 shadow-lime-soft'
+                          : 'bg-lime/20 text-lime/70',
+                      ].join(' ')}
+                    >
+                      {revealingClarify ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                          <span>Thinking…</span>
+                        </>
+                      ) : (
+                        <>
+                          <span aria-hidden>✦</span>
+                          <span>Generate Survey</span>
+                        </>
+                      )}
+                    </button>
+                    <p className="mt-2.5 text-center font-body text-[11px] text-t4">
+                      You&apos;ll refine questions + targeting on the next screen before
+                      paying anything.
+                    </p>
+                  </div>
+                )}
 
-            {/* Step 3 — Clarify (inline, revealed by Step 1 CTA).
-                Dynamic path renders AI-generated questions from
-                /api/ai/clarify; static path renders Market/Stage/Price.
-                The 15s race in handleRevealClarify decides which. */}
-            <AnimatePresence initial={false}>
-              {showClarify &&
-                (dynamicClarify && dynamicClarify.length > 0 ? (
-                  <DynamicClarifySection
-                    key="clarify-dynamic"
-                    questions={dynamicClarify}
-                    answers={dynamicClarifyAnswers}
-                    onChange={setDynamicClarifyAnswers}
-                    onSubmit={handleGenerate}
-                    submitting={isSubmitting}
-                  />
-                ) : (
-                  <ClarifySection
-                    key="clarify-static"
-                    answers={clarifyAnswers}
-                    onChange={setClarifyAnswers}
-                    onSubmit={handleGenerate}
-                    submitting={isSubmitting}
-                  />
-                ))}
-            </AnimatePresence>
+                {/* Step 3 — Clarify (inline, revealed by Step 1 CTA).
+                    Dynamic path renders AI-generated questions from
+                    /api/ai/clarify; static path renders Market/Stage/Price.
+                    The 15s race in handleRevealClarify decides which. */}
+                <AnimatePresence initial={false}>
+                  {showClarify &&
+                    (dynamicClarify && dynamicClarify.length > 0 ? (
+                      <DynamicClarifySection
+                        key="clarify-dynamic"
+                        questions={dynamicClarify}
+                        answers={dynamicClarifyAnswers}
+                        onChange={setDynamicClarifyAnswers}
+                        onSubmit={handleGenerate}
+                        submitting={isSubmitting}
+                      />
+                    ) : (
+                      <ClarifySection
+                        key="clarify-static"
+                        answers={clarifyAnswers}
+                        onChange={setClarifyAnswers}
+                        onSubmit={handleGenerate}
+                        submitting={isSubmitting}
+                      />
+                    ))}
+                </AnimatePresence>
+              </>
+            )}
           </div>
         </div>
       </section>
