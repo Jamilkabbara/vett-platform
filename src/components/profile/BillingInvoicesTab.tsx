@@ -2,9 +2,14 @@ import { useState, useEffect } from 'react';
 import { FileText, Download, DollarSign, Target, TrendingUp, Presentation } from 'lucide-react';
 import { api } from '../../lib/apiClient';
 import { useUserProfile } from '../../hooks/useUserProfile';
-import { generateInvoicePdf } from '../../lib/generateInvoicePdf';
-import { generateInvoicePpt } from '../../lib/generateInvoicePpt';
 import toast from 'react-hot-toast';
+
+// Pass 29 A2 — perf-LCP-001 follow-up. jspdf + jspdf-autotable were
+// pulled into the ProfilePage chunk via a static import on
+// generateInvoicePdf, bloating the chunk to 852 kB. Moved to dynamic
+// imports so the libraries only download when the user actually
+// clicks "Download invoice". Same treatment for generateInvoicePpt
+// which transitively pulls in pptxgenjs.
 
 interface Invoice {
   invoiceId: string;
@@ -43,11 +48,15 @@ export const BillingInvoicesTab = () => {
     })();
   }, []);
 
-  const handleDownload = (inv: Invoice) => {
+  const handleDownload = async (inv: Invoice) => {
     if (downloading) return;
     setDownloading(inv.invoiceId);
 
     try {
+      // Pass 29 A2 — dynamic import keeps jsPDF + autoTable out of the
+      // ProfilePage chunk. ~250 kB doesn't ship until the user clicks.
+      const { generateInvoicePdf } = await import('../../lib/generateInvoicePdf');
+
       // Build the InvoiceMission shape from what's available.
       // base_cost_usd falls back to total amount when the backend doesn't
       // return a breakdown (older missions), which keeps the line-item correct.
@@ -89,6 +98,10 @@ export const BillingInvoicesTab = () => {
     if (pptLoading) return;
     setPptLoading(inv.invoiceId);
     try {
+      // Pass 29 A2 — dynamic import keeps pptxgenjs out of the
+      // ProfilePage chunk. Only ships when the user clicks "PPT".
+      const { generateInvoicePpt } = await import('../../lib/generateInvoicePpt');
+
       const total    = inv.amount || 0;
       const baseCost = inv.base_cost_usd ?? total;
       await generateInvoicePpt(
