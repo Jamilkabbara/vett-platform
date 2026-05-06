@@ -1,4 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap');
+/* Pass 28 D — Google Fonts stylesheet moved to <link> in index.html
+ * with preconnect to fonts.gstatic.com. The @import inside the CSS
+ * bundle was creating a serial fetch chain (bundle parse → @import
+ * fetch → CSS parse → font CDN fetch) that pushed LCP past 4.4s on
+ * /landing mobile. The HTML <link> parses in parallel with the JS
+ * bundle and the preconnect hint shaves another 200-400ms off the
+ * font-file fetch. */
 
 @tailwind base;
 @tailwind components;

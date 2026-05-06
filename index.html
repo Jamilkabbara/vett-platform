@@ -19,6 +19,35 @@
     <link rel="dns-prefetch" href="https://hxuhqtczdzmiujrdcrta.supabase.co" />
     <link rel="dns-prefetch" href="https://vettit-backend-production.up.railway.app" />
 
+    <!--
+      Pass 28 D — Top LCP fix. perf-LCP-002 + Web font swap (suspect #3
+      from Pass 27.5 F audit).
+
+      Before: Inter + Manrope loaded via @import in src/index.css. The
+      @import inside the CSS bundle creates a serial dependency:
+      bundle parse → @import fetch → CSS parse → font CDN fetch (woff2)
+      → text render. All of this was happening AFTER the JS bundle
+      finished parsing, blowing out LCP to ~4.4-4.8s.
+
+      After: stylesheet moved to <link rel="stylesheet"> in <head>
+      (parses in parallel with the JS bundle) plus preconnect to
+      fonts.gstatic.com (where the actual woff2 files live — was
+      missing entirely, so each font file was paying a fresh TLS
+      handshake). Hero text on /landing renders against an installed
+      font without waiting for the JS bundle.
+
+      Targeted page: /landing. Expected LCP delta -800ms to -1.5s on
+      mobile based on the four-fetch serial chain savings. Other LCP
+      tickets (perf-LCP-001 bundle audit, perf-LCP-003 hero image
+      preload, perf-LCP-004 Cache-Control verify) remain open.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap"
+    />
+
     <title>VETT — AI Market Research in Minutes</title>
 
     <!--
