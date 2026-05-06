@@ -61,6 +61,12 @@ import {
   type CSATInputsState,
 } from '../components/setup/CSATInputs';
 import {
+  ConceptCollector,
+  CONCEPT_DEFAULT_STATE,
+  validateConceptCollector,
+  type ConceptCollectorState,
+} from '../components/setup/ConceptCollector';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
@@ -275,6 +281,10 @@ export const MissionSetupPage = () => {
   // Pass 29 B8 — customer satisfaction state.
   const isCSAT = missionGoal === 'satisfaction';
   const [csatInputs, setCsatInputs] = useState<CSATInputsState>(CSAT_DEFAULT_STATE);
+
+  // Pass 30 B1 — Validate Product (concept test) state.
+  const isValidate = missionGoal === 'validate';
+  const [conceptInputs, setConceptInputs] = useState<ConceptCollectorState>(CONCEPT_DEFAULT_STATE);
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -618,6 +628,18 @@ export const MissionSetupPage = () => {
       }
     }
 
+    // Pass 30 B1 — Validate Product methodology validation.
+    if (isValidate) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const conceptMissing = validateConceptCollector(conceptInputs);
+      if (universalMissing.length || conceptMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...conceptMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -718,6 +740,16 @@ export const MissionSetupPage = () => {
               csat_recency_window: recencyPhrase(csatInputs.recencyWindow),
             }
           : {};
+        // Pass 30 B1 — concept-test context fed to the validate generator.
+        const validatePromptCtx: Record<string, string> = isValidate
+          ? {
+              concept_description: conceptInputs.description,
+              concept_media_type: conceptInputs.mediaType,
+              concept_media_url: conceptInputs.mediaUrl || '',
+              concept_price_usd: conceptInputs.priceUsd,
+              concept_use_occasion: conceptInputs.useOccasion,
+            }
+          : {};
         // Pass 29 B2 — universal inputs forwarded for every methodology.
         const universalPromptCtx: Record<string, string> = isUniversalShown
           ? {
@@ -739,6 +771,7 @@ export const MissionSetupPage = () => {
             ...pricingPromptCtx,
             ...roadmapPromptCtx,
             ...csatPromptCtx,
+            ...validatePromptCtx,
           },
         });
       } catch (aiErr) {
@@ -811,6 +844,20 @@ export const MissionSetupPage = () => {
             csat_customer_type: csatInputs.customerType,
             csat_recency_window: csatInputs.recencyWindow,
             csat_methodology: 'nps_csat_ces',
+          }
+        : {};
+
+      // Pass 30 B1 — Validate Product schema columns.
+      const validateFields: Record<string, unknown> = isValidate
+        ? {
+            concept_description: conceptInputs.description,
+            concept_media_url: conceptInputs.mediaUrl || null,
+            concept_media_type: conceptInputs.mediaType,
+            concept_price_usd: conceptInputs.priceUsd
+              ? Number(conceptInputs.priceUsd)
+              : null,
+            concept_use_occasion: conceptInputs.useOccasion || null,
+            validate_methodology: 'concept_test',
           }
         : {};
 
@@ -891,6 +938,7 @@ export const MissionSetupPage = () => {
         ...pricingFields,
         ...roadmapFields,
         ...csatFields,
+        ...validateFields,
         ...brandLiftFields,
       };
 
@@ -1253,13 +1301,22 @@ export const MissionSetupPage = () => {
                     />
                   </div>
                 )}
+                {isValidate && user && (
+                  <div className="mt-4">
+                    <ConceptCollector
+                      userId={user.id}
+                      state={conceptInputs}
+                      onChange={setConceptInputs}
+                    />
+                  </div>
+                )}
 
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={(isPricing || isRoadmap || isCSAT) ? handleGenerate : handleRevealClarify}
+                      onClick={(isPricing || isRoadmap || isCSAT || isValidate) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       className={[
                         'w-full h-12 rounded-xl',
