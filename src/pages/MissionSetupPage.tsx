@@ -72,6 +72,12 @@ import {
   type CompareConcept,
 } from '../components/setup/ConceptListCollector';
 import {
+  AdTestingInputs,
+  AD_TESTING_DEFAULT_STATE,
+  validateAdTesting,
+  type AdTestingState,
+} from '../components/setup/AdTestingInputs';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
@@ -294,6 +300,10 @@ export const MissionSetupPage = () => {
   // Pass 30 B3 — Compare Concepts (sequential monadic) state.
   const isCompare = missionGoal === 'compare';
   const [compareConcepts, setCompareConcepts] = useState<CompareConcept[]>([]);
+
+  // Pass 30 B5 — Test Marketing / Ads (ad effectiveness) state.
+  const isMarketing = missionGoal === 'marketing';
+  const [adTesting, setAdTesting] = useState<AdTestingState>(AD_TESTING_DEFAULT_STATE);
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -661,6 +671,18 @@ export const MissionSetupPage = () => {
       }
     }
 
+    // Pass 30 B5 — Test Marketing methodology validation.
+    if (isMarketing) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const adMissing = validateAdTesting(adTesting);
+      if (universalMissing.length || adMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...adMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -785,6 +807,17 @@ export const MissionSetupPage = () => {
               concept_count: String(compareConcepts.length),
             }
           : {};
+        // Pass 30 B5 — ad testing context fed to the ad effectiveness generator.
+        const marketingPromptCtx: Record<string, string> = isMarketing
+          ? {
+              creative_media_url: adTesting.creativeUrl || '',
+              creative_media_type: adTesting.creativeMediaType,
+              campaign_channel: adTesting.channel,
+              campaign_format: adTesting.format,
+              campaign_objective: adTesting.objective,
+              intended_message: adTesting.intendedMessage,
+            }
+          : {};
         // Pass 29 B2 — universal inputs forwarded for every methodology.
         const universalPromptCtx: Record<string, string> = isUniversalShown
           ? {
@@ -808,6 +841,7 @@ export const MissionSetupPage = () => {
             ...csatPromptCtx,
             ...validatePromptCtx,
             ...comparePromptCtx,
+            ...marketingPromptCtx,
           },
         });
       } catch (aiErr) {
@@ -911,6 +945,19 @@ export const MissionSetupPage = () => {
           }
         : {};
 
+      // Pass 30 B5 — Test Marketing schema columns.
+      const marketingFields: Record<string, unknown> = isMarketing
+        ? {
+            creative_media_url: adTesting.creativeUrl,
+            creative_media_type: adTesting.creativeMediaType,
+            campaign_channel: adTesting.channel,
+            campaign_format: adTesting.format,
+            campaign_objective: adTesting.objective,
+            intended_message: adTesting.intendedMessage || null,
+            ad_methodology: 'ad_effectiveness',
+          }
+        : {};
+
       // Pass 29 B4 — pricing schema columns. Methodology fixed to
       // van_westendorp_plus_gabor_granger for now (the Pass 29 prompt
       // generator's only branch).
@@ -990,6 +1037,7 @@ export const MissionSetupPage = () => {
         ...csatFields,
         ...validateFields,
         ...compareFields,
+        ...marketingFields,
         ...brandLiftFields,
       };
 
@@ -1369,13 +1417,22 @@ export const MissionSetupPage = () => {
                     />
                   </div>
                 )}
+                {isMarketing && user && (
+                  <div className="mt-4">
+                    <AdTestingInputs
+                      userId={user.id}
+                      state={adTesting}
+                      onChange={setAdTesting}
+                    />
+                  </div>
+                )}
 
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare) ? handleGenerate : handleRevealClarify}
+                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       className={[
                         'w-full h-12 rounded-xl',
