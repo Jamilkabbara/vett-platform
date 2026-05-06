@@ -54,6 +54,13 @@ import {
   type RoadmapFeature,
 } from '../components/setup/FeatureListCollector';
 import {
+  CSATInputs,
+  CSAT_DEFAULT_STATE,
+  validateCSATInputs,
+  recencyPhrase,
+  type CSATInputsState,
+} from '../components/setup/CSATInputs';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
@@ -264,6 +271,10 @@ export const MissionSetupPage = () => {
   // Pass 29 B6 — feature roadmap state.
   const isRoadmap = missionGoal === 'roadmap';
   const [roadmapFeatures, setRoadmapFeatures] = useState<RoadmapFeature[]>([]);
+
+  // Pass 29 B8 — customer satisfaction state.
+  const isCSAT = missionGoal === 'satisfaction';
+  const [csatInputs, setCsatInputs] = useState<CSATInputsState>(CSAT_DEFAULT_STATE);
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -595,6 +606,18 @@ export const MissionSetupPage = () => {
       }
     }
 
+    // Pass 29 B8 — Customer Satisfaction methodology validation.
+    if (isCSAT) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const csatMissing = validateCSATInputs(csatInputs);
+      if (universalMissing.length || csatMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...csatMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -686,6 +709,15 @@ export const MissionSetupPage = () => {
               roadmap_feature_count: String(roadmapFeatures.length),
             }
           : {};
+        // Pass 29 B8 — CSAT context fed to the NPS+CSAT+CES generator.
+        const csatPromptCtx: Record<string, string> = isCSAT
+          ? {
+              csat_touchpoint: csatInputs.touchpoint,
+              csat_custom_touchpoint: csatInputs.customTouchpoint,
+              csat_customer_type: csatInputs.customerType,
+              csat_recency_window: recencyPhrase(csatInputs.recencyWindow),
+            }
+          : {};
         // Pass 29 B2 — universal inputs forwarded for every methodology.
         const universalPromptCtx: Record<string, string> = isUniversalShown
           ? {
@@ -706,6 +738,7 @@ export const MissionSetupPage = () => {
             ...brandLiftPromptCtx,
             ...pricingPromptCtx,
             ...roadmapPromptCtx,
+            ...csatPromptCtx,
           },
         });
       } catch (aiErr) {
@@ -765,6 +798,19 @@ export const MissionSetupPage = () => {
         ? {
             roadmap_features: roadmapFeatures,
             roadmap_methodology: 'max_diff_plus_kano',
+          }
+        : {};
+
+      // Pass 29 B8 — CSAT schema columns.
+      const csatFields: Record<string, unknown> = isCSAT
+        ? {
+            csat_touchpoint: csatInputs.touchpoint,
+            csat_custom_touchpoint: csatInputs.touchpoint === 'custom'
+              ? csatInputs.customTouchpoint
+              : null,
+            csat_customer_type: csatInputs.customerType,
+            csat_recency_window: csatInputs.recencyWindow,
+            csat_methodology: 'nps_csat_ces',
           }
         : {};
 
@@ -844,6 +890,7 @@ export const MissionSetupPage = () => {
         ...universalFields,
         ...pricingFields,
         ...roadmapFields,
+        ...csatFields,
         ...brandLiftFields,
       };
 
@@ -1198,13 +1245,21 @@ export const MissionSetupPage = () => {
                     />
                   </div>
                 )}
+                {isCSAT && (
+                  <div className="mt-4">
+                    <CSATInputs
+                      state={csatInputs}
+                      onChange={setCsatInputs}
+                    />
+                  </div>
+                )}
 
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={(isPricing || isRoadmap) ? handleGenerate : handleRevealClarify}
+                      onClick={(isPricing || isRoadmap || isCSAT) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       className={[
                         'w-full h-12 rounded-xl',
