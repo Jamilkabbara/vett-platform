@@ -73,6 +73,15 @@ const CHANNEL_CATEGORIES = [
  * recommendations payload. Older brand_lift missions without that
  * payload fall through to a friendly "results pending" state.
  */
+const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
+
+interface FilterAPIResult {
+  filtered_respondent_count: number;
+  total_respondent_count: number;
+  lift_mode: boolean;
+  filters_applied: BrandLiftFilters & { applied?: boolean };
+}
+
 export function BrandLiftResultsPage() {
   const { missionId } = useParams<{ missionId: string }>();
   const [mission, setMission] = useState<Record<string, unknown> | null>(null);
@@ -81,6 +90,11 @@ export function BrandLiftResultsPage() {
   const [channelFilter, setChannelFilter] = useState<string | null>(null);
   // Pass 27 F20 — multi-dim filter state. Filters compose with AND.
   const [filters, setFilters] = useState<BrandLiftFilters>(DEFAULT_FILTERS);
+  // Pass 27.5 D — filter result metadata fetched from /api/results/:id.
+  // Surfaces filtered_respondent_count + total_respondent_count + lift_mode
+  // so the filter row badge reflects what the backend actually computed.
+  const [filterResult, setFilterResult] = useState<FilterAPIResult | null>(null);
+  const [filterLoading, setFilterLoading] = useState(false);
   const filtersActive = filters.markets.length > 0 || filters.channels.length > 0
     || filters.channelCategories.length > 0 || filters.genders !== null
     || filters.ageGroups.length > 0 || filters.exposureMode !== 'all'
@@ -102,6 +116,58 @@ export function BrandLiftResultsPage() {
       setLoading(false);
     })();
   }, [missionId]);
+
+  // Pass 27.5 D — refetch /api/results/:id on filter change (200ms debounce).
+  // The endpoint accepts our 7 filter axes as query params and returns
+  // filtered_respondent_count / total_respondent_count / lift_mode plus the
+  // filtered aggregatedByQuestion. Per-section re-render of the score dial /
+  // funnel / channel table on filter change is a separate scope — the
+  // mission.brand_lift_results JSONB is pre-aggregated and not yet
+  // recomputed server-side per filter combo. This commit ships the
+  // refetch + filter-row metadata badge so users can SEE filters taking
+  // effect; full sub-section re-render lands in a follow-up alongside
+  // the brand_lift_results respondent-subset aggregator.
+  useEffect(() => {
+    if (!missionId) return;
+    if (!filtersActive) {
+      setFilterResult(null);
+      return;
+    }
+    let cancelled = false;
+    setFilterLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams();
+        if (filters.markets.length) params.set('markets', filters.markets.join(','));
+        if (filters.channels.length) params.set('channels', filters.channels.join(','));
+        if (filters.channelCategories.length) params.set('categories', filters.channelCategories.join(','));
+        if (filters.genders) params.set('genders', filters.genders);
+        if (filters.ageGroups.length) params.set('ages', filters.ageGroups.join(','));
+        if (filters.exposureMode !== 'all') params.set('exposure', filters.exposureMode);
+        if (filters.wave !== null) params.set('wave', String(filters.wave));
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess?.session?.access_token;
+        const res = await fetch(`${API_URL}/api/results/${missionId}?${params.toString()}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const body = await res.json();
+        if (cancelled) return;
+        setFilterResult({
+          filtered_respondent_count: body.filtered_respondent_count ?? 0,
+          total_respondent_count: body.total_respondent_count ?? 0,
+          lift_mode: body.lift_mode ?? false,
+          filters_applied: body.filters_applied ?? filters,
+        });
+      } catch (_e) {
+        if (!cancelled) setFilterResult(null);
+      } finally {
+        if (!cancelled) setFilterLoading(false);
+      }
+    }, 200);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missionId, JSON.stringify(filters), filtersActive]);
 
   const blr = useMemo(() => {
     const r = (mission?.brand_lift_results || null) as null | {
@@ -214,6 +280,27 @@ export function BrandLiftResultsPage() {
             </button>
           )}
         </div>
+        {/* Pass 27.5 D — filter result metadata badge. */}
+        {filtersActive && (
+          <div className="flex items-center gap-2 text-[11px] px-1">
+            {filterLoading ? (
+              <span className="text-[var(--t3)] italic">Filtering…</span>
+            ) : filterResult ? (
+              filterResult.filtered_respondent_count === 0 ? (
+                <span className="text-amber-400">
+                  No respondents match the current filters. Try removing some filters.
+                </span>
+              ) : (
+                <span className="text-[var(--t2)]">
+                  Filters active: <span className="text-[var(--lime)] font-semibold">{filterResult.filtered_respondent_count}</span> of {filterResult.total_respondent_count} respondents
+                  {filterResult.lift_mode && <span className="ml-2 text-[var(--lime)]">· lift mode</span>}
+                </span>
+              )
+            ) : (
+              <span className="text-[var(--t3)] italic">Filter result pending…</span>
+            )}
+          </div>
+        )}
         {filters.exposureMode === 'lift' && (
           <p className="text-[11px] text-[var(--t3)] italic px-1">
             ⓘ Lift mode active — every metric below shows Exposed − Control deltas instead of absolute values. Positive = the campaign drove the outcome above baseline.
