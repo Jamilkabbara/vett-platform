@@ -5,6 +5,9 @@ import { supabase } from '../lib/supabase';
 import { ResultsPage } from './ResultsPage';
 import { CreativeAttentionResultsPage } from './CreativeAttentionResultsPage';
 import { BrandLiftResultsPage } from './BrandLiftResultsPage';
+// Pass 29 B5 — pricing-research results page (Van Westendorp 4-curve
+// + Gabor-Granger demand). Routed when goal_type === 'pricing'.
+import { PricingResultsPage } from './PricingResultsPage';
 
 /**
  * Pass 25 Phase 0.2 — central router for /results/:missionId.
@@ -72,6 +75,9 @@ export function ResultsRouter() {
   }
   if (goalType === 'brand_lift') {
     return <BrandLiftResultsPage />;
+  }
+  if (goalType === 'pricing') {
+    return <PricingResultsPage />;
   }
   return <ResultsPage />;
 }
