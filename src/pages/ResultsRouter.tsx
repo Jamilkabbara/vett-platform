@@ -17,6 +17,9 @@ import { CSATResultsPage } from './CSATResultsPage';
 // Pass 30 B2 — Validate Product results (concept-test viz + recommendation).
 // Routed when goal_type === 'validate'.
 import { ValidateResultsPage } from './ValidateResultsPage';
+// Pass 30 B4 — Compare Concepts results (sequential monadic).
+// Routed when goal_type === 'compare'.
+import { CompareResultsPage } from './CompareResultsPage';
 
 /**
  * Pass 25 Phase 0.2 — central router for /results/:missionId.
@@ -96,6 +99,9 @@ export function ResultsRouter() {
   }
   if (goalType === 'validate') {
     return <ValidateResultsPage />;
+  }
+  if (goalType === 'compare') {
+    return <CompareResultsPage />;
   }
   return <ResultsPage />;
 }
