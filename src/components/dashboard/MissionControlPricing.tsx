@@ -432,15 +432,22 @@ export const MissionControlPricing = ({
           );
         })()}
 
-        {/* Preset chips — labeled with the tier name. The 10-anchor
-            (Validate) chip carries the "★ MOST POPULAR" pill above it. */}
-        <div className="flex flex-wrap gap-[7px] mt-1">
+        {/* Preset cards — tier name + count, per-respondent rate as the
+            primary number, total dollar amount as small secondary
+            below. Pass 30 A3 fix: the previous single-line chip
+            ("Confidence · 50 · $459") let buyers compare totals
+            side-by-side ($459 vs $660) and read them as alternatives
+            rather than as different volume tiers. Per-respondent rate
+            ($9.18 vs $2.64) is the honest economic metric and makes
+            scale obviously the better value. */}
+        <div className="grid grid-cols-2 gap-2 mt-1">
           {PRESETS.map((p) => {
             const active = respondentCount === p;
             const tier = getVolumeTier(p);
             const approx =
               calculatePricing(p, questions, targeting, isScreeningActive)
                 .total;
+            const perResp = approx > 0 && p > 0 ? approx / p : 0;
             const isMostPopular = tier.id === 'validate';
             return (
               <div key={p} className="relative">
@@ -448,7 +455,7 @@ export const MissionControlPricing = ({
                   <span
                     aria-hidden
                     className={[
-                      'absolute -top-2.5 left-1/2 -translate-x-1/2',
+                      'absolute -top-2 left-1/2 -translate-x-1/2 z-[1]',
                       'inline-flex items-center gap-0.5',
                       'px-1.5 py-0.5 rounded-full',
                       'bg-lime text-black border border-lime',
@@ -464,16 +471,39 @@ export const MissionControlPricing = ({
                   type="button"
                   onClick={() => handlePreset(p)}
                   aria-pressed={active}
-                  title={`${tier.name} · ${p.toLocaleString()} respondents · ${fmt$(approx)}`}
+                  title={`${tier.name} · ${p.toLocaleString()} respondents · ${fmt$(approx)} total`}
                   className={[
-                    'font-body text-[11px] rounded-md border transition-colors',
-                    'px-2.5 py-1.5 tabular-nums',
+                    'w-full text-left rounded-lg border transition-colors',
+                    'px-3 py-2 tabular-nums',
                     active
-                      ? 'bg-lime text-black border-lime font-bold'
-                      : 'bg-bg3 text-t2 border-b2 hover:border-t3',
+                      ? 'bg-lime/10 border-lime'
+                      : 'bg-bg3 border-b2 hover:border-t3',
                   ].join(' ')}
                 >
-                  {tier.name} · {p.toLocaleString()} · {fmt$(approx)}
+                  <div className={[
+                    'font-display font-bold text-[10px] uppercase tracking-[0.06em]',
+                    active ? 'text-lime' : 'text-t3',
+                  ].join(' ')}>
+                    {tier.name} · {p.toLocaleString()}
+                  </div>
+                  <div className={[
+                    'font-display font-black text-[15px] mt-0.5',
+                    active ? 'text-lime' : 'text-t1',
+                  ].join(' ')}>
+                    {fmtRate(perResp)}
+                    <span className={[
+                      'font-body font-normal text-[10px] ml-1',
+                      active ? 'text-lime/80' : 'text-t3',
+                    ].join(' ')}>
+                      / resp
+                    </span>
+                  </div>
+                  <div className={[
+                    'font-body text-[10px] mt-0.5',
+                    active ? 'text-lime/80' : 'text-t4',
+                  ].join(' ')}>
+                    {fmt$(approx)} total
+                  </div>
                 </button>
               </div>
             );
