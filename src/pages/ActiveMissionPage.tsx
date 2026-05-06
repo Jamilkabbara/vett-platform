@@ -136,6 +136,14 @@ function personaNameFrom(
   return `Persona ${tag}`;
 }
 
+// Pass 30 A4 — minimum 3 completed responses before extrapolating an
+// ETA. With <3 responses the rate-of-completion estimate is wildly
+// noisy (one slow response inflates the ETA 10x; one fast response
+// shrinks it to seconds). Three is the threshold where the signal
+// becomes meaningful enough to show. Below that, "Calculating…"
+// keeps users informed without misleading them.
+const ETA_MIN_RESPONSES = 3;
+
 const formatEta = (collected: number, target: number, startedAt: string | null): string => {
   if (target <= 0) return '—';
   if (collected >= target) return 'Done';
@@ -143,7 +151,7 @@ const formatEta = (collected: number, target: number, startedAt: string | null):
   const started = new Date(startedAt).getTime();
   if (!Number.isFinite(started)) return 'Calculating…';
   const elapsedMs = Date.now() - started;
-  if (elapsedMs < 5_000 || collected === 0) return 'Calculating…';
+  if (elapsedMs < 5_000 || collected < ETA_MIN_RESPONSES) return 'Calculating…';
   const perResponseMs = elapsedMs / collected;
   const remainingMs = perResponseMs * (target - collected);
   const mins = Math.max(1, Math.round(remainingMs / 60_000));
