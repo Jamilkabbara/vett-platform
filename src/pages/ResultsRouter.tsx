@@ -8,6 +8,9 @@ import { BrandLiftResultsPage } from './BrandLiftResultsPage';
 // Pass 29 B5 — pricing-research results page (Van Westendorp 4-curve
 // + Gabor-Granger demand). Routed when goal_type === 'pricing'.
 import { PricingResultsPage } from './PricingResultsPage';
+// Pass 29 B7 — feature-roadmap results (MaxDiff utility bars +
+// Kano quadrant). Routed when goal_type === 'roadmap'.
+import { RoadmapResultsPage } from './RoadmapResultsPage';
 
 /**
  * Pass 25 Phase 0.2 — central router for /results/:missionId.
@@ -78,6 +81,9 @@ export function ResultsRouter() {
   }
   if (goalType === 'pricing') {
     return <PricingResultsPage />;
+  }
+  if (goalType === 'roadmap') {
+    return <RoadmapResultsPage />;
   }
   return <ResultsPage />;
 }
