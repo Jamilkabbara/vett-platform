@@ -67,6 +67,11 @@ import {
   type ConceptCollectorState,
 } from '../components/setup/ConceptCollector';
 import {
+  ConceptListCollector,
+  validateConceptList,
+  type CompareConcept,
+} from '../components/setup/ConceptListCollector';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
@@ -285,6 +290,10 @@ export const MissionSetupPage = () => {
   // Pass 30 B1 — Validate Product (concept test) state.
   const isValidate = missionGoal === 'validate';
   const [conceptInputs, setConceptInputs] = useState<ConceptCollectorState>(CONCEPT_DEFAULT_STATE);
+
+  // Pass 30 B3 — Compare Concepts (sequential monadic) state.
+  const isCompare = missionGoal === 'compare';
+  const [compareConcepts, setCompareConcepts] = useState<CompareConcept[]>([]);
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -640,6 +649,18 @@ export const MissionSetupPage = () => {
       }
     }
 
+    // Pass 30 B3 — Compare Concepts methodology validation.
+    if (isCompare) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const conceptMissing = validateConceptList(compareConcepts);
+      if (universalMissing.length || conceptMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...conceptMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -750,6 +771,20 @@ export const MissionSetupPage = () => {
               concept_use_occasion: conceptInputs.useOccasion,
             }
           : {};
+        // Pass 30 B3 — concepts JSON forwarded to the sequential monadic generator.
+        const comparePromptCtx: Record<string, string> = isCompare
+          ? {
+              concepts: JSON.stringify(
+                compareConcepts.map((c) => ({
+                  id: c.id,
+                  name: c.name,
+                  description: c.description,
+                  price_usd: c.priceUsd ? Number(c.priceUsd) : undefined,
+                })),
+              ),
+              concept_count: String(compareConcepts.length),
+            }
+          : {};
         // Pass 29 B2 — universal inputs forwarded for every methodology.
         const universalPromptCtx: Record<string, string> = isUniversalShown
           ? {
@@ -772,6 +807,7 @@ export const MissionSetupPage = () => {
             ...roadmapPromptCtx,
             ...csatPromptCtx,
             ...validatePromptCtx,
+            ...comparePromptCtx,
           },
         });
       } catch (aiErr) {
@@ -861,6 +897,20 @@ export const MissionSetupPage = () => {
           }
         : {};
 
+      // Pass 30 B3 — Compare Concepts schema columns.
+      const compareFields: Record<string, unknown> = isCompare
+        ? {
+            concepts: compareConcepts.map((c) => ({
+              id: c.id,
+              name: c.name,
+              description: c.description,
+              price_usd: c.priceUsd ? Number(c.priceUsd) : null,
+            })),
+            comparison_methodology: 'sequential_monadic',
+            rotation_strategy: 'random',
+          }
+        : {};
+
       // Pass 29 B4 — pricing schema columns. Methodology fixed to
       // van_westendorp_plus_gabor_granger for now (the Pass 29 prompt
       // generator's only branch).
@@ -939,6 +989,7 @@ export const MissionSetupPage = () => {
         ...roadmapFields,
         ...csatFields,
         ...validateFields,
+        ...compareFields,
         ...brandLiftFields,
       };
 
@@ -1310,13 +1361,21 @@ export const MissionSetupPage = () => {
                     />
                   </div>
                 )}
+                {isCompare && (
+                  <div className="mt-4">
+                    <ConceptListCollector
+                      concepts={compareConcepts}
+                      onChange={setCompareConcepts}
+                    />
+                  </div>
+                )}
 
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={(isPricing || isRoadmap || isCSAT || isValidate) ? handleGenerate : handleRevealClarify}
+                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       className={[
                         'w-full h-12 rounded-xl',
