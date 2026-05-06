@@ -49,6 +49,11 @@ import {
   type PricingInputsState,
 } from '../components/setup/PricingInputs';
 import {
+  FeatureListCollector,
+  validateFeatureList,
+  type RoadmapFeature,
+} from '../components/setup/FeatureListCollector';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
@@ -255,6 +260,10 @@ export const MissionSetupPage = () => {
   const [pricingInputs, setPricingInputs] = useState<PricingInputsState>(
     PRICING_DEFAULT_STATE,
   );
+
+  // Pass 29 B6 — feature roadmap state.
+  const isRoadmap = missionGoal === 'roadmap';
+  const [roadmapFeatures, setRoadmapFeatures] = useState<RoadmapFeature[]>([]);
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -574,6 +583,18 @@ export const MissionSetupPage = () => {
       }
     }
 
+    // Pass 29 B6 — Feature Roadmap methodology validation.
+    if (isRoadmap) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const featureMissing = validateFeatureList(roadmapFeatures);
+      if (universalMissing.length || featureMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...featureMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -656,6 +677,15 @@ export const MissionSetupPage = () => {
               pricing_expected_max: pricingInputs.expectedMax,
             }
           : {};
+        // Pass 29 B6 — roadmap features serialized into clarify_answers
+        // so the backend MaxDiff + Kano generator can pull them off
+        // the existing contract.
+        const roadmapPromptCtx: Record<string, string> = isRoadmap
+          ? {
+              roadmap_features: JSON.stringify(roadmapFeatures),
+              roadmap_feature_count: String(roadmapFeatures.length),
+            }
+          : {};
         // Pass 29 B2 — universal inputs forwarded for every methodology.
         const universalPromptCtx: Record<string, string> = isUniversalShown
           ? {
@@ -675,6 +705,7 @@ export const MissionSetupPage = () => {
             ...universalPromptCtx,
             ...brandLiftPromptCtx,
             ...pricingPromptCtx,
+            ...roadmapPromptCtx,
           },
         });
       } catch (aiErr) {
@@ -726,6 +757,14 @@ export const MissionSetupPage = () => {
             ...(isBrandLift
               ? {}
               : { competitor_brands: universalInputs.competitors }),
+          }
+        : {};
+
+      // Pass 29 B6 — roadmap schema columns.
+      const roadmapFields: Record<string, unknown> = isRoadmap
+        ? {
+            roadmap_features: roadmapFeatures,
+            roadmap_methodology: 'max_diff_plus_kano',
           }
         : {};
 
@@ -804,6 +843,7 @@ export const MissionSetupPage = () => {
         mission_assets: missionAssets,
         ...universalFields,
         ...pricingFields,
+        ...roadmapFields,
         ...brandLiftFields,
       };
 
@@ -1150,13 +1190,21 @@ export const MissionSetupPage = () => {
                     />
                   </div>
                 )}
+                {isRoadmap && (
+                  <div className="mt-4">
+                    <FeatureListCollector
+                      features={roadmapFeatures}
+                      onChange={setRoadmapFeatures}
+                    />
+                  </div>
+                )}
 
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={isPricing ? handleGenerate : handleRevealClarify}
+                      onClick={(isPricing || isRoadmap) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       className={[
                         'w-full h-12 rounded-xl',
