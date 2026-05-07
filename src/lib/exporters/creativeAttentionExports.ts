@@ -298,39 +298,11 @@ function aggregateEmotions(analysis: CreativeAnalysis): Record<string, number> {
 
 // ── Pass 32 X3 — PDF / PPTX / XLSX (lazy-imported) ────────────────────────────
 
-const BAND_LABEL: Record<string, string> = {
-  elite: 'Elite',
-  strong: 'Strong',
-  average: 'Average',
-  weak: 'Weak',
-  poor: 'Poor',
-};
-
-function metaRows(
-  analysis: CreativeAnalysis,
-  meta: { missionId?: string; brand?: string | null },
-): Array<[string, string]> {
-  const eff = analysis.creative_effectiveness;
-  const att = analysis.attention;
-  const summary = analysis.summary;
-  return [
-    ['Brand', meta.brand ?? '—'],
-    ['Mission ID', meta.missionId ?? '—'],
-    ['Generated', new Date().toISOString().slice(0, 10)],
-    ['Asset type', analysis.is_video ? `Video (${analysis.total_frames} frames)` : 'Static image'],
-    ['Effectiveness score', eff ? `${eff.score}/100 — ${BAND_LABEL[eff.band] ?? eff.band}` : '—'],
-    ['Engagement score', summary?.overall_engagement_score != null ? `${summary.overall_engagement_score}/100` : '—'],
-    ['Active attention', att?.predicted_active_attention_seconds != null ? `${att.predicted_active_attention_seconds}s` : '—'],
-    ['Distinctive brand asset', att?.distinctive_brand_asset_score != null ? `${att.distinctive_brand_asset_score}/100` : '—'],
-  ];
-}
-
-function topEmotions(analysis: CreativeAnalysis, n = 8): Array<[string, number]> {
-  const agg = aggregateEmotions(analysis);
-  return Object.entries(agg)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, n);
-}
+// Pass 33 W9 — metaRows + topEmotions + BAND_LABEL helpers retired.
+// The W9 rebuilds inline their summary-table construction directly so
+// each export surface (PDF/PPTX/XLSX) can format values for its own
+// rendering primitives without going through a string-only middle
+// layer.
 
 /**
  * Pass 33 W9a — Creative Attention PDF rebuild.
@@ -830,10 +802,14 @@ function truncate(s: string, n: number): string {
 }
 
 /**
- * PowerPoint deck. pptxgenjs lazy-loads on first call. Slide order
- * mirrors the PDF: title → effectiveness → attention → top emotions
- * (bar chart) → platform fit → channel benchmarks → strengths /
- * weaknesses / recommendations text slides.
+ * Pass 33 W9b — Creative Attention PPTX rebuild.
+ *
+ * White slide surface (was dark mode), VETT lime square logo top-left
+ * + slide number bottom-right on every slide, native pptxgenjs charts
+ * so PowerPoint users can edit them. Same data coverage as the PDF
+ * rebuild: cover → exec summary → attention arc (engagement chart) →
+ * per-frame slides (donut + emotion bar chart + hotspots + clarity) →
+ * methodology disclosure.
  */
 export async function downloadCreativeAnalysisPptx(
   analysis: CreativeAnalysis,
@@ -842,185 +818,350 @@ export async function downloadCreativeAnalysisPptx(
   const PptxGenModule = await import('pptxgenjs');
   const PptxGen = PptxGenModule.default;
 
+  // Brand tokens — pptxgenjs takes 6-char hex strings (no #).
+  const INK    = '0B0C15';
+  const PAPER  = 'FFFFFF';
+  const SOFT   = 'FAFAFA';
+  const LIME   = 'BEF264';
+  const INDIGO = '6366F1';
+  const GRAY   = '9CA3AF';
+
   const pptx = new PptxGen();
   pptx.layout = 'LAYOUT_WIDE';
   pptx.title = `${meta.brand ?? 'Creative Attention'} — VETT report`;
 
-  const DARK = '0B0C15';
-  const LIME = 'BEF264';
-  const INDIGO = '6366F1';
-  const WHITE = 'FFFFFF';
-  const SOFT = 'C7CAD1';
+  // Slide-master with the lime square logo + footer.
+  pptx.defineSlideMaster({
+    title: 'VETT_MASTER',
+    background: { color: PAPER },
+    objects: [
+      // Lime logo square top-left
+      { rect: { x: 0.4, y: 0.3, w: 0.45, h: 0.45, fill: { color: LIME }, line: { color: LIME, width: 0 } } },
+      // VETT wordmark
+      { text: {
+          text: 'VETT',
+          options: { x: 0.95, y: 0.3, w: 1.0, h: 0.45, color: INK, fontSize: 18, bold: true, fontFace: 'Calibri', valign: 'middle' },
+        } },
+      // vettit.ai mark top-right
+      { text: {
+          text: 'vettit.ai',
+          options: { x: 11.0, y: 0.3, w: 2.0, h: 0.45, color: GRAY, fontSize: 12, fontFace: 'Calibri', align: 'right', valign: 'middle' },
+        } },
+      // Page footer
+      { text: {
+          text: EXPORT_DISCLOSURES.pageFooter,
+          options: { x: 0.4, y: 7.0, w: 11.5, h: 0.3, color: GRAY, fontSize: 9, fontFace: 'Calibri' },
+        } },
+    ],
+    slideNumber: { x: 12.7, y: 7.0, w: 0.5, h: 0.3, color: GRAY, fontSize: 9, fontFace: 'Calibri', align: 'right' },
+  });
 
-  // Title slide
-  const s1 = pptx.addSlide();
-  s1.background = { color: DARK };
-  s1.addText('Creative Attention', {
-    x: 0.5, y: 1.2, w: 12, h: 0.8,
-    fontSize: 44, bold: true, color: LIME, fontFace: 'Calibri',
+  const summary = analysis.summary;
+  const eff = analysis.creative_effectiveness;
+  const att = analysis.attention;
+  const frames = analysis.frame_analyses ?? [];
+
+  // ── Slide 1 — Cover ───────────────────────────────────────────
+  const s1 = pptx.addSlide({ masterName: 'VETT_MASTER' });
+  s1.addText('CREATIVE ATTENTION ANALYSIS', {
+    x: 0.5, y: 2.6, w: 12, h: 0.4,
+    fontSize: 14, bold: true, color: INDIGO, fontFace: 'Calibri',
   });
   s1.addText(meta.brand ?? 'Untitled creative', {
-    x: 0.5, y: 2.1, w: 12, h: 0.6,
-    fontSize: 24, color: WHITE, fontFace: 'Calibri',
+    x: 0.5, y: 3.1, w: 12, h: 1.0,
+    fontSize: 48, bold: true, color: INK, fontFace: 'Calibri',
   });
-  const eff = analysis.creative_effectiveness;
-  if (eff) {
-    s1.addText(`Effectiveness ${eff.score}/100 — ${BAND_LABEL[eff.band] ?? eff.band}`, {
-      x: 0.5, y: 2.9, w: 12, h: 0.5,
-      fontSize: 18, color: SOFT, fontFace: 'Calibri',
+  s1.addText([
+    { text: `Mission ID: ${meta.missionId ?? '—'}\n` },
+    { text: `Asset: ${analysis.is_video ? `Video (${analysis.total_frames} frames)` : 'Static image'}\n` },
+    { text: `Generated: ${new Date().toISOString().slice(0, 10)}` },
+  ], {
+    x: 0.5, y: 4.4, w: 12, h: 1.5,
+    fontSize: 14, color: GRAY, fontFace: 'Calibri',
+  });
+  // Lime divider
+  s1.addShape('line', {
+    x: 0.5, y: 5.6, w: 1.0, h: 0,
+    line: { color: LIME, width: 4 },
+  });
+
+  // ── Slide 2 — Executive summary ───────────────────────────────
+  const s2 = pptx.addSlide({ masterName: 'VETT_MASTER' });
+  s2.addText('Executive summary', {
+    x: 0.5, y: 1.0, w: 12, h: 0.6,
+    fontSize: 28, bold: true, color: INK, fontFace: 'Calibri',
+  });
+  s2.addShape('line', {
+    x: 0.5, y: 1.7, w: 12, h: 0,
+    line: { color: LIME, width: 1 },
+  });
+
+  // KPI strip — 3 cards
+  const kpiTop = 2.0;
+  const kpiW = 4.0;
+  const kpiH = 1.4;
+  const kpis = [
+    {
+      label: 'OVERALL ENGAGEMENT',
+      value: summary?.overall_engagement_score != null
+        ? `${summary.overall_engagement_score}/100`
+        : (eff?.score != null ? `${eff.score}/100` : '—'),
+      sub: eff?.band ? eff.band.toUpperCase() : '',
+    },
+    {
+      label: 'BEST PLATFORM FIT',
+      value: (() => {
+        const p = (summary?.best_platform_fit ?? [])[0];
+        if (!p) return '—';
+        const obj = asPlatformFitObject(p);
+        return typeof p === 'string' ? p : (obj?.platform ?? '—');
+      })(),
+      sub: (() => {
+        const p = (summary?.best_platform_fit ?? [])[0];
+        if (!p || typeof p === 'string') return '';
+        const obj = asPlatformFitObject(p);
+        return obj?.fit_score != null ? `Fit ${obj.fit_score}/100` : '';
+      })(),
+    },
+    {
+      label: 'VS CATEGORY BENCHMARK',
+      value: summary?.vs_benchmark ? truncate(summary.vs_benchmark, 28) : '—',
+      sub: summary?.attention_arc ? truncate(summary.attention_arc, 36) : '',
+    },
+  ];
+  kpis.forEach((kpi, i) => {
+    const x = 0.5 + i * (kpiW + 0.25);
+    s2.addShape('rect', {
+      x, y: kpiTop, w: kpiW, h: kpiH,
+      fill: { color: SOFT }, line: { color: SOFT, width: 0 },
+    });
+    s2.addShape('rect', {
+      x, y: kpiTop, w: 0.08, h: kpiH,
+      fill: { color: LIME }, line: { color: LIME, width: 0 },
+    });
+    s2.addText(kpi.label, {
+      x: x + 0.2, y: kpiTop + 0.1, w: kpiW - 0.3, h: 0.3,
+      fontSize: 9, bold: true, color: GRAY, fontFace: 'Calibri',
+    });
+    s2.addText(kpi.value, {
+      x: x + 0.2, y: kpiTop + 0.4, w: kpiW - 0.3, h: 0.6,
+      fontSize: 22, bold: true, color: INK, fontFace: 'Calibri',
+    });
+    if (kpi.sub) {
+      s2.addText(kpi.sub, {
+        x: x + 0.2, y: kpiTop + 1.0, w: kpiW - 0.3, h: 0.3,
+        fontSize: 10, color: GRAY, fontFace: 'Calibri',
+      });
+    }
+  });
+
+  // S/W/Reco panels stacked
+  const lists: Array<[string, string[] | undefined, string]> = [
+    ['STRENGTHS', summary?.strengths, LIME],
+    ['WEAKNESSES', summary?.weaknesses, 'EF4444'],
+    ['RECOMMENDATIONS', summary?.recommendations, INDIGO],
+  ];
+  let panelY = kpiTop + kpiH + 0.4;
+  for (const [label, items, accent] of lists) {
+    if (!items || items.length === 0) continue;
+    s2.addText(label, {
+      x: 0.5, y: panelY, w: 12, h: 0.3,
+      fontSize: 11, bold: true, color: accent, fontFace: 'Calibri',
+    });
+    s2.addText(
+      items.slice(0, 4).map((item) => ({ text: item, options: { bullet: true, color: INK, fontSize: 11 } })),
+      { x: 0.6, y: panelY + 0.32, w: 12, h: 0.7, fontFace: 'Calibri' },
+    );
+    panelY += 1.1;
+  }
+
+  // ── Slide 3 — Attention arc ───────────────────────────────────
+  const s3 = pptx.addSlide({ masterName: 'VETT_MASTER' });
+  s3.addText('Attention arc', {
+    x: 0.5, y: 1.0, w: 12, h: 0.6,
+    fontSize: 28, bold: true, color: INK, fontFace: 'Calibri',
+  });
+  s3.addShape('line', {
+    x: 0.5, y: 1.7, w: 12, h: 0,
+    line: { color: LIME, width: 1 },
+  });
+  if (summary?.attention_arc) {
+    s3.addText(summary.attention_arc, {
+      x: 0.5, y: 1.9, w: 12, h: 0.8,
+      fontSize: 11, color: INK, fontFace: 'Calibri',
     });
   }
-  s1.addText(`Generated ${new Date().toISOString().slice(0, 10)} — VETT`, {
-    x: 0.5, y: 6.5, w: 12, h: 0.4,
-    fontSize: 11, color: SOFT, fontFace: 'Calibri',
-  });
-
-  // Helper: standard content slide with header
-  const contentSlide = (title: string) => {
-    const s = pptx.addSlide();
-    s.background = { color: DARK };
-    s.addText(title, {
-      x: 0.5, y: 0.3, w: 12, h: 0.5,
-      fontSize: 24, bold: true, color: LIME, fontFace: 'Calibri',
-    });
-    return s;
-  };
-
-  // Effectiveness components
-  if (eff?.components) {
-    const s = contentSlide('Effectiveness components');
-    const c = eff.components;
-    s.addTable(
-      [
-        [
-          { text: 'Component', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-          { text: 'Score', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-        ],
-        [{ text: 'Attention', options: { color: WHITE } }, { text: String(c.attention), options: { color: WHITE } }],
-        [{ text: 'Emotion intensity', options: { color: WHITE } }, { text: String(c.emotion_intensity), options: { color: WHITE } }],
-        [{ text: 'Brand clarity', options: { color: WHITE } }, { text: String(c.brand_clarity), options: { color: WHITE } }],
-        [{ text: 'Audience resonance', options: { color: WHITE } }, { text: String(c.audience_resonance), options: { color: WHITE } }],
-        [{ text: 'Platform fit', options: { color: WHITE } }, { text: String(c.platform_fit), options: { color: WHITE } }],
-      ],
-      { x: 0.5, y: 1.0, w: 8, fontSize: 14, fontFace: 'Calibri' },
-    );
-  }
-
-  // Attention
-  const att = analysis.attention;
-  if (att) {
-    const s = contentSlide('Attention');
-    s.addTable(
-      [
-        [
-          { text: 'Metric', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-          { text: 'Value', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-        ],
-        [{ text: 'Active attention (sec)', options: { color: WHITE } }, { text: String(att.predicted_active_attention_seconds ?? '—'), options: { color: WHITE } }],
-        [{ text: 'Passive attention (sec)', options: { color: WHITE } }, { text: String(att.predicted_passive_attention_seconds ?? '—'), options: { color: WHITE } }],
-        [{ text: 'Active %', options: { color: WHITE } }, { text: `${att.active_attention_pct ?? '—'}%`, options: { color: WHITE } }],
-        [{ text: 'Passive %', options: { color: WHITE } }, { text: `${att.passive_attention_pct ?? '—'}%`, options: { color: WHITE } }],
-        [{ text: 'Non-attention %', options: { color: WHITE } }, { text: `${att.non_attention_pct ?? '—'}%`, options: { color: WHITE } }],
-        [{ text: 'Distinctive brand asset', options: { color: WHITE } }, { text: String(att.distinctive_brand_asset_score ?? '—'), options: { color: WHITE } }],
-        [{ text: 'DBA read time (sec)', options: { color: WHITE } }, { text: String(att.dba_read_seconds ?? '—'), options: { color: WHITE } }],
-      ],
-      { x: 0.5, y: 1.0, w: 8, fontSize: 14, fontFace: 'Calibri' },
-    );
-  }
-
-  // Emotions — bar chart
-  const emos = topEmotions(analysis, 10);
-  if (emos.length > 0) {
-    const s = contentSlide('Top emotions (averaged)');
-    s.addChart('bar' as unknown as Parameters<typeof s.addChart>[0], [
+  if (frames.length > 0) {
+    s3.addChart('line' as unknown as Parameters<typeof s3.addChart>[0], [
       {
-        name: 'Score',
-        labels: emos.map(([e]) => e),
-        values: emos.map(([, v]) => v),
+        name: 'Engagement',
+        labels: frames.map((f) => formatTimestamp(f.timestamp)),
+        values: frames.map((f) => Number(f.engagement_score ?? 0)),
       },
     ], {
-      x: 0.5, y: 1.0, w: 12, h: 5.5,
-      barDir: 'bar',
-      catAxisLabelColor: WHITE,
-      valAxisLabelColor: WHITE,
-      chartColors: [LIME],
+      x: 0.5, y: 2.9, w: 12, h: 4.0,
+      chartColors: [LIME.replace('#', '')],
+      catAxisLabelColor: INK,
+      valAxisLabelColor: INK,
       showLegend: false,
+      lineDataSymbol: 'circle',
+      lineDataSymbolSize: 8,
+    });
+  }
+  if (att) {
+    s3.addText([
+      { text: 'Active ', options: { color: GRAY } },
+      { text: `${att.predicted_active_attention_seconds ?? '—'}s · ${att.active_attention_pct ?? '—'}%`, options: { color: INK, bold: true } },
+      { text: '   Passive ', options: { color: GRAY } },
+      { text: `${att.predicted_passive_attention_seconds ?? '—'}s · ${att.passive_attention_pct ?? '—'}%`, options: { color: INK, bold: true } },
+      { text: '   DBA ', options: { color: GRAY } },
+      { text: `${att.distinctive_brand_asset_score ?? '—'}/100`, options: { color: INK, bold: true } },
+    ], {
+      x: 0.5, y: 6.6, w: 12, h: 0.3,
+      fontSize: 11, fontFace: 'Calibri',
     });
   }
 
-  // Platform Fit
-  const platforms = analysis.summary?.best_platform_fit ?? [];
-  if (platforms.length > 0) {
-    const s = contentSlide('Platform fit');
-    const rows: { text: string; options: Record<string, unknown> }[][] = [
-      [
-        { text: 'Platform', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-        { text: 'Fit', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-        { text: 'Norm', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-        { text: 'Predicted', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-        { text: 'Δ vs norm', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-      ],
-    ];
-    platforms.forEach((p) => {
-      const obj = asPlatformFitObject(p);
-      const platform = typeof p === 'string' ? p : (obj?.platform ?? '');
-      rows.push([
-        { text: platform, options: { color: WHITE } },
-        { text: obj?.fit_score != null ? String(obj.fit_score) : '—', options: { color: WHITE } },
-        { text: obj?.platform_norm_active_attention_seconds != null ? `${obj.platform_norm_active_attention_seconds}s` : '—', options: { color: WHITE } },
-        { text: obj?.predicted_creative_attention_seconds != null ? `${obj.predicted_creative_attention_seconds}s` : '—', options: { color: WHITE } },
-        { text: obj?.delta_vs_norm_pct != null ? `${obj.delta_vs_norm_pct}%` : '—', options: { color: WHITE } },
-      ]);
-    });
-    s.addTable(rows, { x: 0.3, y: 1.0, w: 12.5, fontSize: 12, fontFace: 'Calibri' });
-  }
-
-  // Channel Benchmarks
-  if (analysis.channel_benchmarks && analysis.channel_benchmarks.length > 0) {
-    const s = contentSlide('Channel benchmarks');
-    const rows: { text: string; options: Record<string, unknown> }[][] = [
-      [
-        { text: 'Channel', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-        { text: 'Category avg', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-        { text: 'Predicted', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-        { text: 'Assessment', options: { bold: true, color: WHITE, fill: { color: INDIGO } } },
-      ],
-    ];
-    analysis.channel_benchmarks.forEach((c) => {
-      rows.push([
-        { text: c.channel, options: { color: WHITE } },
-        { text: `${c.category_avg_attention_seconds}s`, options: { color: WHITE } },
-        { text: c.predicted_for_this_creative != null ? `${c.predicted_for_this_creative}s` : '—', options: { color: WHITE } },
-        { text: c.fit_assessment, options: { color: WHITE } },
-      ]);
-    });
-    s.addTable(rows, { x: 0.3, y: 1.0, w: 12.5, fontSize: 11, fontFace: 'Calibri' });
-  }
-
-  // Strengths / Weaknesses / Recommendations
-  const lists: Array<[string, string[] | undefined]> = [
-    ['Strengths', analysis.summary?.strengths],
-    ['Weaknesses', analysis.summary?.weaknesses],
-    ['Recommendations', analysis.summary?.recommendations],
-  ];
-  for (const [title, arr] of lists) {
-    if (!arr || arr.length === 0) continue;
-    const s = contentSlide(title);
-    s.addText(
-      arr.map((item) => ({ text: item, options: { bullet: true, color: WHITE, fontSize: 14 } })),
-      { x: 0.5, y: 1.0, w: 12, h: 5.5, fontFace: 'Calibri' },
+  // ── Per-frame slides ──────────────────────────────────────────
+  for (const frame of frames) {
+    const sf = pptx.addSlide({ masterName: 'VETT_MASTER' });
+    sf.addText(
+      analysis.is_video ? `Frame at ${formatTimestamp(frame.timestamp)}` : 'Static image analysis',
+      {
+        x: 0.5, y: 1.0, w: 12, h: 0.6,
+        fontSize: 28, bold: true, color: INK, fontFace: 'Calibri',
+      },
     );
+    sf.addShape('line', {
+      x: 0.5, y: 1.7, w: 12, h: 0,
+      line: { color: LIME, width: 1 },
+    });
+
+    // Donut score (top right)
+    const score = Math.min(100, Math.max(0, Number(frame.engagement_score ?? 0)));
+    sf.addChart(
+      'doughnut' as unknown as Parameters<typeof sf.addChart>[0],
+      [
+        {
+          name: 'Score',
+          labels: ['Engagement', 'Remaining'],
+          values: [score, Math.max(0, 100 - score)],
+        },
+      ],
+      {
+        x: 10.5, y: 1.9, w: 2.5, h: 2.5,
+        chartColors: [LIME.replace('#', ''), 'E5E7EB'],
+        showLegend: false,
+        showTitle: false,
+        showValue: false,
+        holeSize: 70,
+      },
+    );
+    sf.addText(`${Math.round(score)}`, {
+      x: 10.5, y: 2.7, w: 2.5, h: 0.5,
+      fontSize: 24, bold: true, color: INK, fontFace: 'Calibri', align: 'center',
+    });
+    sf.addText('/100', {
+      x: 10.5, y: 3.15, w: 2.5, h: 0.3,
+      fontSize: 10, color: GRAY, fontFace: 'Calibri', align: 'center',
+    });
+
+    // What's happening (top-left text block)
+    sf.addText("WHAT'S HAPPENING", {
+      x: 0.5, y: 1.9, w: 9.5, h: 0.3,
+      fontSize: 11, bold: true, color: INDIGO, fontFace: 'Calibri',
+    });
+    sf.addText(frame.brief_description || '—', {
+      x: 0.5, y: 2.2, w: 9.5, h: 1.5,
+      fontSize: 12, color: INK, fontFace: 'Calibri',
+    });
+
+    // Emotion intensity bar chart
+    sf.addText('EMOTION INTENSITY', {
+      x: 0.5, y: 3.9, w: 12, h: 0.3,
+      fontSize: 11, bold: true, color: INDIGO, fontFace: 'Calibri',
+    });
+    const emos = Object.entries(frame.emotions || {})
+      .filter(([, v]) => Number.isFinite(Number(v)))
+      .sort(([, a], [, b]) => Number(b) - Number(a))
+      .slice(0, 12);
+    if (emos.length > 0) {
+      sf.addChart('bar' as unknown as Parameters<typeof sf.addChart>[0], [
+        {
+          name: 'Intensity',
+          labels: emos.map(([e]) => e),
+          values: emos.map(([, v]) => Number(v) || 0),
+        },
+      ], {
+        x: 0.5, y: 4.2, w: 7.5, h: 2.6,
+        barDir: 'bar',
+        chartColors: [LIME.replace('#', '')],
+        catAxisLabelColor: INK,
+        valAxisLabelColor: INK,
+        showLegend: false,
+      });
+    }
+
+    // Hotspots (right column)
+    sf.addText('ATTENTION HOTSPOTS', {
+      x: 8.2, y: 4.2, w: 4.6, h: 0.3,
+      fontSize: 11, bold: true, color: INDIGO, fontFace: 'Calibri',
+    });
+    const hotspots = (frame.attention_hotspots ?? []).slice(0, 5);
+    if (hotspots.length > 0) {
+      sf.addText(
+        hotspots.map((h) => ({ text: h, options: { bullet: true, color: INK, fontSize: 11 } })),
+        { x: 8.3, y: 4.5, w: 4.5, h: 2.3, fontFace: 'Calibri' },
+      );
+    } else {
+      sf.addText('No specific regions detected.', {
+        x: 8.3, y: 4.5, w: 4.5, h: 0.4,
+        fontSize: 10, color: GRAY, fontFace: 'Calibri',
+      });
+    }
+
+    // Audience resonance + message clarity (bottom strip)
+    sf.addText([
+      { text: 'AUDIENCE RESONANCE  ', options: { bold: true, color: GRAY } },
+      { text: String(frame.audience_resonance ?? '—'), options: { color: INK } },
+      { text: '   ·   MESSAGE CLARITY  ', options: { bold: true, color: GRAY } },
+      { text: `${frame.message_clarity ?? '—'}/5`, options: { color: INK, bold: true } },
+    ], {
+      x: 0.5, y: 6.6, w: 12, h: 0.3,
+      fontSize: 11, fontFace: 'Calibri',
+    });
   }
 
-  // pptxgenjs writeFile triggers the download directly
+  // ── Final slide — Methodology ─────────────────────────────────
+  const sM = pptx.addSlide({ masterName: 'VETT_MASTER' });
+  sM.addText('Methodology', {
+    x: 0.5, y: 1.0, w: 12, h: 0.6,
+    fontSize: 28, bold: true, color: INK, fontFace: 'Calibri',
+  });
+  sM.addShape('line', {
+    x: 0.5, y: 1.7, w: 12, h: 0,
+    line: { color: LIME, width: 1 },
+  });
+  sM.addText(EXPORT_DISCLOSURES.creativeAttentionMethodology, {
+    x: 0.5, y: 2.0, w: 12, h: 4.5,
+    fontSize: 14, color: INK, fontFace: 'Calibri',
+  });
+  sM.addText(
+    `Generated ${new Date().toISOString().slice(0, 19).replace('T', ' ')} UTC.`,
+    { x: 0.5, y: 6.5, w: 12, h: 0.3, fontSize: 10, color: GRAY, fontFace: 'Calibri' },
+  );
+
   await pptx.writeFile({ fileName: safeFilename(meta.brand, 'pptx') });
 }
 
 /**
- * Excel workbook. Multi-sheet structure: Summary, Effectiveness,
- * Attention, Emotions, Platform Fit, Channel Benchmarks, Strengths,
- * Weaknesses, Recommendations, Frame Analyses (video only). Uses the
- * SheetJS xlsx library (lazy-loaded).
+ * Pass 33 W9b — Creative Attention XLSX rebuild.
+ *
+ * 6-sheet workbook: Summary / Attention arc / Emotions /
+ * Hotspots / Recommendations / Methodology. Header row is lime-fill
+ * + bold-black + frozen on every sheet. Frame_analyses go into the
+ * Attention arc + Emotions sheets so analysts can drop them straight
+ * into pivot tables.
  */
 export async function downloadCreativeAnalysisXlsx(
   analysis: CreativeAnalysis,
@@ -1028,39 +1169,48 @@ export async function downloadCreativeAnalysisXlsx(
 ): Promise<void> {
   const XLSX = await import('xlsx');
 
+  const summary = analysis.summary;
+  const eff = analysis.creative_effectiveness;
+  const att = analysis.attention;
+  const frames = analysis.frame_analyses ?? [];
+
   const wb = XLSX.utils.book_new();
 
-  // Summary
+  // ── Sheet 1 — Summary ─────────────────────────────────────────
   const summaryRows: Array<Array<string | number>> = [
     ['Field', 'Value'],
-    ...metaRows(analysis, meta),
+    ['Brand', meta.brand ?? '—'],
+    ['Mission ID', meta.missionId ?? '—'],
+    ['Generated', new Date().toISOString().slice(0, 10)],
+    ['Asset type', analysis.is_video ? `Video (${analysis.total_frames} frames)` : 'Static image'],
+    [],
+    ['KPI', 'Value'],
+    ['Overall engagement score',
+      summary?.overall_engagement_score != null
+        ? `${summary.overall_engagement_score}/100`
+        : (eff?.score != null ? `${eff.score}/100` : '—')],
+    ['Effectiveness band', eff?.band ?? '—'],
+    ['Best platform fit',
+      (() => {
+        const p = (summary?.best_platform_fit ?? [])[0];
+        if (!p) return '—';
+        const obj = asPlatformFitObject(p);
+        return typeof p === 'string' ? p : (obj?.platform ?? '—');
+      })()],
+    ['Vs benchmark', summary?.vs_benchmark ?? '—'],
+    ['Attention arc summary', summary?.attention_arc ?? '—'],
   ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), 'Summary');
-
-  // Effectiveness components
-  const eff = analysis.creative_effectiveness;
-  if (eff) {
-    const c = eff.components;
-    const rows: Array<Array<string | number>> = [
-      ['Component', 'Score', 'Weight'],
-      ['Attention', c.attention, eff.weights.attention],
-      ['Emotion intensity', c.emotion_intensity, eff.weights.emotion_intensity],
-      ['Brand clarity', c.brand_clarity, eff.weights.brand_clarity],
-      ['Audience resonance', c.audience_resonance, eff.weights.audience_resonance],
-      ['Platform fit', c.platform_fit, eff.weights.platform_fit],
-      [],
-      ['Composite', eff.score, ''],
-      ['Band', eff.band, ''],
-      ['Band explanation', eff.band_explanation, ''],
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Effectiveness');
+  if (summary?.strengths && summary.strengths.length > 0) {
+    summaryRows.push([], ['#', 'Strength']);
+    summary.strengths.forEach((s, i) => summaryRows.push([i + 1, s]));
   }
-
-  // Attention
-  const att = analysis.attention;
+  if (summary?.weaknesses && summary.weaknesses.length > 0) {
+    summaryRows.push([], ['#', 'Weakness']);
+    summary.weaknesses.forEach((s, i) => summaryRows.push([i + 1, s]));
+  }
   if (att) {
-    const rows: Array<Array<string | number>> = [
-      ['Metric', 'Value'],
+    summaryRows.push([],
+      ['Attention metric', 'Value'],
       ['Active attention (sec)', att.predicted_active_attention_seconds ?? ''],
       ['Passive attention (sec)', att.predicted_passive_attention_seconds ?? ''],
       ['Active %', att.active_attention_pct ?? ''],
@@ -1068,100 +1218,132 @@ export async function downloadCreativeAnalysisXlsx(
       ['Non-attention %', att.non_attention_pct ?? ''],
       ['Distinctive brand asset score', att.distinctive_brand_asset_score ?? ''],
       ['DBA read time (sec)', att.dba_read_seconds ?? ''],
-    ];
-    if (att.attention_decay_curve && att.attention_decay_curve.length > 0) {
-      rows.push([], ['Decay curve — second', 'Active %']);
-      att.attention_decay_curve.forEach((d) => rows.push([d.second, d.active_pct]));
-    }
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Attention');
+    );
   }
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+  applyXlsxBranding(XLSX, summarySheet);
+  summarySheet['!cols'] = [{ wch: 30 }, { wch: 60 }];
+  XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
 
-  // Emotions
-  const emoRows: Array<Array<string | number>> = [['Emotion', 'Score']];
-  topEmotions(analysis, 24).forEach(([e, s]) => emoRows.push([e, s]));
-  if (emoRows.length > 1) {
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(emoRows), 'Emotions');
-  }
-
-  // Platform Fit
-  const platforms = analysis.summary?.best_platform_fit ?? [];
-  if (platforms.length > 0) {
-    const rows: Array<Array<string | number>> = [
-      ['Platform', 'Fit score', 'Norm (sec)', 'Predicted (sec)', 'Δ vs norm %', 'Rationale'],
-    ];
-    platforms.forEach((p) => {
-      const obj = asPlatformFitObject(p);
-      const platform = typeof p === 'string' ? p : (obj?.platform ?? '');
-      rows.push([
-        platform,
-        obj?.fit_score ?? '',
-        obj?.platform_norm_active_attention_seconds ?? '',
-        obj?.predicted_creative_attention_seconds ?? '',
-        obj?.delta_vs_norm_pct ?? '',
-        obj?.rationale ?? '',
-      ]);
-    });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Platform Fit');
-  }
-
-  // Channel Benchmarks
-  if (analysis.channel_benchmarks && analysis.channel_benchmarks.length > 0) {
-    const rows: Array<Array<string | number>> = [
-      ['Channel', 'Category avg (sec)', 'Predicted (sec)', 'Assessment'],
-    ];
-    analysis.channel_benchmarks.forEach((c) => {
-      rows.push([
-        c.channel,
-        c.category_avg_attention_seconds,
-        c.predicted_for_this_creative ?? '',
-        c.fit_assessment,
-      ]);
-    });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Channel Benchmarks');
-  }
-
-  // Strengths / Weaknesses / Recommendations
-  const sheets: Array<[string, string[] | undefined]> = [
-    ['Strengths', analysis.summary?.strengths],
-    ['Weaknesses', analysis.summary?.weaknesses],
-    ['Recommendations', analysis.summary?.recommendations],
+  // ── Sheet 2 — Attention arc (per-frame core metrics) ──────────
+  const arcRows: Array<Array<string | number>> = [
+    ['Timestamp', 'Engagement', 'Message clarity', 'Audience resonance', 'Description'],
   ];
-  for (const [name, arr] of sheets) {
-    if (!arr || arr.length === 0) continue;
-    const rows: Array<Array<string | number>> = [['#', name]];
-    arr.forEach((item, i) => rows.push([i + 1, item]));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name);
+  for (const f of frames) {
+    arcRows.push([
+      f.timestamp,
+      f.engagement_score ?? 0,
+      f.message_clarity ?? 0,
+      typeof f.audience_resonance === 'string' || typeof f.audience_resonance === 'number'
+        ? f.audience_resonance
+        : '',
+      f.brief_description ?? '',
+    ]);
   }
+  const arcSheet = XLSX.utils.aoa_to_sheet(arcRows);
+  applyXlsxBranding(XLSX, arcSheet);
+  arcSheet['!cols'] = [
+    { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 36 }, { wch: 60 },
+  ];
+  XLSX.utils.book_append_sheet(wb, arcSheet, 'Attention arc');
 
-  // Frame Analyses (video only)
-  if (analysis.is_video && analysis.frame_analyses && analysis.frame_analyses.length > 1) {
-    const allEmotions = new Set<string>();
-    analysis.frame_analyses.forEach((f) => {
-      Object.keys(f.emotions || {}).forEach((e) => allEmotions.add(e));
-    });
-    const emotionCols = Array.from(allEmotions);
-    const rows: Array<Array<string | number>> = [
-      [
-        'Timestamp',
-        'Engagement',
-        'Message clarity',
-        'Audience resonance',
-        ...emotionCols,
-        'Description',
-      ],
-    ];
-    analysis.frame_analyses.forEach((f) => {
-      rows.push([
-        f.timestamp,
-        f.engagement_score,
-        f.message_clarity,
-        f.audience_resonance,
-        ...emotionCols.map((e) => f.emotions?.[e] ?? 0),
-        f.brief_description,
-      ]);
-    });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Frame Analyses');
+  // ── Sheet 3 — Emotions (timestamp × emotion pivot) ───────────
+  const allEmotions = new Set<string>();
+  for (const f of frames) {
+    Object.keys(f.emotions || {}).forEach((e) => allEmotions.add(e));
   }
+  const emotionCols = Array.from(allEmotions);
+  const emotionRows: Array<Array<string | number>> = [
+    ['Timestamp', ...emotionCols],
+  ];
+  for (const f of frames) {
+    emotionRows.push([
+      f.timestamp,
+      ...emotionCols.map((e) => Number(f.emotions?.[e] ?? 0)),
+    ]);
+  }
+  // Always include the averaged row at the top of body
+  if (frames.length > 0) {
+    emotionRows.push([
+      'AVERAGE',
+      ...emotionCols.map((e) => {
+        const vals = frames
+          .map((f) => Number(f.emotions?.[e] ?? 0))
+          .filter((v) => Number.isFinite(v));
+        return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+      }),
+    ]);
+  }
+  const emotionSheet = XLSX.utils.aoa_to_sheet(emotionRows);
+  applyXlsxBranding(XLSX, emotionSheet);
+  XLSX.utils.book_append_sheet(wb, emotionSheet, 'Emotions');
+
+  // ── Sheet 4 — Hotspots (per-frame regions) ───────────────────
+  const hotspotRows: Array<Array<string | number>> = [
+    ['Timestamp', '#', 'Hotspot region'],
+  ];
+  for (const f of frames) {
+    const list = f.attention_hotspots ?? [];
+    if (list.length === 0) {
+      hotspotRows.push([f.timestamp, 0, '—']);
+      continue;
+    }
+    list.forEach((h, i) => hotspotRows.push([f.timestamp, i + 1, h]));
+  }
+  const hotspotSheet = XLSX.utils.aoa_to_sheet(hotspotRows);
+  applyXlsxBranding(XLSX, hotspotSheet);
+  hotspotSheet['!cols'] = [{ wch: 12 }, { wch: 6 }, { wch: 80 }];
+  XLSX.utils.book_append_sheet(wb, hotspotSheet, 'Hotspots');
+
+  // ── Sheet 5 — Recommendations (priority ranked) ──────────────
+  const recRows: Array<Array<string | number>> = [
+    ['Priority', 'Recommendation'],
+  ];
+  (summary?.recommendations ?? []).forEach((r, i) => recRows.push([i + 1, r]));
+  if (recRows.length === 1) recRows.push(['—', 'No recommendations generated for this analysis.']);
+  const recSheet = XLSX.utils.aoa_to_sheet(recRows);
+  applyXlsxBranding(XLSX, recSheet);
+  recSheet['!cols'] = [{ wch: 10 }, { wch: 100 }];
+  XLSX.utils.book_append_sheet(wb, recSheet, 'Recommendations');
+
+  // ── Sheet 6 — Methodology disclosure ─────────────────────────
+  const methSheet = XLSX.utils.aoa_to_sheet([
+    ['Methodology'],
+    [EXPORT_DISCLOSURES.creativeAttentionMethodology],
+    [],
+    [`Generated ${new Date().toISOString().slice(0, 19).replace('T', ' ')} UTC.`],
+  ]);
+  applyXlsxBranding(XLSX, methSheet);
+  methSheet['!cols'] = [{ wch: 120 }];
+  XLSX.utils.book_append_sheet(wb, methSheet, 'Methodology');
 
   XLSX.writeFile(wb, safeFilename(meta.brand, 'xlsx'));
+}
+
+/**
+ * Apply VETT lime header fill + bold + frozen first row to a SheetJS
+ * worksheet. SheetJS Community Edition has limited cell-style support
+ * — fills work in `xlsx` style mode but require !cols + !ref to
+ * survive the writeFile. We apply a freeze pane unconditionally so
+ * the header row stays visible while scrolling the data body.
+ */
+function applyXlsxBranding(
+  XLSX: typeof import('xlsx'),
+  sheet: import('xlsx').WorkSheet,
+): void {
+  const range = XLSX.utils.decode_range(sheet['!ref'] ?? 'A1');
+  // Freeze top row — works across all SheetJS variants.
+  sheet['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2' };
+  // Style every header-row cell (best-effort; CE may strip fills,
+  // but bold + horizontal alignment usually survive).
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const addr = XLSX.utils.encode_cell({ r: 0, c });
+    const cell = sheet[addr];
+    if (!cell) continue;
+    cell.s = {
+      fill: { fgColor: { rgb: 'BEF264' } },
+      font: { bold: true, color: { rgb: '0B0C15' } },
+      alignment: { horizontal: 'left', vertical: 'center' },
+    };
+  }
 }
