@@ -866,6 +866,22 @@ export const DashboardPage = () => {
                         : null;
                     })(),
                   )}
+                  // Pass 30 A2 — feed goal_type into MissionControlPricing
+                  // so SampleSizeGuidance renders below the slider.
+                  // For per-concept methodologies, conceptCount comes
+                  // from concepts / naming_candidates / targeted_markets.
+                  goalType={state.kind === 'loaded' ? state.mission.goal_type : null}
+                  conceptCount={(() => {
+                    if (state.kind !== 'loaded') return 1;
+                    const m = state.mission as Record<string, unknown>;
+                    const concepts = Array.isArray(m.concepts) ? m.concepts.length : 0;
+                    const naming = Array.isArray(m.naming_candidates) ? m.naming_candidates.length : 0;
+                    const markets = Array.isArray(m.targeted_markets) ? m.targeted_markets.length : 0;
+                    if (m.goal_type === 'compare') return concepts || 1;
+                    if (m.goal_type === 'naming_messaging') return naming || 1;
+                    if (m.goal_type === 'market_entry') return markets || 1;
+                    return 1;
+                  })()}
                 />
               </aside>
             </div>

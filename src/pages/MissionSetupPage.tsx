@@ -61,6 +61,23 @@ import {
   type CSATInputsState,
 } from '../components/setup/CSATInputs';
 import {
+  ConceptCollector,
+  CONCEPT_DEFAULT_STATE,
+  validateConceptCollector,
+  type ConceptCollectorState,
+} from '../components/setup/ConceptCollector';
+import {
+  ConceptListCollector,
+  validateConceptList,
+  type CompareConcept,
+} from '../components/setup/ConceptListCollector';
+import {
+  AdTestingInputs,
+  AD_TESTING_DEFAULT_STATE,
+  validateAdTesting,
+  type AdTestingState,
+} from '../components/setup/AdTestingInputs';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
@@ -275,6 +292,18 @@ export const MissionSetupPage = () => {
   // Pass 29 B8 — customer satisfaction state.
   const isCSAT = missionGoal === 'satisfaction';
   const [csatInputs, setCsatInputs] = useState<CSATInputsState>(CSAT_DEFAULT_STATE);
+
+  // Pass 30 B1 — Validate Product (concept test) state.
+  const isValidate = missionGoal === 'validate';
+  const [conceptInputs, setConceptInputs] = useState<ConceptCollectorState>(CONCEPT_DEFAULT_STATE);
+
+  // Pass 30 B3 — Compare Concepts (sequential monadic) state.
+  const isCompare = missionGoal === 'compare';
+  const [compareConcepts, setCompareConcepts] = useState<CompareConcept[]>([]);
+
+  // Pass 30 B5 — Test Marketing / Ads (ad effectiveness) state.
+  const isMarketing = missionGoal === 'marketing';
+  const [adTesting, setAdTesting] = useState<AdTestingState>(AD_TESTING_DEFAULT_STATE);
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -618,6 +647,42 @@ export const MissionSetupPage = () => {
       }
     }
 
+    // Pass 30 B1 — Validate Product methodology validation.
+    if (isValidate) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const conceptMissing = validateConceptCollector(conceptInputs);
+      if (universalMissing.length || conceptMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...conceptMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
+    // Pass 30 B3 — Compare Concepts methodology validation.
+    if (isCompare) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const conceptMissing = validateConceptList(compareConcepts);
+      if (universalMissing.length || conceptMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...conceptMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
+    // Pass 30 B5 — Test Marketing methodology validation.
+    if (isMarketing) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const adMissing = validateAdTesting(adTesting);
+      if (universalMissing.length || adMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...adMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -718,6 +783,41 @@ export const MissionSetupPage = () => {
               csat_recency_window: recencyPhrase(csatInputs.recencyWindow),
             }
           : {};
+        // Pass 30 B1 — concept-test context fed to the validate generator.
+        const validatePromptCtx: Record<string, string> = isValidate
+          ? {
+              concept_description: conceptInputs.description,
+              concept_media_type: conceptInputs.mediaType,
+              concept_media_url: conceptInputs.mediaUrl || '',
+              concept_price_usd: conceptInputs.priceUsd,
+              concept_use_occasion: conceptInputs.useOccasion,
+            }
+          : {};
+        // Pass 30 B3 — concepts JSON forwarded to the sequential monadic generator.
+        const comparePromptCtx: Record<string, string> = isCompare
+          ? {
+              concepts: JSON.stringify(
+                compareConcepts.map((c) => ({
+                  id: c.id,
+                  name: c.name,
+                  description: c.description,
+                  price_usd: c.priceUsd ? Number(c.priceUsd) : undefined,
+                })),
+              ),
+              concept_count: String(compareConcepts.length),
+            }
+          : {};
+        // Pass 30 B5 — ad testing context fed to the ad effectiveness generator.
+        const marketingPromptCtx: Record<string, string> = isMarketing
+          ? {
+              creative_media_url: adTesting.creativeUrl || '',
+              creative_media_type: adTesting.creativeMediaType,
+              campaign_channel: adTesting.channel,
+              campaign_format: adTesting.format,
+              campaign_objective: adTesting.objective,
+              intended_message: adTesting.intendedMessage,
+            }
+          : {};
         // Pass 29 B2 — universal inputs forwarded for every methodology.
         const universalPromptCtx: Record<string, string> = isUniversalShown
           ? {
@@ -739,6 +839,9 @@ export const MissionSetupPage = () => {
             ...pricingPromptCtx,
             ...roadmapPromptCtx,
             ...csatPromptCtx,
+            ...validatePromptCtx,
+            ...comparePromptCtx,
+            ...marketingPromptCtx,
           },
         });
       } catch (aiErr) {
@@ -811,6 +914,47 @@ export const MissionSetupPage = () => {
             csat_customer_type: csatInputs.customerType,
             csat_recency_window: csatInputs.recencyWindow,
             csat_methodology: 'nps_csat_ces',
+          }
+        : {};
+
+      // Pass 30 B1 — Validate Product schema columns.
+      const validateFields: Record<string, unknown> = isValidate
+        ? {
+            concept_description: conceptInputs.description,
+            concept_media_url: conceptInputs.mediaUrl || null,
+            concept_media_type: conceptInputs.mediaType,
+            concept_price_usd: conceptInputs.priceUsd
+              ? Number(conceptInputs.priceUsd)
+              : null,
+            concept_use_occasion: conceptInputs.useOccasion || null,
+            validate_methodology: 'concept_test',
+          }
+        : {};
+
+      // Pass 30 B3 — Compare Concepts schema columns.
+      const compareFields: Record<string, unknown> = isCompare
+        ? {
+            concepts: compareConcepts.map((c) => ({
+              id: c.id,
+              name: c.name,
+              description: c.description,
+              price_usd: c.priceUsd ? Number(c.priceUsd) : null,
+            })),
+            comparison_methodology: 'sequential_monadic',
+            rotation_strategy: 'random',
+          }
+        : {};
+
+      // Pass 30 B5 — Test Marketing schema columns.
+      const marketingFields: Record<string, unknown> = isMarketing
+        ? {
+            creative_media_url: adTesting.creativeUrl,
+            creative_media_type: adTesting.creativeMediaType,
+            campaign_channel: adTesting.channel,
+            campaign_format: adTesting.format,
+            campaign_objective: adTesting.objective,
+            intended_message: adTesting.intendedMessage || null,
+            ad_methodology: 'ad_effectiveness',
           }
         : {};
 
@@ -891,6 +1035,9 @@ export const MissionSetupPage = () => {
         ...pricingFields,
         ...roadmapFields,
         ...csatFields,
+        ...validateFields,
+        ...compareFields,
+        ...marketingFields,
         ...brandLiftFields,
       };
 
@@ -1253,13 +1400,39 @@ export const MissionSetupPage = () => {
                     />
                   </div>
                 )}
+                {isValidate && user && (
+                  <div className="mt-4">
+                    <ConceptCollector
+                      userId={user.id}
+                      state={conceptInputs}
+                      onChange={setConceptInputs}
+                    />
+                  </div>
+                )}
+                {isCompare && (
+                  <div className="mt-4">
+                    <ConceptListCollector
+                      concepts={compareConcepts}
+                      onChange={setCompareConcepts}
+                    />
+                  </div>
+                )}
+                {isMarketing && user && (
+                  <div className="mt-4">
+                    <AdTestingInputs
+                      userId={user.id}
+                      state={adTesting}
+                      onChange={setAdTesting}
+                    />
+                  </div>
+                )}
 
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={(isPricing || isRoadmap || isCSAT) ? handleGenerate : handleRevealClarify}
+                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       className={[
                         'w-full h-12 rounded-xl',
