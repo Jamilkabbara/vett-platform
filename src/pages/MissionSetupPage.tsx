@@ -90,6 +90,12 @@ import {
   type NamingInputsState,
 } from '../components/setup/NamingInputs';
 import {
+  ChurnInputs,
+  CHURN_DEFAULT_STATE,
+  validateChurn,
+  type ChurnInputsState,
+} from '../components/setup/ChurnInputs';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
@@ -324,6 +330,10 @@ export const MissionSetupPage = () => {
   // Pass 31 B3 — Naming & Messaging (monadic + paired + TURF) state.
   const isNaming = missionGoal === 'naming_messaging';
   const [namingState, setNamingState] = useState<NamingInputsState>(NAMING_DEFAULT_STATE);
+
+  // Pass 31 B5 — Churn Research (driver tree + win-back) state.
+  const isChurn = missionGoal === 'churn_research';
+  const [churnState, setChurnState] = useState<ChurnInputsState>(CHURN_DEFAULT_STATE);
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -727,6 +737,18 @@ export const MissionSetupPage = () => {
       }
     }
 
+    // Pass 31 B5 — Churn Research methodology validation.
+    if (isChurn) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const churnMissing = validateChurn(churnState);
+      if (universalMissing.length || churnMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...churnMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -884,6 +906,15 @@ export const MissionSetupPage = () => {
               brand_personality: namingState.brandPersonality,
             }
           : {};
+        // Pass 31 B5 — churn context fed to the driver tree generator.
+        const churnPromptCtx: Record<string, string> = isChurn
+          ? {
+              churn_definition: churnState.definition,
+              churn_custom_definition: churnState.customDefinition,
+              churn_customer_type: churnState.customerType,
+              churn_winback_possible: String(churnState.winbackPossible),
+            }
+          : {};
         // Pass 29 B2 — universal inputs forwarded for every methodology.
         const universalPromptCtx: Record<string, string> = isUniversalShown
           ? {
@@ -910,6 +941,7 @@ export const MissionSetupPage = () => {
             ...marketingPromptCtx,
             ...competitorPromptCtx,
             ...namingPromptCtx,
+            ...churnPromptCtx,
           },
         });
       } catch (aiErr) {
@@ -1053,6 +1085,18 @@ export const MissionSetupPage = () => {
           }
         : {};
 
+      // Pass 31 B5 — Churn Research schema columns.
+      const churnFields: Record<string, unknown> = isChurn
+        ? {
+            churn_definition: churnState.definition,
+            churn_custom_definition:
+              churnState.definition === 'custom' ? churnState.customDefinition : null,
+            churn_customer_type: churnState.customerType,
+            churn_winback_possible: churnState.winbackPossible,
+            churn_methodology: 'driver_tree',
+          }
+        : {};
+
       // Pass 29 B4 — pricing schema columns. Methodology fixed to
       // van_westendorp_plus_gabor_granger for now (the Pass 29 prompt
       // generator's only branch).
@@ -1135,6 +1179,7 @@ export const MissionSetupPage = () => {
         ...marketingFields,
         ...competitorFields,
         ...namingFields,
+        ...churnFields,
         ...brandLiftFields,
       };
 
@@ -1541,13 +1586,21 @@ export const MissionSetupPage = () => {
                     />
                   </div>
                 )}
+                {isChurn && (
+                  <div className="mt-4">
+                    <ChurnInputs
+                      state={churnState}
+                      onChange={setChurnState}
+                    />
+                  </div>
+                )}
 
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing || isCompetitor || isNaming) ? handleGenerate : handleRevealClarify}
+                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing || isCompetitor || isNaming || isChurn) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       className={[
                         'w-full h-12 rounded-xl',
