@@ -83,7 +83,7 @@ const RESEARCH_TYPES: Array<{
 const LOOP_STEPS = [
   { n: 1, title: 'Describe', body: 'Drop your research question in plain language. Upload an image or video for creative testing. No survey expertise needed.' },
   { n: 2, title: 'Strategy', body: "VETT's AI clarifies your brief with 3 quick questions, then builds a surgical survey with the right question types and targeting." },
-  { n: 3, title: 'Simulate', body: 'AI generates your exact respondent count: distinct personas with unique demographics, behaviours, and opinions. Every respondent matches your audience, generated to your spec. No fallback, no refunds needed.' },
+  { n: 3, title: 'Simulate', body: 'AI generates your exact respondent count: distinct personas with unique demographics, behaviours, and opinions. Every respondent matches your audience, generated to your spec. Partial deliveries trigger automatic Stripe refunds — you only pay for what completes.' },
   { n: 4, title: 'Insights', body: 'Charts, AI insights per question, executive summary, and two recommended next studies. PDF, PPT, and XLS included free.' },
 ];
 
@@ -98,7 +98,7 @@ const PERSONAS = [
 const AI_FEATS = [
   { ico: '🎯', title: 'Distinct, realistic personas', body: 'Every respondent is unique, with a different background, opinion, and voice. No uniform answers, no synthetic patterns.' },
   { ico: '📊', title: 'Statistically valid variance', body: 'Rating scales follow bell curves. NPS includes detractors, passives, and promoters in realistic market splits.' },
-  { ico: '⚡', title: 'Every respondent matches your audience', body: 'You set the number; every persona is generated to match your screener spec, not filtered against it. No fallback, no refunds needed, no panel-recruitment delays.' },
+  { ico: '⚡', title: 'Every respondent matches your audience', body: 'You set the number; every persona is generated to match your screener spec, not filtered against it. Auto-refund handles the rare partial-delivery case so you only pay for what ships.' },
 ];
 
 const ATTENTION_FEATS = [

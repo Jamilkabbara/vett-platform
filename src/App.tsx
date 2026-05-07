@@ -35,6 +35,8 @@ const BlogPage            = lazy(() => import('./pages/BlogPage').then(m => ({ d
 const BlogPostPage        = lazy(() => import('./pages/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
 const ApiPage             = lazy(() => import('./pages/ApiPage').then(m => ({ default: m.ApiPage })));
 const HelpPage            = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
+// Pass 32 C1 — single canonical list of every research methodology.
+const MethodologiesPage   = lazy(() => import('./pages/MethodologiesPage').then(m => ({ default: m.MethodologiesPage })));
 const MissionSuccessPage  = lazy(() => import('./pages/MissionSuccessPage').then(m => ({ default: m.MissionSuccessPage })));
 // Pass 23 Bug 23.0e v2 — Stripe Checkout success/cancel landing pages.
 const PaymentSuccessPage  = lazy(() => import('./pages/PaymentSuccessPage').then(m => ({ default: m.PaymentSuccessPage })));
@@ -163,6 +165,7 @@ function App() {
               <Route path="/blog/:slug" element={<BlogPostPage />} />
               <Route path="/api" element={<ApiPage />} />
               <Route path="/help" element={<HelpPage />} />
+              <Route path="/methodologies" element={<MethodologiesPage />} />
 
               {/* Creative Attention Analysis */}
               <Route path="/creative-attention/new" element={<CreativeAttentionPage />} />

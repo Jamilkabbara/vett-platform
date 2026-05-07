@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/apiClient';
 import { VOLUME_TIERS } from '../utils/pricingEngine';
 import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
+import { deliveryNoun } from '../lib/missionDeliveryUnit';
 
 // Pass 22 Bug 22.28 — lazy ChatWidget keeps react-markdown + chat deps
 // out of the initial Missions page bundle. Loaded only when the user opens
@@ -30,6 +31,9 @@ interface Mission {
   brief?: string | null;
   target_audience?: unknown;
   status: string;
+  goal_type?: string | null;
+  // Pass 32 X2 — drives the noun in mission-card labels (respondent vs creative).
+  delivery_unit?: 'respondent' | 'creative_asset' | null;
   respondent_count: number;
   /** Actual collected responses (from mission_responses join). */
   responses_collected?: number;
@@ -202,33 +206,39 @@ export const MissionsListPage = () => {
   };
 
   /**
-   * Pass 21 Bug 6 (Option B): mission-card respondent label.
+   * Pass 21 Bug 6 (Option B) + Pass 32 X2b: mission-card respondent label.
    *
-   *   DRAFT          → "{respondent_count} respondents"   (no slash, no rate)
-   *   COMPLETED mixed→ "{total} respondents · {rate}% qualified"
-   *   COMPLETED full → "{total} respondents"             (rate >= 99.9%)
-   *   ACTIVE/other   → "{collected}/{target}" — preserved live-progress UI
+   * delivery_unit reads from missions.delivery_unit (Pass 32 X2 backend);
+   * Creative Attention missions render "1 creative analyzed" instead of
+   * the misleading "1 respondent" the dashboard used to show even though
+   * mission_responses had 0 rows.
+   *
+   *   DRAFT          → "{respondent_count} {noun}"   (no slash, no rate)
+   *   COMPLETED mixed→ "{total} {noun} · {rate}% qualified"
+   *   COMPLETED full → "{total} {noun}"             (rate >= 99.9%)
+   *   ACTIVE/other   → "{collected}/{target} {noun}" — preserved live-progress UI
    */
   const getRespondentProgress = (mission: Mission) => {
     const statusUp = (mission.status || '').toUpperCase();
     const target   = mission.respondent_count || 0;
+    const noun     = deliveryNoun(mission as { delivery_unit?: string | null; goal_type?: string | null });
 
     if (statusUp === 'COMPLETED') {
       const total = Number(mission.total_simulated_count ?? target) || target;
       const rate  = mission.qualification_rate;
       const showRate = rate != null && Number.isFinite(rate) && rate < 0.999;
       return showRate
-        ? `${total} respondents · ${Math.round(Number(rate) * 100)}% qualified`
-        : `${total} respondents`;
+        ? `${total} ${noun} · ${Math.round(Number(rate) * 100)}% qualified`
+        : `${total} ${noun}`;
     }
 
     if (statusUp === 'DRAFT') {
-      return `${target} respondents`;
+      return `${target} ${noun}`;
     }
 
     // Active or other in-progress states: keep the live progress format.
     const actual = mission.responses_collected ?? 0;
-    return `${actual}/${target} respondents`;
+    return `${actual}/${target} ${noun}`;
   };
 
   /**
@@ -255,16 +265,33 @@ export const MissionsListPage = () => {
   };
 
   const getEstimatedTime = (mission: Mission) => {
-    if (mission.status === 'COMPLETED') return 'Completed';
-    if (mission.status === 'DRAFT') return 'Not launched';
+    // Pass 32 X8 — case-insensitive status comparison. The DB stores
+    // 'completed' lowercase; the legacy uppercase comparison silently
+    // fell through and showed "12-24h" on completed missions.
+    const statusUp = (mission.status || '').toUpperCase();
+    if (statusUp === 'COMPLETED') return 'Completed';
+    if (statusUp === 'DRAFT') return 'Not launched';
     return mission.respondent_count > 500 ? '12-24h' : '4-12h';
   };
 
+  /**
+   * Pass 32 X8 — Dashboard View Results gate. The DB stores statuses
+   * lowercase ('completed' / 'paid' / 'processing' / 'failed' / 'draft'),
+   * but the previous comparison checked uppercase strings ('COMPLETED'
+   * etc.). Real completed missions fell through to /dashboard/:id,
+   * which then redirected to /results/:id — but the brief flash and
+   * occasional race produced an apparent 404 for users.
+   *
+   * Routing rule: anything past DRAFT goes straight to /results/:id;
+   * DRAFT goes to the editor (/dashboard/:id, where DashboardPage
+   * also lives for in-progress edits).
+   */
   const handleMissionClick = (mission: Mission) => {
-    if (mission.status === 'ACTIVE' || mission.status === 'COMPLETED' || mission.status === 'failed') {
-      navigate(`/results/${mission.id}`);
-    } else {
+    const statusUp = (mission.status || '').toUpperCase();
+    if (statusUp === 'DRAFT') {
       navigate(`/dashboard/${mission.id}`);
+    } else {
+      navigate(`/results/${mission.id}`);
     }
   };
 
@@ -544,7 +571,8 @@ export const MissionsListPage = () => {
                         {getMissionPriceLabel(mission)}
                       </span>
                       <div className="flex items-center gap-2 text-primary group-hover:translate-x-1 transition-transform">
-                        {mission.status === 'DRAFT' ? (
+                        {/* Pass 32 X8 — case-insensitive DRAFT check. */}
+                        {(mission.status || '').toUpperCase() === 'DRAFT' ? (
                           <>
                             <span className="text-sm font-bold">Edit</span>
                             <ArrowRight className="w-4 h-4" />

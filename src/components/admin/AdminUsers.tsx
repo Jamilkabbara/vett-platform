@@ -64,8 +64,15 @@ interface UserDetail {
   totals: UserTotals;
 }
 
+/**
+ * Pass 32 X4 — server response shape. Backend returns the row array
+ * under `data` (matches AdminMissions, AdminPaymentErrors and the
+ * other admin list endpoints). The legacy frontend interface declared
+ * `users` and read `json.users`, which silently resolved to undefined
+ * — totals showed correctly (3) but the table body was always empty.
+ */
 interface UsersListResponse {
-  users: UserRow[];
+  data: UserRow[];
   total: number;
   limit: number;
   offset: number;
@@ -75,6 +82,38 @@ interface UsersListResponse {
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+/**
+ * Pass 32 X9 — derive 1–2 char avatar initials from a profile.
+ * Falls back through first/last → full_name → company → id so the
+ * drawer never renders the "?" placeholder. The legacy fallback
+ * literally rendered "?" any time first_name was null, even when
+ * full_name and company were perfectly fine.
+ */
+function profileInitials(p: { first_name?: string; last_name?: string; full_name?: string; company_name?: string; id?: string } | null | undefined): string {
+  if (!p) return '';
+  const f = (p.first_name || '').trim();
+  const l = (p.last_name || '').trim();
+  if (f || l) return `${f.charAt(0)}${l.charAt(0)}`.toUpperCase();
+  const full = (p.full_name || '').trim();
+  if (full) {
+    const parts = full.split(/\s+/).filter(Boolean);
+    const a = parts[0]?.charAt(0) ?? '';
+    const b = parts[1]?.charAt(0) ?? '';
+    const combined = `${a}${b}`.trim();
+    if (combined) return combined.toUpperCase();
+  }
+  const company = (p.company_name || '').trim();
+  if (company) {
+    const parts = company.split(/\s+/).filter(Boolean);
+    const a = parts[0]?.charAt(0) ?? '';
+    const b = parts[1]?.charAt(0) ?? '';
+    const combined = `${a}${b}`.trim();
+    if (combined) return combined.toUpperCase();
+  }
+  if (p.id) return p.id.charAt(0).toUpperCase();
+  return '·';
+}
 
 const fmtCurrency = (n: number) =>
   n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toLocaleString()}`;
@@ -221,8 +260,7 @@ const UserDetailDrawer = ({ userId, apiFetch, onClose }: UserDetailDrawerProps) 
                 <div className="flex items-start gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
                     <span className="text-primary font-black text-lg">
-                      {detail.profile.first_name?.[0] ?? '?'}
-                      {detail.profile.last_name?.[0] ?? ''}
+                      {profileInitials(detail.profile)}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
@@ -421,7 +459,8 @@ export const AdminUsers = ({ apiFetch }: AdminUsersProps) => {
       const res = await apiFetch(`/api/admin/users?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: UsersListResponse = await res.json();
-      setUsers(json.users ?? []);
+      // Pass 32 X4 — read row array under `data` (backend convention).
+      setUsers(Array.isArray(json.data) ? json.data : []);
       setTotal(json.total ?? 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users');
