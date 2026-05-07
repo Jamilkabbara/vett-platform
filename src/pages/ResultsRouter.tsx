@@ -27,6 +27,9 @@ import { AdTestingResultsPage } from './AdTestingResultsPage';
 // Pass 31 B2 — Competitor Analysis results (Brand Health Tracker).
 // Routed when goal_type === 'competitor'.
 import { CompetitorAnalysisResultsPage } from './CompetitorAnalysisResultsPage';
+// Pass 31 B4 — Naming & Messaging results (monadic + paired + TURF).
+// Routed when goal_type === 'naming_messaging'.
+import { NamingResultsPage } from './NamingResultsPage';
 
 /**
  * Pass 25 Phase 0.2 — central router for /results/:missionId.
@@ -115,6 +118,9 @@ export function ResultsRouter() {
   }
   if (goalType === 'competitor') {
     return <CompetitorAnalysisResultsPage />;
+  }
+  if (goalType === 'naming_messaging') {
+    return <NamingResultsPage />;
   }
   return <ResultsPage />;
 }
