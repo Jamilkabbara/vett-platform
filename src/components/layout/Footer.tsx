@@ -1,4 +1,4 @@
-import { Zap, Linkedin, Twitter, Instagram } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface FooterProps {
@@ -175,29 +175,10 @@ export const Footer = ({ onAboutClick, onContactClick, onTermsClick, onCareersCl
             <p className="text-white/50 text-sm font-medium mb-6">
               hello@vettit.ai
             </p>
-            <div className="flex gap-4">
-              <a
-                href="#"
-                className="w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg flex items-center justify-center transition-all"
-                aria-label="LinkedIn"
-              >
-                <Linkedin className="w-5 h-5 text-white/50 hover:text-white" />
-              </a>
-              <a
-                href="#"
-                className="w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg flex items-center justify-center transition-all"
-                aria-label="Twitter"
-              >
-                <Twitter className="w-5 h-5 text-white/50 hover:text-white" />
-              </a>
-              <a
-                href="#"
-                className="w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg flex items-center justify-center transition-all"
-                aria-label="Instagram"
-              >
-                <Instagram className="w-5 h-5 text-white/50 hover:text-white" />
-              </a>
-            </div>
+            {/* Pass 33 C3 — social icons removed. Dead `href="#"` links
+                were tagged as a footer hygiene fix; rather than guess
+                which handle is canonical we drop them until the
+                marketing team confirms the URLs and wires real ones. */}
           </div>
         </div>
 
