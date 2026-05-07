@@ -76,6 +76,11 @@ export const AboutPage = () => {
                 pricing, MaxDiff feature prioritization, NPS, brand-health funnel —
                 with synthetic respondents calibrated to real demographic patterns.
                 The methodology is what makes the output trustworthy, not the panel.
+                See the full{' '}
+                <a href="/methodologies" className="text-primary hover:underline">
+                  methodology library
+                </a>{' '}
+                for every framework we support.
               </p>
             </div>
 

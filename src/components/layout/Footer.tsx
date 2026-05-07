@@ -94,6 +94,15 @@ export const Footer = ({ onAboutClick, onContactClick, onTermsClick, onCareersCl
               Resources
             </h3>
             <ul className="space-y-4">
+              {/* Pass 33 W6 — /methodologies first item (was orphaned). */}
+              <li>
+                <Link
+                  to="/methodologies"
+                  className="text-white/50 hover:text-white transition-colors text-sm font-medium"
+                >
+                  Methodologies
+                </Link>
+              </li>
               <li>
                 {onBlogClick ? (
                   <button
