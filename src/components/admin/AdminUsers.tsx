@@ -64,8 +64,15 @@ interface UserDetail {
   totals: UserTotals;
 }
 
+/**
+ * Pass 32 X4 — server response shape. Backend returns the row array
+ * under `data` (matches AdminMissions, AdminPaymentErrors and the
+ * other admin list endpoints). The legacy frontend interface declared
+ * `users` and read `json.users`, which silently resolved to undefined
+ * — totals showed correctly (3) but the table body was always empty.
+ */
 interface UsersListResponse {
-  users: UserRow[];
+  data: UserRow[];
   total: number;
   limit: number;
   offset: number;
@@ -421,7 +428,8 @@ export const AdminUsers = ({ apiFetch }: AdminUsersProps) => {
       const res = await apiFetch(`/api/admin/users?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: UsersListResponse = await res.json();
-      setUsers(json.users ?? []);
+      // Pass 32 X4 — read row array under `data` (backend convention).
+      setUsers(Array.isArray(json.data) ? json.data : []);
       setTotal(json.total ?? 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users');
