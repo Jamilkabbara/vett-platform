@@ -20,6 +20,10 @@ import { ValidateResultsPage } from './ValidateResultsPage';
 // Pass 30 B4 — Compare Concepts results (sequential monadic).
 // Routed when goal_type === 'compare'.
 import { CompareResultsPage } from './CompareResultsPage';
+// Pass 31 A1 — Test Marketing/Ads results (ad effectiveness, Kantar
+// Link tradition). Routed when goal_type === 'marketing'. Closes
+// the Pass 30 B6 deferral.
+import { AdTestingResultsPage } from './AdTestingResultsPage';
 
 /**
  * Pass 25 Phase 0.2 — central router for /results/:missionId.
@@ -102,6 +106,9 @@ export function ResultsRouter() {
   }
   if (goalType === 'compare') {
     return <CompareResultsPage />;
+  }
+  if (goalType === 'marketing') {
+    return <AdTestingResultsPage />;
   }
   return <ResultsPage />;
 }
