@@ -1,5 +1,8 @@
 import { OverlayPage } from '../components/layout/OverlayPage';
-import { Target, Users, Zap } from 'lucide-react';
+// Pass 31 Z1 — `Users` icon swapped for `Brain` to signal "synthetic
+// respondents + methodology rigor" instead of the old (false) "real
+// humans" framing.
+import { Target, Brain, Zap } from 'lucide-react';
 
 export const AboutPage = () => {
   return (
@@ -31,8 +34,11 @@ export const AboutPage = () => {
                 </p>
 
                 <p>
-                  We don't sell validation. We sell brutal honesty. We use AI to formulate the
-                  strategy, but we use real, verified humans to give the answers.
+                  We don&apos;t sell validation. We sell honest research. We use AI
+                  to build methodology-correct surveys and to simulate audience
+                  responses through synthetic respondents calibrated to real
+                  demographic patterns. The AI is the engine — but the methodology
+                  is what makes the output trustworthy.
                 </p>
 
                 <div className="pt-6 border-t border-white/10">
@@ -61,13 +67,15 @@ export const AboutPage = () => {
             <div className="glass-panel rounded-3xl p-8 flex-1 flex flex-col">
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-primary" />
+                  <Brain className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-white font-black text-xl">Real Humans</h3>
+                <h3 className="text-white font-black text-xl">Methodology First</h3>
               </div>
               <p className="text-white/60 leading-relaxed">
-                Every response comes from verified humans, not bots. We combine AI strategy with human
-                insight for unbeatable accuracy.
+                Every survey runs an industry-standard methodology — Van Westendorp
+                pricing, MaxDiff feature prioritization, NPS, brand-health funnel —
+                with synthetic respondents calibrated to real demographic patterns.
+                The methodology is what makes the output trustworthy, not the panel.
               </p>
             </div>
 
