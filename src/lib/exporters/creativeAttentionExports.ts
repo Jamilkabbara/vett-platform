@@ -18,8 +18,15 @@ import type {
   CreativeAnalysis,
   PlatformFitItem,
   ChannelBenchmark,
+  FrameAnalysis,
 } from '../../types/creativeAnalysis';
 import { asPlatformFitObject } from '../../types/creativeAnalysis';
+import {
+  EXPORT_RGB,
+  EXPORT_FONTS,
+  EXPORT_DISCLOSURES,
+  drawJsPdfLogo,
+} from './brandTokens';
 
 // ── Filename helpers ──────────────────────────────────────────────────────────
 
@@ -326,172 +333,500 @@ function topEmotions(analysis: CreativeAnalysis, n = 8): Array<[string, number]>
 }
 
 /**
- * PDF report. Uses jsPDF + jspdf-autotable so the heavy libs are
- * lazy-loaded only when the user clicks Export PDF. Layout: title
- * page → metadata table → effectiveness components → attention →
- * emotions → platform fit → channel benchmarks → strengths /
- * weaknesses / recommendations bullet lists.
+ * Pass 33 W9a — Creative Attention PDF rebuild.
+ *
+ * Pass 32 X3 shipped the format with default jsPDF styling — black-on-
+ * white, no logo, generic Arial, ~30% data coverage. The user opened
+ * the PDF and called it "basic with wrong branding". W9a rebuilds the
+ * pipeline against the shared brandTokens (lime BEF264 + indigo 6366F1
+ * accents on white surface), full data coverage (8 summary fields + 7
+ * fields per frame_analysis row), VETT logo lockup on cover, and a
+ * methodology disclosure page at the end.
+ *
+ * Layout:
+ *   Page 1 — Cover: logo lockup, eyebrow, title, brand metadata, footer
+ *   Page 2 — Executive summary: KPI strip + strengths/weaknesses/recs
+ *   Page 3 — Attention arc: line chart + emotion peak callouts
+ *   Page 4-N — Per-frame analysis (video) or single-image analysis
+ *   Page N+1 — Methodology disclosure
  */
 export async function downloadCreativeAnalysisPdf(
   analysis: CreativeAnalysis,
   meta: { missionId?: string; brand?: string | null },
 ): Promise<void> {
-  const [{ jsPDF }, autoTableModule] = await Promise.all([
-    import('jspdf'),
-    import('jspdf-autotable'),
-  ]);
-  const autoTable = (autoTableModule as { default: (doc: unknown, opts: unknown) => void }).default;
-
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
   const margin = 48;
 
-  // Cover
-  doc.setFillColor(11, 12, 21); // VETT dark
-  doc.rect(0, 0, pageW, 140, 'F');
-  doc.setTextColor(190, 242, 100); // VETT lime
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(28);
-  doc.text('VETT — Creative Attention', margin, 70);
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(14);
-  doc.text(meta.brand ?? 'Untitled creative', margin, 100);
-  doc.setFontSize(10);
-  doc.setTextColor(180, 180, 200);
-  doc.text(`Generated ${new Date().toISOString().slice(0, 10)}`, margin, 120);
-
-  doc.setTextColor(0, 0, 0);
-
-  // Metadata table
-  autoTable(doc, {
-    startY: 170,
-    head: [['Metric', 'Value']],
-    body: metaRows(analysis, meta),
-    theme: 'grid',
-    headStyles: { fillColor: [99, 102, 241], textColor: 255 },
-    styles: { fontSize: 10, cellPadding: 6 },
-    margin: { left: margin, right: margin },
-  });
-
-  // Effectiveness components
+  const summary = analysis.summary;
   const eff = analysis.creative_effectiveness;
-  if (eff?.components) {
-    const c = eff.components;
-    autoTable(doc, {
-      head: [['Component', 'Score (0–100)']],
-      body: [
-        ['Attention', String(c.attention)],
-        ['Emotion intensity', String(c.emotion_intensity)],
-        ['Brand clarity', String(c.brand_clarity)],
-        ['Audience resonance', String(c.audience_resonance)],
-        ['Platform fit', String(c.platform_fit)],
-      ],
-      theme: 'grid',
-      headStyles: { fillColor: [99, 102, 241], textColor: 255 },
-      styles: { fontSize: 10, cellPadding: 6 },
-      margin: { left: margin, right: margin },
-    });
-  }
-
-  // Attention
   const att = analysis.attention;
-  if (att) {
-    autoTable(doc, {
-      head: [['Attention metric', 'Value']],
-      body: [
-        ['Active attention (sec)', String(att.predicted_active_attention_seconds ?? '—')],
-        ['Passive attention (sec)', String(att.predicted_passive_attention_seconds ?? '—')],
-        ['Active %', `${att.active_attention_pct ?? '—'}%`],
-        ['Passive %', `${att.passive_attention_pct ?? '—'}%`],
-        ['Non-attention %', `${att.non_attention_pct ?? '—'}%`],
-        ['Distinctive brand asset score', String(att.distinctive_brand_asset_score ?? '—')],
-        ['DBA read time (sec)', String(att.dba_read_seconds ?? '—')],
-      ],
-      theme: 'grid',
-      headStyles: { fillColor: [99, 102, 241], textColor: 255 },
-      styles: { fontSize: 10, cellPadding: 6 },
-      margin: { left: margin, right: margin },
-    });
-  }
+  const frames = analysis.frame_analyses ?? [];
 
-  // Emotions
-  const emos = topEmotions(analysis, 12);
-  if (emos.length > 0) {
-    autoTable(doc, {
-      head: [['Emotion (top 12, averaged)', 'Score']],
-      body: emos.map(([e, s]) => [e, String(s)]),
-      theme: 'grid',
-      headStyles: { fillColor: [99, 102, 241], textColor: 255 },
-      styles: { fontSize: 10, cellPadding: 6 },
-      margin: { left: margin, right: margin },
-    });
-  }
+  // ── Page 1 — Cover ──────────────────────────────────────────────
+  drawJsPdfLogo(doc, margin, margin, 32, { withWordmark: true });
 
-  // Platform Fit
-  const platforms = analysis.summary?.best_platform_fit ?? [];
-  if (platforms.length > 0) {
-    autoTable(doc, {
-      head: [['Platform', 'Fit', 'Norm', 'Predicted', 'Δ vs norm']],
-      body: platforms.map((p) => {
-        const obj = asPlatformFitObject(p);
-        const platform = typeof p === 'string' ? p : (obj?.platform ?? '');
-        return [
-          platform,
-          obj?.fit_score != null ? String(obj.fit_score) : '—',
-          obj?.platform_norm_active_attention_seconds != null
-            ? `${obj.platform_norm_active_attention_seconds}s`
-            : '—',
-          obj?.predicted_creative_attention_seconds != null
-            ? `${obj.predicted_creative_attention_seconds}s`
-            : '—',
-          obj?.delta_vs_norm_pct != null ? `${obj.delta_vs_norm_pct}%` : '—',
-        ];
-      }),
-      theme: 'grid',
-      headStyles: { fillColor: [99, 102, 241], textColor: 255 },
-      styles: { fontSize: 9, cellPadding: 5 },
-      margin: { left: margin, right: margin },
-    });
-  }
+  // Eyebrow
+  doc.setFont(EXPORT_FONTS.body.jsPdf, 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...EXPORT_RGB.indigo);
+  doc.text('CREATIVE ATTENTION ANALYSIS', margin, pageH * 0.42);
 
-  // Channel Benchmarks
-  if (analysis.channel_benchmarks && analysis.channel_benchmarks.length > 0) {
-    autoTable(doc, {
-      head: [['Channel', 'Category avg', 'Predicted', 'Assessment']],
-      body: analysis.channel_benchmarks.map((c) => [
-        c.channel,
-        `${c.category_avg_attention_seconds}s`,
-        c.predicted_for_this_creative != null ? `${c.predicted_for_this_creative}s` : '—',
-        c.fit_assessment,
-      ]),
-      theme: 'grid',
-      headStyles: { fillColor: [99, 102, 241], textColor: 255 },
-      styles: { fontSize: 9, cellPadding: 5 },
-      columnStyles: { 3: { cellWidth: 200 } },
-      margin: { left: margin, right: margin },
-    });
-  }
+  // Title
+  doc.setFont(EXPORT_FONTS.heading.jsPdf, 'bold');
+  doc.setFontSize(40);
+  doc.setTextColor(...EXPORT_RGB.ink);
+  doc.text(meta.brand ?? 'Untitled creative', margin, pageH * 0.5);
 
-  // Strengths / Weaknesses / Recommendations
-  const lists: Array<[string, string[] | undefined]> = [
-    ['Strengths', analysis.summary?.strengths],
-    ['Weaknesses', analysis.summary?.weaknesses],
-    ['Recommendations', analysis.summary?.recommendations],
+  // Body summary
+  doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(...EXPORT_RGB.gray);
+  const coverLines = [
+    `Mission ID: ${meta.missionId ?? '—'}`,
+    `Asset: ${analysis.is_video ? `Video (${analysis.total_frames} frames)` : 'Static image'}`,
+    `Generated: ${new Date().toISOString().slice(0, 10)}`,
   ];
-  for (const [title, arr] of lists) {
-    if (!arr || arr.length === 0) continue;
-    autoTable(doc, {
-      head: [[title]],
-      body: arr.map((s, i) => [`${i + 1}. ${s}`]),
-      theme: 'striped',
-      headStyles: { fillColor: [99, 102, 241], textColor: 255 },
-      styles: { fontSize: 10, cellPadding: 6 },
-      margin: { left: margin, right: margin },
-    });
+  let coverY = pageH * 0.55;
+  for (const line of coverLines) {
+    doc.text(line, margin, coverY);
+    coverY += 16;
   }
+
+  // Lime divider
+  doc.setDrawColor(...EXPORT_RGB.lime);
+  doc.setLineWidth(2);
+  doc.line(margin, pageH * 0.65, margin + 80, pageH * 0.65);
+
+  drawPageFooter(doc, pageW, pageH, margin, 1);
+
+  // ── Page 2 — Executive summary ──────────────────────────────────
+  doc.addPage();
+  drawPageHeader(doc, margin, 'Executive summary');
+
+  // KPI strip (3 cards horizontal)
+  const kpiTop = margin + 60;
+  const kpiW = (pageW - 2 * margin - 24) / 3;
+  const kpiH = 90;
+
+  // KPI 1: Engagement / effectiveness score
+  drawKpiCard(doc, margin, kpiTop, kpiW, kpiH,
+    'OVERALL ENGAGEMENT',
+    summary?.overall_engagement_score != null
+      ? `${summary.overall_engagement_score}/100`
+      : (eff?.score != null ? `${eff.score}/100` : '—'),
+    eff?.band ? eff.band.toUpperCase() : (summary?.attention_arc ? 'directional' : ''),
+  );
+
+  // KPI 2: Best platform fit
+  const topPlatform = (summary?.best_platform_fit ?? [])[0];
+  let platformLabelText = '—';
+  let platformSubText = '';
+  if (topPlatform) {
+    const obj = asPlatformFitObject(topPlatform);
+    platformLabelText = typeof topPlatform === 'string' ? topPlatform : (obj?.platform ?? '—');
+    platformSubText = obj?.fit_score != null ? `Fit ${obj.fit_score}/100` : '';
+  }
+  drawKpiCard(doc, margin + kpiW + 12, kpiTop, kpiW, kpiH,
+    'BEST PLATFORM FIT',
+    platformLabelText,
+    platformSubText,
+  );
+
+  // KPI 3: vs benchmark
+  drawKpiCard(doc, margin + 2 * (kpiW + 12), kpiTop, kpiW, kpiH,
+    'VS CATEGORY BENCHMARK',
+    summary?.vs_benchmark ? truncate(summary.vs_benchmark, 30) : '—',
+    summary?.attention_arc ? truncate(summary.attention_arc, 40) : '',
+  );
+
+  // Strengths / Weaknesses / Recommendations panels
+  let panelY = kpiTop + kpiH + 30;
+  panelY = drawListPanel(doc, margin, panelY, pageW - 2 * margin, 'STRENGTHS',
+    summary?.strengths ?? [], EXPORT_RGB.lime);
+  panelY = drawListPanel(doc, margin, panelY + 14, pageW - 2 * margin, 'WEAKNESSES',
+    summary?.weaknesses ?? [], EXPORT_RGB.red);
+  panelY = drawListPanel(doc, margin, panelY + 14, pageW - 2 * margin, 'RECOMMENDATIONS',
+    summary?.recommendations ?? [], EXPORT_RGB.indigo);
+
+  drawPageFooter(doc, pageW, pageH, margin, 2);
+
+  // ── Page 3 — Attention arc ──────────────────────────────────────
+  doc.addPage();
+  drawPageHeader(doc, margin, 'Attention arc');
+  let pageNum = 3;
+
+  // Description prose
+  if (summary?.attention_arc) {
+    doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...EXPORT_RGB.ink);
+    const lines = doc.splitTextToSize(summary.attention_arc, pageW - 2 * margin);
+    doc.text(lines, margin, margin + 56);
+  }
+
+  // Engagement-per-frame line chart
+  if (frames.length > 0) {
+    const chartY = margin + 130;
+    const chartH = 200;
+    drawEngagementLineChart(doc, margin, chartY, pageW - 2 * margin, chartH, frames);
+  }
+
+  // Attention block (active vs passive vs non) if v2 schema present
+  if (att) {
+    const attY = margin + 360;
+    doc.setFont(EXPORT_FONTS.heading.jsPdf, 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(...EXPORT_RGB.ink);
+    doc.text('Attention prediction', margin, attY);
+
+    doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+    doc.setFontSize(10);
+    const attRows = [
+      [`Active`, `${att.predicted_active_attention_seconds ?? '—'}s · ${att.active_attention_pct ?? '—'}%`],
+      [`Passive`, `${att.predicted_passive_attention_seconds ?? '—'}s · ${att.passive_attention_pct ?? '—'}%`],
+      [`Non-attention`, `${att.non_attention_pct ?? '—'}%`],
+      [`Distinctive brand asset`, `${att.distinctive_brand_asset_score ?? '—'}/100 · reads in ${att.dba_read_seconds ?? '—'}s`],
+    ];
+    let attRowY = attY + 16;
+    for (const [k, v] of attRows) {
+      doc.setTextColor(...EXPORT_RGB.gray);
+      doc.text(k, margin, attRowY);
+      doc.setTextColor(...EXPORT_RGB.ink);
+      doc.text(v, margin + 160, attRowY);
+      attRowY += 16;
+    }
+  }
+
+  drawPageFooter(doc, pageW, pageH, margin, pageNum);
+
+  // ── Pages 4-N — Per-frame analysis ──────────────────────────────
+  for (const frame of frames) {
+    doc.addPage();
+    pageNum += 1;
+    drawPageHeader(doc, margin,
+      analysis.is_video ? `Frame at ${formatTimestamp(frame.timestamp)}` : 'Static image analysis');
+
+    // Donut top-right + brief description top-left
+    drawScoreDonut(doc, pageW - margin - 70, margin + 60, 30, frame.engagement_score ?? 0);
+
+    doc.setFont(EXPORT_FONTS.heading.jsPdf, 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...EXPORT_RGB.indigo);
+    doc.text("WHAT'S HAPPENING", margin, margin + 60);
+
+    doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...EXPORT_RGB.ink);
+    const descLines = doc.splitTextToSize(frame.brief_description || '—', pageW - 2 * margin - 90);
+    doc.text(descLines, margin, margin + 76);
+
+    // Emotion bars
+    const emotionBarY = margin + 170;
+    doc.setFont(EXPORT_FONTS.heading.jsPdf, 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...EXPORT_RGB.indigo);
+    doc.text('EMOTION INTENSITY', margin, emotionBarY);
+
+    drawEmotionBars(doc, margin, emotionBarY + 14, pageW - 2 * margin, 200, frame.emotions || {});
+
+    // Hotspots
+    const hotspotY = margin + 410;
+    doc.setFont(EXPORT_FONTS.heading.jsPdf, 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...EXPORT_RGB.indigo);
+    doc.text('ATTENTION HOTSPOTS', margin, hotspotY);
+
+    doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...EXPORT_RGB.ink);
+    const hotspots = frame.attention_hotspots ?? [];
+    if (hotspots.length === 0) {
+      doc.setTextColor(...EXPORT_RGB.gray);
+      doc.text('No specific regions detected.', margin, hotspotY + 16);
+    } else {
+      let hY = hotspotY + 16;
+      for (const h of hotspots.slice(0, 6)) {
+        const hLines = doc.splitTextToSize(`• ${h}`, pageW - 2 * margin);
+        doc.text(hLines, margin, hY);
+        hY += hLines.length * 12 + 2;
+      }
+    }
+
+    // Audience resonance + message clarity
+    const resoY = pageH - margin - 80;
+    doc.setFont(EXPORT_FONTS.body.jsPdf, 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...EXPORT_RGB.gray);
+    doc.text('AUDIENCE RESONANCE', margin, resoY);
+    doc.text('MESSAGE CLARITY', margin + (pageW - 2 * margin) / 2, resoY);
+
+    doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...EXPORT_RGB.ink);
+    doc.text(String(frame.audience_resonance ?? '—'), margin, resoY + 14);
+    doc.text(`${frame.message_clarity ?? '—'}/5`, margin + (pageW - 2 * margin) / 2, resoY + 14);
+
+    drawPageFooter(doc, pageW, pageH, margin, pageNum);
+  }
+
+  // ── Final page — Methodology disclosure ─────────────────────────
+  doc.addPage();
+  pageNum += 1;
+  drawPageHeader(doc, margin, 'Methodology');
+
+  doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(...EXPORT_RGB.ink);
+  const methLines = doc.splitTextToSize(
+    EXPORT_DISCLOSURES.creativeAttentionMethodology,
+    pageW - 2 * margin,
+  );
+  doc.text(methLines, margin, margin + 60);
+
+  doc.setFontSize(9);
+  doc.setTextColor(...EXPORT_RGB.gray);
+  doc.text(
+    `Generated ${new Date().toISOString().slice(0, 19).replace('T', ' ')} UTC.`,
+    margin, margin + 60 + methLines.length * 14 + 20,
+  );
+
+  drawPageFooter(doc, pageW, pageH, margin, pageNum);
 
   doc.save(safeFilename(meta.brand, 'pdf'));
+}
+
+// ── jsPDF rendering helpers (Pass 33 W9a) ────────────────────────────
+
+function drawPageHeader(doc: import('jspdf').jsPDF, margin: number, title: string): void {
+  drawJsPdfLogo(doc, margin, margin - 10, 18, { withWordmark: false });
+  doc.setFont(EXPORT_FONTS.heading.jsPdf, 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(...EXPORT_RGB.ink);
+  doc.text(title, margin + 30, margin + 4);
+  // Lime divider under heading
+  doc.setDrawColor(...EXPORT_RGB.lime);
+  doc.setLineWidth(1);
+  doc.line(margin, margin + 28, doc.internal.pageSize.getWidth() - margin, margin + 28);
+}
+
+function drawPageFooter(
+  doc: import('jspdf').jsPDF,
+  pageW: number,
+  pageH: number,
+  margin: number,
+  pageNum: number,
+): void {
+  doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...EXPORT_RGB.gray);
+  doc.text(EXPORT_DISCLOSURES.pageFooter, margin, pageH - margin / 2);
+  doc.text(String(pageNum), pageW - margin, pageH - margin / 2, { align: 'right' });
+}
+
+function drawKpiCard(
+  doc: import('jspdf').jsPDF,
+  x: number, y: number, w: number, h: number,
+  label: string, value: string, sub: string,
+): void {
+  // Soft background
+  doc.setFillColor(250, 250, 250);
+  if (typeof (doc as { roundedRect?: unknown }).roundedRect === 'function') {
+    doc.roundedRect(x, y, w, h, 8, 8, 'F');
+  } else {
+    doc.rect(x, y, w, h, 'F');
+  }
+  // Lime accent strip on left
+  doc.setFillColor(...EXPORT_RGB.lime);
+  doc.rect(x, y, 4, h, 'F');
+
+  doc.setFont(EXPORT_FONTS.body.jsPdf, 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...EXPORT_RGB.gray);
+  doc.text(label, x + 14, y + 18);
+
+  doc.setFont(EXPORT_FONTS.heading.jsPdf, 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(...EXPORT_RGB.ink);
+  const valLines = doc.splitTextToSize(value, w - 22);
+  doc.text(valLines.slice(0, 1), x + 14, y + 44);
+
+  if (sub) {
+    doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...EXPORT_RGB.gray);
+    const subLines = doc.splitTextToSize(sub, w - 22);
+    doc.text(subLines.slice(0, 2), x + 14, y + 64);
+  }
+}
+
+function drawListPanel(
+  doc: import('jspdf').jsPDF,
+  x: number, y: number, w: number,
+  label: string, items: string[],
+  accentRgb: [number, number, number],
+): number {
+  if (items.length === 0) {
+    return y;
+  }
+  // Title
+  doc.setFont(EXPORT_FONTS.heading.jsPdf, 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...accentRgb);
+  doc.text(label, x, y);
+
+  // Lime/accent dot
+  doc.setFillColor(...accentRgb);
+  doc.circle(x - 6, y - 3, 2, 'F');
+
+  // Items
+  doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...EXPORT_RGB.ink);
+  let cursorY = y + 18;
+  for (const item of items.slice(0, 5)) {
+    const lines = doc.splitTextToSize(`• ${item}`, w);
+    doc.text(lines, x, cursorY);
+    cursorY += lines.length * 12 + 2;
+  }
+  return cursorY;
+}
+
+function drawEngagementLineChart(
+  doc: import('jspdf').jsPDF,
+  x: number, y: number, w: number, h: number,
+  frames: FrameAnalysis[],
+): void {
+  if (frames.length === 0) return;
+  // Frame x-positions normalized to chart width
+  const xs = frames.map((_, i) =>
+    frames.length === 1 ? x + w / 2 : x + (i / (frames.length - 1)) * w
+  );
+  const ys = frames.map((f) => {
+    const score = Number(f.engagement_score ?? 0);
+    const clamped = Math.min(100, Math.max(0, score));
+    return y + h - (clamped / 100) * (h - 12);
+  });
+
+  // Y-axis baseline + 50/100 grid lines
+  doc.setDrawColor(...EXPORT_RGB.graySoft);
+  doc.setLineWidth(0.5);
+  for (const pct of [0, 50, 100]) {
+    const yy = y + h - (pct / 100) * (h - 12);
+    doc.line(x, yy, x + w, yy);
+    doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...EXPORT_RGB.gray);
+    doc.text(String(pct), x - 14, yy + 2);
+  }
+
+  // Plot line (lime)
+  doc.setDrawColor(...EXPORT_RGB.lime);
+  doc.setLineWidth(2);
+  for (let i = 1; i < xs.length; i++) {
+    doc.line(xs[i - 1]!, ys[i - 1]!, xs[i]!, ys[i]!);
+  }
+
+  // Plot points (indigo)
+  doc.setFillColor(...EXPORT_RGB.indigo);
+  for (let i = 0; i < xs.length; i++) {
+    doc.circle(xs[i]!, ys[i]!, 2.5, 'F');
+  }
+
+  // X-axis label
+  doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...EXPORT_RGB.gray);
+  doc.text('Engagement score per frame', x, y + h + 16);
+}
+
+function drawEmotionBars(
+  doc: import('jspdf').jsPDF,
+  x: number, y: number, w: number, maxH: number,
+  emotions: Record<string, number>,
+): void {
+  const entries = Object.entries(emotions)
+    .filter(([, v]) => Number.isFinite(Number(v)))
+    .sort(([, a], [, b]) => Number(b) - Number(a))
+    .slice(0, 12);
+  if (entries.length === 0) {
+    doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...EXPORT_RGB.gray);
+    doc.text('No emotion data.', x, y + 16);
+    return;
+  }
+
+  const labelW = 110;
+  const maxBarW = w - labelW - 50;
+  const rowH = Math.min(18, maxH / entries.length);
+  doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+  doc.setFontSize(9);
+
+  entries.forEach(([emotion, score], idx) => {
+    const rowY = y + idx * rowH;
+    const v = Math.min(100, Math.max(0, Number(score) || 0));
+    // Label
+    doc.setTextColor(...EXPORT_RGB.ink);
+    doc.text(emotion, x, rowY + rowH * 0.7);
+    // Bar background
+    doc.setFillColor(...EXPORT_RGB.graySoft);
+    doc.rect(x + labelW, rowY + 2, maxBarW, rowH - 6, 'F');
+    // Bar fill (lime for high, indigo for low; simple heuristic)
+    const fillW = (v / 100) * maxBarW;
+    if (v >= 50) doc.setFillColor(...EXPORT_RGB.lime);
+    else doc.setFillColor(...EXPORT_RGB.indigo);
+    doc.rect(x + labelW, rowY + 2, fillW, rowH - 6, 'F');
+    // Score
+    doc.setTextColor(...EXPORT_RGB.gray);
+    doc.text(`${Math.round(v)}`, x + labelW + maxBarW + 8, rowY + rowH * 0.7);
+  });
+}
+
+function drawScoreDonut(
+  doc: import('jspdf').jsPDF,
+  cx: number, cy: number, r: number,
+  score: number,
+): void {
+  // Simplified "donut" — outer lime ring with score text in the center.
+  // jsPDF doesn't have native arc primitives, so we render a filled
+  // circle with a smaller white circle inside.
+  const v = Math.min(100, Math.max(0, Number(score) || 0));
+  doc.setFillColor(...EXPORT_RGB.lime);
+  doc.circle(cx, cy, r, 'F');
+  doc.setFillColor(...EXPORT_RGB.paper);
+  doc.circle(cx, cy, r * 0.72, 'F');
+
+  doc.setFont(EXPORT_FONTS.heading.jsPdf, 'bold');
+  doc.setFontSize(r * 0.55);
+  doc.setTextColor(...EXPORT_RGB.ink);
+  const txt = `${Math.round(v)}`;
+  const txtW = doc.getTextWidth(txt);
+  doc.text(txt, cx - txtW / 2, cy + r * 0.18);
+
+  doc.setFont(EXPORT_FONTS.body.jsPdf, 'normal');
+  doc.setFontSize(r * 0.22);
+  doc.setTextColor(...EXPORT_RGB.gray);
+  const sub = '/100';
+  const subW = doc.getTextWidth(sub);
+  doc.text(sub, cx - subW / 2, cy + r * 0.45);
+}
+
+function formatTimestamp(ts: number | string | undefined): string {
+  if (ts == null) return '—';
+  const n = Number(ts);
+  if (!Number.isFinite(n)) return String(ts);
+  if (n < 60) return `${n.toFixed(1)}s`;
+  const m = Math.floor(n / 60);
+  const s = Math.round(n - m * 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function truncate(s: string, n: number): string {
+  if (!s) return '';
+  return s.length > n ? `${s.slice(0, n - 1)}…` : s;
 }
 
 /**
