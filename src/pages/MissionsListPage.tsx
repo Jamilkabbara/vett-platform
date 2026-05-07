@@ -265,16 +265,33 @@ export const MissionsListPage = () => {
   };
 
   const getEstimatedTime = (mission: Mission) => {
-    if (mission.status === 'COMPLETED') return 'Completed';
-    if (mission.status === 'DRAFT') return 'Not launched';
+    // Pass 32 X8 — case-insensitive status comparison. The DB stores
+    // 'completed' lowercase; the legacy uppercase comparison silently
+    // fell through and showed "12-24h" on completed missions.
+    const statusUp = (mission.status || '').toUpperCase();
+    if (statusUp === 'COMPLETED') return 'Completed';
+    if (statusUp === 'DRAFT') return 'Not launched';
     return mission.respondent_count > 500 ? '12-24h' : '4-12h';
   };
 
+  /**
+   * Pass 32 X8 — Dashboard View Results gate. The DB stores statuses
+   * lowercase ('completed' / 'paid' / 'processing' / 'failed' / 'draft'),
+   * but the previous comparison checked uppercase strings ('COMPLETED'
+   * etc.). Real completed missions fell through to /dashboard/:id,
+   * which then redirected to /results/:id — but the brief flash and
+   * occasional race produced an apparent 404 for users.
+   *
+   * Routing rule: anything past DRAFT goes straight to /results/:id;
+   * DRAFT goes to the editor (/dashboard/:id, where DashboardPage
+   * also lives for in-progress edits).
+   */
   const handleMissionClick = (mission: Mission) => {
-    if (mission.status === 'ACTIVE' || mission.status === 'COMPLETED' || mission.status === 'failed') {
-      navigate(`/results/${mission.id}`);
-    } else {
+    const statusUp = (mission.status || '').toUpperCase();
+    if (statusUp === 'DRAFT') {
       navigate(`/dashboard/${mission.id}`);
+    } else {
+      navigate(`/results/${mission.id}`);
     }
   };
 
@@ -554,7 +571,8 @@ export const MissionsListPage = () => {
                         {getMissionPriceLabel(mission)}
                       </span>
                       <div className="flex items-center gap-2 text-primary group-hover:translate-x-1 transition-transform">
-                        {mission.status === 'DRAFT' ? (
+                        {/* Pass 32 X8 — case-insensitive DRAFT check. */}
+                        {(mission.status || '').toUpperCase() === 'DRAFT' ? (
                           <>
                             <span className="text-sm font-bold">Edit</span>
                             <ArrowRight className="w-4 h-4" />
