@@ -91,18 +91,41 @@ export const AdminPaymentErrors = ({
   const [stageFilter, setStageFilter]         = useState('');
   const [errorCodeFilter, setErrorCodeFilter] = useState('');
 
+  const [error, setError] = useState<string | null>(null);
+
+  // Pass 32 X6 — defensive: a non-OK backend response was being parsed
+  // as if it were the success shape, leaving `data.rows` undefined.
+  // The render path then crashed on `data?.rows.map`, leaving the
+  // table stuck on its initial loading row. Now we explicitly check
+  // res.ok, surface the error in the UI, and never touch `.map` on a
+  // missing array.
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({ limit: '100' });
       if (stageFilter)     params.set('stage',     stageFilter);
       if (errorCodeFilter) params.set('errorCode', errorCodeFilter);
       const res = await apiFetch(`/api/admin/payment-errors?${params}`);
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`;
+        try {
+          const j = await res.json();
+          if (j?.error) detail += ` — ${j.error}`;
+        } catch { /* not json */ }
+        throw new Error(detail);
+      }
       const payload = (await res.json()) as PaymentErrorsPayload;
-      setData(payload);
+      setData({
+        rows:    Array.isArray(payload?.rows) ? payload.rows : [],
+        count:   typeof payload?.count === 'number' ? payload.count : 0,
+        window:  payload?.window  ?? { since: new Date().toISOString(), until: new Date().toISOString() },
+        summary: payload?.summary ?? { byStage: {}, byErrorCode: {} },
+      });
     } catch (e) {
       console.error('AdminPaymentErrors load failed', e);
       setData(null);
+      setError(e instanceof Error ? e.message : 'Failed to load payment errors');
     } finally {
       setLoading(false);
     }
@@ -235,14 +258,27 @@ export const AdminPaymentErrors = ({
                   </td>
                 </tr>
               )}
-              {!loading && data && data.rows.length === 0 && (
+              {!loading && error && (
+                <tr>
+                  <td colSpan={9} className="px-4 py-12 text-center">
+                    <p className="text-red-300 text-sm font-bold mb-2">Error: {error}</p>
+                    <button
+                      onClick={load}
+                      className="text-xs text-gray-400 hover:text-white underline"
+                    >
+                      Retry
+                    </button>
+                  </td>
+                </tr>
+              )}
+              {!loading && !error && data && data.rows.length === 0 && (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
                     No payment errors in this window. 🎉
                   </td>
                 </tr>
               )}
-              {!loading && data?.rows.map((r) => {
+              {!loading && !error && (data?.rows ?? []).map((r) => {
                 const stage = r.stage_at_failure ?? 'unknown';
                 const stageColor = STAGE_COLOR[stage] ?? 'bg-gray-700 text-gray-400 border-gray-600';
                 return (
