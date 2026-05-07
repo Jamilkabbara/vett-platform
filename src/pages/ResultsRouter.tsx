@@ -24,6 +24,9 @@ import { CompareResultsPage } from './CompareResultsPage';
 // Link tradition). Routed when goal_type === 'marketing'. Closes
 // the Pass 30 B6 deferral.
 import { AdTestingResultsPage } from './AdTestingResultsPage';
+// Pass 31 B2 — Competitor Analysis results (Brand Health Tracker).
+// Routed when goal_type === 'competitor'.
+import { CompetitorAnalysisResultsPage } from './CompetitorAnalysisResultsPage';
 
 /**
  * Pass 25 Phase 0.2 — central router for /results/:missionId.
@@ -109,6 +112,9 @@ export function ResultsRouter() {
   }
   if (goalType === 'marketing') {
     return <AdTestingResultsPage />;
+  }
+  if (goalType === 'competitor') {
+    return <CompetitorAnalysisResultsPage />;
   }
   return <ResultsPage />;
 }
