@@ -30,6 +30,9 @@ import { CompetitorAnalysisResultsPage } from './CompetitorAnalysisResultsPage';
 // Pass 31 B4 — Naming & Messaging results (monadic + paired + TURF).
 // Routed when goal_type === 'naming_messaging'.
 import { NamingResultsPage } from './NamingResultsPage';
+// Pass 31 B6 — Churn Research results (driver tree + win-back).
+// Routed when goal_type === 'churn_research'.
+import { ChurnResultsPage } from './ChurnResultsPage';
 
 /**
  * Pass 25 Phase 0.2 — central router for /results/:missionId.
@@ -121,6 +124,9 @@ export function ResultsRouter() {
   }
   if (goalType === 'naming_messaging') {
     return <NamingResultsPage />;
+  }
+  if (goalType === 'churn_research') {
+    return <ChurnResultsPage />;
   }
   return <ResultsPage />;
 }
