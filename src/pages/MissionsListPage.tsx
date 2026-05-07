@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
@@ -9,12 +9,8 @@ import { VOLUME_TIERS } from '../utils/pricingEngine';
 import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
 import { deliveryNoun } from '../lib/missionDeliveryUnit';
 
-// Pass 22 Bug 22.28 — lazy ChatWidget keeps react-markdown + chat deps
-// out of the initial Missions page bundle. Loaded only when the user opens
-// the chat for the first time on this route.
-const ChatWidget = lazy(() =>
-  import('../components/chat/ChatWidget').then(m => ({ default: m.ChatWidget })),
-);
+// Pass 33 W7 — site-wide Ask VETT now mounted in App.tsx; per-page
+// ChatWidget removed from this route to avoid double-mount.
 
 const BANNER_DISMISSED_KEY = 'vett_dashboard_banner_dismissed';
 
@@ -594,11 +590,10 @@ export const MissionsListPage = () => {
         </div>
       </div>
 
-      {user && (
-        <Suspense fallback={null}>
-          <ChatWidget scope="dashboard" />
-        </Suspense>
-      )}
+      {/* Pass 33 W7 — Ask VETT moved to App-level SiteWideAskVett mount.
+          The per-page ChatWidget here was duplicating the site-wide
+          floating chat. The dashboard scope still applies (matches the
+          /missions context). */}
     </DashboardLayout>
   );
 };
