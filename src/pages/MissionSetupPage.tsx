@@ -78,6 +78,12 @@ import {
   type AdTestingState,
 } from '../components/setup/AdTestingInputs';
 import {
+  CompetitorAnalysisInputs,
+  COMPETITOR_DEFAULT_STATE,
+  validateCompetitorAnalysis,
+  type CompetitorAnalysisState,
+} from '../components/setup/CompetitorAnalysisInputs';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
@@ -304,6 +310,10 @@ export const MissionSetupPage = () => {
   // Pass 30 B5 — Test Marketing / Ads (ad effectiveness) state.
   const isMarketing = missionGoal === 'marketing';
   const [adTesting, setAdTesting] = useState<AdTestingState>(AD_TESTING_DEFAULT_STATE);
+
+  // Pass 31 B1 — Competitor Analysis (brand health tracker) state.
+  const isCompetitor = missionGoal === 'competitor';
+  const [competitorState, setCompetitorState] = useState<CompetitorAnalysisState>(COMPETITOR_DEFAULT_STATE);
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -683,6 +693,18 @@ export const MissionSetupPage = () => {
       }
     }
 
+    // Pass 31 B1 — Competitor Analysis methodology validation.
+    if (isCompetitor) {
+      const universalMissing = validateUniversalInputs(universalInputs, { minCompetitors: 3 });
+      const competitorMissing = validateCompetitorAnalysis(competitorState, universalInputs.competitors.length);
+      if (universalMissing.length || competitorMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...competitorMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -818,6 +840,16 @@ export const MissionSetupPage = () => {
               intended_message: adTesting.intendedMessage,
             }
           : {};
+        // Pass 31 B1 — competitor analysis context fed to the brand health tracker generator.
+        const competitorPromptCtx: Record<string, string> = isCompetitor
+          ? {
+              competitor_brands: JSON.stringify(universalInputs.competitors),
+              attribute_battery: JSON.stringify([
+                ...competitorState.attributes,
+                ...competitorState.customAttributes,
+              ]),
+            }
+          : {};
         // Pass 29 B2 — universal inputs forwarded for every methodology.
         const universalPromptCtx: Record<string, string> = isUniversalShown
           ? {
@@ -842,6 +874,7 @@ export const MissionSetupPage = () => {
             ...validatePromptCtx,
             ...comparePromptCtx,
             ...marketingPromptCtx,
+            ...competitorPromptCtx,
           },
         });
       } catch (aiErr) {
@@ -958,6 +991,19 @@ export const MissionSetupPage = () => {
           }
         : {};
 
+      // Pass 31 B1 — Competitor Analysis schema columns.
+      const competitorFields: Record<string, unknown> = isCompetitor
+        ? {
+            attribute_battery: [
+              ...competitorState.attributes,
+              ...competitorState.customAttributes,
+            ],
+            competitor_methodology: 'brand_health_tracker',
+            // competitor_brands JSONB column already exists; populated
+            // via universalFields competitor_brands when not brand_lift.
+          }
+        : {};
+
       // Pass 29 B4 — pricing schema columns. Methodology fixed to
       // van_westendorp_plus_gabor_granger for now (the Pass 29 prompt
       // generator's only branch).
@@ -1038,6 +1084,7 @@ export const MissionSetupPage = () => {
         ...validateFields,
         ...compareFields,
         ...marketingFields,
+        ...competitorFields,
         ...brandLiftFields,
       };
 
@@ -1426,13 +1473,23 @@ export const MissionSetupPage = () => {
                     />
                   </div>
                 )}
+                {isCompetitor && (
+                  <div className="mt-4">
+                    <CompetitorAnalysisInputs
+                      focalBrand={universalInputs.brand}
+                      competitorCount={universalInputs.competitors.length}
+                      state={competitorState}
+                      onChange={setCompetitorState}
+                    />
+                  </div>
+                )}
 
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing) ? handleGenerate : handleRevealClarify}
+                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing || isCompetitor) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       className={[
                         'w-full h-12 rounded-xl',
