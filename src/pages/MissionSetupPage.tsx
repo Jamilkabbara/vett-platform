@@ -78,6 +78,24 @@ import {
   type AdTestingState,
 } from '../components/setup/AdTestingInputs';
 import {
+  CompetitorAnalysisInputs,
+  COMPETITOR_DEFAULT_STATE,
+  validateCompetitorAnalysis,
+  type CompetitorAnalysisState,
+} from '../components/setup/CompetitorAnalysisInputs';
+import {
+  NamingInputs,
+  NAMING_DEFAULT_STATE,
+  validateNaming,
+  type NamingInputsState,
+} from '../components/setup/NamingInputs';
+import {
+  ChurnInputs,
+  CHURN_DEFAULT_STATE,
+  validateChurn,
+  type ChurnInputsState,
+} from '../components/setup/ChurnInputs';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
@@ -304,6 +322,18 @@ export const MissionSetupPage = () => {
   // Pass 30 B5 — Test Marketing / Ads (ad effectiveness) state.
   const isMarketing = missionGoal === 'marketing';
   const [adTesting, setAdTesting] = useState<AdTestingState>(AD_TESTING_DEFAULT_STATE);
+
+  // Pass 31 B1 — Competitor Analysis (brand health tracker) state.
+  const isCompetitor = missionGoal === 'competitor';
+  const [competitorState, setCompetitorState] = useState<CompetitorAnalysisState>(COMPETITOR_DEFAULT_STATE);
+
+  // Pass 31 B3 — Naming & Messaging (monadic + paired + TURF) state.
+  const isNaming = missionGoal === 'naming_messaging';
+  const [namingState, setNamingState] = useState<NamingInputsState>(NAMING_DEFAULT_STATE);
+
+  // Pass 31 B5 — Churn Research (driver tree + win-back) state.
+  const isChurn = missionGoal === 'churn_research';
+  const [churnState, setChurnState] = useState<ChurnInputsState>(CHURN_DEFAULT_STATE);
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -683,6 +713,42 @@ export const MissionSetupPage = () => {
       }
     }
 
+    // Pass 31 B1 — Competitor Analysis methodology validation.
+    if (isCompetitor) {
+      const universalMissing = validateUniversalInputs(universalInputs, { minCompetitors: 3 });
+      const competitorMissing = validateCompetitorAnalysis(competitorState, universalInputs.competitors.length);
+      if (universalMissing.length || competitorMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...competitorMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
+    // Pass 31 B3 — Naming & Messaging methodology validation.
+    if (isNaming) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const namingMissing = validateNaming(namingState);
+      if (universalMissing.length || namingMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...namingMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
+    // Pass 31 B5 — Churn Research methodology validation.
+    if (isChurn) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const churnMissing = validateChurn(churnState);
+      if (universalMissing.length || churnMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...churnMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -818,6 +884,37 @@ export const MissionSetupPage = () => {
               intended_message: adTesting.intendedMessage,
             }
           : {};
+        // Pass 31 B1 — competitor analysis context fed to the brand health tracker generator.
+        const competitorPromptCtx: Record<string, string> = isCompetitor
+          ? {
+              competitor_brands: JSON.stringify(universalInputs.competitors),
+              attribute_battery: JSON.stringify([
+                ...competitorState.attributes,
+                ...competitorState.customAttributes,
+              ]),
+            }
+          : {};
+        // Pass 31 B3 — naming context fed to the monadic + paired + TURF generator.
+        const namingPromptCtx: Record<string, string> = isNaming
+          ? {
+              naming_test_type: namingState.testType,
+              naming_candidates: JSON.stringify(namingState.candidates),
+              naming_criteria: JSON.stringify([
+                ...namingState.criteria,
+                ...namingState.customCriteria,
+              ]),
+              brand_personality: namingState.brandPersonality,
+            }
+          : {};
+        // Pass 31 B5 — churn context fed to the driver tree generator.
+        const churnPromptCtx: Record<string, string> = isChurn
+          ? {
+              churn_definition: churnState.definition,
+              churn_custom_definition: churnState.customDefinition,
+              churn_customer_type: churnState.customerType,
+              churn_winback_possible: String(churnState.winbackPossible),
+            }
+          : {};
         // Pass 29 B2 — universal inputs forwarded for every methodology.
         const universalPromptCtx: Record<string, string> = isUniversalShown
           ? {
@@ -842,6 +939,9 @@ export const MissionSetupPage = () => {
             ...validatePromptCtx,
             ...comparePromptCtx,
             ...marketingPromptCtx,
+            ...competitorPromptCtx,
+            ...namingPromptCtx,
+            ...churnPromptCtx,
           },
         });
       } catch (aiErr) {
@@ -958,6 +1058,45 @@ export const MissionSetupPage = () => {
           }
         : {};
 
+      // Pass 31 B1 — Competitor Analysis schema columns.
+      const competitorFields: Record<string, unknown> = isCompetitor
+        ? {
+            attribute_battery: [
+              ...competitorState.attributes,
+              ...competitorState.customAttributes,
+            ],
+            competitor_methodology: 'brand_health_tracker',
+            // competitor_brands JSONB column already exists; populated
+            // via universalFields competitor_brands when not brand_lift.
+          }
+        : {};
+
+      // Pass 31 B3 — Naming & Messaging schema columns.
+      const namingFields: Record<string, unknown> = isNaming
+        ? {
+            naming_test_type: namingState.testType,
+            naming_candidates: namingState.candidates,
+            naming_criteria: [
+              ...namingState.criteria,
+              ...namingState.customCriteria,
+            ],
+            naming_methodology: 'monadic_plus_paired',
+            brand_personality: namingState.brandPersonality || null,
+          }
+        : {};
+
+      // Pass 31 B5 — Churn Research schema columns.
+      const churnFields: Record<string, unknown> = isChurn
+        ? {
+            churn_definition: churnState.definition,
+            churn_custom_definition:
+              churnState.definition === 'custom' ? churnState.customDefinition : null,
+            churn_customer_type: churnState.customerType,
+            churn_winback_possible: churnState.winbackPossible,
+            churn_methodology: 'driver_tree',
+          }
+        : {};
+
       // Pass 29 B4 — pricing schema columns. Methodology fixed to
       // van_westendorp_plus_gabor_granger for now (the Pass 29 prompt
       // generator's only branch).
@@ -1038,6 +1177,9 @@ export const MissionSetupPage = () => {
         ...validateFields,
         ...compareFields,
         ...marketingFields,
+        ...competitorFields,
+        ...namingFields,
+        ...churnFields,
         ...brandLiftFields,
       };
 
@@ -1426,13 +1568,39 @@ export const MissionSetupPage = () => {
                     />
                   </div>
                 )}
+                {isCompetitor && (
+                  <div className="mt-4">
+                    <CompetitorAnalysisInputs
+                      focalBrand={universalInputs.brand}
+                      competitorCount={universalInputs.competitors.length}
+                      state={competitorState}
+                      onChange={setCompetitorState}
+                    />
+                  </div>
+                )}
+                {isNaming && (
+                  <div className="mt-4">
+                    <NamingInputs
+                      state={namingState}
+                      onChange={setNamingState}
+                    />
+                  </div>
+                )}
+                {isChurn && (
+                  <div className="mt-4">
+                    <ChurnInputs
+                      state={churnState}
+                      onChange={setChurnState}
+                    />
+                  </div>
+                )}
 
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing) ? handleGenerate : handleRevealClarify}
+                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing || isCompetitor || isNaming || isChurn) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       className={[
                         'w-full h-12 rounded-xl',

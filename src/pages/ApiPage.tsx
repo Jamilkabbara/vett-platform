@@ -10,7 +10,7 @@ export const ApiPage = () => {
             VETT API v1.0
           </h1>
           <p className="text-white/60 text-xl">
-            Programmatic access to our panel of real humans.
+            Programmatic access to methodology-correct synthetic research.
           </p>
         </div>
 
@@ -26,9 +26,12 @@ export const ApiPage = () => {
           </div>
 
           <p className="text-white/80 text-lg leading-relaxed mb-8">
-            Our API allows you to programmatically create missions, gather responses, and analyze
-            sentiment from our verified human panel. Perfect for integrating market intelligence
-            into your product development workflow.
+            The API lets you programmatically create missions, gather
+            synthetic respondent data, and analyze sentiment using the same
+            industry-standard methodologies (Van Westendorp, MaxDiff, NPS,
+            brand-health funnel, ad effectiveness) that ship in the web
+            product. Perfect for integrating directional market signal into
+            your product development workflow.
           </p>
 
           <div className="grid md:grid-cols-2 gap-6 mb-8">

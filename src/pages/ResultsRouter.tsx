@@ -20,6 +20,19 @@ import { ValidateResultsPage } from './ValidateResultsPage';
 // Pass 30 B4 — Compare Concepts results (sequential monadic).
 // Routed when goal_type === 'compare'.
 import { CompareResultsPage } from './CompareResultsPage';
+// Pass 31 A1 — Test Marketing/Ads results (ad effectiveness, Kantar
+// Link tradition). Routed when goal_type === 'marketing'. Closes
+// the Pass 30 B6 deferral.
+import { AdTestingResultsPage } from './AdTestingResultsPage';
+// Pass 31 B2 — Competitor Analysis results (Brand Health Tracker).
+// Routed when goal_type === 'competitor'.
+import { CompetitorAnalysisResultsPage } from './CompetitorAnalysisResultsPage';
+// Pass 31 B4 — Naming & Messaging results (monadic + paired + TURF).
+// Routed when goal_type === 'naming_messaging'.
+import { NamingResultsPage } from './NamingResultsPage';
+// Pass 31 B6 — Churn Research results (driver tree + win-back).
+// Routed when goal_type === 'churn_research'.
+import { ChurnResultsPage } from './ChurnResultsPage';
 
 /**
  * Pass 25 Phase 0.2 — central router for /results/:missionId.
@@ -102,6 +115,18 @@ export function ResultsRouter() {
   }
   if (goalType === 'compare') {
     return <CompareResultsPage />;
+  }
+  if (goalType === 'marketing') {
+    return <AdTestingResultsPage />;
+  }
+  if (goalType === 'competitor') {
+    return <CompetitorAnalysisResultsPage />;
+  }
+  if (goalType === 'naming_messaging') {
+    return <NamingResultsPage />;
+  }
+  if (goalType === 'churn_research') {
+    return <ChurnResultsPage />;
   }
   return <ResultsPage />;
 }
