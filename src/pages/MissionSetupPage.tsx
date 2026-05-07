@@ -84,6 +84,12 @@ import {
   type CompetitorAnalysisState,
 } from '../components/setup/CompetitorAnalysisInputs';
 import {
+  NamingInputs,
+  NAMING_DEFAULT_STATE,
+  validateNaming,
+  type NamingInputsState,
+} from '../components/setup/NamingInputs';
+import {
   GOALS_WITH_UPLOAD,
   getGoalById,
   getPlaceholderForGoal,
@@ -314,6 +320,10 @@ export const MissionSetupPage = () => {
   // Pass 31 B1 — Competitor Analysis (brand health tracker) state.
   const isCompetitor = missionGoal === 'competitor';
   const [competitorState, setCompetitorState] = useState<CompetitorAnalysisState>(COMPETITOR_DEFAULT_STATE);
+
+  // Pass 31 B3 — Naming & Messaging (monadic + paired + TURF) state.
+  const isNaming = missionGoal === 'naming_messaging';
+  const [namingState, setNamingState] = useState<NamingInputsState>(NAMING_DEFAULT_STATE);
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -705,6 +715,18 @@ export const MissionSetupPage = () => {
       }
     }
 
+    // Pass 31 B3 — Naming & Messaging methodology validation.
+    if (isNaming) {
+      const universalMissing = validateUniversalInputs(universalInputs);
+      const namingMissing = validateNaming(namingState);
+      if (universalMissing.length || namingMissing.length) {
+        toast.error(
+          `Add ${[...universalMissing, ...namingMissing].join(', ')} to continue.`,
+        );
+        return;
+      }
+    }
+
     if (inflightRef.current) return; // double-fire guard
     inflightRef.current = true;
     setIsSubmitting(true);
@@ -850,6 +872,18 @@ export const MissionSetupPage = () => {
               ]),
             }
           : {};
+        // Pass 31 B3 — naming context fed to the monadic + paired + TURF generator.
+        const namingPromptCtx: Record<string, string> = isNaming
+          ? {
+              naming_test_type: namingState.testType,
+              naming_candidates: JSON.stringify(namingState.candidates),
+              naming_criteria: JSON.stringify([
+                ...namingState.criteria,
+                ...namingState.customCriteria,
+              ]),
+              brand_personality: namingState.brandPersonality,
+            }
+          : {};
         // Pass 29 B2 — universal inputs forwarded for every methodology.
         const universalPromptCtx: Record<string, string> = isUniversalShown
           ? {
@@ -875,6 +909,7 @@ export const MissionSetupPage = () => {
             ...comparePromptCtx,
             ...marketingPromptCtx,
             ...competitorPromptCtx,
+            ...namingPromptCtx,
           },
         });
       } catch (aiErr) {
@@ -1004,6 +1039,20 @@ export const MissionSetupPage = () => {
           }
         : {};
 
+      // Pass 31 B3 — Naming & Messaging schema columns.
+      const namingFields: Record<string, unknown> = isNaming
+        ? {
+            naming_test_type: namingState.testType,
+            naming_candidates: namingState.candidates,
+            naming_criteria: [
+              ...namingState.criteria,
+              ...namingState.customCriteria,
+            ],
+            naming_methodology: 'monadic_plus_paired',
+            brand_personality: namingState.brandPersonality || null,
+          }
+        : {};
+
       // Pass 29 B4 — pricing schema columns. Methodology fixed to
       // van_westendorp_plus_gabor_granger for now (the Pass 29 prompt
       // generator's only branch).
@@ -1085,6 +1134,7 @@ export const MissionSetupPage = () => {
         ...compareFields,
         ...marketingFields,
         ...competitorFields,
+        ...namingFields,
         ...brandLiftFields,
       };
 
@@ -1483,13 +1533,21 @@ export const MissionSetupPage = () => {
                     />
                   </div>
                 )}
+                {isNaming && (
+                  <div className="mt-4">
+                    <NamingInputs
+                      state={namingState}
+                      onChange={setNamingState}
+                    />
+                  </div>
+                )}
 
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing || isCompetitor) ? handleGenerate : handleRevealClarify}
+                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing || isCompetitor || isNaming) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       className={[
                         'w-full h-12 rounded-xl',
