@@ -97,6 +97,7 @@ import {
 } from '../components/setup/ChurnInputs';
 import {
   GOALS_WITH_UPLOAD,
+  MISSION_GOALS,
   getGoalById,
   getPlaceholderForGoal,
 } from '../data/missionGoals';
@@ -492,6 +493,17 @@ export const MissionSetupPage = () => {
       // useEffect deep-link branch.
       try { sessionStorage.removeItem('vett_landing_goal'); } catch { /* no-op */ }
       navigate('/creative-attention/new');
+      return;
+    }
+    // Pass 34 B4 — Audience Profiling + Market Entry are deferred until
+    // their backend pipelines ship. Setup grid now mirrors the
+    // /methodologies "Coming Soon" badge UX. The goal can't be
+    // selected; instead show a toast pointing to the live methodologies.
+    const target = MISSION_GOALS.find((g) => g.id === goalId);
+    if (target?.comingSoon) {
+      toast.info(
+        `${target.label} is coming in a future release. Pick another methodology for now.`,
+      );
       return;
     }
     setMissionGoal(goalId);

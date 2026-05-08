@@ -42,6 +42,14 @@ export interface MissionGoal {
   tags?: string[];
   /** Appends a "NEW" corner badge on regular cards or an inline pill on special rows. */
   isNew?: boolean;
+  /**
+   * Pass 34 B4 — methodology has no production-ready end-to-end pipeline
+   * yet. Cards render with a SOON badge + disabled visual state and
+   * surface a toast on click instead of selecting the goal. Source of
+   * truth shared with /methodologies page so the two surfaces never
+   * disagree (was a Pass 34 audit finding).
+   */
+  comingSoon?: boolean;
   /** Layout variant. */
   variant: GoalVariant;
   /** Textarea placeholder shown when this goal is selected. */
@@ -129,7 +137,8 @@ export const MISSION_GOALS: MissionGoal[] = [
     label: 'Audience Profiling',
     emoji: '🎯',
     hint: 'Who is my customer?',
-    isNew: true,
+    // Pass 34 B4 — defer in the setup grid to match /methodologies.
+    comingSoon: true,
     variant: 'regular',
     placeholder:
       'e.g., I want to understand who actually buys my skincare brand — age, income, habits, the brands they compare us to, and which channels they discover new products on.',
@@ -149,7 +158,8 @@ export const MISSION_GOALS: MissionGoal[] = [
     label: 'Market Entry',
     emoji: '🌍',
     hint: 'New market demand',
-    isNew: true,
+    // Pass 34 B4 — defer in the setup grid to match /methodologies.
+    comingSoon: true,
     variant: 'regular',
     placeholder:
       "e.g., We're a German meal-kit brand considering expansion into the UAE. I need to know if there's real demand at €9/meal, which cuisines resonate, and what the biggest delivery concerns are.",
