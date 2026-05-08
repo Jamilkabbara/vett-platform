@@ -569,13 +569,22 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
           </Section>
           </ErrorBoundary>
 
-          {/* Pass 22 Bug 22.2 + 22.3 — Behavioural funnel (event-based) */}
-          <ErrorBoundary label="Behavioural Funnel">
-          <Section title="Behavioural Funnel (events)" icon={<Target className="w-4 h-4" />}>
+          {/* Pass 22 Bug 22.2 + 22.3 — events-based session funnel.
+              Pass 35 A1 — renamed from "Behavioural" to "Session" to
+              clarify that this counts only events with a session_id.
+              The Pass 34 C4 backfill inserted historical mission_completed
+              events with session_id=NULL because the originating session
+              was lost; those rows are intentionally excluded here.
+              The Conversion Funnel above is mission-based truth. */}
+          <ErrorBoundary label="Session Funnel">
+          <Section title="Session Funnel (events)" icon={<Target className="w-4 h-4" />}>
             <p className="text-t4 text-[10px] mb-3 leading-snug">
-              Stage counts pulled from <span className="font-mono">funnel_events</span>.
-              Pass 22 Bug 22.1 fixed the emit reliability gap; numbers will converge
-              with the mission-based Conversion Funnel above as events accumulate.
+              Counts <span className="font-mono">funnel_events</span> with a
+              session_id (i.e. user funnel-paths in a single session).
+              Pass 34 C4 backfilled missing <span className="font-mono">mission_completed</span>
+              events with session_id=NULL because the originating sessions
+              were lost — those are excluded here on purpose. For mission-
+              based truth, see Conversion Funnel above.
             </p>
             {!microFunnel ? (
               <p className="text-t4 text-[12px] text-center py-6">
