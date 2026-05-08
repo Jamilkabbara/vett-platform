@@ -2,8 +2,11 @@
 
 > Methodology-first synthetic-respondent research platform. AI personas
 > calibrated to your audience answer your survey via Anthropic Claude;
-> 13 supported research methodologies with peer-reviewed grounding.
-> Treat outputs as fast directional signal, not panel-grade truth.
+> 13 supported research frameworks (Van Westendorp, MaxDiff, NPS,
+> brand-health funnel, etc. — each peer-reviewed in the academic
+> literature). VETT outputs are synthetic-respondent simulations of
+> those frameworks. Treat as fast directional signal, not panel-grade
+> truth.
 
 ## What VETT is
 

@@ -176,10 +176,12 @@ export const MethodologiesPage = () => {
           Research methodologies
         </h1>
         <p className="text-white/60 text-xl mb-16 max-w-3xl">
-          Every VETT mission binds to a peer-reviewed research methodology.
-          The simulation prompt, persona generation, and synthesis pipeline
-          are tuned per methodology. Synthetic respondents — not real panel —
-          treat outputs as fast directional signal.
+          Every VETT mission runs an industry-standard research framework.
+          The methodologies themselves — Van Westendorp pricing, MaxDiff
+          feature prioritization, NPS, brand-health funnel — are
+          peer-reviewed in the academic literature. VETT outputs are
+          synthetic-respondent simulations of those frameworks, not
+          panel-grade truth.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 mb-16">

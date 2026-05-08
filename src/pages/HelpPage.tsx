@@ -44,7 +44,7 @@ const FAQS: FAQ[] = [
     category: 'How VETT works',
     question: 'Which research methodologies do you support?',
     answer:
-      'Brand Lift (incrementality, exposed vs control), Creative Attention (frame-by-frame video / static analysis with attention prediction + emotion taxonomy), Pricing (Van Westendorp + Gabor-Granger), Feature Roadmap (MaxDiff + Kano), Customer Satisfaction (NPS + CSAT + CES), Concept Test, Sequential Monadic Comparison, Ad Effectiveness, Brand Health Tracker, Naming & Messaging (Monadic + Paired + TURF), and Churn (Driver Tree + Win-Back). Each binds to peer-reviewed methodology — the prompt + simulation + synthesis layers are tuned per type.',
+      'Brand Lift (incrementality, exposed vs control), Creative Attention (frame-by-frame video / static analysis with attention prediction + emotion taxonomy), Pricing (Van Westendorp + Gabor-Granger), Feature Roadmap (MaxDiff + Kano), Customer Satisfaction (NPS + CSAT + CES), Concept Test, Sequential Monadic Comparison, Ad Effectiveness, Brand Health Tracker, Naming & Messaging (Monadic + Paired + TURF), and Churn (Driver Tree + Win-Back). Each runs an industry-standard research framework — the prompt, simulation, and synthesis layers are tuned per type. The frameworks themselves are peer-reviewed in the academic literature; VETT outputs are synthetic-respondent simulations of those frameworks.',
   },
   {
     category: 'Pricing',

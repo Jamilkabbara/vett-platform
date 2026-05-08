@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ScrollToTop } from './components/shared/ScrollToTop';
 import { PageLoader } from './components/shared/PageLoader';
+import { SiteWideAskVett } from './components/chat/SiteWideAskVett';
 import { replayFunnelQueue } from './lib/funnelTrack';
 // Pass 29 A3 — LandingPage imported eagerly. It's the canonical entry
 // point for cold visitors (every other page is gated on auth or a
@@ -184,6 +185,12 @@ function App() {
               <Route path="*" element={<Navigate to="/landing" replace />} />
             </Routes>
           </Suspense>
+          {/* Pass 33 W7 — site-wide Ask VETT. Authed users get the
+              dashboard-scope copilot; anonymous users get a sign-in
+              CTA button so we never burn API tokens on anon pages.
+              Routes that have their own ChatWidget (results, help)
+              and auth funnels are excluded by HIDE_PATTERNS. */}
+          <SiteWideAskVett />
         </div>
       </div>
     </BrowserRouter>

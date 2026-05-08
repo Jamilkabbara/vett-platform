@@ -641,6 +641,15 @@ export function LandingPage() {
           </button>{' '}
           VETT&apos;s AI will figure out the right approach.
         </p>
+        {/* Pass 33 W6 — link the methodology library so the section
+            isn't a dead-end. /methodologies has every framework with
+            its academic citation. */}
+        <p className="mt-2 text-center font-body text-[13px] text-t3">
+          Or browse the{' '}
+          <a href="/methodologies" className="text-lime hover:underline">
+            methodology library →
+          </a>
+        </p>
       </Section>
 
       {/* ── Intelligence Loop ───────────────────────────────── */}
