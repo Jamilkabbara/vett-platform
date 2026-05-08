@@ -355,14 +355,34 @@ export function AdminAICosts({ apiFetch }: AdminAICostsProps) {
                     axisLine={false}
                     tickLine={false}
                   />
+                  {/* Pass 34 C7 — dual Y axes. Revenue and cost differ
+                      by 30-100x in production ($1.89 cost vs $20-80
+                      revenue per day) so a shared axis squashed the
+                      cost line at $0. Left axis = cost (sub-dollar
+                      precision), right axis = revenue (dollars). */}
                   <YAxis
+                    yAxisId="cost"
+                    orientation="left"
                     tickFormatter={(v?: number) =>
-                      `$${safeFormatter(v, (x) => x.toFixed(2), '0.00')}`
+                      `$${safeFormatter(v, (x) => x.toFixed(x < 1 ? 3 : 2), '0.00')}`
                     }
-                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                    tick={{ fill: '#38bdf8', fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
                     width={60}
+                    domain={[0, 'auto']}
+                  />
+                  <YAxis
+                    yAxisId="revenue"
+                    orientation="right"
+                    tickFormatter={(v?: number) =>
+                      `$${safeFormatter(v, (x) => x.toFixed(0), '0')}`
+                    }
+                    tick={{ fill: '#ccff00', fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={50}
+                    domain={[0, 'auto']}
                   />
                   <Tooltip content={<ChartTooltip />} />
                   <Legend
@@ -374,6 +394,7 @@ export function AdminAICosts({ apiFetch }: AdminAICostsProps) {
                   <Area
                     type="monotone"
                     dataKey="revenue_usd"
+                    yAxisId="revenue"
                     stroke="#ccff00"
                     strokeWidth={2}
                     fill="url(#gradRevenue)"
@@ -382,6 +403,7 @@ export function AdminAICosts({ apiFetch }: AdminAICostsProps) {
                   <Area
                     type="monotone"
                     dataKey="cost_usd"
+                    yAxisId="cost"
                     stroke="#38bdf8"
                     strokeWidth={2}
                     fill="url(#gradCost)"
