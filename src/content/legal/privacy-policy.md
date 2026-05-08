@@ -131,25 +131,38 @@ However, no system is 100% secure. We cannot guarantee absolute security and rec
 
 ---
 
-## 9. International Data Transfers
+## 9. Mobile App (vett-mobile, when shipped)
+
+When you use the VETT mobile app on iOS or Android:
+
+- **Push notifications**: with your explicit opt-in, we send a push when your mission completes. The Expo push token associated with your device is stored in our `push_tokens` table keyed to your account. You can revoke push permission at any time via your device's notification settings; on revocation we delete the token.
+- **Session persistence**: your Supabase auth session is stored in the device's secure-store enclave (Keychain on iOS, Keystore on Android). It never leaves the device unencrypted.
+- **In-app payments**: payments process via Stripe Checkout in a secure web view. We do not handle card numbers; Stripe does. Apple Pay support is available where Apple Pay is configured for your device.
+- **No location, contacts, photos, or microphone access**: the app doesn't request these permissions. The app's privacy nutrition labels in the App Store reflect this exactly.
+
+The mobile app is intended for users aged 18+. The same data collection scope applies as the web app.
+
+---
+
+## 10. International Data Transfers
 
 VETT operates from the UAE and uses service providers globally. Your data may be transferred to, stored, and processed in countries outside your jurisdiction (including the United States and the European Union). We ensure appropriate safeguards are in place, including standard contractual clauses where applicable.
 
 ---
 
-## 10. Children's Privacy
+## 11. Children's Privacy
 
-VETT is not intended for users under 18. We do not knowingly collect personal information from children. If we learn we have collected data from a child, we will delete it promptly.
+VETT is not intended for users under 18. We do not knowingly collect personal information from children. If we learn we have collected data from a child, we will delete it promptly. The mobile app's age rating is 4+ (no objectionable content) but the app is intended for adult users.
 
 ---
 
-## 11. Changes to This Policy
+## 12. Changes to This Policy
 
 We may update this Privacy Policy from time to time. Material changes will be communicated via email or prominent notice on our website. The "Last Updated" date reflects the most recent version. Continued use of the Service after changes constitutes acceptance.
 
 ---
 
-## 12. Contact Us
+## 13. Contact Us
 
 For questions, concerns, or to exercise your rights:
 

@@ -232,7 +232,19 @@ For users in jurisdictions with mandatory consumer protection laws, those laws a
 
 ---
 
-## 16. Miscellaneous
+## 16. Mobile App (vett-mobile, when shipped)
+
+The VETT mobile app on iOS and Android is governed by these same Terms. Additional mobile-specific clauses:
+
+- **No subscriptions, no in-app purchases:** All payments process via Stripe Checkout (web view). The app does not use Apple's In-App Purchase or Google's Play Billing. We do not auto-renew anything.
+- **Push notifications are opt-in:** You explicitly grant permission. Revoke any time via your device's notification settings.
+- **18+ requirement applies:** The mobile app is intended for adult users. The App Store / Play Store rating reflects this exactly.
+- **App Store / Play Store EULA:** Where the platform's standard EULA applies (Apple Media Services Terms, Google Play Terms), those terms govern your relationship with the platform; these VETT Terms govern your relationship with VETT.
+- **Refund policy applies:** All Pass 34 C1 auto-refund + manual refund mechanisms apply equally to mobile payments.
+
+---
+
+## 17. Miscellaneous
 
 - **Entire Agreement:** These Terms, together with the Privacy Policy and Refund Policy, constitute the complete agreement between you and VETT.
 - **Severability:** If any provision is found unenforceable, the remaining provisions remain in effect.
@@ -242,7 +254,7 @@ For users in jurisdictions with mandatory consumer protection laws, those laws a
 
 ---
 
-## 17. Contact
+## 18. Contact
 
 For questions about these Terms:
 
