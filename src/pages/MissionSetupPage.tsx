@@ -629,6 +629,10 @@ export const MissionSetupPage = () => {
           bl.wave.campaignEnd &&
           new Date(bl.wave.campaignEnd) > new Date(bl.wave.campaignStart));
       if (
+        // Pass 34 B2 — brand name is required so the generator can
+        // substitute it into funnel questions. Without it the model
+        // emits "this concept" / "the brand" placeholders.
+        !bl.brand.trim() ||
         !bl.creative ||
         bl.markets.length < 1 ||
         bl.channels.length < 1 ||
@@ -809,6 +813,9 @@ export const MissionSetupPage = () => {
         // template / wave structure without a new endpoint contract.
         const brandLiftPromptCtx: Record<string, string> = isBrandLift
           ? {
+              // Pass 34 B2 — focal brand name now flows into the prompt
+              // so the generator can substitute it into funnel questions.
+              brand_name: brandLiftState.brand,
               brand_lift_template: brandLiftState.kpiTemplate,
               markets: brandLiftState.markets.join(','),
               channel_ids: brandLiftState.channels.map((c) => c.id).join(','),
@@ -1134,6 +1141,9 @@ export const MissionSetupPage = () => {
               channelCount: bl.channels.length,
             });
             return {
+              // Pass 34 B2 — persist the focal brand name on the column so
+              // dashboard cards / admin / re-runs all see it.
+              brand_name: bl.brand || null,
               creative_metadata: bl.creative,
               targeted_markets: bl.markets,
               campaign_channels: bl.channels,

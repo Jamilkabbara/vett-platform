@@ -19,6 +19,14 @@ import {
 } from '../../utils/pricingEngine';
 
 export interface BrandLiftSetupState {
+  /**
+   * Pass 34 B2 — focal brand name. Required field; the question
+   * generator substitutes it into every funnel question (awareness,
+   * consideration, intent, NPS, etc.). Production audit found
+   * brand_name=null on every brand_lift draft because UniversalMissionInputs
+   * is hidden for brand_lift and the field had no other capture path.
+   */
+  brand: string;
   creative: CreativeMetadata | null;
   markets: string[];
   channels: SelectedChannel[];
@@ -41,6 +49,7 @@ const MIN_COMPETITORS = 2;
 const DEFAULT_KPI: KPITemplateId = 'funnel_overview';
 
 export const BRAND_LIFT_DEFAULT_STATE: BrandLiftSetupState = {
+  brand: '',
   creative: null,
   markets: [],
   channels: [],
@@ -56,6 +65,7 @@ function brandLiftMissingFields(
 ): string[] {
   const missing: string[] = [];
   if (!briefValid) missing.push('a 30+ char brief');
+  if (!state.brand.trim()) missing.push('a brand name');
   if (!state.creative) missing.push('a creative');
   if (state.markets.length < 1) missing.push('1 market');
   if (state.channels.length < 1) missing.push('1 channel');
@@ -106,6 +116,29 @@ export function BrandLiftSetupSection({
       transition={{ duration: 0.18 }}
       className="mt-6 space-y-4"
     >
+      {/* Pass 34 B2 — Brand name capture. Required. The question
+          generator substitutes this into every funnel question; without
+          it the model falls back to "this concept" / "the brand". */}
+      <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6">
+        <label className="block">
+          <span className="text-[11px] uppercase tracking-widest text-[var(--t3)] font-display font-bold">
+            Focal brand name *
+          </span>
+          <input
+            type="text"
+            value={state.brand}
+            onChange={(e) => update({ brand: e.target.value.slice(0, 80) })}
+            placeholder="e.g. Aurora Coffee Co"
+            className="mt-2 w-full bg-[var(--bg3)] border border-[var(--b1)] focus:border-[var(--lime)]/60 rounded-lg px-3 py-2 text-sm text-[var(--t1)] placeholder:text-[var(--t3)] outline-none"
+            maxLength={80}
+            required
+          />
+          <span className="text-[11px] text-[var(--t3)] mt-1.5 block">
+            Substituted into awareness, consideration, intent, and NPS questions.
+          </span>
+        </label>
+      </div>
+
       <CreativeUploader
         userId={userId}
         value={state.creative}
