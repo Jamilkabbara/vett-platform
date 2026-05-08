@@ -80,11 +80,16 @@ function RegularCard({
   onSelect: () => void;
   disabled: boolean;
 }) {
+  // Pass 34 B4 — comingSoon goals stay clickable (so the parent toast
+  // fires) but render dimmed with no hover affordance, matching the
+  // disabled visual state without the HTML disabled attribute.
+  const isComingSoon = !!goal.comingSoon;
   return (
     <button
       type="button"
       role="radio"
       aria-checked={selected}
+      aria-disabled={isComingSoon ? true : undefined}
       disabled={disabled}
       onClick={onSelect}
       className={[
@@ -92,8 +97,11 @@ function RegularCard({
         'rounded-xl border px-2.5 pt-4 pb-3 text-center',
         'transition-colors',
         'disabled:opacity-60 disabled:cursor-not-allowed',
+        isComingSoon ? 'opacity-55 cursor-not-allowed' : '',
         selected
           ? 'bg-lime border-lime'
+          : isComingSoon
+          ? 'bg-bg3 border-b2'
           : 'bg-bg3 border-b2 hover:border-t3 focus-visible:border-lime',
       ].join(' ')}
     >
@@ -120,7 +128,17 @@ function RegularCard({
         {goal.hint}
       </span>
 
-      {goal.isNew && (
+      {/* Pass 34 B4 — comingSoon takes precedence over isNew so cards
+          for deferred methodologies (Audience Profiling + Market Entry)
+          read SOON instead of NEW and the click handler shows a toast. */}
+      {goal.comingSoon ? (
+        <span
+          aria-hidden
+          className="absolute top-1.5 right-1.5 rounded-full px-1.5 py-[1px] font-display font-extrabold text-[8px] uppercase tracking-wider bg-white/10 text-t3 border border-white/15"
+        >
+          SOON
+        </span>
+      ) : goal.isNew ? (
         <span
           aria-hidden
           className={[
@@ -132,7 +150,7 @@ function RegularCard({
         >
           NEW
         </span>
-      )}
+      ) : null}
     </button>
   );
 }
