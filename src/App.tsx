@@ -63,6 +63,14 @@ const VsTypeformPage                = lazy(() => import('./pages/vs/VsTypeformPa
 const VsUserTestingPage             = lazy(() => import('./pages/vs/VsUserTestingPage').then(m => ({ default: m.VsUserTestingPage })));
 const VsPollfishPage                = lazy(() => import('./pages/vs/VsPollfishPage').then(m => ({ default: m.VsPollfishPage })));
 const VsTraditionalPage             = lazy(() => import('./pages/vs/VsTraditionalPage').then(m => ({ default: m.VsTraditionalPage })));
+// Pass 35 C3+C4 — 6 new competitive pages (yabble, synthetic-users,
+// conjointly, aaru, quantilope, traditional-research category page).
+const VsConjointlyPage              = lazy(() => import('./pages/vs/VsConjointlyPage').then(m => ({ default: m.VsConjointlyPage })));
+const VsYabblePage                  = lazy(() => import('./pages/vs/VsYabblePage').then(m => ({ default: m.VsYabblePage })));
+const VsSyntheticUsersPage          = lazy(() => import('./pages/vs/VsSyntheticUsersPage').then(m => ({ default: m.VsSyntheticUsersPage })));
+const VsAaruPage                    = lazy(() => import('./pages/vs/VsAaruPage').then(m => ({ default: m.VsAaruPage })));
+const VsQuantilopePage              = lazy(() => import('./pages/vs/VsQuantilopePage').then(m => ({ default: m.VsQuantilopePage })));
+const VsTraditionalResearchPage     = lazy(() => import('./pages/vs/VsTraditionalResearchPage').then(m => ({ default: m.VsTraditionalResearchPage })));
 
 function App() {
   // Pass 22 Bug 22.1 — drain any funnel events that got queued in
@@ -177,6 +185,13 @@ function App() {
               <Route path="/vs/typeform" element={<VsTypeformPage />} />
               <Route path="/vs/usertesting" element={<VsUserTestingPage />} />
               <Route path="/vs/pollfish" element={<VsPollfishPage />} />
+              {/* Pass 35 C3+C4 routes */}
+              <Route path="/vs/conjointly" element={<VsConjointlyPage />} />
+              <Route path="/vs/yabble" element={<VsYabblePage />} />
+              <Route path="/vs/synthetic-users" element={<VsSyntheticUsersPage />} />
+              <Route path="/vs/aaru" element={<VsAaruPage />} />
+              <Route path="/vs/quantilope" element={<VsQuantilopePage />} />
+              <Route path="/vs/traditional-research" element={<VsTraditionalResearchPage />} />
               <Route path="/vs/traditional" element={<VsTraditionalPage />} />
 
               {/* Internal design-system preview — not linked from the app. */}
