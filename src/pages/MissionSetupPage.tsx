@@ -426,6 +426,30 @@ export const MissionSetupPage = () => {
   const isValid = charCount >= DESCRIPTION_MIN;
   const showLengthError = attemptedSubmit && !isValid;
 
+  // Pass 35 A5 — methodology-aware "ready to generate" flag. Surface
+  // it on the CTA visual state so users see a dimmed-disabled
+  // appearance until the per-methodology inputs are also filled, not
+  // just the brief. Click-time validation (toast) still fires; this
+  // only updates the visual.
+  const methodologyReady = (() => {
+    if (!isValid) return false;
+    if (isNaming)     return validateNaming(namingState).length === 0;
+    if (isPricing)    return validatePricingInputs(pricingInputs).length === 0;
+    if (isRoadmap)    return validateFeatureList(roadmapFeatures).length === 0;
+    if (isCSAT)       return validateCSATInputs(csatInputs).length === 0;
+    if (isValidate)   return validateConceptCollector(conceptInputs).length === 0;
+    if (isCompare)    return validateConceptList(compareConcepts).length === 0;
+    if (isMarketing)  return validateAdTesting(adTesting).length === 0;
+    if (isCompetitor) return validateCompetitorAnalysis(competitorState, universalInputs.competitors.length).length === 0;
+    if (isChurn)      return validateChurn(churnState).length === 0;
+    if (isBrandLift) {
+      const bl = brandLiftState;
+      return !!bl.brand.trim() && !!bl.creative && bl.markets.length >= 1
+        && bl.channels.length >= 1 && bl.competitors.length >= 2 && !!bl.kpiTemplate;
+    }
+    return true;
+  })();
+
   const selectedGoal = getGoalById(missionGoal);
   const placeholder = useMemo(
     () => getPlaceholderForGoal(missionGoal),
@@ -1624,15 +1648,21 @@ export const MissionSetupPage = () => {
                       type="button"
                       onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing || isCompetitor || isNaming || isChurn) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
+                      // Pass 35 A5 — visual state keyed to methodologyReady,
+                      // not just brief length. Per-methodology inputs
+                      // (naming candidates, brand_lift brand_name, etc.)
+                      // dim the button until present. Click-time toast
+                      // validation still fires for the same reasons.
+                      aria-disabled={!methodologyReady}
                       className={[
                         'w-full h-12 rounded-xl',
                         'inline-flex items-center justify-center gap-2',
                         'font-display font-black text-[14px] uppercase tracking-widest',
                         'transition-colors',
                         'disabled:opacity-60 disabled:cursor-not-allowed',
-                        isValid
+                        methodologyReady
                           ? 'bg-lime text-black hover:bg-lime/90 shadow-lime-soft'
-                          : 'bg-lime/20 text-lime/70',
+                          : 'bg-lime/20 text-lime/60 cursor-not-allowed',
                       ].join(' ')}
                     >
                       {revealingClarify ? (
