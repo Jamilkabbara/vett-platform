@@ -47,6 +47,8 @@ interface Mission {
   // pre-checkout quote and may not match what was charged.
   total_price_usd?: number | string | null;
   created_at: string;
+  // Pass 36 A0e — paid_at drives the dynamic ETA label on in-flight cards.
+  paid_at?: string | null;
   questions: unknown[];
   // Legacy backend field names — kept optional for graceful fallback.
   context?: string;
@@ -135,6 +137,29 @@ export const MissionsListPage = () => {
       }
     }
   }, [user, authLoading]);
+
+  // Pass 36 A0e — keep mission cards live for in-flight missions.
+  // Refetch on window focus (tab switch + return) so a customer who
+  // came back to the dashboard after a mission completed sees the
+  // status flip immediately. Light poll while any card is in-flight.
+  useEffect(() => {
+    if (!user) return;
+    const inFlight = missions.some((m) => {
+      const s = (m.status || '').toUpperCase();
+      return s === 'PENDING_PAYMENT' || s === 'PENDING' || s === 'PROCESSING' ||
+        s === 'ACTIVE' || s === 'IN_PROGRESS';
+    });
+    const onFocus = () => fetchMissions();
+    window.addEventListener('focus', onFocus);
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (inFlight) {
+      interval = setInterval(fetchMissions, 15000);
+    }
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      if (interval) clearInterval(interval);
+    };
+  }, [user, missions]);
 
   const fetchMissions = async () => {
     try {
@@ -264,10 +289,27 @@ export const MissionsListPage = () => {
     // Pass 32 X8 — case-insensitive status comparison. The DB stores
     // 'completed' lowercase; the legacy uppercase comparison silently
     // fell through and showed "12-24h" on completed missions.
+    //
+    // Pass 36 A0e — replace static "4-12h" / "12-24h" hardcoded ETAs
+    // with stage-aware dynamic labels. May 11 demo: card said
+    // "4-12 hours" for 4 hours while DB had status=completed. The
+    // hardcoded text was technically accurate as a worst-case
+    // ceiling but actively misleading for a 5-15 min mission.
     const statusUp = (mission.status || '').toUpperCase();
     if (statusUp === 'COMPLETED') return 'Completed';
-    if (statusUp === 'DRAFT') return 'Not launched';
-    return mission.respondent_count > 500 ? '12-24h' : '4-12h';
+    if (statusUp === 'FAILED')    return 'Failed';
+    if (statusUp === 'DRAFT')     return 'Not launched';
+    if (statusUp === 'PENDING_PAYMENT' || statusUp === 'PENDING') {
+      return 'Awaiting payment';
+    }
+    // In-flight: use elapsed-time heuristic per goal_type.
+    const paidIso = mission.paid_at ?? mission.created_at;
+    if (!paidIso) return 'Processing…';
+    const minutes = (Date.now() - new Date(paidIso).getTime()) / 60000;
+    if (minutes < 2) return 'Generating questions…';
+    if (minutes < 8) return 'Personas responding…';
+    if (minutes < 15) return 'Computing insights…';
+    return 'Almost done…';
   };
 
   /**
