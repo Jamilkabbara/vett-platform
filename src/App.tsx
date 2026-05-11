@@ -42,6 +42,10 @@ const MissionSuccessPage  = lazy(() => import('./pages/MissionSuccessPage').then
 // Pass 23 Bug 23.0e v2 — Stripe Checkout success/cancel landing pages.
 const PaymentSuccessPage  = lazy(() => import('./pages/PaymentSuccessPage').then(m => ({ default: m.PaymentSuccessPage })));
 const PaymentCancelPage   = lazy(() => import('./pages/PaymentCancelPage').then(m => ({ default: m.PaymentCancelPage })));
+// Pass 36 A0d — post-payment processing page. Stripe success_url
+// now points here; polls mission status and auto-redirects to
+// /results/{id} on completion.
+const ProcessingPage      = lazy(() => import('./pages/ProcessingPage').then(m => ({ default: m.ProcessingPage })));
 const ResultsPage         = lazy(() => import('./pages/ResultsPage').then(m => ({ default: m.ResultsPage })));
 // Pass 25 Phase 0.2 — central router that probes mission.goal_type and
 // dispatches to the right results page. /results/:id used to mount
@@ -145,6 +149,8 @@ function App() {
 
               {/* Pass 23 Bug 23.0e v2 — Stripe Checkout redirect landing pages. */}
               <Route path="/payment-success" element={<PaymentSuccessPage />} />
+              {/* Pass 36 A0d — Stripe success_url redirects here. */}
+              <Route path="/processing/:missionId" element={<ProcessingPage />} />
               <Route path="/payment-cancel" element={<PaymentCancelPage />} />
 
               <Route path="/results/:missionId" element={<ResultsRouter />} />
