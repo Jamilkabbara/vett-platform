@@ -161,16 +161,23 @@ export const MissionsListPage = () => {
     };
   }, [user, missions]);
 
+  // Pass 36 A4 — surface fetch errors instead of falling through to
+  // empty state. The dashboard previously rendered "No missions yet"
+  // whether the user genuinely had none OR the API failed; users
+  // couldn't tell which. With an error string surfaced, the empty
+  // state CTA changes to "Try again" so the user can recover.
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const fetchMissions = async () => {
     try {
       setLoading(true);
+      setFetchError(null);
       const data = await api.get('/api/missions');
       const realMissions = Array.isArray(data) ? data : [];
-      // Always show real data for authenticated users — empty array shows the empty state CTA
       setMissions(realMissions);
     } catch (error) {
       console.error('Error fetching missions:', error);
-      // On error, show empty state rather than fake missions
+      setFetchError(error instanceof Error ? error.message : 'Could not load missions');
       setMissions([]);
     } finally {
       setLoading(false);
@@ -458,7 +465,27 @@ export const MissionsListPage = () => {
             )}
           </AnimatePresence>
 
-          {missions.length === 0 ? (
+          {fetchError ? (
+            // Pass 36 A4 — fetch failure: distinct from "empty state" so
+            // the user can retry instead of being told "no missions yet".
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-gradient-to-br from-red-500/5 to-red-500/[0.02] border border-red-500/30 rounded-3xl p-8 md:p-12 text-center backdrop-blur-xl"
+            >
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-4">
+                Couldn&apos;t load your missions
+              </h2>
+              <p className="text-white/60 mb-6 font-mono text-sm">{fetchError}</p>
+              <button
+                type="button"
+                onClick={fetchMissions}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-black font-bold text-sm uppercase tracking-widest hover:opacity-90 transition-opacity"
+              >
+                Try again
+              </button>
+            </motion.div>
+          ) : missions.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
