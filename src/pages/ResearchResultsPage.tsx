@@ -41,11 +41,24 @@ interface MissionRow {
   insights: ResearchInsights | string | null;
 }
 
+// Pass 39 CRASH-1 — recommendations + follow_ups can ship as either
+// plain strings (legacy) OR rich objects with {goal, title, rationale}
+// (current Claude prompt output). Both shapes appear in production:
+// demo mission b2072d69's insights.recommendations is the rich shape;
+// older missions still have string[]. The pre-Pass-39 type erroneously
+// declared `string[]` only, and `RecommendationList` rendered `{r}`
+// directly — when `r` was an object, React threw error #31 ("Objects
+// are not valid as a React child"). The full results page went blank
+// because the throw happened inside the render tree.
+export type InsightItem =
+  | string
+  | { goal?: string; title?: string; rationale?: string };
+
 interface ResearchInsights {
   kpis?: Array<{ label: string; value: string | number; note?: string }> | Record<string, unknown>;
-  follow_ups?: string[];
+  follow_ups?: InsightItem[];
   contradictions?: Array<{ topic?: string; summary?: string } | string>;
-  recommendations?: string[];
+  recommendations?: InsightItem[];
   executive_summary?: string;
   segment_breakdowns?: Array<{
     segment?: string;
@@ -244,12 +257,57 @@ function PerQuestionInsights({ items }: { items: NonNullable<ResearchInsights['p
   );
 }
 
+// Pass 39 CRASH-1 — render either a string item or a rich
+// {goal, title, rationale} object. Falls through safely on null /
+// undefined / unexpected shapes so a future schema drift doesn't
+// re-crash the whole page.
+function renderInsightItem(item: InsightItem | null | undefined, index: number): React.ReactNode {
+  if (item == null) return null;
+  if (typeof item === 'string') {
+    return <span>{item}</span>;
+  }
+  // Rich object: prefer title as the primary line, rationale as the
+  // detail, goal as a label badge. If none of these are present
+  // (truly unexpected), JSON-stringify as last-resort fallback so
+  // the row is at least visible rather than silently disappearing.
+  const { title, rationale, goal } = item;
+  const hasAnyField = Boolean(title || rationale || goal);
+  if (!hasAnyField) {
+    return <span className="opacity-60 font-mono text-xs">{JSON.stringify(item)}</span>;
+  }
+  return (
+    <div className="flex flex-col gap-1.5">
+      {title && (
+        <span className="font-semibold text-t1">
+          {title}
+        </span>
+      )}
+      {rationale && (
+        <span className="text-t2 text-sm leading-relaxed">
+          {rationale}
+        </span>
+      )}
+      {goal && (
+        <span
+          className="self-start inline-flex items-center px-2 py-0.5 rounded-md bg-bg3 border border-b1 text-[10px] font-display font-bold uppercase tracking-wider text-t3"
+          aria-label={`Goal: ${goal}`}
+        >
+          {goal}
+        </span>
+      )}
+    </div>
+  );
+  // index parameter retained for future per-row diagnostics; eslint
+  // would warn about unused but the call site uses it on the <li> key.
+  void index;
+}
+
 function RecommendationList({
   title, icon, items, accent,
 }: {
   title: string;
   icon: React.ReactNode;
-  items: string[];
+  items: InsightItem[];
   accent: string;
 }) {
   if (!items.length) return null;
@@ -259,11 +317,11 @@ function RecommendationList({
         {icon}
         {title}
       </h2>
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {items.map((r, i) => (
           <li key={i} className="text-t2 text-sm leading-relaxed flex gap-2">
             <span className="mt-0.5 shrink-0 opacity-80">{i + 1}.</span>
-            <span>{r}</span>
+            <div className="flex-1 min-w-0">{renderInsightItem(r, i)}</div>
           </li>
         ))}
       </ul>
