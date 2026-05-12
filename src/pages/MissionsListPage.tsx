@@ -126,11 +126,14 @@ export const MissionsListPage = () => {
       return s === 'PENDING_PAYMENT' || s === 'PENDING' || s === 'PROCESSING' ||
         s === 'ACTIVE' || s === 'IN_PROGRESS';
     });
-    const onFocus = () => fetchMissions();
+    // Pass 39 A-CONT-3 — focus + interval refetches now run in background
+    // mode (no skeleton flicker). Users tab-switching frequently no longer
+    // see the dashboard reset to the skeleton on every return.
+    const onFocus = () => fetchMissions({ background: true });
     window.addEventListener('focus', onFocus);
     let interval: ReturnType<typeof setInterval> | null = null;
     if (inFlight) {
-      interval = setInterval(fetchMissions, 15000);
+      interval = setInterval(() => fetchMissions({ background: true }), 15000);
     }
     return () => {
       window.removeEventListener('focus', onFocus);
@@ -145,19 +148,32 @@ export const MissionsListPage = () => {
   // state CTA changes to "Try again" so the user can recover.
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const fetchMissions = async () => {
+  // Pass 39 A-CONT-3 — distinguish initial load from background refresh.
+  // Pre-Pass-39: every fetchMissions() call (initial mount AND window
+  // focus AND in-flight poll) flipped `loading=true`, which dumped the
+  // user back into the skeleton view for the API's 200-800ms window.
+  // For users who tab-switched frequently, the dashboard flickered to
+  // skeleton on every return. Now the initial mount keeps the existing
+  // `loading=true` seed; background refreshes pass `{background: true}`
+  // which leaves `loading` alone and just updates `missions` in place.
+  const fetchMissions = async ({ background = false }: { background?: boolean } = {}) => {
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       setFetchError(null);
       const data = await api.get('/api/missions');
       const realMissions = Array.isArray(data) ? data : [];
       setMissions(realMissions);
     } catch (error) {
       console.error('Error fetching missions:', error);
-      setFetchError(error instanceof Error ? error.message : 'Could not load missions');
-      setMissions([]);
+      // Background refetch failures don't clobber existing missions
+      // (better to show stale data than a "Try again" page during a
+      // transient network blip).
+      if (!background) {
+        setFetchError(error instanceof Error ? error.message : 'Could not load missions');
+        setMissions([]);
+      }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   };
 
@@ -578,7 +594,14 @@ export const MissionsListPage = () => {
                   key={mission.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  // Pass 39 A-CONT-3 — cap stagger delay at 0.5s. With the
+                  // unbounded `index * 0.1` a user with 50 missions saw the
+                  // last card fade in at 5s (the "5-6s dimmed cards"
+                  // symptom in the live audit). Capping at 500ms means the
+                  // whole grid is visible within half a second regardless
+                  // of count, while preserving the first-row stagger as
+                  // visual delight.
+                  transition={{ delay: Math.min(index * 0.05, 0.5), duration: 0.2 }}
                   onClick={() => handleMissionClick(mission)}
                   className="bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6 hover:border-primary/30 transition-all cursor-pointer group backdrop-blur-xl relative h-full flex flex-col"
                 >
