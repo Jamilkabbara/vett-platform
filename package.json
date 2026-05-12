@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "vettPass": 40,
+  "vettPass": 41,
   "scripts": {
     "dev": "vite",
     "build": "node scripts/write-version.js && vite build",
