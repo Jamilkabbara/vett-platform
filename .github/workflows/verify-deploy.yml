@@ -1,20 +1,15 @@
-# Pass 37 A10 — frontend post-merge deploy verification.
+# Pass 38 DEPLOY-4 — fail-fast frontend deploy verification.
 #
-# Doctrine #18 (Pass 37): "Shipped" for the frontend requires a
-# user-visible verification, not just green CI. Pass 36 A0c created
-# ResearchResultsPage.tsx and registered the /results/:id route, but
-# the file lived only in git — Vercel never deployed Pass 36 because
-# the PR was never merged. This workflow catches the analogous failure
-# mode for the frontend: PR merged but Vercel auto-deploy didn't pick
-# up the new commit.
+# Previous Pass 37 A10 workflow soft-failed on SHA-not-in-HTML because
+# the SHA-in-HTML heuristic had false negatives (Vite content-hashes
+# assets independently of git SHA). With Pass 38 DEPLOY-3 shipping
+# /version.json containing the exact built SHA + pass number, the
+# verification gate is unambiguous and can hard-fail.
 #
-# Verification strategy: hit https://vettit.ai (the live origin) and
-# confirm the served `index.html` references the freshly-merged JS
-# chunk hash. We use the rendered HTML rather than a /version-style
-# endpoint because the frontend is a static SPA without a server
-# component to expose a pass field. The presence of the new commit SHA
-# in the served bundle's asset URLs is the strongest "deploy
-# propagated" signal we can get without scraping Vercel's API.
+# Doctrine #20 (new in Pass 38): every frontend deploy must expose
+# its SHA + pass at /version.json. Doctrine #17 (Pass 37): "shipped"
+# = deployed in production, not just merged. This workflow turns
+# Doctrine #17 from a process commitment into a CI gate.
 
 name: Verify Deploy
 
@@ -22,9 +17,15 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    types: [opened, synchronize, edited, reopened]
+  workflow_dispatch: # allow manual re-run for spot checks
 
 jobs:
   verify-frontend-deploy:
+    # Only the post-merge verification runs on push-to-main.
+    # On PR events, the screenshot check below is the gate.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,68 +34,105 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Capture merged commit SHA
-        id: sha
+      - name: Capture expected SHA + pass
+        id: expected
         run: |
-          # Short SHA (7 chars) is what Vercel embeds in build URLs by
-          # default. We match either short or full so the check stays
-          # resilient if Vercel changes truncation.
-          SHORT=$(git rev-parse --short=7 HEAD)
-          FULL=$(git rev-parse HEAD)
-          echo "short=$SHORT" >> "$GITHUB_OUTPUT"
-          echo "full=$FULL"   >> "$GITHUB_OUTPUT"
-          echo "Merged SHA: $FULL (short: $SHORT)"
+          # The merge commit SHA on main. This is what Vercel should
+          # have built from. github.sha on push events points exactly
+          # at the merged-into-main commit.
+          EXPECTED_SHA="${{ github.sha }}"
+          # vettPass lives at the top level of package.json (Pass 38
+          # DEPLOY-3). jq -r returns the number as a string; bash
+          # numeric compare against integer works correctly.
+          EXPECTED_PASS=$(jq -r .vettPass < package.json)
+          echo "sha=$EXPECTED_SHA"   >> "$GITHUB_OUTPUT"
+          echo "pass=$EXPECTED_PASS" >> "$GITHUB_OUTPUT"
+          echo "Expecting: sha=$EXPECTED_SHA, pass=$EXPECTED_PASS"
 
-      - name: Wait for Vercel deploy + verify served bundle
+      - name: Wait for Vercel deploy via /version.json
         env:
-          SHORT_SHA: ${{ steps.sha.outputs.short }}
-          FULL_SHA: ${{ steps.sha.outputs.full }}
-          # Production origin. Override via repo Secrets if hostname
-          # changes; default is the canonical apex domain.
-          ORIGIN: ${{ secrets.PROD_ORIGIN || 'https://vettit.ai' }}
-          # Vercel auto-deploys complete in ~90s p50, ~5min p99.
+          EXPECTED_SHA:  ${{ steps.expected.outputs.sha }}
+          EXPECTED_PASS: ${{ steps.expected.outputs.pass }}
+          ORIGIN:        ${{ secrets.PROD_ORIGIN || 'https://www.vettit.ai' }}
+          # Vercel auto-deploys complete in ~90s p50, ~5 min p99.
+          # We poll for up to 6 min before failing.
           DEPLOY_WAIT_S: 360
-          POLL_EVERY_S: 20
+          POLL_EVERY_S: 15
         run: |
           set -euo pipefail
           elapsed=0
+          last_resp=""
           while [ "$elapsed" -lt "$DEPLOY_WAIT_S" ]; do
-            # Fetch the served index.html. -A overrides user agent so
-            # we get the same payload a real browser would; some
-            # bot-detection layers serve a different (stale) HTML to
-            # default curl agents.
-            if html=$(curl -fsS --max-time 15 \
-                -H 'Accept: text/html' \
-                -A 'Mozilla/5.0 (compatible; vett-deploy-verify/1.0)' \
-                "$ORIGIN/" 2>/dev/null); then
-              # Match either short or full SHA appearing anywhere in
-              # the HTML or referenced asset URLs. Vercel's static
-              # assets sit at /_next/static/chunks/... or /assets/...
-              # depending on framework; checking the raw HTML covers
-              # both Next and Vite bundlers.
-              if echo "$html" | grep -qE "$SHORT_SHA|$FULL_SHA"; then
-                echo "✅ Frontend deploy propagated: SHA $SHORT_SHA visible in $ORIGIN"
+            if resp=$(curl -fsS --max-time 10 "$ORIGIN/version.json" 2>/dev/null); then
+              last_resp="$resp"
+              live_sha=$(echo "$resp" | jq -r '.sha // empty')
+              live_pass=$(echo "$resp" | jq -r '.pass // empty')
+              # Pass MUST be >= expected (catches the case where
+              # someone bumped vettPass but Vercel ran an older build,
+              # but allows the next pass to come along without forcing
+              # this workflow to retro-fail).
+              if [ "$live_sha" = "$EXPECTED_SHA" ] \
+                 && [ "$live_pass" -ge "$EXPECTED_PASS" ]; then
+                echo "✅ Frontend deploy verified."
+                echo "    sha:  $live_sha"
+                echo "    pass: $live_pass"
                 exit 0
               fi
-              # Heuristic fallback: SHA may not appear in HTML for some
-              # build setups. As a softer check, ensure the HTML at
-              # least changes between polls (rules out a totally
-              # frozen deploy). Hash the HTML and compare across loops.
-              this_hash=$(echo -n "$html" | sha256sum | cut -c1-12)
-              echo "Deploy still propagating (SHA not yet in HTML, hash=$this_hash, elapsed=${elapsed}s)…"
+              echo "Deploy still propagating: live sha=$live_sha pass=$live_pass, expected sha=$EXPECTED_SHA pass=$EXPECTED_PASS (elapsed ${elapsed}s)"
             else
-              echo "Could not reach $ORIGIN — still waiting (elapsed ${elapsed}s)…"
+              echo "Could not reach $ORIGIN/version.json — likely 404 if DEPLOY-3 hasn't shipped to prod yet (elapsed ${elapsed}s)"
             fi
             sleep "$POLL_EVERY_S"
             elapsed=$((elapsed + POLL_EVERY_S))
           done
-          echo "::warning::Could not confirm SHA $SHORT_SHA in $ORIGIN bundle within ${DEPLOY_WAIT_S}s."
-          echo "::warning::This often means Vercel either hasn't redeployed or"
-          echo "::warning::serves a SHA-stripped bundle. Manually verify at $ORIGIN."
-          # Soft-fail: warning, not error. The SHA-in-HTML check has
-          # false negatives (Vite bundle SHAs are independent of git
-          # SHA, so the match relies on Vercel embedding the commit
-          # SHA in a meta tag or sourcemap reference). Doctrine #18
-          # requires a screenshot anyway; this workflow is an extra
-          # signal, not the gate.
-          exit 0
+          echo "::error::Frontend deploy did not propagate within ${DEPLOY_WAIT_S}s."
+          echo "::error::Last observed /version.json response: ${last_resp:-<unreachable>}"
+          echo "::error::Expected: sha=$EXPECTED_SHA, pass>=$EXPECTED_PASS"
+          echo "::error::Doctrine #17: shipped means deployed. Manual fix needed:"
+          echo "::error::  1. Vercel dashboard -> vett-platform -> Deployments — confirm"
+          echo "::error::     latest deployment shows Production tag with the merge SHA"
+          echo "::error::  2. If not: trigger redeploy from the Vercel dashboard"
+          echo "::error::  3. If /version.json still 404s: DEPLOY-3 may not have made it"
+          echo "::error::     to main yet — check that package.json scripts.build runs"
+          echo "::error::     node scripts/write-version.js before vite build"
+          exit 1
+
+  require-screenshot-in-pr:
+    # Pass 38 A10 — Doctrine #19: every PR description must include a
+    # production screenshot link. The screenshot is the user-visible
+    # gate; this CI step enforces it on PR open / synchronize.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR description for screenshot link
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) return;
+            const body = pr.body || '';
+            // Accept common screenshot-link patterns. Prntsc / Imgur /
+            // CleanShot / Dropbox / GitHub user-attached PNG/JPG /
+            // GitHub native attachment URLs.
+            const patterns = [
+              /screenshot/i,
+              /prnt\.sc/i,
+              /imgur\.com/i,
+              /cleanshot\.com/i,
+              /d\.pr\//i,
+              /dropbox\.com/i,
+              /github\.com\/.*\.(png|jpg|jpeg)/i,
+              /user-images\.githubusercontent\.com/i,
+              /private-user-images\.githubusercontent\.com/i,
+            ];
+            const hasScreenshot = patterns.some((re) => re.test(body));
+            if (!hasScreenshot) {
+              core.setFailed(
+                'Doctrine #19 — PR description must include a production ' +
+                'screenshot link (post-deploy, not localhost). Acceptable ' +
+                'hosts: GitHub attachment, prnt.sc, imgur, cleanshot, d.pr, ' +
+                'or a direct .png/.jpg URL.'
+              );
+            } else {
+              core.info('✅ Production screenshot link found in PR description.');
+            }
