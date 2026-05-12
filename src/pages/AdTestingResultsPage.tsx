@@ -3,6 +3,11 @@ import { useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
+// Pass 41 BUG2 — universal renderer fallback when this page can't
+// produce its marketing-specific stages (missing aggregated_by_question
+// or schema-incompatible row). Same fallback pattern as Pass 41 BUG1
+// in BrandLiftResultsPage.
+import { ResearchResultsPage } from './ResearchResultsPage';
 
 /**
  * Pass 31 A1 (closes Pass 30 B6 deferral) — Test Marketing/Ads
@@ -121,20 +126,70 @@ export function AdTestingResultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Pass 41 BUG2 — also probe `insights` + `status` so we can fall back
+  // to ResearchResultsPage for marketing missions that ran through the
+  // standard synthesis pipeline (no aggregated_by_question / no funnel-
+  // stage-tagged questions). Live audit caught 23389bb1-b30f-4b33-
+  // a450-37ded4560307 in this state: goal_type=marketing,
+  // status=completed, insights keys populated with the universal
+  // shape, but no marketing-specific aggregation — page rendered
+  // "Mission not found" because one of the marketing-specific
+  // columns failed the SELECT or the required derivations couldn't
+  // run.
+  const [needsFallback, setNeedsFallback] = useState(false);
+
   useEffect(() => {
     if (!missionId) return;
     (async () => {
+      // Two-step fetch: narrow marketing-specific select first; if
+      // that errors (e.g. one of the columns is missing on this row's
+      // schema variant), retry with a minimal select to determine
+      // whether the row exists at all. This makes the fallback path
+      // robust against schema drift.
       const { data, error: fetchErr } = await supabase
         .from('missions')
-        .select('id, questions, brand_name, category, creative_media_url, creative_media_type, campaign_channel, campaign_format, campaign_objective, intended_message, aggregated_by_question')
+        .select('id, questions, brand_name, category, creative_media_url, creative_media_type, campaign_channel, campaign_format, campaign_objective, intended_message, aggregated_by_question, status, insights')
         .eq('id', missionId)
         .single();
+
       if (fetchErr || !data) {
-        setError('Mission not found');
-      } else {
-        setMission(data as MarketingMission);
-        setAgg((data as Record<string, unknown>).aggregated_by_question as Record<string, AggregatedAnswer> || {});
+        // Probe: does the row exist at all? If yes, the fetch failed
+        // on a column issue — delegate to the standard renderer.
+        const { data: probe } = await supabase
+          .from('missions')
+          .select('id, status, insights')
+          .eq('id', missionId)
+          .maybeSingle();
+        if (probe && probe.status === 'completed' && probe.insights) {
+          setNeedsFallback(true);
+        } else {
+          setError('Mission not found');
+        }
+        setLoading(false);
+        return;
       }
+
+      // Row fetched fine — but the marketing-specific aggregation
+      // may not be present. If aggregated_by_question is missing or
+      // empty AND insights has been synthesized, fall back to the
+      // universal renderer rather than showing "still generating"
+      // forever.
+      const aggData = (data as Record<string, unknown>).aggregated_by_question as Record<string, AggregatedAnswer> | null;
+      const aggEmpty = !aggData || Object.keys(aggData).length === 0;
+      const status   = (data as Record<string, unknown>).status as string | undefined;
+      const insights = (data as Record<string, unknown>).insights;
+      const insightsPresent =
+        insights != null &&
+        typeof insights === 'object' &&
+        Object.keys(insights as Record<string, unknown>).length > 0;
+      if (aggEmpty && status === 'completed' && insightsPresent) {
+        setNeedsFallback(true);
+        setLoading(false);
+        return;
+      }
+
+      setMission(data as MarketingMission);
+      setAgg(aggData || {});
       setLoading(false);
     })();
   }, [missionId]);
@@ -203,6 +258,13 @@ export function AdTestingResultsPage() {
         <Loader2 className="w-8 h-8 text-[var(--lime)] animate-spin" />
       </div>
     );
+  }
+  // Pass 41 BUG2 — fallback to the universal renderer for marketing
+  // missions that don't have aggregated_by_question or hit a schema
+  // mismatch on the marketing-specific column SELECT. Audited mission
+  // 23389bb1-b30f-4b33-a450-37ded4560307 in this state.
+  if (needsFallback) {
+    return <ResearchResultsPage />;
   }
   if (error) {
     return (
