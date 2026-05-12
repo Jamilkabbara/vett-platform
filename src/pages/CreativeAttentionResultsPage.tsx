@@ -12,7 +12,7 @@
  *  - Platform fit pills
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
@@ -24,6 +24,18 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
+
+// Pass 37 A5 — Creative attention staleness threshold. A CA mission that
+// has not produced `creative_analysis` JSON within this window is treated
+// as failed by the UI even when the DB row still reads status='paid' or
+// 'processing'. Real CA takes 30s (image) → 3min (30s video); 30 min is
+// a generous ceiling. The May demo's stuck mission 91be5c7b had been
+// "processing" for 36 hours when the audit caught it.
+const CA_STALE_AFTER_MINUTES = 30;
+// Hard ceiling on poll duration so users who landed on a still-running
+// mission don't camp the page indefinitely. After this, surface the
+// failure UI and stop polling.
+const CA_POLL_TIMEOUT_MINUTES = 5;
 
 // ── Types (Pass 24 Bug 24.01 — moved to src/types/creativeAnalysis.ts) ──────
 // Single-source types live in `../types/creativeAnalysis`. The local aliases
@@ -84,6 +96,12 @@ export function CreativeAttentionResultsPage() {
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState<string | null>(null);
   const [polling,    setPolling]    = useState(false);
+  // Pass 37 A5 — track whether the failure was detected by the staleness
+  // heuristic (vs. an explicit status='failed' from the backend). Drives
+  // the failure-UI copy so users with a stuck-but-not-flagged mission see
+  // an honest "we're not sure what happened" rather than a misleading
+  // "analysis failed" implying the pipeline reported failure.
+  const [staleDetected, setStaleDetected] = useState(false);
 
   // ── Fetch ────────────────────────────────────────────────────────────────
 
@@ -110,23 +128,50 @@ export function CreativeAttentionResultsPage() {
         setLoading(false);
         setPolling(false);
       } else if (data.status === 'failed') {
-        setError('Creative analysis failed. Please contact support.');
+        setError('Creative analysis failed.');
         setLoading(false);
       } else {
-        // Still processing — poll
-        setPolling(true);
-        setLoading(false);
+        // Pass 37 A5 — staleness check. If the mission was created longer
+        // ago than the CA stale threshold, treat as failed (the DB row
+        // may still read status='paid'/'processing', but no analysis is
+        // coming). Anything fresher polls normally.
+        const createdAtIso = (data.created_at as string | null) ?? null;
+        const minutesAgo = createdAtIso
+          ? (Date.now() - new Date(createdAtIso).getTime()) / 60000
+          : 0;
+        if (createdAtIso && minutesAgo > CA_STALE_AFTER_MINUTES) {
+          setStaleDetected(true);
+          setError('Creative analysis did not complete.');
+          setLoading(false);
+        } else {
+          setPolling(true);
+          setLoading(false);
+        }
       }
     };
 
     fetchMission();
   }, [missionId]);
 
-  // Poll every 5s if still processing
+  // Pass 37 A5 — poll every 5s if processing, hard-stop after the timeout
+  // so users who landed on a stuck mission see a clear failure UI rather
+  // than camping the page indefinitely.
+  const pollStartRef = useRef<number | null>(null);
   useEffect(() => {
     if (!polling || !missionId) return;
+    pollStartRef.current = Date.now();
 
     const interval = setInterval(async () => {
+      const elapsedMin = pollStartRef.current
+        ? (Date.now() - pollStartRef.current) / 60000
+        : 0;
+      if (elapsedMin > CA_POLL_TIMEOUT_MINUTES) {
+        setStaleDetected(true);
+        setError('Creative analysis did not complete.');
+        setPolling(false);
+        return;
+      }
+
       const { data } = await supabase
         .from('missions')
         .select('creative_analysis, status')
@@ -137,7 +182,7 @@ export function CreativeAttentionResultsPage() {
         setAnalysis(data.creative_analysis as CreativeAnalysis);
         setPolling(false);
       } else if (data?.status === 'failed') {
-        setError('Creative analysis failed. Please contact support.');
+        setError('Creative analysis failed.');
         setPolling(false);
       }
     }, 5000);
@@ -156,13 +201,33 @@ export function CreativeAttentionResultsPage() {
   }
 
   if (error) {
+    // Pass 37 A5 — actionable failure UI. Was a single "Back to Dashboard"
+    // link with no next steps; users with a stuck mission had no recourse
+    // and no explanation of what went wrong or whether they'd be charged.
     return (
-      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-4 text-center px-5">
+      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-4 text-center px-5 max-w-lg mx-auto">
         <AlertCircle className="w-12 h-12 text-red-400" />
-        <h2 className="text-lg font-bold text-[var(--t1)]">{error}</h2>
-        <Link to="/dashboard" className="text-[var(--lime)] text-sm hover:underline">
-          Back to Dashboard
-        </Link>
+        <h2 className="text-xl font-bold text-[var(--t1)]">{error}</h2>
+        <p className="text-[var(--t2)] text-sm leading-relaxed max-w-md">
+          {staleDetected
+            ? 'Your creative was uploaded, but the analysis pipeline never returned a result. We auto-refund stuck creative missions within 24 hours; check your email for the receipt. You can try a new upload below.'
+            : 'Our analysis pipeline ran into an error processing this creative. If you were charged, our system auto-refunds failed missions within 24 hours.'}
+        </p>
+        <div className="mt-2 flex flex-col sm:flex-row items-center gap-3">
+          <Link
+            to="/setup?goal=creative_attention"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--lime)] text-gray-900 font-bold text-sm hover:opacity-90 transition-opacity"
+          >
+            Try a new analysis
+          </Link>
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--b1)] text-[var(--t2)] hover:text-[var(--t1)] font-bold text-sm transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Link>
+        </div>
       </div>
     );
   }
