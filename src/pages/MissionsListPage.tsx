@@ -49,6 +49,8 @@ interface Mission {
   created_at: string;
   // Pass 36 A0e — paid_at drives the dynamic ETA label on in-flight cards.
   paid_at?: string | null;
+  // Pass 37 A2 — delivered count surfaced on completed mission cards.
+  delivered_respondent_count?: number | null;
   questions: unknown[];
   // Legacy backend field names — kept optional for graceful fallback.
   context?: string;
@@ -252,12 +254,19 @@ export const MissionsListPage = () => {
     const noun     = deliveryNoun(mission as { delivery_unit?: string | null; goal_type?: string | null });
 
     if (statusUp === 'COMPLETED') {
-      const total = Number(mission.total_simulated_count ?? target) || target;
+      // Pass 37 A2 — read delivered_respondent_count first (the Pass
+      // 36 A0 truth: COUNT(DISTINCT persona_id)). total_simulated_count
+      // is the pre-screener count and could be higher; the customer
+      // cares about how many actually contributed responses.
+      const delivered = Number(
+        (mission as { delivered_respondent_count?: number | null }).delivered_respondent_count ?? 0,
+      );
+      const total = delivered || Number(mission.total_simulated_count ?? target) || target;
       const rate  = mission.qualification_rate;
       const showRate = rate != null && Number.isFinite(rate) && rate < 0.999;
       return showRate
-        ? `${total} ${noun} · ${Math.round(Number(rate) * 100)}% qualified`
-        : `${total} ${noun}`;
+        ? `${total} ${noun} delivered · ${Math.round(Number(rate) * 100)}% qualified`
+        : `${total} ${noun} delivered`;
     }
 
     if (statusUp === 'DRAFT') {
