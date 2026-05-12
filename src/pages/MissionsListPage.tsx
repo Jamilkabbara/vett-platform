@@ -47,6 +47,10 @@ interface Mission {
   // pre-checkout quote and may not match what was charged.
   total_price_usd?: number | string | null;
   created_at: string;
+  // Pass 36 A0e — paid_at drives the dynamic ETA label on in-flight cards.
+  paid_at?: string | null;
+  // Pass 37 A2 — delivered count surfaced on completed mission cards.
+  delivered_respondent_count?: number | null;
   questions: unknown[];
   // Legacy backend field names — kept optional for graceful fallback.
   context?: string;
@@ -58,41 +62,11 @@ interface Mission {
   failure_reason?: string | null;
 }
 
-const MOCK_MISSIONS: Mission[] = [
-  {
-    id: 'mock-active-1',
-    title: 'AI-powered meal planning app for busy professionals',
-    brief: 'AI-powered meal planning app for busy professionals',
-    target_audience: 'Working professionals aged 25-45',
-    status: 'ACTIVE',
-    respondent_count: 150,
-    price_estimated: 249,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    questions: []
-  },
-  {
-    id: 'mock-draft-1',
-    title: 'Sustainable sneaker brand with recycled materials',
-    brief: 'Sustainable sneaker brand with recycled materials',
-    target_audience: 'Eco-conscious millennials and Gen Z',
-    status: 'DRAFT',
-    respondent_count: 100,
-    price_estimated: 149,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    questions: []
-  },
-  {
-    id: 'mock-completed-1',
-    title: 'Premium coffee subscription service',
-    brief: 'Premium coffee subscription service',
-    target_audience: 'Coffee enthusiasts with $75k+ household income',
-    status: 'COMPLETED',
-    respondent_count: 200,
-    price_estimated: 299,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-    questions: []
-  }
-];
+// Pass 37 A6 — MOCK_MISSIONS removed. The anonymous /dashboard used to
+// render 3 fake mission cards (Meal Planning, Sustainable Sneakers,
+// Premium Coffee Subscription) that looked like real user data but
+// would 404 on click. Anonymous visitors now bounce to /signin so the
+// page never lies about what's there.
 
 /** target_audience is jsonb — could be a string (legacy) or { segments, ... } */
 function formatTarget(mission: Mission): string {
@@ -115,7 +89,8 @@ export const MissionsListPage = () => {
   const { user, loading: authLoading } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  // Pass 37 A6 — showAuthModal removed. Anonymous users now bounce to
+  // /signin in useEffect; no inline auth modal needed.
   const [bannerVisible, setBannerVisible] = useState(
     () => !sessionStorage.getItem(BANNER_DISMISSED_KEY)
   );
@@ -128,24 +103,58 @@ export const MissionsListPage = () => {
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
-        setMissions(MOCK_MISSIONS);
-        setLoading(false);
-      } else {
-        fetchMissions();
+        // Pass 37 A6 — anonymous /dashboard bounces to /signin. The old
+        // path mounted MOCK_MISSIONS cards that looked like real data
+        // but 404'd on click. ?redirect=/dashboard lands the user back
+        // here with their actual missions after auth (matches the
+        // SignInPage `redirectPath` convention).
+        navigate('/signin?redirect=/dashboard', { replace: true });
+        return;
       }
+      fetchMissions();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, navigate]);
+
+  // Pass 36 A0e — keep mission cards live for in-flight missions.
+  // Refetch on window focus (tab switch + return) so a customer who
+  // came back to the dashboard after a mission completed sees the
+  // status flip immediately. Light poll while any card is in-flight.
+  useEffect(() => {
+    if (!user) return;
+    const inFlight = missions.some((m) => {
+      const s = (m.status || '').toUpperCase();
+      return s === 'PENDING_PAYMENT' || s === 'PENDING' || s === 'PROCESSING' ||
+        s === 'ACTIVE' || s === 'IN_PROGRESS';
+    });
+    const onFocus = () => fetchMissions();
+    window.addEventListener('focus', onFocus);
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (inFlight) {
+      interval = setInterval(fetchMissions, 15000);
+    }
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      if (interval) clearInterval(interval);
+    };
+  }, [user, missions]);
+
+  // Pass 36 A4 — surface fetch errors instead of falling through to
+  // empty state. The dashboard previously rendered "No missions yet"
+  // whether the user genuinely had none OR the API failed; users
+  // couldn't tell which. With an error string surfaced, the empty
+  // state CTA changes to "Try again" so the user can recover.
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchMissions = async () => {
     try {
       setLoading(true);
+      setFetchError(null);
       const data = await api.get('/api/missions');
       const realMissions = Array.isArray(data) ? data : [];
-      // Always show real data for authenticated users — empty array shows the empty state CTA
       setMissions(realMissions);
     } catch (error) {
       console.error('Error fetching missions:', error);
-      // On error, show empty state rather than fake missions
+      setFetchError(error instanceof Error ? error.message : 'Could not load missions');
       setMissions([]);
     } finally {
       setLoading(false);
@@ -220,12 +229,19 @@ export const MissionsListPage = () => {
     const noun     = deliveryNoun(mission as { delivery_unit?: string | null; goal_type?: string | null });
 
     if (statusUp === 'COMPLETED') {
-      const total = Number(mission.total_simulated_count ?? target) || target;
+      // Pass 37 A2 — read delivered_respondent_count first (the Pass
+      // 36 A0 truth: COUNT(DISTINCT persona_id)). total_simulated_count
+      // is the pre-screener count and could be higher; the customer
+      // cares about how many actually contributed responses.
+      const delivered = Number(
+        (mission as { delivered_respondent_count?: number | null }).delivered_respondent_count ?? 0,
+      );
+      const total = delivered || Number(mission.total_simulated_count ?? target) || target;
       const rate  = mission.qualification_rate;
       const showRate = rate != null && Number.isFinite(rate) && rate < 0.999;
       return showRate
-        ? `${total} ${noun} · ${Math.round(Number(rate) * 100)}% qualified`
-        : `${total} ${noun}`;
+        ? `${total} ${noun} delivered · ${Math.round(Number(rate) * 100)}% qualified`
+        : `${total} ${noun} delivered`;
     }
 
     if (statusUp === 'DRAFT') {
@@ -264,10 +280,27 @@ export const MissionsListPage = () => {
     // Pass 32 X8 — case-insensitive status comparison. The DB stores
     // 'completed' lowercase; the legacy uppercase comparison silently
     // fell through and showed "12-24h" on completed missions.
+    //
+    // Pass 36 A0e — replace static "4-12h" / "12-24h" hardcoded ETAs
+    // with stage-aware dynamic labels. May 11 demo: card said
+    // "4-12 hours" for 4 hours while DB had status=completed. The
+    // hardcoded text was technically accurate as a worst-case
+    // ceiling but actively misleading for a 5-15 min mission.
     const statusUp = (mission.status || '').toUpperCase();
     if (statusUp === 'COMPLETED') return 'Completed';
-    if (statusUp === 'DRAFT') return 'Not launched';
-    return mission.respondent_count > 500 ? '12-24h' : '4-12h';
+    if (statusUp === 'FAILED')    return 'Failed';
+    if (statusUp === 'DRAFT')     return 'Not launched';
+    if (statusUp === 'PENDING_PAYMENT' || statusUp === 'PENDING') {
+      return 'Awaiting payment';
+    }
+    // In-flight: use elapsed-time heuristic per goal_type.
+    const paidIso = mission.paid_at ?? mission.created_at;
+    if (!paidIso) return 'Processing…';
+    const minutes = (Date.now() - new Date(paidIso).getTime()) / 60000;
+    if (minutes < 2) return 'Generating questions…';
+    if (minutes < 8) return 'Personas responding…';
+    if (minutes < 15) return 'Computing insights…';
+    return 'Almost done…';
   };
 
   /**
@@ -286,6 +319,13 @@ export const MissionsListPage = () => {
     const statusUp = (mission.status || '').toUpperCase();
     if (statusUp === 'DRAFT') {
       navigate(`/dashboard/${mission.id}`);
+    } else if (statusUp === 'PENDING_PAYMENT' || statusUp === 'PENDING') {
+      // Pass 37 A4 — PENDING_PAYMENT mission: route back into Mission
+      // Control with ?action=pay so DashboardPage auto-triggers the
+      // Stripe checkout redirect. Previously these cards routed to
+      // /results/:id and rendered the empty/failed results UI — a
+      // user with a payment failure had no path back to retry.
+      navigate(`/dashboard/${mission.id}?action=pay`);
     } else {
       navigate(`/results/${mission.id}`);
     }
@@ -298,10 +338,18 @@ export const MissionsListPage = () => {
   // saw a blank page for ~600ms before everything popped in. The skeleton
   // mirrors the real grid (1/2/3 cols at sm/md/lg) so when results land
   // there's no layout shift.
+  //
+  // Pass 37 A9 — skeleton background now uses the brand canvas `#0B0C15`
+  // (matches PageLoader and main render below) instead of the
+  // `bg-gradient-to-br from-gray-950 via-black to-gray-900` gradient.
+  // The gradient flashed a near-pure-black during the brief moment
+  // before the gray-on-black skeleton tiles painted, causing a visible
+  // brand-color shift between PageLoader (#0B0C15) → skeleton (black)
+  // → loaded page. Solid brand canvas = single paint frame.
   if (authLoading || loading) {
     return (
       <DashboardLayout>
-        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900">
+        <div className="min-h-[100dvh] bg-[#0B0C15]">
           <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-20">
             <div className="flex flex-col gap-4 mb-4">
               <div className="flex flex-row items-center justify-between">
@@ -353,7 +401,9 @@ export const MissionsListPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900">
+      {/* Pass 37 A9 — brand canvas (#0B0C15) replaces the previous
+          gradient so the skeleton/loaded transition is single-frame. */}
+      <div className="min-h-[100dvh] bg-[#0B0C15]">
         <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -416,7 +466,27 @@ export const MissionsListPage = () => {
             )}
           </AnimatePresence>
 
-          {missions.length === 0 ? (
+          {fetchError ? (
+            // Pass 36 A4 — fetch failure: distinct from "empty state" so
+            // the user can retry instead of being told "no missions yet".
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-gradient-to-br from-red-500/5 to-red-500/[0.02] border border-red-500/30 rounded-3xl p-8 md:p-12 text-center backdrop-blur-xl"
+            >
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-4">
+                Couldn&apos;t load your missions
+              </h2>
+              <p className="text-white/60 mb-6 font-mono text-sm">{fetchError}</p>
+              <button
+                type="button"
+                onClick={fetchMissions}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-black font-bold text-sm uppercase tracking-widest hover:opacity-90 transition-opacity"
+              >
+                Try again
+              </button>
+            </motion.div>
+          ) : missions.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -566,20 +636,34 @@ export const MissionsListPage = () => {
                             from the final charge by up to 4× after promos. */}
                         {getMissionPriceLabel(mission)}
                       </span>
-                      <div className="flex items-center gap-2 text-primary group-hover:translate-x-1 transition-transform">
-                        {/* Pass 32 X8 — case-insensitive DRAFT check. */}
-                        {(mission.status || '').toUpperCase() === 'DRAFT' ? (
-                          <>
-                            <span className="text-sm font-bold">Edit</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </>
-                        ) : (
-                          <>
+                      {/* Pass 37 A4 — status-driven CTA. PENDING_PAYMENT
+                          gets a payment-recovery CTA (was silently routing
+                          to /results/:id which rendered an empty page). */}
+                      {(() => {
+                        const statusUp = (mission.status || '').toUpperCase();
+                        if (statusUp === 'DRAFT') {
+                          return (
+                            <div className="flex items-center gap-2 text-primary group-hover:translate-x-1 transition-transform">
+                              <span className="text-sm font-bold">Edit</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </div>
+                          );
+                        }
+                        if (statusUp === 'PENDING_PAYMENT' || statusUp === 'PENDING') {
+                          return (
+                            <div className="flex items-center gap-2 text-amber-300 group-hover:translate-x-1 transition-transform">
+                              <span className="text-sm font-bold">Complete Payment</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="flex items-center gap-2 text-primary group-hover:translate-x-1 transition-transform">
                             <Eye className="w-4 h-4" />
                             <span className="text-sm font-bold">View Results</span>
-                          </>
-                        )}
-                      </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </motion.div>

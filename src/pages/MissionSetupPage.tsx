@@ -433,15 +433,22 @@ export const MissionSetupPage = () => {
   // only updates the visual.
   const methodologyReady = (() => {
     if (!isValid) return false;
+    // Pass 36 B3+B4 — methodologies that require brand_name in the
+    // universal inputs (CSAT + Churn) check the universal validator
+    // alongside their methodology-specific validator. Without this,
+    // the methodologyReady flag could go true while brand_name was
+    // empty, then the backend would 400-refuse with
+    // CSAT_MISSING_BRAND_NAME / CHURN_MISSING_BRAND_NAME (Pass 35).
+    const universalEmpty = validateUniversalInputs(universalInputs).length > 0;
     if (isNaming)     return validateNaming(namingState).length === 0;
     if (isPricing)    return validatePricingInputs(pricingInputs).length === 0;
     if (isRoadmap)    return validateFeatureList(roadmapFeatures).length === 0;
-    if (isCSAT)       return validateCSATInputs(csatInputs).length === 0;
+    if (isCSAT)       return !universalEmpty && validateCSATInputs(csatInputs).length === 0;
     if (isValidate)   return validateConceptCollector(conceptInputs).length === 0;
     if (isCompare)    return validateConceptList(compareConcepts).length === 0;
     if (isMarketing)  return validateAdTesting(adTesting).length === 0;
     if (isCompetitor) return validateCompetitorAnalysis(competitorState, universalInputs.competitors.length).length === 0;
-    if (isChurn)      return validateChurn(churnState).length === 0;
+    if (isChurn)      return !universalEmpty && validateChurn(churnState).length === 0;
     if (isBrandLift) {
       const bl = brandLiftState;
       return !!bl.brand.trim() && !!bl.creative && bl.markets.length >= 1

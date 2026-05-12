@@ -1,0 +1,418 @@
+/**
+ * Pass 36 A0c — Research Results Page (goal_type=research).
+ *
+ * May 11 2026 demo: customer saw hero + a vast black gap + content
+ * far below. Root cause: goal_type='research' was falling through to
+ * the generic ResultsPage whose layout assumes a specific insight
+ * shape and renders huge empty space when missing.
+ *
+ * This component is a dedicated renderer for the 7 insight keys that
+ * goal_type='research' produces: kpis / follow_ups / contradictions
+ * / recommendations / executive_summary / segment_breakdowns /
+ * per_question_insights. Order is reader-natural: KPI strip first,
+ * then exec summary, then segments, then tensions, then per-Q
+ * insights, then recommendations + follow-ups.
+ *
+ * No huge gaps. Every section gates on the presence of its key.
+ */
+
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import {
+  Loader2, AlertCircle, ArrowLeft, Users, Clock,
+  Sparkles, TrendingUp, AlertTriangle, MessageCircleQuestion,
+  CheckCircle2,
+} from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { OverlayPage } from '../components/layout/OverlayPage';
+
+interface MissionRow {
+  id: string;
+  title: string | null;
+  brief: string | null;
+  goal_type: string | null;
+  status: string;
+  respondent_count: number | null;
+  delivered_respondent_count: number | null;
+  total_simulated_count: number | null;
+  qualified_respondent_count: number | null;
+  qualification_rate: number | null;
+  completed_at: string | null;
+  insights: ResearchInsights | string | null;
+}
+
+interface ResearchInsights {
+  kpis?: Array<{ label: string; value: string | number; note?: string }> | Record<string, unknown>;
+  follow_ups?: string[];
+  contradictions?: Array<{ topic?: string; summary?: string } | string>;
+  recommendations?: string[];
+  executive_summary?: string;
+  segment_breakdowns?: Array<{
+    segment?: string;
+    label?: string;
+    n?: number;
+    findings?: string[];
+    summary?: string;
+  }>;
+  per_question_insights?: Array<{
+    question_id?: string;
+    question?: string;
+    insight?: string;
+    summary?: string;
+  }>;
+}
+
+function parseInsights(raw: ResearchInsights | string | null | undefined): ResearchInsights {
+  if (!raw) return {};
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw) as ResearchInsights; } catch { return {}; }
+  }
+  return raw;
+}
+
+function KpiStrip({
+  kpis,
+  mission,
+  perQuestionCount,
+  qualifiedRate,
+}: {
+  kpis: ResearchInsights['kpis'];
+  mission: MissionRow;
+  perQuestionCount: number;
+  qualifiedRate: number | null;
+}) {
+  // Pass 37 A1 — KPI strip ALWAYS renders. Empty insights.kpis →
+  // fall back to mission-level metrics (delivered respondents,
+  // question count, qualified rate) so the hero is followed by
+  // immediate content instead of a black gap.
+  const items: Array<{ label: string; value: string; note?: string }> = [];
+  if (Array.isArray(kpis)) {
+    for (const k of kpis) {
+      items.push({
+        label: String(k.label ?? '—'),
+        value: String(k.value ?? '—'),
+        note: k.note ? String(k.note) : undefined,
+      });
+    }
+  } else if (kpis && typeof kpis === 'object') {
+    for (const [k, v] of Object.entries(kpis)) {
+      items.push({ label: k.replace(/_/g, ' '), value: String(v ?? '—') });
+    }
+  }
+  if (items.length === 0) {
+    // Fallback strip from mission columns — guarantees no black gap.
+    items.push(
+      {
+        label: 'Respondents Delivered',
+        value: String(mission.delivered_respondent_count ?? mission.respondent_count ?? '—'),
+      },
+      {
+        label: 'Questions',
+        value: String(perQuestionCount || '—'),
+      },
+      {
+        label: 'Qualified Rate',
+        value: qualifiedRate != null && Number.isFinite(qualifiedRate)
+          ? `${Math.round(qualifiedRate * 100)}%`
+          : '100%',
+      },
+    );
+  }
+  return (
+    <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+      {items.slice(0, 6).map((k, i) => (
+        <div key={i} className="rounded-2xl bg-bg2 border border-b1 p-5 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-lime" />
+          <p className="text-[10px] uppercase tracking-widest text-t3 font-display font-bold mb-1.5">
+            {k.label}
+          </p>
+          <p className="text-2xl font-display font-black text-t1 break-words">{k.value}</p>
+          {k.note && <p className="text-xs text-t3 mt-1.5">{k.note}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ExecutiveSummary({ text }: { text: string }) {
+  return (
+    <div className="rounded-2xl bg-bg2 border border-b1 p-6">
+      <h2 className="text-xs font-display font-black text-lime uppercase tracking-widest mb-4 flex items-center gap-2">
+        <Sparkles className="w-4 h-4" aria-hidden />
+        Executive summary
+      </h2>
+      <p className="text-t1 text-sm leading-relaxed whitespace-pre-wrap">{text}</p>
+    </div>
+  );
+}
+
+function SegmentBreakdowns({ items }: { items: NonNullable<ResearchInsights['segment_breakdowns']> }) {
+  if (!items.length) return null;
+  return (
+    <div className="rounded-2xl bg-bg2 border border-b1 p-6">
+      <h2 className="text-xs font-display font-black text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+        <TrendingUp className="w-4 h-4" aria-hidden />
+        Cross-Cut Analysis
+      </h2>
+      <div className="space-y-4">
+        {items.map((seg, i) => {
+          const findings = Array.isArray(seg.findings) ? seg.findings : [];
+          const label = seg.segment || seg.label || `Segment ${i + 1}`;
+          return (
+            <div key={i} className="border-l-2 border-lime/40 pl-4">
+              <div className="flex items-baseline gap-2 mb-2">
+                <h3 className="text-t1 font-display font-bold text-sm">{label}</h3>
+                {seg.n != null && <span className="text-xs text-t3 font-mono">n={seg.n}</span>}
+              </div>
+              {seg.summary && (
+                <p className="text-t2 text-sm mb-2 leading-relaxed">{seg.summary}</p>
+              )}
+              {findings.length > 0 && (
+                <ul className="space-y-1.5">
+                  {findings.map((f, j) => (
+                    <li key={j} className="text-t2 text-sm leading-relaxed flex gap-2">
+                      <span className="text-lime mt-0.5 shrink-0">•</span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TensionsFlagged({ items }: { items: NonNullable<ResearchInsights['contradictions']> }) {
+  if (!items.length) return null;
+  return (
+    <div className="rounded-2xl bg-bg2 border border-amber-500/30 p-6">
+      <h2 className="text-xs font-display font-black text-amber-300 uppercase tracking-widest mb-4 flex items-center gap-2">
+        <AlertTriangle className="w-4 h-4" aria-hidden />
+        Tensions Flagged
+      </h2>
+      <ul className="space-y-3">
+        {items.map((c, i) => {
+          if (typeof c === 'string') {
+            return (
+              <li key={i} className="text-t2 text-sm leading-relaxed flex gap-2">
+                <span className="text-amber-400 mt-0.5 shrink-0">⚠</span>
+                <span>{c}</span>
+              </li>
+            );
+          }
+          return (
+            <li key={i} className="flex gap-2">
+              <span className="text-amber-400 mt-0.5 shrink-0">⚠</span>
+              <div>
+                {c.topic && (
+                  <p className="text-t1 font-display font-bold text-sm mb-1">{c.topic}</p>
+                )}
+                {c.summary && (
+                  <p className="text-t2 text-sm leading-relaxed">{c.summary}</p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function PerQuestionInsights({ items }: { items: NonNullable<ResearchInsights['per_question_insights']> }) {
+  if (!items.length) return null;
+  return (
+    <div className="rounded-2xl bg-bg2 border border-b1 p-6">
+      <h2 className="text-xs font-display font-black text-lime uppercase tracking-widest mb-4 flex items-center gap-2">
+        <Users className="w-4 h-4" aria-hidden />
+        Per-question insights
+      </h2>
+      <div className="space-y-4">
+        {items.map((q, i) => (
+          <div key={q.question_id || i} className="border-l-2 border-b1 pl-4">
+            {q.question && (
+              <p className="text-t3 text-xs font-mono mb-1.5">{q.question}</p>
+            )}
+            <p className="text-t1 text-sm leading-relaxed">{q.insight || q.summary || '—'}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RecommendationList({
+  title, icon, items, accent,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  items: string[];
+  accent: string;
+}) {
+  if (!items.length) return null;
+  return (
+    <div className={`rounded-2xl bg-bg2 border p-6 ${accent}`}>
+      <h2 className="text-xs font-display font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+        {icon}
+        {title}
+      </h2>
+      <ul className="space-y-2">
+        {items.map((r, i) => (
+          <li key={i} className="text-t2 text-sm leading-relaxed flex gap-2">
+            <span className="mt-0.5 shrink-0 opacity-80">{i + 1}.</span>
+            <span>{r}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function ResearchResultsPage() {
+  const { missionId } = useParams<{ missionId: string }>();
+  const [mission, setMission] = useState<MissionRow | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!missionId) {
+      setError('No mission ID provided.');
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error: fetchErr } = await supabase
+        .from('missions')
+        .select(
+          'id, title, brief, goal_type, status, respondent_count, delivered_respondent_count, total_simulated_count, qualified_respondent_count, qualification_rate, completed_at, insights',
+        )
+        .eq('id', missionId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (fetchErr || !data) {
+        setError('Mission not found.');
+      } else {
+        setMission(data as MissionRow);
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [missionId]);
+
+  if (loading) {
+    return (
+      <OverlayPage>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-lime" />
+        </div>
+      </OverlayPage>
+    );
+  }
+
+  if (error || !mission) {
+    return (
+      <OverlayPage>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center gap-3">
+          <AlertCircle className="w-10 h-10 text-red-400" />
+          <h2 className="text-lg font-display font-bold text-t1">{error || 'Mission not found.'}</h2>
+          <Link to="/missions" className="text-lime text-sm hover:underline mt-2">
+            Back to missions
+          </Link>
+        </div>
+      </OverlayPage>
+    );
+  }
+
+  const insights = parseInsights(mission.insights);
+  const delivered =
+    Number(mission.delivered_respondent_count ?? 0) ||
+    Number(mission.total_simulated_count ?? 0) ||
+    Number(mission.respondent_count ?? 0);
+  const rate = mission.qualification_rate != null ? Number(mission.qualification_rate) : null;
+  const showRate = rate != null && Number.isFinite(rate) && rate < 0.999;
+
+  return (
+    <OverlayPage>
+      {/* Pass 37 A1 — space-y-4 (was space-y-6) so hero → KPI strip
+          gap is ≤16px. OverlayPage adds py-24 padding outside this. */}
+      <div className="max-w-5xl mx-auto space-y-4">
+        {/* Hero */}
+        <div className="space-y-2">
+          <Link to="/missions" className="inline-flex items-center gap-1.5 text-t3 hover:text-t1 text-xs">
+            <ArrowLeft className="w-3.5 h-3.5" /> All missions
+          </Link>
+          <p className="text-[10px] uppercase tracking-widest text-lime font-display font-bold">
+            General research · {mission.status === 'completed' ? 'Mission complete' : mission.status}
+          </p>
+          <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-t1">
+            {mission.title || mission.brief || 'Your mission'}
+          </h1>
+          <div className="flex flex-wrap items-center gap-4 text-sm text-t3">
+            <span className="inline-flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5" />
+              {showRate
+                ? `${delivered} respondents delivered · ${Math.round((rate ?? 0) * 100)}% qualified`
+                : `${delivered} respondents delivered`}
+            </span>
+            {mission.completed_at && (
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                Completed {new Date(mission.completed_at).toLocaleString()}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Pass 37 A1 — KPI strip ALWAYS renders immediately after hero.
+            Fallback to mission-level metrics when insights.kpis is empty
+            so there is no black gap. Tight space-y-4 between sections
+            (was space-y-6) to keep the page dense. */}
+        <KpiStrip
+          kpis={insights.kpis}
+          mission={mission}
+          perQuestionCount={
+            Array.isArray(insights.per_question_insights)
+              ? insights.per_question_insights.length
+              : 0
+          }
+          qualifiedRate={rate}
+        />
+        {insights.executive_summary && <ExecutiveSummary text={insights.executive_summary} />}
+        {Array.isArray(insights.segment_breakdowns) && insights.segment_breakdowns.length > 0 && (
+          <SegmentBreakdowns items={insights.segment_breakdowns} />
+        )}
+        {Array.isArray(insights.contradictions) && insights.contradictions.length > 0 && (
+          <TensionsFlagged items={insights.contradictions} />
+        )}
+        {Array.isArray(insights.per_question_insights) && insights.per_question_insights.length > 0 && (
+          <PerQuestionInsights items={insights.per_question_insights} />
+        )}
+        {Array.isArray(insights.recommendations) && insights.recommendations.length > 0 && (
+          <RecommendationList
+            title="Recommendations"
+            icon={<CheckCircle2 className="w-4 h-4 text-lime" aria-hidden />}
+            items={insights.recommendations}
+            accent="border-lime/30"
+          />
+        )}
+        {Array.isArray(insights.follow_ups) && insights.follow_ups.length > 0 && (
+          <RecommendationList
+            title="Suggested follow-ups"
+            icon={<MessageCircleQuestion className="w-4 h-4 text-indigo-400" aria-hidden />}
+            items={insights.follow_ups}
+            accent="border-indigo-500/30"
+          />
+        )}
+
+        {/* Pass 37 A1 — Pass 36 had a no-insights fallback here that
+            never fired because KPI strip now always renders. Dropped. */}
+      </div>
+    </OverlayPage>
+  );
+}
+
+export default ResearchResultsPage;

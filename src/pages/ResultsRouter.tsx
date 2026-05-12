@@ -33,6 +33,11 @@ import { NamingResultsPage } from './NamingResultsPage';
 // Pass 31 B6 — Churn Research results (driver tree + win-back).
 // Routed when goal_type === 'churn_research'.
 import { ChurnResultsPage } from './ChurnResultsPage';
+// Pass 36 A0c — General research dedicated renderer. Was falling
+// through to the generic ResultsPage which left a vast black gap
+// below the hero (May 11 demo failure). Routed when goal_type ===
+// 'research' or its 'general_research' alias.
+import { ResearchResultsPage } from './ResearchResultsPage';
 
 /**
  * Pass 25 Phase 0.2 — central router for /results/:missionId.
@@ -127,6 +132,10 @@ export function ResultsRouter() {
   }
   if (goalType === 'churn_research') {
     return <ChurnResultsPage />;
+  }
+  // Pass 36 A0c — dedicated renderer for research / general_research.
+  if (goalType === 'research' || goalType === 'general_research') {
+    return <ResearchResultsPage />;
   }
   return <ResultsPage />;
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
@@ -243,6 +243,11 @@ function hydrateTargeting(raw: unknown): TargetingConfig {
 export const DashboardPage = () => {
   const { missionId } = useParams();
   const navigate = useNavigate();
+  // Pass 37 A4 — read ?action=pay to auto-trigger checkout for missions
+  // routed in from the dashboard PENDING_PAYMENT card. setSearchParams is
+  // captured so the param is stripped once we kick off the redirect (so a
+  // back-button to /dashboard/:id doesn't re-trigger checkout).
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
 
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
@@ -687,6 +692,29 @@ export const DashboardPage = () => {
     questions,
     targeting,
   ]);
+
+  // Pass 37 A4 — auto-trigger checkout when arriving with ?action=pay
+  // (used by the dashboard PENDING_PAYMENT mission card). Guards: fire
+  // exactly once when the mission is loaded and pricing is ready; strip
+  // the search param before redirecting so a back-button to this URL
+  // doesn't immediately re-redirect.
+  const autoPayTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (autoPayTriggeredRef.current) return;
+    if (searchParams.get('action') !== 'pay') return;
+    if (state.kind !== 'loaded' || !pricing) return;
+    if (verifyingQuote) return;
+    autoPayTriggeredRef.current = true;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('action');
+        return next;
+      },
+      { replace: true },
+    );
+    handleLaunch();
+  }, [searchParams, state, pricing, verifyingQuote, setSearchParams, handleLaunch]);
 
   // ── Derived header bits ────────────────────────────────────────
   const goal = useMemo(() => {

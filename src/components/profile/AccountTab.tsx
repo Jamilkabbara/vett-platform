@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Mail, Building2, Save, Lock } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Mail, Building2, Save, Lock, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { FileUpload, type UploadedFile } from '../shared/FileUpload';
@@ -72,6 +72,27 @@ export const AccountTab = () => {
     }
   };
 
+  // Pass 37 A7 — profile-completeness banner. Account Settings rendered
+  // blank fields for users who hadn't filled their profile, with no
+  // indication of which fields help VETT's research output. This counts
+  // the 4 main recommended fields (name, role, stage, company) and
+  // surfaces them with a friendly banner + targeted messaging.
+  const recommendedFields = useMemo(() => {
+    const hasName = Boolean((firstName || lastName).trim());
+    const hasRole = Boolean(role);
+    const hasStage = Boolean(projectStage);
+    const hasCompany = Boolean(companyName.trim());
+    return {
+      hasName,
+      hasRole,
+      hasStage,
+      hasCompany,
+      filled: [hasName, hasRole, hasStage, hasCompany].filter(Boolean).length,
+      total: 4,
+    };
+  }, [firstName, lastName, role, projectStage, companyName]);
+  const isProfileComplete = recommendedFields.filled === recommendedFields.total;
+
   if (profileLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -82,6 +103,54 @@ export const AccountTab = () => {
 
   return (
     <form onSubmit={handleSave} className="space-y-8">
+
+      {/* Pass 37 A7 — profile-completeness banner. Hidden once all 4
+          recommended fields are filled. Counts only the fields that
+          actually influence VETT's research output (name → invoices;
+          role + stage → mission goal recommendations; company → PDF
+          branding). Email + logo are not counted (email is auth-bound,
+          logo is purely cosmetic). */}
+      {!isProfileComplete && (
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+              <Info className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 mb-1.5">
+                <p className="text-white font-bold text-sm">
+                  Complete your profile
+                </p>
+                <span className="text-xs text-primary font-semibold tabular-nums">
+                  {recommendedFields.filled} of {recommendedFields.total}
+                </span>
+              </div>
+              <p className="text-white/60 text-xs leading-relaxed">
+                Adding these helps VETT tailor research recommendations
+                to your role and project stage, and personalizes invoices.
+                Everything stays optional &mdash; you can save with any subset.
+              </p>
+              {/* Progress bar */}
+              <div className="mt-3 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{
+                    width: `${(recommendedFields.filled / recommendedFields.total) * 100}%`,
+                  }}
+                />
+              </div>
+              {/* Missing-field list */}
+              <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/50">
+                {!recommendedFields.hasName    && <li>&middot; Name</li>}
+                {!recommendedFields.hasRole    && <li>&middot; Role</li>}
+                {!recommendedFields.hasStage   && <li>&middot; Project stage</li>}
+                {!recommendedFields.hasCompany && <li>&middot; Company name</li>}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Company Logo */}
       <div>

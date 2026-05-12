@@ -661,8 +661,16 @@ export const ResultsPage = () => {
         completedAt: mission.completed_at
           ? new Date(mission.completed_at).toLocaleString()
           : 'Just now',
-        // totalRespondents = total simulated personas (Option B primary metric).
-        totalRespondents: totalSimulated || respondentCount,
+        // Pass 36 A0b — totalRespondents reads delivered_respondent_count
+        // first (the TRUTH per Pass 36 A0 backfill: COUNT(DISTINCT
+        // persona_id)). Falls back to total_simulated_count then
+        // respondent_count for older missions where the column wasn't
+        // populated. The hero text is suffixed with "delivered" at the
+        // render site to disambiguate from "requested".
+        totalRespondents:
+          Number(mission.delivered_respondent_count ?? 0) ||
+          totalSimulated ||
+          respondentCount,
         targeting: { demographics: [] },
         questions,
         executiveSummary: execSummary || undefined,
@@ -1573,6 +1581,10 @@ export const ResultsPage = () => {
                       • Filter active:                  "X of 10 respondents" (preserves
                                                                    prior filter affordance)
                   */}
+                  {/* Pass 36 A0b — suffix "delivered" so customer reads
+                      it as an honest claim about what they received, not
+                      an ambiguous count that previously was being inflated
+                      by the row-count bug. */}
                   {hasActiveFilters
                     ? `${filteredRespondentCount} of ${mission.totalRespondents} respondents`
                     : (() => {
@@ -1583,8 +1595,8 @@ export const ResultsPage = () => {
                           && Number.isFinite(rate)
                           && rate < 0.999;
                         return showRate
-                          ? `${total} respondents · ${Math.round(rate * 100)}% qualified`
-                          : `${total} respondents`;
+                          ? `${total} respondents delivered · ${Math.round(rate * 100)}% qualified`
+                          : `${total} respondents delivered`;
                       })()
                   }
                 </span>

@@ -27,6 +27,15 @@ import { Card } from '../components/ui/Card';
 import { KpiCard } from '../components/ui/KpiCard';
 import { Ticker } from '../components/landing/Ticker';
 import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
+// Pass 37 A8 — landing pricing copy reads from the canonical ladder.
+// Previously "$35" was hardcoded in 6 places and lagged the actual
+// entry tier (now $9 / Sniff Test). Importing these guarantees the
+// pricing ticker, headline, comparison table, and footer stay in
+// sync with VOLUME_TIERS[0]/CREATIVE_ATTENTION_TIERS[0].
+import {
+  STARTING_PRICE_USD,
+  STARTING_PRICE_CREATIVE_USD,
+} from '../utils/pricingEngine';
 
 /* ══════════════════════════════════════════════════════════════════
    Data — the prototype's content, extracted so the JSX stays readable
@@ -66,18 +75,23 @@ const RESEARCH_TYPES: Array<{
   featured?: boolean;
   goalId: string;  // canonical mission goal_type
 }> = [
-  { emoji: '🚀', title: 'Product Validation',           desc: 'Test if your idea has real demand before building. Find your PMF signal fast.',                       tag: 'From $9',                   goalId: 'validate' },
-  { emoji: '💰', title: 'Pricing Research',             desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.',                  tag: 'From $99',                  goalId: 'pricing_research' },
-  { emoji: '📣', title: 'Creative & Ad Testing',        desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                            tag: 'From $35',                  goalId: 'marketing' },
-  { emoji: '⭐', title: 'Customer Satisfaction',        desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                        tag: 'From $99',                  goalId: 'customer_satisfaction' },
-  { emoji: '🗺️', title: 'Feature Roadmap',              desc: 'Let your users tell you what to build next. Kano model prioritisation.',                            tag: 'From $99',                  goalId: 'feature_roadmap' },
-  { emoji: '🌍', title: 'Market Entry',                 desc: 'Validate demand in new geographies before expanding. Test any country, any city.',                    tag: 'From $99',                  goalId: 'market_entry' },
-  { emoji: '📡', title: 'Brand Lift Study',             desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',           tag: 'From $99',                  goalId: 'brand_lift' },
-  { emoji: '🎬', title: 'Creative Attention Analysis',  desc: 'Measure emotional response, attention, and engagement on your video or image creatives with research-grade emotion mapping.', tag: 'NEW · From $19', tagColor: 'pur', featured: true, goalId: 'creative_attention' },
-  { emoji: '🔄', title: 'Churn Research',               desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',         tag: 'From $99',                  goalId: 'churn_research' },
-  { emoji: '🔍', title: 'Competitor Analysis',          desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',               tag: 'From $99',                  goalId: 'competitor_analysis' },
-  { emoji: '🎯', title: 'Audience Profiling',           desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',                  tag: 'From $99',                  goalId: 'audience_profiling' },
-  { emoji: '✍️', title: 'Naming & Messaging',           desc: 'Test product names, taglines, and positioning across your target audience.',                          tag: 'From $35',                  goalId: 'naming_messaging' },
+  // Pass 37 A8 — `From $X` tag now reads from STARTING_PRICE_USD (or
+  // STARTING_PRICE_CREATIVE_USD for CA). Goals that share VOLUME_TIERS
+  // get "From $9"; CA gets "From $19"; the $99+ tags reflect the
+  // BrandLift / methodology-specific minimums (Pulse, etc.) which
+  // require ≥50 respondents and don't dip below $99.
+  { emoji: '🚀', title: 'Product Validation',           desc: 'Test if your idea has real demand before building. Find your PMF signal fast.',                       tag: `From $${STARTING_PRICE_USD}`,                 goalId: 'validate' },
+  { emoji: '💰', title: 'Pricing Research',             desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.',                  tag: 'From $99',                                    goalId: 'pricing_research' },
+  { emoji: '📣', title: 'Creative & Ad Testing',        desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                            tag: `From $${STARTING_PRICE_USD}`,                 goalId: 'marketing' },
+  { emoji: '⭐', title: 'Customer Satisfaction',        desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                        tag: 'From $99',                                    goalId: 'customer_satisfaction' },
+  { emoji: '🗺️', title: 'Feature Roadmap',              desc: 'Let your users tell you what to build next. Kano model prioritisation.',                            tag: 'From $99',                                    goalId: 'feature_roadmap' },
+  { emoji: '🌍', title: 'Market Entry',                 desc: 'Validate demand in new geographies before expanding. Test any country, any city.',                    tag: 'From $99',                                    goalId: 'market_entry' },
+  { emoji: '📡', title: 'Brand Lift Study',             desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',           tag: 'From $99',                                    goalId: 'brand_lift' },
+  { emoji: '🎬', title: 'Creative Attention Analysis',  desc: 'Measure emotional response, attention, and engagement on your video or image creatives with research-grade emotion mapping.', tag: `NEW · From $${STARTING_PRICE_CREATIVE_USD}`, tagColor: 'pur', featured: true, goalId: 'creative_attention' },
+  { emoji: '🔄', title: 'Churn Research',               desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',         tag: 'From $99',                                  goalId: 'churn_research' },
+  { emoji: '🔍', title: 'Competitor Analysis',          desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',               tag: 'From $99',                                  goalId: 'competitor_analysis' },
+  { emoji: '🎯', title: 'Audience Profiling',           desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',                  tag: 'From $99',                                  goalId: 'audience_profiling' },
+  { emoji: '✍️', title: 'Naming & Messaging',           desc: 'Test product names, taglines, and positioning across your target audience.',                          tag: `From $${STARTING_PRICE_USD}`,               goalId: 'naming_messaging' },
 ];
 
 const LOOP_STEPS = [
@@ -124,7 +138,8 @@ const COMPARISON_ROWS: Array<[string, string, string, string]> = [
   ['Time to results', 'Minutes', '4–8 weeks', 'Days (if lucky)'],
   ['Survey design', 'AI-built instantly', 'Human researcher', 'You do it all'],
   ['Respondents', 'AI consumer panel', 'Recruited panel', 'Your own network'],
-  ['Starting price', 'From $35', '$10,000+ per study', 'Free but limited'],
+  // Pass 37 A8 — reads from STARTING_PRICE_USD.
+  ['Starting price', `From $${STARTING_PRICE_USD}`, '$10,000+ per study', 'Free but limited'],
   ['AI insights', 'Per data point', 'Manual deck, weeks later', 'None included'],
   ['Reports', 'PDF + PPT + XLS free', 'PDF, weeks later', 'CSV only'],
   ['Creative testing', 'Video + image + emotions', 'Separate study, months', 'Not available'],
@@ -527,9 +542,10 @@ export function LandingPage() {
         )}
 
         {/* Trust row */}
+        {/* Pass 37 A8 — "$35" → STARTING_PRICE_USD ($9). */}
         <div className="mt-5 flex flex-col md:flex-row flex-wrap items-center justify-center gap-1.5 md:gap-3.5 font-body text-[12px] text-t3">
           <span>
-            Surveys from <span className="text-lime font-bold">$35</span>
+            Surveys from <span className="text-lime font-bold">${STARTING_PRICE_USD}</span>
           </span>
           <Sep />
           <span>Results in minutes</span>
@@ -572,11 +588,14 @@ export function LandingPage() {
             Not 4 weeks.
           </SecH2>
           <SecSub>
-            Agencies take a month and $10k. VETT takes minutes and from $35. Get the
+            Agencies take a month and $10k. VETT takes minutes and from ${STARTING_PRICE_USD}. Get the
             signal you need to move fast.
           </SecSub>
+          {/* Pass 37 A8 — "$35" → STARTING_PRICE_USD ($9). The header
+              hero claim and the comparison stat now match the actual
+              entry tier on the pricing slider. */}
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-[900px] mx-auto">
-            <StatCard n="$35" tail="" body="Starting price per mission. No subscriptions, ever." />
+            <StatCard n={`$${STARTING_PRICE_USD}`} tail="" body="Starting price per mission. No subscriptions, ever." />
             <StatCard n="2" tail="min" body="Average time from launch to full research insights." />
             <StatCard n="150" tail="+" body="Markets worldwide. Any country, any city." />
           </div>
@@ -969,8 +988,10 @@ export function LandingPage() {
             VETT IT
           </Button>
         </div>
+        {/* Pass 37 A8 — final hardcoded "$9" replaced; full circle to
+            STARTING_PRICE_USD. */}
         <p className="mt-4 font-body text-[12px] text-t3">
-          No subscription · Pay per mission · From $9 · 150+ markets · Every respondent matches your audience
+          No subscription · Pay per mission · From ${STARTING_PRICE_USD} · 150+ markets · Every respondent matches your audience
         </p>
       </section>
 

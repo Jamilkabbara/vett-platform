@@ -24,17 +24,41 @@ function fmt(iso: string | null) {
 export const BlogPage = () => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // Pass 36 A2 — defensive fetch with proper error path. Previous
+  // `.then(({ data }) => ...)` pattern had no catch; on RLS denial /
+  // network failure the spinner ran indefinitely making the page
+  // look "BLACK forever". Now: explicit try/catch + setError so the
+  // empty-state branch renders instead of an infinite spinner.
   useEffect(() => {
-    supabase
-      .from('blog_posts')
-      .select('id,slug,title,excerpt,tag,emoji,cover_image_url,published_at,views_count')
-      .eq('published', true)
-      .order('published_at', { ascending: false })
-      .then(({ data }) => {
-        setPosts(data ?? []);
-        setLoading(false);
-      });
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error: queryErr } = await supabase
+          .from('blog_posts')
+          .select('id,slug,title,excerpt,tag,emoji,cover_image_url,published_at,views_count')
+          .eq('published', true)
+          .order('published_at', { ascending: false });
+        if (cancelled) return;
+        if (queryErr) {
+          // eslint-disable-next-line no-console
+          console.error('BlogPage: supabase query failed', queryErr);
+          setError(queryErr.message);
+          setPosts([]);
+        } else {
+          setPosts(data ?? []);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        // eslint-disable-next-line no-console
+        console.error('BlogPage: supabase fetch threw', e);
+        setError(e instanceof Error ? e.message : 'Unknown error');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -56,7 +80,14 @@ export const BlogPage = () => {
           </div>
         )}
 
-        {!loading && posts.length === 0 && (
+        {!loading && error && (
+          <div className="text-white/60 text-center py-16">
+            <p className="mb-3">We couldn&apos;t load the blog right now.</p>
+            <p className="text-white/40 text-xs font-mono">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && posts.length === 0 && (
           <p className="text-white/40 text-center py-16">No posts published yet. Check back soon.</p>
         )}
 
