@@ -62,41 +62,11 @@ interface Mission {
   failure_reason?: string | null;
 }
 
-const MOCK_MISSIONS: Mission[] = [
-  {
-    id: 'mock-active-1',
-    title: 'AI-powered meal planning app for busy professionals',
-    brief: 'AI-powered meal planning app for busy professionals',
-    target_audience: 'Working professionals aged 25-45',
-    status: 'ACTIVE',
-    respondent_count: 150,
-    price_estimated: 249,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    questions: []
-  },
-  {
-    id: 'mock-draft-1',
-    title: 'Sustainable sneaker brand with recycled materials',
-    brief: 'Sustainable sneaker brand with recycled materials',
-    target_audience: 'Eco-conscious millennials and Gen Z',
-    status: 'DRAFT',
-    respondent_count: 100,
-    price_estimated: 149,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    questions: []
-  },
-  {
-    id: 'mock-completed-1',
-    title: 'Premium coffee subscription service',
-    brief: 'Premium coffee subscription service',
-    target_audience: 'Coffee enthusiasts with $75k+ household income',
-    status: 'COMPLETED',
-    respondent_count: 200,
-    price_estimated: 299,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-    questions: []
-  }
-];
+// Pass 37 A6 — MOCK_MISSIONS removed. The anonymous /dashboard used to
+// render 3 fake mission cards (Meal Planning, Sustainable Sneakers,
+// Premium Coffee Subscription) that looked like real user data but
+// would 404 on click. Anonymous visitors now bounce to /signin so the
+// page never lies about what's there.
 
 /** target_audience is jsonb — could be a string (legacy) or { segments, ... } */
 function formatTarget(mission: Mission): string {
@@ -119,7 +89,8 @@ export const MissionsListPage = () => {
   const { user, loading: authLoading } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  // Pass 37 A6 — showAuthModal removed. Anonymous users now bounce to
+  // /signin in useEffect; no inline auth modal needed.
   const [bannerVisible, setBannerVisible] = useState(
     () => !sessionStorage.getItem(BANNER_DISMISSED_KEY)
   );
@@ -132,13 +103,17 @@ export const MissionsListPage = () => {
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
-        setMissions(MOCK_MISSIONS);
-        setLoading(false);
-      } else {
-        fetchMissions();
+        // Pass 37 A6 — anonymous /dashboard bounces to /signin. The old
+        // path mounted MOCK_MISSIONS cards that looked like real data
+        // but 404'd on click. ?redirect=/dashboard lands the user back
+        // here with their actual missions after auth (matches the
+        // SignInPage `redirectPath` convention).
+        navigate('/signin?redirect=/dashboard', { replace: true });
+        return;
       }
+      fetchMissions();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, navigate]);
 
   // Pass 36 A0e — keep mission cards live for in-flight missions.
   // Refetch on window focus (tab switch + return) so a customer who
