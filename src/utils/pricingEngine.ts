@@ -67,6 +67,17 @@ export const CREATIVE_ATTENTION_TIERS = [
 
 export type VolumeTier = (typeof VOLUME_TIERS)[number];
 export type BrandLiftTier = (typeof BRAND_LIFT_TIERS)[number];
+
+// Pass 37 A8 — single source of truth for "starting at" pricing copy.
+// Previously the landing page hardcoded "$35" in 6 different places;
+// when the entry tier dropped to $9 (Pass 21 Sniff Test launch), the
+// landing copy lagged behind the actual minimum charge — a customer
+// reading "From $35" then watching the slider land on $9 saw an
+// instant credibility hit. These exports derive from the ladders
+// themselves so the landing copy can never drift again.
+export const STARTING_PRICE_USD            = VOLUME_TIERS[0].packagePrice;            // 9
+export const STARTING_PRICE_CREATIVE_USD   = CREATIVE_ATTENTION_TIERS[0].packagePrice; // 19
+export const STARTING_PRICE_BRAND_LIFT_USD = BRAND_LIFT_TIERS[0].packagePrice;        // 99
 export type CreativeAttentionTier = (typeof CREATIVE_ATTENTION_TIERS)[number];
 export type AnyTier = VolumeTier | BrandLiftTier | CreativeAttentionTier;
 
