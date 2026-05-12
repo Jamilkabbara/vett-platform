@@ -25,6 +25,11 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { OverlayPage } from '../components/layout/OverlayPage';
+// Pass 40 CRASH40-3 — wrap each insight section so a render error in
+// one (schema drift, unknown object shape, etc.) degrades only that
+// section instead of blanking the whole tree. Pairs with the Pass 39
+// renderInsightItem helper which JSON-stringifies unknown shapes.
+import { InsightErrorBoundary } from '../components/shared/InsightErrorBoundary';
 
 interface MissionRow {
   id: string;
@@ -568,45 +573,59 @@ export function ResearchResultsPage() {
           }
           qualifiedRate={rate}
         />
-        {insights.executive_summary && <ExecutiveSummary text={insights.executive_summary} />}
+        <InsightErrorBoundary label="Executive Summary">
+          {insights.executive_summary && <ExecutiveSummary text={insights.executive_summary} />}
+        </InsightErrorBoundary>
         {/* Pass 40 CRASH40-2 — also accept `cross_cut_analysis` and
             `tensions` as alternate field names; the synthesis prompt
-            has used both naming conventions across passes. */}
-        {(() => {
-          const segs = (Array.isArray(insights.segment_breakdowns) && insights.segment_breakdowns.length > 0
-            ? insights.segment_breakdowns
-            : (Array.isArray(insights.cross_cut_analysis) && insights.cross_cut_analysis.length > 0
-              ? insights.cross_cut_analysis
-              : null));
-          return segs ? <SegmentBreakdowns items={segs} /> : null;
-        })()}
-        {(() => {
-          const tens = (Array.isArray(insights.contradictions) && insights.contradictions.length > 0
-            ? insights.contradictions
-            : (Array.isArray(insights.tensions) && insights.tensions.length > 0
-              ? insights.tensions
-              : null));
-          return tens ? <TensionsFlagged items={tens} /> : null;
-        })()}
-        {Array.isArray(insights.per_question_insights) && insights.per_question_insights.length > 0 && (
-          <PerQuestionInsights items={insights.per_question_insights} />
-        )}
-        {Array.isArray(insights.recommendations) && insights.recommendations.length > 0 && (
-          <RecommendationList
-            title="Recommendations"
-            icon={<CheckCircle2 className="w-4 h-4 text-lime" aria-hidden />}
-            items={insights.recommendations}
-            accent="border-lime/30"
-          />
-        )}
-        {Array.isArray(insights.follow_ups) && insights.follow_ups.length > 0 && (
-          <RecommendationList
-            title="Suggested follow-ups"
-            icon={<MessageCircleQuestion className="w-4 h-4 text-indigo-400" aria-hidden />}
-            items={insights.follow_ups}
-            accent="border-indigo-500/30"
-          />
-        )}
+            has used both naming conventions across passes.
+            Pass 40 CRASH40-3 — each section wrapped in InsightErrorBoundary
+            so a render error in one degrades only that section. */}
+        <InsightErrorBoundary label="Cross-Cut Analysis">
+          {(() => {
+            const segs = (Array.isArray(insights.segment_breakdowns) && insights.segment_breakdowns.length > 0
+              ? insights.segment_breakdowns
+              : (Array.isArray(insights.cross_cut_analysis) && insights.cross_cut_analysis.length > 0
+                ? insights.cross_cut_analysis
+                : null));
+            return segs ? <SegmentBreakdowns items={segs} /> : null;
+          })()}
+        </InsightErrorBoundary>
+        <InsightErrorBoundary label="Tensions Flagged">
+          {(() => {
+            const tens = (Array.isArray(insights.contradictions) && insights.contradictions.length > 0
+              ? insights.contradictions
+              : (Array.isArray(insights.tensions) && insights.tensions.length > 0
+                ? insights.tensions
+                : null));
+            return tens ? <TensionsFlagged items={tens} /> : null;
+          })()}
+        </InsightErrorBoundary>
+        <InsightErrorBoundary label="Per-Question Insights">
+          {Array.isArray(insights.per_question_insights) && insights.per_question_insights.length > 0 && (
+            <PerQuestionInsights items={insights.per_question_insights} />
+          )}
+        </InsightErrorBoundary>
+        <InsightErrorBoundary label="Recommendations">
+          {Array.isArray(insights.recommendations) && insights.recommendations.length > 0 && (
+            <RecommendationList
+              title="Recommendations"
+              icon={<CheckCircle2 className="w-4 h-4 text-lime" aria-hidden />}
+              items={insights.recommendations}
+              accent="border-lime/30"
+            />
+          )}
+        </InsightErrorBoundary>
+        <InsightErrorBoundary label="Suggested Follow-Ups">
+          {Array.isArray(insights.follow_ups) && insights.follow_ups.length > 0 && (
+            <RecommendationList
+              title="Suggested follow-ups"
+              icon={<MessageCircleQuestion className="w-4 h-4 text-indigo-400" aria-hidden />}
+              items={insights.follow_ups}
+              accent="border-indigo-500/30"
+            />
+          )}
+        </InsightErrorBoundary>
 
         {/* Pass 37 A1 — Pass 36 had a no-insights fallback here that
             never fired because KPI strip now always renders. Dropped. */}
