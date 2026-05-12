@@ -339,6 +339,21 @@ export const MissionsListPage = () => {
   // mirrors the real grid (1/2/3 cols at sm/md/lg) so when results land
   // there's no layout shift.
   //
+  // Pass 39 A-CONT-1 — defensive guard for the sign-out-while-on-
+  // /dashboard race. The useEffect above fires navigate('/signin')
+  // when user becomes null, but React renders the rest of the
+  // component once before the navigation completes. Without this
+  // guard, missions state (real or stale) would flash for ~1 frame
+  // before the redirect. Returning the skeleton here keeps the
+  // brand canvas visible during the transition.
+  if (!authLoading && !user) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[100dvh] bg-[#0B0C15]" />
+      </DashboardLayout>
+    );
+  }
+
   // Pass 37 A9 — skeleton background now uses the brand canvas `#0B0C15`
   // (matches PageLoader and main render below) instead of the
   // `bg-gradient-to-br from-gray-950 via-black to-gray-900` gradient.
