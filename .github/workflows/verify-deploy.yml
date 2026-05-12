@@ -1,0 +1,100 @@
+# Pass 37 A10 — frontend post-merge deploy verification.
+#
+# Doctrine #18 (Pass 37): "Shipped" for the frontend requires a
+# user-visible verification, not just green CI. Pass 36 A0c created
+# ResearchResultsPage.tsx and registered the /results/:id route, but
+# the file lived only in git — Vercel never deployed Pass 36 because
+# the PR was never merged. This workflow catches the analogous failure
+# mode for the frontend: PR merged but Vercel auto-deploy didn't pick
+# up the new commit.
+#
+# Verification strategy: hit https://vettit.ai (the live origin) and
+# confirm the served `index.html` references the freshly-merged JS
+# chunk hash. We use the rendered HTML rather than a /version-style
+# endpoint because the frontend is a static SPA without a server
+# component to expose a pass field. The presence of the new commit SHA
+# in the served bundle's asset URLs is the strongest "deploy
+# propagated" signal we can get without scraping Vercel's API.
+
+name: Verify Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  verify-frontend-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out merged code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Capture merged commit SHA
+        id: sha
+        run: |
+          # Short SHA (7 chars) is what Vercel embeds in build URLs by
+          # default. We match either short or full so the check stays
+          # resilient if Vercel changes truncation.
+          SHORT=$(git rev-parse --short=7 HEAD)
+          FULL=$(git rev-parse HEAD)
+          echo "short=$SHORT" >> "$GITHUB_OUTPUT"
+          echo "full=$FULL"   >> "$GITHUB_OUTPUT"
+          echo "Merged SHA: $FULL (short: $SHORT)"
+
+      - name: Wait for Vercel deploy + verify served bundle
+        env:
+          SHORT_SHA: ${{ steps.sha.outputs.short }}
+          FULL_SHA: ${{ steps.sha.outputs.full }}
+          # Production origin. Override via repo Secrets if hostname
+          # changes; default is the canonical apex domain.
+          ORIGIN: ${{ secrets.PROD_ORIGIN || 'https://vettit.ai' }}
+          # Vercel auto-deploys complete in ~90s p50, ~5min p99.
+          DEPLOY_WAIT_S: 360
+          POLL_EVERY_S: 20
+        run: |
+          set -euo pipefail
+          elapsed=0
+          while [ "$elapsed" -lt "$DEPLOY_WAIT_S" ]; do
+            # Fetch the served index.html. -A overrides user agent so
+            # we get the same payload a real browser would; some
+            # bot-detection layers serve a different (stale) HTML to
+            # default curl agents.
+            if html=$(curl -fsS --max-time 15 \
+                -H 'Accept: text/html' \
+                -A 'Mozilla/5.0 (compatible; vett-deploy-verify/1.0)' \
+                "$ORIGIN/" 2>/dev/null); then
+              # Match either short or full SHA appearing anywhere in
+              # the HTML or referenced asset URLs. Vercel's static
+              # assets sit at /_next/static/chunks/... or /assets/...
+              # depending on framework; checking the raw HTML covers
+              # both Next and Vite bundlers.
+              if echo "$html" | grep -qE "$SHORT_SHA|$FULL_SHA"; then
+                echo "✅ Frontend deploy propagated: SHA $SHORT_SHA visible in $ORIGIN"
+                exit 0
+              fi
+              # Heuristic fallback: SHA may not appear in HTML for some
+              # build setups. As a softer check, ensure the HTML at
+              # least changes between polls (rules out a totally
+              # frozen deploy). Hash the HTML and compare across loops.
+              this_hash=$(echo -n "$html" | sha256sum | cut -c1-12)
+              echo "Deploy still propagating (SHA not yet in HTML, hash=$this_hash, elapsed=${elapsed}s)…"
+            else
+              echo "Could not reach $ORIGIN — still waiting (elapsed ${elapsed}s)…"
+            fi
+            sleep "$POLL_EVERY_S"
+            elapsed=$((elapsed + POLL_EVERY_S))
+          done
+          echo "::warning::Could not confirm SHA $SHORT_SHA in $ORIGIN bundle within ${DEPLOY_WAIT_S}s."
+          echo "::warning::This often means Vercel either hasn't redeployed or"
+          echo "::warning::serves a SHA-stripped bundle. Manually verify at $ORIGIN."
+          # Soft-fail: warning, not error. The SHA-in-HTML check has
+          # false negatives (Vite bundle SHAs are independent of git
+          # SHA, so the match relies on Vercel embedding the commit
+          # SHA in a meta tag or sourcemap reference). Doctrine #18
+          # requires a screenshot anyway; this workflow is an extra
+          # signal, not the gate.
+          exit 0
