@@ -338,10 +338,18 @@ export const MissionsListPage = () => {
   // saw a blank page for ~600ms before everything popped in. The skeleton
   // mirrors the real grid (1/2/3 cols at sm/md/lg) so when results land
   // there's no layout shift.
+  //
+  // Pass 37 A9 — skeleton background now uses the brand canvas `#0B0C15`
+  // (matches PageLoader and main render below) instead of the
+  // `bg-gradient-to-br from-gray-950 via-black to-gray-900` gradient.
+  // The gradient flashed a near-pure-black during the brief moment
+  // before the gray-on-black skeleton tiles painted, causing a visible
+  // brand-color shift between PageLoader (#0B0C15) → skeleton (black)
+  // → loaded page. Solid brand canvas = single paint frame.
   if (authLoading || loading) {
     return (
       <DashboardLayout>
-        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900">
+        <div className="min-h-[100dvh] bg-[#0B0C15]">
           <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-20">
             <div className="flex flex-col gap-4 mb-4">
               <div className="flex flex-row items-center justify-between">
@@ -393,7 +401,9 @@ export const MissionsListPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-black to-gray-900">
+      {/* Pass 37 A9 — brand canvas (#0B0C15) replaces the previous
+          gradient so the skeleton/loaded transition is single-frame. */}
+      <div className="min-h-[100dvh] bg-[#0B0C15]">
         <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
