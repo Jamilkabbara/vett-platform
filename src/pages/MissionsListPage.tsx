@@ -344,6 +344,13 @@ export const MissionsListPage = () => {
     const statusUp = (mission.status || '').toUpperCase();
     if (statusUp === 'DRAFT') {
       navigate(`/dashboard/${mission.id}`);
+    } else if (statusUp === 'PENDING_PAYMENT' || statusUp === 'PENDING') {
+      // Pass 37 A4 — PENDING_PAYMENT mission: route back into Mission
+      // Control with ?action=pay so DashboardPage auto-triggers the
+      // Stripe checkout redirect. Previously these cards routed to
+      // /results/:id and rendered the empty/failed results UI — a
+      // user with a payment failure had no path back to retry.
+      navigate(`/dashboard/${mission.id}?action=pay`);
     } else {
       navigate(`/results/${mission.id}`);
     }
@@ -644,20 +651,34 @@ export const MissionsListPage = () => {
                             from the final charge by up to 4× after promos. */}
                         {getMissionPriceLabel(mission)}
                       </span>
-                      <div className="flex items-center gap-2 text-primary group-hover:translate-x-1 transition-transform">
-                        {/* Pass 32 X8 — case-insensitive DRAFT check. */}
-                        {(mission.status || '').toUpperCase() === 'DRAFT' ? (
-                          <>
-                            <span className="text-sm font-bold">Edit</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </>
-                        ) : (
-                          <>
+                      {/* Pass 37 A4 — status-driven CTA. PENDING_PAYMENT
+                          gets a payment-recovery CTA (was silently routing
+                          to /results/:id which rendered an empty page). */}
+                      {(() => {
+                        const statusUp = (mission.status || '').toUpperCase();
+                        if (statusUp === 'DRAFT') {
+                          return (
+                            <div className="flex items-center gap-2 text-primary group-hover:translate-x-1 transition-transform">
+                              <span className="text-sm font-bold">Edit</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </div>
+                          );
+                        }
+                        if (statusUp === 'PENDING_PAYMENT' || statusUp === 'PENDING') {
+                          return (
+                            <div className="flex items-center gap-2 text-amber-300 group-hover:translate-x-1 transition-transform">
+                              <span className="text-sm font-bold">Complete Payment</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="flex items-center gap-2 text-primary group-hover:translate-x-1 transition-transform">
                             <Eye className="w-4 h-4" />
                             <span className="text-sm font-bold">View Results</span>
-                          </>
-                        )}
-                      </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </motion.div>
