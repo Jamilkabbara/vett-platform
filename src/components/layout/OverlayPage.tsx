@@ -1,7 +1,7 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface OverlayPageProps {
   children: React.ReactNode;
@@ -9,6 +9,22 @@ interface OverlayPageProps {
 
 export const OverlayPage = ({ children }: OverlayPageProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Pass 40 CRASH40-1 — ref on the scrollable container so we can
+  // forcibly reset scrollTop on mount AND on route change. The
+  // outer div is the scroll container (body has overflow:hidden,
+  // see the effect below), and a previous mount or the browser's
+  // scroll-anchoring logic can leave it at a non-zero scrollTop
+  // when a new OverlayPage instance mounts.
+  // DOM forensic from Pass 39 live audit on /results/b2072d69:
+  //   <div class="fixed inset-0 z-50 ...">
+  //     scrollTop: 1460.5      ← hero is at -1309px, KPI strip invisible
+  //     scrollHeight: 2261
+  //     clientHeight: 801
+  //   </div>
+  // The user could only see content from index 1460..2261 (recommendations
+  // + follow-ups); the hero + KPI strip lived above the visible region.
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -17,6 +33,29 @@ export const OverlayPage = ({ children }: OverlayPageProps) => {
     };
   }, []);
 
+  // Pass 40 CRASH40-1 — reset scrollTop on mount and every route change
+  // inside the overlay. Two rAF ticks: the first lets framer-motion's
+  // initial layout settle, the second lets the inner content's mount
+  // effects (KPI strip data hydration, chart sizing) finish, so the
+  // forced scroll-to-top survives any layout shift those might trigger.
+  useEffect(() => {
+    let cancelled = false;
+    const r1 = requestAnimationFrame(() => {
+      if (cancelled || !containerRef.current) return;
+      containerRef.current.scrollTop = 0;
+      const r2 = requestAnimationFrame(() => {
+        if (cancelled || !containerRef.current) return;
+        containerRef.current.scrollTop = 0;
+      });
+      // r2 is captured in closure; cancelled flag handles unmount mid-rAF.
+      void r2;
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(r1);
+    };
+  }, [location.pathname]);
+
   const handleClose = () => {
     navigate('/landing', { replace: true });
   };
@@ -24,6 +63,7 @@ export const OverlayPage = ({ children }: OverlayPageProps) => {
   return (
     <AnimatePresence>
       <motion.div
+        ref={containerRef}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

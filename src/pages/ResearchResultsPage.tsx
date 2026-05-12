@@ -25,6 +25,11 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { OverlayPage } from '../components/layout/OverlayPage';
+// Pass 40 CRASH40-3 — wrap each insight section so a render error in
+// one (schema drift, unknown object shape, etc.) degrades only that
+// section instead of blanking the whole tree. Pairs with the Pass 39
+// renderInsightItem helper which JSON-stringifies unknown shapes.
+import { InsightErrorBoundary } from '../components/shared/InsightErrorBoundary';
 
 interface MissionRow {
   id: string;
@@ -57,22 +62,86 @@ export type InsightItem =
 interface ResearchInsights {
   kpis?: Array<{ label: string; value: string | number; note?: string }> | Record<string, unknown>;
   follow_ups?: InsightItem[];
-  contradictions?: Array<{ topic?: string; summary?: string } | string>;
+  // Pass 40 CRASH40-2 — widened to handle real production shapes.
+  // The AI synthesis prompt evolved and now emits richer objects;
+  // earlier types only covered the simplest fields.
+  contradictions?: Array<
+    | string
+    | null
+    | {
+        topic?: string;
+        summary?: string;
+        // Alternate field names the synthesis prompt has used over time
+        headline?: string;
+        body?: string;
+        title?: string;
+        rationale?: string;
+        description?: string;
+      }
+  >;
+  // Alias for contradictions — the synthesis prompt sometimes writes
+  // `tensions` (Pass 35-ish migration that didn't update consumers).
+  tensions?: ResearchInsights['contradictions'];
   recommendations?: InsightItem[];
   executive_summary?: string;
-  segment_breakdowns?: Array<{
-    segment?: string;
-    label?: string;
-    n?: number;
-    findings?: string[];
-    summary?: string;
-  }>;
-  per_question_insights?: Array<{
-    question_id?: string;
-    question?: string;
-    insight?: string;
-    summary?: string;
-  }>;
+  segment_breakdowns?: Array<
+    | null
+    | {
+        segment?: string;
+        label?: string;
+        n?: number;
+        findings?: string[];
+        summary?: string;
+        // Alternate fields seen in production
+        headline?: string;
+        body?: string;
+        title?: string;
+      }
+  >;
+  // Alias for segment_breakdowns — synthesis sometimes writes
+  // `cross_cut_analysis` instead.
+  cross_cut_analysis?: ResearchInsights['segment_breakdowns'];
+  per_question_insights?: Array<
+    | null
+    | {
+        question_id?: string;
+        question?: string;
+        // Original fields
+        insight?: string;
+        summary?: string;
+        // Current production shape (Pass 35+)
+        body?: string;
+        headline?: string;
+        significance?: 'low' | 'medium' | 'high' | string;
+      }
+  >;
+}
+
+// Pass 40 CRASH40-2 — shared empty-state component for sections
+// whose data is null or empty. Prevents the "bare section header with
+// no body" or "two ⚠ icons with no text" pattern from the live audit.
+function InsightEmptyState({ message }: { message: string }) {
+  return (
+    <p className="text-t3 text-sm italic">{message}</p>
+  );
+}
+
+function significanceBadge(sig: string | undefined): React.ReactNode {
+  if (!sig) return null;
+  const s = sig.toLowerCase();
+  const color =
+    s === 'high'   ? 'bg-red/15 text-red-300 border-red/30' :
+    s === 'medium' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
+    s === 'low'    ? 'bg-bg3 text-t3 border-b1' :
+                     'bg-bg3 text-t3 border-b1';
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[10px] font-display font-bold uppercase tracking-wider ${color}`}
+      aria-label={`Significance: ${sig}`}
+    >
+      {sig}
+    </span>
+  );
 }
 
 function parseInsights(raw: ResearchInsights | string | null | undefined): ResearchInsights {
@@ -160,25 +229,42 @@ function ExecutiveSummary({ text }: { text: string }) {
 }
 
 function SegmentBreakdowns({ items }: { items: NonNullable<ResearchInsights['segment_breakdowns']> }) {
-  if (!items.length) return null;
+  // Pass 40 CRASH40-2 — filter null items + render usable content from
+  // whatever shape exists (segment/label/title/headline as the heading,
+  // summary/body as the body). Live audit showed "Segment 1" / "Segment 2"
+  // labels with no body — the rows had no segment/label/summary and the
+  // findings array was empty, so the fallback "Segment N" label rendered
+  // alone. Now: if a row has no usable content, the row is skipped; if
+  // the whole array is null/empty, an empty-state message renders.
+  const usable = items.filter((seg): seg is NonNullable<typeof seg> => {
+    if (!seg) return false;
+    const hasHeading = Boolean(seg.segment || seg.label || seg.title || seg.headline);
+    const hasBody    = Boolean(seg.summary || seg.body);
+    const hasFindings = Array.isArray(seg.findings) && seg.findings.length > 0;
+    return hasHeading || hasBody || hasFindings;
+  });
   return (
     <div className="rounded-2xl bg-bg2 border border-b1 p-6">
       <h2 className="text-xs font-display font-black text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
         <TrendingUp className="w-4 h-4" aria-hidden />
         Cross-Cut Analysis
       </h2>
-      <div className="space-y-4">
-        {items.map((seg, i) => {
+      {usable.length === 0 ? (
+        <InsightEmptyState message="No cross-cut segment analysis available for this dataset." />
+      ) : (
+        <div className="space-y-4">
+        {usable.map((seg, i) => {
           const findings = Array.isArray(seg.findings) ? seg.findings : [];
-          const label = seg.segment || seg.label || `Segment ${i + 1}`;
+          const label   = seg.segment || seg.label || seg.title || seg.headline || `Segment ${i + 1}`;
+          const summary = seg.summary || seg.body;
           return (
             <div key={i} className="border-l-2 border-lime/40 pl-4">
               <div className="flex items-baseline gap-2 mb-2">
                 <h3 className="text-t1 font-display font-bold text-sm">{label}</h3>
                 {seg.n != null && <span className="text-xs text-t3 font-mono">n={seg.n}</span>}
               </div>
-              {seg.summary && (
-                <p className="text-t2 text-sm mb-2 leading-relaxed">{seg.summary}</p>
+              {summary && (
+                <p className="text-t2 text-sm mb-2 leading-relaxed">{summary}</p>
               )}
               {findings.length > 0 && (
                 <ul className="space-y-1.5">
@@ -193,66 +279,114 @@ function SegmentBreakdowns({ items }: { items: NonNullable<ResearchInsights['seg
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function TensionsFlagged({ items }: { items: NonNullable<ResearchInsights['contradictions']> }) {
-  if (!items.length) return null;
+  // Pass 40 CRASH40-2 — filter null items + read whatever heading/body
+  // fields exist. Live audit showed "two ⚠ warning icons with no text"
+  // — the rows existed but neither `topic` nor `summary` was set; the
+  // synthesis prompt had migrated to {headline, body} / {title,
+  // rationale} shapes for some missions. Now we accept any of those.
+  const usable = items.filter((c): c is NonNullable<typeof c> => {
+    if (c == null) return false;
+    if (typeof c === 'string') return c.trim().length > 0;
+    return Boolean(
+      c.topic || c.summary || c.headline || c.body ||
+      c.title || c.rationale || c.description,
+    );
+  });
   return (
     <div className="rounded-2xl bg-bg2 border border-amber-500/30 p-6">
       <h2 className="text-xs font-display font-black text-amber-300 uppercase tracking-widest mb-4 flex items-center gap-2">
         <AlertTriangle className="w-4 h-4" aria-hidden />
         Tensions Flagged
       </h2>
-      <ul className="space-y-3">
-        {items.map((c, i) => {
-          if (typeof c === 'string') {
+      {usable.length === 0 ? (
+        <InsightEmptyState message="No tensions or contradictions surfaced in this dataset." />
+      ) : (
+        <ul className="space-y-3">
+          {usable.map((c, i) => {
+            if (typeof c === 'string') {
+              return (
+                <li key={i} className="text-t2 text-sm leading-relaxed flex gap-2">
+                  <span className="text-amber-400 mt-0.5 shrink-0">⚠</span>
+                  <span>{c}</span>
+                </li>
+              );
+            }
+            const heading = c.topic || c.headline || c.title;
+            const body    = c.summary || c.body || c.rationale || c.description;
             return (
-              <li key={i} className="text-t2 text-sm leading-relaxed flex gap-2">
+              <li key={i} className="flex gap-2">
                 <span className="text-amber-400 mt-0.5 shrink-0">⚠</span>
-                <span>{c}</span>
+                <div>
+                  {heading && (
+                    <p className="text-t1 font-display font-bold text-sm mb-1">{heading}</p>
+                  )}
+                  {body && (
+                    <p className="text-t2 text-sm leading-relaxed">{body}</p>
+                  )}
+                </div>
               </li>
             );
-          }
-          return (
-            <li key={i} className="flex gap-2">
-              <span className="text-amber-400 mt-0.5 shrink-0">⚠</span>
-              <div>
-                {c.topic && (
-                  <p className="text-t1 font-display font-bold text-sm mb-1">{c.topic}</p>
-                )}
-                {c.summary && (
-                  <p className="text-t2 text-sm leading-relaxed">{c.summary}</p>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+          })}
+        </ul>
+      )}
     </div>
   );
 }
 
 function PerQuestionInsights({ items }: { items: NonNullable<ResearchInsights['per_question_insights']> }) {
-  if (!items.length) return null;
+  // Pass 40 CRASH40-2 — accept current production shape
+  // {body, headline, question_id, significance} alongside legacy
+  // {insight, summary, question}. Live audit showed 5 placeholder
+  // "—" rows because the renderer indexed q.insight || q.summary
+  // (neither present on Pass 35+ data shape).
+  const usable = items.filter((q): q is NonNullable<typeof q> => {
+    if (q == null) return false;
+    return Boolean(q.headline || q.body || q.insight || q.summary || q.question);
+  });
   return (
     <div className="rounded-2xl bg-bg2 border border-b1 p-6">
       <h2 className="text-xs font-display font-black text-lime uppercase tracking-widest mb-4 flex items-center gap-2">
         <Users className="w-4 h-4" aria-hidden />
         Per-question insights
       </h2>
-      <div className="space-y-4">
-        {items.map((q, i) => (
-          <div key={q.question_id || i} className="border-l-2 border-b1 pl-4">
-            {q.question && (
-              <p className="text-t3 text-xs font-mono mb-1.5">{q.question}</p>
-            )}
-            <p className="text-t1 text-sm leading-relaxed">{q.insight || q.summary || '—'}</p>
-          </div>
-        ))}
-      </div>
+      {usable.length === 0 ? (
+        <InsightEmptyState message="No per-question insights were generated for this mission." />
+      ) : (
+        <div className="space-y-4">
+          {usable.map((q, i) => {
+            // Heading priority: headline (Pass 35+ shape) > question (legacy)
+            const heading = q.headline || q.question;
+            // Body priority: body > insight > summary
+            const body = q.body || q.insight || q.summary;
+            return (
+              <div key={q.question_id || i} className="border-l-2 border-b1 pl-4">
+                <div className="flex items-baseline gap-2 mb-1.5 flex-wrap">
+                  {heading && (
+                    <p className={
+                      q.headline
+                        ? 'text-t1 font-display font-bold text-sm'
+                        : 'text-t3 text-xs font-mono'
+                    }>
+                      {heading}
+                    </p>
+                  )}
+                  {significanceBadge(q.significance)}
+                </div>
+                {body && (
+                  <p className="text-t2 text-sm leading-relaxed">{body}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -439,32 +573,59 @@ export function ResearchResultsPage() {
           }
           qualifiedRate={rate}
         />
-        {insights.executive_summary && <ExecutiveSummary text={insights.executive_summary} />}
-        {Array.isArray(insights.segment_breakdowns) && insights.segment_breakdowns.length > 0 && (
-          <SegmentBreakdowns items={insights.segment_breakdowns} />
-        )}
-        {Array.isArray(insights.contradictions) && insights.contradictions.length > 0 && (
-          <TensionsFlagged items={insights.contradictions} />
-        )}
-        {Array.isArray(insights.per_question_insights) && insights.per_question_insights.length > 0 && (
-          <PerQuestionInsights items={insights.per_question_insights} />
-        )}
-        {Array.isArray(insights.recommendations) && insights.recommendations.length > 0 && (
-          <RecommendationList
-            title="Recommendations"
-            icon={<CheckCircle2 className="w-4 h-4 text-lime" aria-hidden />}
-            items={insights.recommendations}
-            accent="border-lime/30"
-          />
-        )}
-        {Array.isArray(insights.follow_ups) && insights.follow_ups.length > 0 && (
-          <RecommendationList
-            title="Suggested follow-ups"
-            icon={<MessageCircleQuestion className="w-4 h-4 text-indigo-400" aria-hidden />}
-            items={insights.follow_ups}
-            accent="border-indigo-500/30"
-          />
-        )}
+        <InsightErrorBoundary label="Executive Summary">
+          {insights.executive_summary && <ExecutiveSummary text={insights.executive_summary} />}
+        </InsightErrorBoundary>
+        {/* Pass 40 CRASH40-2 — also accept `cross_cut_analysis` and
+            `tensions` as alternate field names; the synthesis prompt
+            has used both naming conventions across passes.
+            Pass 40 CRASH40-3 — each section wrapped in InsightErrorBoundary
+            so a render error in one degrades only that section. */}
+        <InsightErrorBoundary label="Cross-Cut Analysis">
+          {(() => {
+            const segs = (Array.isArray(insights.segment_breakdowns) && insights.segment_breakdowns.length > 0
+              ? insights.segment_breakdowns
+              : (Array.isArray(insights.cross_cut_analysis) && insights.cross_cut_analysis.length > 0
+                ? insights.cross_cut_analysis
+                : null));
+            return segs ? <SegmentBreakdowns items={segs} /> : null;
+          })()}
+        </InsightErrorBoundary>
+        <InsightErrorBoundary label="Tensions Flagged">
+          {(() => {
+            const tens = (Array.isArray(insights.contradictions) && insights.contradictions.length > 0
+              ? insights.contradictions
+              : (Array.isArray(insights.tensions) && insights.tensions.length > 0
+                ? insights.tensions
+                : null));
+            return tens ? <TensionsFlagged items={tens} /> : null;
+          })()}
+        </InsightErrorBoundary>
+        <InsightErrorBoundary label="Per-Question Insights">
+          {Array.isArray(insights.per_question_insights) && insights.per_question_insights.length > 0 && (
+            <PerQuestionInsights items={insights.per_question_insights} />
+          )}
+        </InsightErrorBoundary>
+        <InsightErrorBoundary label="Recommendations">
+          {Array.isArray(insights.recommendations) && insights.recommendations.length > 0 && (
+            <RecommendationList
+              title="Recommendations"
+              icon={<CheckCircle2 className="w-4 h-4 text-lime" aria-hidden />}
+              items={insights.recommendations}
+              accent="border-lime/30"
+            />
+          )}
+        </InsightErrorBoundary>
+        <InsightErrorBoundary label="Suggested Follow-Ups">
+          {Array.isArray(insights.follow_ups) && insights.follow_ups.length > 0 && (
+            <RecommendationList
+              title="Suggested follow-ups"
+              icon={<MessageCircleQuestion className="w-4 h-4 text-indigo-400" aria-hidden />}
+              items={insights.follow_ups}
+              accent="border-indigo-500/30"
+            />
+          )}
+        </InsightErrorBoundary>
 
         {/* Pass 37 A1 — Pass 36 had a no-insights fallback here that
             never fired because KPI strip now always renders. Dropped. */}
