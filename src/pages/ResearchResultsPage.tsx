@@ -70,9 +70,21 @@ function parseInsights(raw: ResearchInsights | string | null | undefined): Resea
   return raw;
 }
 
-function KpiStrip({ kpis }: { kpis: ResearchInsights['kpis'] }) {
-  if (!kpis) return null;
-  // Normalize to array of { label, value, note }
+function KpiStrip({
+  kpis,
+  mission,
+  perQuestionCount,
+  qualifiedRate,
+}: {
+  kpis: ResearchInsights['kpis'];
+  mission: MissionRow;
+  perQuestionCount: number;
+  qualifiedRate: number | null;
+}) {
+  // Pass 37 A1 — KPI strip ALWAYS renders. Empty insights.kpis →
+  // fall back to mission-level metrics (delivered respondents,
+  // question count, qualified rate) so the hero is followed by
+  // immediate content instead of a black gap.
   const items: Array<{ label: string; value: string; note?: string }> = [];
   if (Array.isArray(kpis)) {
     for (const k of kpis) {
@@ -82,12 +94,30 @@ function KpiStrip({ kpis }: { kpis: ResearchInsights['kpis'] }) {
         note: k.note ? String(k.note) : undefined,
       });
     }
-  } else if (typeof kpis === 'object') {
+  } else if (kpis && typeof kpis === 'object') {
     for (const [k, v] of Object.entries(kpis)) {
       items.push({ label: k.replace(/_/g, ' '), value: String(v ?? '—') });
     }
   }
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    // Fallback strip from mission columns — guarantees no black gap.
+    items.push(
+      {
+        label: 'Respondents Delivered',
+        value: String(mission.delivered_respondent_count ?? mission.respondent_count ?? '—'),
+      },
+      {
+        label: 'Questions',
+        value: String(perQuestionCount || '—'),
+      },
+      {
+        label: 'Qualified Rate',
+        value: qualifiedRate != null && Number.isFinite(qualifiedRate)
+          ? `${Math.round(qualifiedRate * 100)}%`
+          : '100%',
+      },
+    );
+  }
   return (
     <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
       {items.slice(0, 6).map((k, i) => (
@@ -307,9 +337,11 @@ export function ResearchResultsPage() {
 
   return (
     <OverlayPage>
-      <div className="max-w-5xl mx-auto space-y-6">
+      {/* Pass 37 A1 — space-y-4 (was space-y-6) so hero → KPI strip
+          gap is ≤16px. OverlayPage adds py-24 padding outside this. */}
+      <div className="max-w-5xl mx-auto space-y-4">
         {/* Hero */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           <Link to="/missions" className="inline-flex items-center gap-1.5 text-t3 hover:text-t1 text-xs">
             <ArrowLeft className="w-3.5 h-3.5" /> All missions
           </Link>
@@ -335,9 +367,20 @@ export function ResearchResultsPage() {
           </div>
         </div>
 
-        {/* Content (in reader order) — no empty gaps; each section gates
-            on the presence of its key */}
-        {insights.kpis && <KpiStrip kpis={insights.kpis} />}
+        {/* Pass 37 A1 — KPI strip ALWAYS renders immediately after hero.
+            Fallback to mission-level metrics when insights.kpis is empty
+            so there is no black gap. Tight space-y-4 between sections
+            (was space-y-6) to keep the page dense. */}
+        <KpiStrip
+          kpis={insights.kpis}
+          mission={mission}
+          perQuestionCount={
+            Array.isArray(insights.per_question_insights)
+              ? insights.per_question_insights.length
+              : 0
+          }
+          qualifiedRate={rate}
+        />
         {insights.executive_summary && <ExecutiveSummary text={insights.executive_summary} />}
         {Array.isArray(insights.segment_breakdowns) && insights.segment_breakdowns.length > 0 && (
           <SegmentBreakdowns items={insights.segment_breakdowns} />
@@ -365,17 +408,8 @@ export function ResearchResultsPage() {
           />
         )}
 
-        {/* Empty-state fallback — no insight keys at all (rare) */}
-        {!insights.kpis &&
-          !insights.executive_summary &&
-          !(Array.isArray(insights.segment_breakdowns) && insights.segment_breakdowns.length > 0) &&
-          !(Array.isArray(insights.per_question_insights) && insights.per_question_insights.length > 0) && (
-            <div className="rounded-2xl bg-bg2 border border-b1 p-6 text-center">
-              <p className="text-t3 text-sm">
-                Insights are still computing. Refresh in a moment.
-              </p>
-            </div>
-          )}
+        {/* Pass 37 A1 — Pass 36 had a no-insights fallback here that
+            never fired because KPI strip now always renders. Dropped. */}
       </div>
     </OverlayPage>
   );
