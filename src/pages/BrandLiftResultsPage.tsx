@@ -3,6 +3,15 @@ import { useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
+// Pass 41 BUG1 — when a brand_lift mission has status='completed' but
+// no aggregated `brand_lift_results` column (e.g. synthesis ran the
+// standard insights pipeline rather than the brand-lift-specific
+// aggregator from Pass 27/28), we fall back to the standard insights
+// view. ResearchResultsPage handles the universal {kpis,
+// executive_summary, per_question_insights, recommendations,
+// follow_ups, contradictions, segment_breakdowns} shape correctly
+// after Pass 40 CRASH40-2.
+import { ResearchResultsPage } from './ResearchResultsPage';
 import {
   BrandLiftScoreDial,
   FunnelVisualization,
@@ -259,7 +268,32 @@ export function BrandLiftResultsPage() {
       </div>
     );
   }
+  // Pass 41 BUG1 — fallback when the rich `brand_lift_results` JSONB is
+  // absent but the standard `insights` JSONB and `status='completed'`
+  // are present. Live audit caught af36a36d-401d-48e6-b94b-257e215613e2
+  // in this state: status=completed, insights populated, brand_lift_results
+  // NULL → page stuck on "still generating" indefinitely.
+  //
+  // The brand-lift-specific aggregator (Pass 27/28) doesn't always
+  // populate `brand_lift_results` — newer missions go through the
+  // standard insights pipeline. The universal renderer in
+  // ResearchResultsPage handles the standard {kpis, executive_summary,
+  // per_question_insights, recommendations, follow_ups,
+  // contradictions, segment_breakdowns} shape since Pass 40 CRASH40-2.
+  //
+  // This delegation does cost a second mission fetch (ResearchResultsPage
+  // re-reads via useParams), but that's a single Supabase call (~50ms)
+  // and avoids duplicating the renderer.
   if (!blr) {
+    const status = mission?.status as string | undefined;
+    const insights = mission?.insights;
+    const insightsPresent =
+      insights != null &&
+      typeof insights === 'object' &&
+      Object.keys(insights as Record<string, unknown>).length > 0;
+    if (status === 'completed' && insightsPresent) {
+      return <ResearchResultsPage />;
+    }
     return (
       <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-3 px-5 text-center">
         <Logo />
