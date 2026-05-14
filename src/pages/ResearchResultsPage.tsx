@@ -44,6 +44,14 @@ interface MissionRow {
   qualification_rate: number | null;
   completed_at: string | null;
   insights: ResearchInsights | string | null;
+  // Pass 42 A4 — partial-delivery signals from the recruit loop.
+  // delivery_status='partial' means recruitment hit the 70% margin
+  // ceiling before reaching the target. The hero shows honest copy
+  // ("N of M qualified — strict screener") instead of the normal
+  // "N respondents delivered" suffix. NO REFUND — policy.
+  delivery_status: 'full' | 'partial' | 'screener_too_restrictive' | null;
+  target_qualified_count: number | null;
+  recruitment_status: 'pending' | 'recruiting' | 'ceiling_hit' | 'target_hit' | null;
 }
 
 // Pass 39 CRASH-1 — recommendations + follow_ups can ship as either
@@ -480,7 +488,10 @@ export function ResearchResultsPage() {
       const { data, error: fetchErr } = await supabase
         .from('missions')
         .select(
-          'id, title, brief, goal_type, status, respondent_count, delivered_respondent_count, total_simulated_count, qualified_respondent_count, qualification_rate, completed_at, insights',
+          // Pass 42 A4 — also fetch delivery_status, target_qualified_count,
+          // recruitment_status so the hero can render the partial-
+          // delivery copy when applicable.
+          'id, title, brief, goal_type, status, respondent_count, delivered_respondent_count, total_simulated_count, qualified_respondent_count, qualification_rate, completed_at, insights, delivery_status, target_qualified_count, recruitment_status',
         )
         .eq('id', missionId)
         .maybeSingle();
@@ -544,11 +555,31 @@ export function ResearchResultsPage() {
             {mission.title || mission.brief || 'Your mission'}
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-t3">
-            <span className="inline-flex items-center gap-1.5">
+            {/* Pass 42 A4 — partial-delivery honest copy. When the
+                recruit loop hit the 70% margin ceiling before
+                reaching target_qualified_count, the hero says
+                "N of M qualified — strict screener" with a tooltip.
+                NO REFUND mention here — that's in the terms page
+                (Pass 42 G4). */}
+            <span
+              className="inline-flex items-center gap-1.5"
+              title={
+                mission.delivery_status === 'partial'
+                  ? 'Your screener was strict, so fewer respondents qualified than requested. All sales are final per VETT terms — but the insights below still surface the signal from those who did qualify.'
+                  : undefined
+              }
+            >
               <Users className="w-3.5 h-3.5" />
-              {showRate
-                ? `${delivered} respondents delivered · ${Math.round((rate ?? 0) * 100)}% qualified`
-                : `${delivered} respondents delivered`}
+              {(() => {
+                const target = mission.target_qualified_count ?? mission.respondent_count ?? 0;
+                if (mission.delivery_status === 'partial' && target > 0 && delivered < target) {
+                  return `${delivered} of ${target} qualified — strict screener`;
+                }
+                if (showRate) {
+                  return `${delivered} respondents delivered · ${Math.round((rate ?? 0) * 100)}% qualified`;
+                }
+                return `${delivered} respondents delivered`;
+              })()}
             </span>
             {mission.completed_at && (
               <span className="inline-flex items-center gap-1.5">
