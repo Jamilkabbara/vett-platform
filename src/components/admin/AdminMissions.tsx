@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, BarChart2, CheckCircle2, Trash2, Loader2, Search, Sparkles } from 'lucide-react';
+import { RefreshCw, BarChart2, CheckCircle2, Trash2, Loader2, Search, Sparkles, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface AdminMission {
@@ -91,6 +91,37 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
       toast.success('Marked as completed');
     } catch {
       toast.error('Force-complete failed');
+    }
+    setBusy(false);
+  };
+
+  // Pass 42 F1 — admin override that promotes a pending_payment
+  // mission to paid without Stripe. Prompts for a reason (required
+  // by backend, logged to admin_actions).
+  const markPaid = async (id: string) => {
+    const reason = window.prompt(
+      'Reason for admin override (logged to admin_actions):',
+      'demo / comp / testing',
+    );
+    if (!reason || !reason.trim()) return;
+    setBusy(true);
+    const t = toast.loading('Marking as paid…');
+    try {
+      const res = await apiFetch(`/api/admin/missions/${id}/mark-paid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'mark-paid failed');
+      }
+      setMissions(m => m.map(x => x.id === id
+        ? { ...x, status: 'paid', paid_at: new Date().toISOString() }
+        : x));
+      toast.success('Marked as paid (admin override)', { id: t });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'mark-paid failed', { id: t });
     }
     setBusy(false);
   };
@@ -270,6 +301,18 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
                           className="p-1.5 rounded-lg text-gray-500 hover:text-green-400 hover:bg-green-400/10 transition-colors"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {/* Pass 42 F1 — admin "Mark as paid" override.
+                          Only visible on pending_payment / draft. */}
+                      {(m.status === 'pending_payment' || m.status === 'draft') && (
+                        <button
+                          onClick={() => markPaid(m.id)}
+                          disabled={busy}
+                          title="Mark as paid (admin override) — internal/demo/comp only"
+                          className="p-1.5 rounded-lg text-gray-500 hover:text-lime hover:bg-lime/10 transition-colors"
+                        >
+                          <DollarSign className="w-3.5 h-3.5" />
                         </button>
                       )}
                       {m.status === 'completed' && (
