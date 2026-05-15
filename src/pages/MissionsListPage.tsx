@@ -8,6 +8,9 @@ import { api } from '../lib/apiClient';
 import { VOLUME_TIERS } from '../utils/pricingEngine';
 import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
 import { deliveryNoun } from '../lib/missionDeliveryUnit';
+// Pass 42 G3 — user-friendly error copy. Internal logs keep the
+// technical message; user-visible surfaces show the mapped version.
+import { userFacingError } from '../lib/errorCopy';
 
 // Pass 33 W7 — site-wide Ask VETT now mounted in App.tsx; per-page
 // ChatWidget removed from this route to avoid double-mount.
@@ -169,7 +172,10 @@ export const MissionsListPage = () => {
       // (better to show stale data than a "Try again" page during a
       // transient network blip).
       if (!background) {
-        setFetchError(error instanceof Error ? error.message : 'Could not load missions');
+        // Pass 42 G3 — surface user-friendly copy in the visible
+        // error state. Original error.message stays in the
+        // console.error above for internal debugging.
+        setFetchError(userFacingError(error));
         setMissions([]);
       }
     } finally {
@@ -508,7 +514,10 @@ export const MissionsListPage = () => {
               <h2 className="text-xl md:text-2xl font-bold text-white mb-4">
                 Couldn&apos;t load your missions
               </h2>
-              <p className="text-white/60 mb-6 font-mono text-sm">{fetchError}</p>
+              {/* Pass 42 G3 — strip font-mono; the error string is
+                  now user-friendly copy (errorCopy.userFacingError),
+                  not a raw exception. */}
+              <p className="text-white/60 mb-6 text-sm">{fetchError}</p>
               <button
                 type="button"
                 onClick={fetchMissions}
