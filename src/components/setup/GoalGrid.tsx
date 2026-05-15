@@ -80,9 +80,12 @@ function RegularCard({
   onSelect: () => void;
   disabled: boolean;
 }) {
-  // Pass 34 B4 — comingSoon goals stay clickable (so the parent toast
-  // fires) but render dimmed with no hover affordance, matching the
-  // disabled visual state without the HTML disabled attribute.
+  // Pass 34 B4 + Pass 42 G2 — comingSoon goals are visually disabled
+  // (opacity 40, no hover, no cursor pointer) and their onClick is a
+  // no-op. The `title` attribute provides a tooltip pointing to the
+  // homepage waitlist for explicit user expectation setting.
+  // The HTML `disabled` attribute is not set so screen readers still
+  // expose the card's content; `aria-disabled` carries the semantic.
   const isComingSoon = !!goal.comingSoon;
   return (
     <button
@@ -91,13 +94,14 @@ function RegularCard({
       aria-checked={selected}
       aria-disabled={isComingSoon ? true : undefined}
       disabled={disabled}
-      onClick={onSelect}
+      onClick={isComingSoon ? undefined : onSelect}
+      title={isComingSoon ? 'Coming soon — join the waitlist on the homepage' : undefined}
       className={[
         'relative flex flex-col items-center justify-start gap-1.5',
         'rounded-xl border px-2.5 pt-4 pb-3 text-center',
         'transition-colors',
         'disabled:opacity-60 disabled:cursor-not-allowed',
-        isComingSoon ? 'opacity-55 cursor-not-allowed' : '',
+        isComingSoon ? 'opacity-40 cursor-not-allowed pointer-events-auto' : '',
         selected
           ? 'bg-lime border-lime'
           : isComingSoon
