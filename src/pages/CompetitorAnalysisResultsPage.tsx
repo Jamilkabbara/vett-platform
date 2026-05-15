@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
+// Pass 42 C4 — universal chart sections (Sentiment, Distributions, Segments).
+import { UniversalCharts } from '../components/results/UniversalCharts';
 
 /**
  * Pass 31 B2 — Competitor Analysis results page (Brand Health
@@ -243,6 +245,9 @@ export function CompetitorAnalysisResultsPage() {
       </header>
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
+        {/* Pass 42 C4 — universal chart sections. */}
+        <UniversalCharts missionId={missionId} />
+
         {/* Hero */}
         <section className="rounded-2xl p-6 border border-[var(--lime)]/40 bg-[var(--lime)]/5">
           <p className="text-[10px] uppercase tracking-widest text-[var(--lime)] font-display font-bold">

@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
+// Pass 42 C4 — universal chart sections (Sentiment, Distributions, Segments).
+import { UniversalCharts } from '../components/results/UniversalCharts';
 
 /**
  * Pass 31 B6 — Churn Research results page (Driver Tree + Win-Back).
@@ -219,6 +221,9 @@ export function ChurnResultsPage() {
       </header>
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
+        {/* Pass 42 C4 — universal chart sections. */}
+        <UniversalCharts missionId={missionId} />
+
         {/* Hero metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="rounded-2xl p-5 border border-[var(--b1)] bg-[var(--bg2)]">

@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
+// Pass 42 C4 — universal chart sections wrapper.
+import { UniversalCharts } from '../components/results/UniversalCharts';
 
 /**
  * Pass 30 B2 — Validate Product results page (concept test).
@@ -222,6 +224,12 @@ export function ValidateResultsPage() {
       </header>
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
+        {/* Pass 42 C4 — universal chart sections (above the methodology-
+            specific scores so customers see the visual distribution
+            first; the methodology scores follow as the analytical lens
+            on top of the raw distribution). */}
+        <UniversalCharts missionId={missionId} />
+
         {/* Hero scores */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="rounded-2xl p-5 border bg-[var(--bg2)]" style={{ borderColor: appealBand.color + '88' }}>

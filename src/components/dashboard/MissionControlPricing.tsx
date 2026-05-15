@@ -584,12 +584,23 @@ export const MissionControlPricing = ({
             Secure checkout via Stripe
           </span>
         </div>
-        <div className="mt-1 flex items-center justify-center gap-1.5 text-t4">
-          <ShieldCheck className="w-3 h-3" aria-hidden />
-          <span className="font-body text-[10px]">
-            Non-refundable once launched
-          </span>
-        </div>
+        {/* Pass 42 G4 — strengthened no-refund microcopy with link
+            to /terms. Sets honest expectations about partial
+            delivery when the screener is too strict. */}
+        <p className="mt-2 font-body text-[10px] text-t4 leading-relaxed text-center max-w-xs mx-auto">
+          By proceeding you agree VETT missions are delivered on a best-effort
+          basis. If your screener criteria are too strict, you may receive
+          fewer qualified respondents than purchased.{' '}
+          <a
+            href="/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-t3 transition-colors"
+          >
+            All sales final
+          </a>
+          .
+        </p>
       </div>
     </div>
   );
