@@ -17,6 +17,10 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { OverlayPage } from '../components/layout/OverlayPage';
+// Pass 42 E1 — live recruitment progress widget. Polls
+// /api/missions/:id/progress every 5s. Hides itself once the
+// recruitment loop has exited (target_hit or ceiling_hit).
+import { RecruitmentProgress } from '../components/results/RecruitmentProgress';
 
 interface MissionRow {
   id: string;
@@ -161,6 +165,11 @@ export function ProcessingPage() {
             You can also leave this page; we&apos;ll email you when ready.
           </p>
         </div>
+
+        {/* Pass 42 E1 — live recruitment progress. Hides itself once
+            target_hit / ceiling_hit so the step view below takes over
+            during the synthesis phase. */}
+        {missionId && <RecruitmentProgress missionId={missionId} />}
 
         <div className="space-y-3">
           {STEPS.map((step, i) => {
