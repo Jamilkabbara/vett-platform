@@ -12,6 +12,10 @@ import { Logo } from '../components/ui/Logo';
 // follow_ups, contradictions, segment_breakdowns} shape correctly
 // after Pass 40 CRASH40-2.
 import { ResearchResultsPage } from './ResearchResultsPage';
+// Pass 42 C4 — universal chart sections wrapper for the rich-path
+// (mission with brand_lift_results JSONB populated). The fallback
+// path delegates to ResearchResultsPage which already mounts these.
+import { UniversalCharts } from '../components/results/UniversalCharts';
 import {
   BrandLiftScoreDial,
   FunnelVisualization,
@@ -417,6 +421,10 @@ export function BrandLiftResultsPage() {
             refetching ? 'opacity-60' : 'opacity-100',
           ].join(' ')}
         >
+          {/* Pass 42 C4 — universal chart sections on top of the rich
+              brand-lift specific layout. Renders nothing when chart_data
+              isn't present so older brand_lift missions look unchanged. */}
+          <UniversalCharts missionId={missionId} />
           {liftMode ? (
             <LiftScoreCard funnel={blr.funnel} fallbackScore={blr.score} />
           ) : (

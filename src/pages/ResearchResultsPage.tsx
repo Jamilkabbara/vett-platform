@@ -30,6 +30,12 @@ import { OverlayPage } from '../components/layout/OverlayPage';
 // section instead of blanking the whole tree. Pairs with the Pass 39
 // renderInsightItem helper which JSON-stringifies unknown shapes.
 import { InsightErrorBoundary } from '../components/shared/InsightErrorBoundary';
+// Pass 42 C4 — universal chart sections. All three components read
+// chart_data via useChartData; each returns null gracefully when the
+// relevant block is absent so we never render an empty chart frame.
+import { QuestionDistributions } from '../components/results/QuestionDistributions';
+import { SentimentBreakdown } from '../components/results/SentimentBreakdown';
+import { SegmentComparison } from '../components/results/SegmentComparison';
 
 interface MissionRow {
   id: string;
@@ -604,6 +610,10 @@ export function ResearchResultsPage() {
           }
           qualifiedRate={rate}
         />
+        {/* Pass 42 C4 — Sentiment donut above the executive summary. */}
+        <InsightErrorBoundary label="Sentiment Breakdown">
+          <SentimentBreakdown missionId={missionId} />
+        </InsightErrorBoundary>
         <InsightErrorBoundary label="Executive Summary">
           {insights.executive_summary && <ExecutiveSummary text={insights.executive_summary} />}
         </InsightErrorBoundary>
@@ -622,6 +632,10 @@ export function ResearchResultsPage() {
             return segs ? <SegmentBreakdowns items={segs} /> : null;
           })()}
         </InsightErrorBoundary>
+        {/* Pass 42 C4 — Segment comparison between Cross-Cut and Tensions. */}
+        <InsightErrorBoundary label="Segment Comparison">
+          <SegmentComparison missionId={missionId} />
+        </InsightErrorBoundary>
         <InsightErrorBoundary label="Tensions Flagged">
           {(() => {
             const tens = (Array.isArray(insights.contradictions) && insights.contradictions.length > 0
@@ -636,6 +650,11 @@ export function ResearchResultsPage() {
           {Array.isArray(insights.per_question_insights) && insights.per_question_insights.length > 0 && (
             <PerQuestionInsights items={insights.per_question_insights} />
           )}
+        </InsightErrorBoundary>
+        {/* Pass 42 C4 — Response distribution charts between
+            Per-Question Insights (narrative) and Recommendations. */}
+        <InsightErrorBoundary label="Response Distributions">
+          <QuestionDistributions missionId={missionId} />
         </InsightErrorBoundary>
         <InsightErrorBoundary label="Recommendations">
           {Array.isArray(insights.recommendations) && insights.recommendations.length > 0 && (

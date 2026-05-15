@@ -8,6 +8,8 @@ import { Logo } from '../components/ui/Logo';
 // or schema-incompatible row). Same fallback pattern as Pass 41 BUG1
 // in BrandLiftResultsPage.
 import { ResearchResultsPage } from './ResearchResultsPage';
+// Pass 42 C4 — universal chart sections in the rich AdTesting path.
+import { UniversalCharts } from '../components/results/UniversalCharts';
 
 /**
  * Pass 31 A1 (closes Pass 30 B6 deferral) — Test Marketing/Ads
@@ -308,6 +310,9 @@ export function AdTestingResultsPage() {
       </header>
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
+        {/* Pass 42 C4 — universal chart sections. */}
+        <UniversalCharts missionId={missionId} />
+
         {/* Hero KPI row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KPICard label="Branded Recall" value={`${stages.brandedRecallPct}%`} band={recallBand} sub="Correct brand named" />

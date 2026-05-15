@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, DollarSign, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
+// Pass 42 C4 — universal chart sections (Sentiment, Distributions, Segments).
+import { UniversalCharts } from '../components/results/UniversalCharts';
 
 /**
  * Pass 29 B5 — Pricing Research results page.
@@ -300,6 +302,9 @@ export function PricingResultsPage() {
       </header>
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
+        {/* Pass 42 C4 — universal chart sections. */}
+        <UniversalCharts missionId={missionId} />
+
         {/* KPI hero row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KPICard

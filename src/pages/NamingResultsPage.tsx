@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, Trophy, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
+// Pass 42 C4 — universal chart sections (Sentiment, Distributions, Segments).
+import { UniversalCharts } from '../components/results/UniversalCharts';
 
 /**
  * Pass 31 B4 — Naming & Messaging results page.
@@ -235,6 +237,9 @@ export function NamingResultsPage() {
       </header>
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
+        {/* Pass 42 C4 — universal chart sections. */}
+        <UniversalCharts missionId={missionId} />
+
         {/* Winner */}
         <section className="rounded-2xl p-6 border border-[var(--lime)]/40 bg-[var(--lime)]/5 space-y-2">
           <div className="flex items-center gap-2 text-[var(--lime)]">
