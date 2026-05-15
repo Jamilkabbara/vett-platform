@@ -26,11 +26,14 @@ interface NewPromoForm {
   active: boolean;
   max_uses: string;
   expires_at: string;
+  // Pass 42 F3 — sync-to-Stripe toggle. Default ON for new
+  // customer-facing codes; admin opts out for internal-only.
+  sync_to_stripe: boolean;
 }
 
 const EMPTY_FORM: NewPromoForm = {
   code: '', type: 'percentage', value: '', description: '',
-  active: true, max_uses: '', expires_at: '',
+  active: true, max_uses: '', expires_at: '', sync_to_stripe: true,
 };
 
 interface PromosPanelProps {
@@ -69,6 +72,9 @@ export function PromosPanel({ apiFetch }: PromosPanelProps) {
           active:      form.active,
           max_uses:    form.max_uses ? Number(form.max_uses) : null,
           expires_at:  form.expires_at || null,
+          // Pass 42 F3 — pass through the sync toggle. Server gates
+          // on this; default true if omitted on the form.
+          sync_to_stripe: form.sync_to_stripe,
         }),
       });
       const created: PromoCode = await res.json();
@@ -213,6 +219,25 @@ export function PromosPanel({ apiFetch }: PromosPanelProps) {
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               />
+            </div>
+
+            {/* Pass 42 F3 — Stripe sync toggle. Default ON for new
+                customer-facing codes; admin opts out for internal-only. */}
+            <div className="sm:col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.sync_to_stripe}
+                  onChange={e => setForm(f => ({ ...f, sync_to_stripe: e.target.checked }))}
+                  className="w-4 h-4 rounded border-b1 bg-bg2 text-lime focus:ring-lime focus:ring-offset-bg1"
+                />
+                <span className="text-t1 text-[12px] font-display font-semibold">
+                  Sync to Stripe (customer-facing)
+                </span>
+              </label>
+              <p className="text-t3 text-[10px] mt-1 ml-6">
+                When on, customers can enter this code on Stripe Checkout. When off, the code is admin-override-only (never reaches Stripe).
+              </p>
             </div>
           </div>
 
