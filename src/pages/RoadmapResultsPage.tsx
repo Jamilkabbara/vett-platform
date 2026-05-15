@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
 // Pass 42 C4 — universal chart sections (Sentiment, Distributions, Segments).
 import { UniversalCharts } from '../components/results/UniversalCharts';
+// Pass 42 D4 — methodology-specific importance/feasibility scatter.
+import { RoadmapScatter } from '../components/results/charts/RoadmapScatter';
 
 /**
  * Pass 29 B7 — Feature Roadmap results page.
@@ -353,6 +355,8 @@ export function RoadmapResultsPage() {
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
         {/* Pass 42 C4 — universal chart sections. */}
         <UniversalCharts missionId={missionId} />
+        {/* Pass 42 D4 — importance vs feasibility quadrant scatter. */}
+        <RoadmapScatter missionId={missionId} />
 
         {/* Hero — top 3 to build */}
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
