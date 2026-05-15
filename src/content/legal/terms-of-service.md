@@ -79,11 +79,32 @@ Current pricing is published at vettit.ai. Prices are in USD and subject to chan
 ### 5.2 Payment
 
 - Payments are processed via Stripe
-- All charges are non-refundable except as outlined in our Refund Policy
 - You authorize VETT to charge your payment method for missions you initiate
 - Failed payments may result in service suspension
 
-### 5.3 Taxes
+### 5.3 Refunds & Delivery
+
+**All VETT missions are final and non-refundable.** Missions are
+delivered on a best-effort basis: we recruit synthetic respondents
+that match the targeting and screener you configure. If your screener
+criteria are too strict for the audience we can reach within the
+margin we budget for your mission, you will receive a partial
+delivery of however many respondents qualified. The synthesized
+insights will be honest about the limited sample size.
+
+We do not issue refunds for:
+
+- Partial deliveries due to strict screener criteria
+- Missions where the AI synthesis result didn't meet expectations
+- Missions where the customer's brief was ambiguous or incomplete
+- Missions that completed successfully but the customer changed
+  their mind after launch
+
+Before launching a mission, please review your brief, screener, and
+targeting carefully. Once a mission is launched (paid), recruitment
+begins immediately and the charge is final.
+
+### 5.4 Taxes
 
 You are responsible for any applicable taxes (VAT, sales tax, etc.) based on your jurisdiction. VETT may collect taxes where required by law.
 
