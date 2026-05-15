@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
 // Pass 42 C4 — universal chart sections (Sentiment, Distributions, Segments).
 import { UniversalCharts } from '../components/results/UniversalCharts';
+// Pass 42 D3 — methodology-specific head-to-head preference chart.
+import { NamingCharts } from '../components/results/charts/NamingCharts';
 
 /**
  * Pass 31 B4 — Naming & Messaging results page.
@@ -239,6 +241,8 @@ export function NamingResultsPage() {
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
         {/* Pass 42 C4 — universal chart sections. */}
         <UniversalCharts missionId={missionId} />
+        {/* Pass 42 D3 — naming-specific head-to-head. */}
+        <NamingCharts missionId={missionId} />
 
         {/* Winner */}
         <section className="rounded-2xl p-6 border border-[var(--lime)]/40 bg-[var(--lime)]/5 space-y-2">
