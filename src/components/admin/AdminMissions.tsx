@@ -226,6 +226,29 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
     }
   };
 
+  // Pass 43 T3a — trigger the chart_data backfill admin endpoint.
+  // Endpoint responds 202 and runs async; we surface the pending count.
+  const backfillChartData = async () => {
+    setBusy(true);
+    const t = toast.loading('Starting chart data backfill…');
+    try {
+      const res = await apiFetch('/api/admin/backfill/chart-data', { method: 'POST' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.message || j.error || 'backfill failed');
+      }
+      const j = await res.json();
+      toast.success(
+        `Backfill started for ${j.pending_count ?? '?'} mission${j.pending_count === 1 ? '' : 's'}. Runs in background.`,
+        { id: t },
+      );
+    } catch (err) {
+      toast.error(userFacingError(err), { id: t });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const STATUS_OPTIONS = ['', 'draft', 'paid', 'processing', 'completed', 'failed'];
 
   return (
@@ -267,6 +290,16 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Reanalyze stale</span>
+        </button>
+        {/* Pass 43 T3a — trigger chart_data backfill (admin endpoint). */}
+        <button
+          onClick={backfillChartData}
+          disabled={busy}
+          title="Backfill chart_data on all completed missions that don't have it"
+          className="flex items-center gap-1.5 px-3 py-2.5 bg-lime/10 border border-lime/30 rounded-xl text-lime hover:bg-lime/20 disabled:opacity-40 transition-colors text-xs font-bold"
+        >
+          <BarChart2 className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Backfill charts</span>
         </button>
       </div>
 

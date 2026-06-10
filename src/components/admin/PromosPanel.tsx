@@ -3,8 +3,10 @@
  * Loaded as the "Promos" tab inside AdminPage.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, RefreshCw, ToggleLeft, ToggleRight, Tag } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, ToggleLeft, ToggleRight, Tag, RefreshCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
+// Pass 43 T3b — user-friendly error copy for the Stripe backfill trigger.
+import { userFacingError } from '../../lib/errorCopy';
 
 interface PromoCode {
   code: string;
@@ -57,6 +59,32 @@ export function PromosPanel({ apiFetch }: PromosPanelProps) {
   }, [apiFetch]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Pass 43 T3b — trigger the Stripe coupon backfill admin endpoint.
+  // Syncs every sync_to_stripe code without a coupon ID; VETT100 is
+  // forced internal-only server-side. Reloads the list after so the
+  // synced state is visible.
+  const backfillStripe = async () => {
+    setBusy(true);
+    const t = toast.loading('Syncing promo codes to Stripe…');
+    try {
+      const res = await apiFetch('/api/admin/backfill/stripe-coupons', { method: 'POST' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.message || j.error || 'Stripe sync failed');
+      }
+      const j = await res.json();
+      toast.success(
+        `Synced ${j.succeeded ?? 0} of ${j.candidates ?? 0} code${j.candidates === 1 ? '' : 's'} to Stripe (VETT100 kept internal).`,
+        { id: t },
+      );
+      await load();
+    } catch (err) {
+      toast.error(userFacingError(err), { id: t });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const create = async () => {
     if (!form.code.trim()) return toast.error('Code is required');
@@ -134,6 +162,16 @@ export function PromosPanel({ apiFetch }: PromosPanelProps) {
         <div className="flex items-center gap-2">
           <button onClick={load} className="text-t3 hover:text-t1 transition-colors">
             <RefreshCw className="w-4 h-4" />
+          </button>
+          {/* Pass 43 T3b — sync existing codes to Stripe (VETT100 excluded). */}
+          <button
+            onClick={backfillStripe}
+            disabled={busy}
+            title="Sync all sync-to-Stripe promo codes to Stripe (VETT100 excluded)"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/30 rounded-lg text-indigo-300 text-[12px] font-bold hover:bg-indigo-500/20 disabled:opacity-40 transition-colors"
+          >
+            <RefreshCcw className="w-3.5 h-3.5" />
+            Sync Stripe
           </button>
           <button
             onClick={() => setShowNew(v => !v)}
