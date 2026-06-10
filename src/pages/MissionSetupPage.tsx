@@ -1208,6 +1208,29 @@ export const MissionSetupPage = () => {
           })()
         : {};
 
+      // Pass 43 T1a — ROOT CAUSE of the A.1 NULL-columns bug. This is the
+      // "VETT IT" setup flow: it inserts the mission row directly via
+      // supabase-js, bypassing the backend POST /missions route entirely.
+      // The backend route was correctly patched in Pass 42 A.1 to populate
+      // the recruitment columns, but THIS client-side path never ran that
+      // code — so missions created through Setup (3ccfb513, 6efbfe17) had
+      // NULL target_qualified_count + ai_spend_ceiling_usd and silently
+      // bypassed the recruitment loop. Drafts worked because the draft
+      // autosave hits POST /missions/draft (backend) which had the fix.
+      //
+      // ai_spend_ceiling_usd here is provisional (computed from the
+      // pre-checkout price estimate). The authoritative value is recomputed
+      // server-side at checkout when total_price_usd is finalized
+      // (payments.js create-checkout-session, Pass 43 T1a backend). The DB
+      // trigger (Pass 43 T1b) is the final safety net.
+      const a1RespondentCount = aiResult?.suggestedRespondentCount ?? 50;
+      const a1PriceEstimate =
+        typeof (pricingFields as { price_estimated?: number }).price_estimated === 'number'
+          ? (pricingFields as { price_estimated?: number }).price_estimated!
+          : typeof (brandLiftFields as { price_estimated?: number }).price_estimated === 'number'
+            ? (brandLiftFields as { price_estimated?: number }).price_estimated!
+            : 99;
+
       const insertPayload = {
         user_id: user.id,
         title: deriveTitle(briefText, goalLabel),
@@ -1215,10 +1238,16 @@ export const MissionSetupPage = () => {
         goal_type: missionGoal,
         status: 'draft',
         // Pass 21 Bug 16: fallback default 100 → 50 (entry-tier alignment).
-        respondent_count: aiResult?.suggestedRespondentCount ?? 50,
+        respondent_count: a1RespondentCount,
         price_estimated: 99,
         questions: aiResult?.questions ?? null,
         target_audience: targetAudience,
+        // Pass 43 T1a — recruitment-loop columns on the client insert path.
+        // target_qualified_count == what the customer pays for; ceiling =
+        // 30% of price (70% margin floor); status starts 'pending'.
+        target_qualified_count: a1RespondentCount,
+        ai_spend_ceiling_usd: Math.round((a1PriceEstimate || 99) * 0.30 * 10000) / 10000,
+        recruitment_status: 'pending',
         // Phase 10.5: persist the uploaded asset so /dashboard/:missionId
         // can render a preview and the future survey renderer can show
         // respondents exactly what they're evaluating.
