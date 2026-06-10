@@ -208,10 +208,13 @@ export function CreativeAttentionResultsPage() {
       <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-4 text-center px-5 max-w-lg mx-auto">
         <AlertCircle className="w-12 h-12 text-red-400" />
         <h2 className="text-xl font-bold text-[var(--t1)]">{error}</h2>
+        {/* Pass 43 T4a — no-refund-consistent failure copy. The prior
+            text promised auto-refunds, which contradicts the NO REFUNDS
+            policy (Pass 42 G4, Terms §5.3). */}
         <p className="text-[var(--t2)] text-sm leading-relaxed max-w-md">
           {staleDetected
-            ? 'Your creative was uploaded, but the analysis pipeline never returned a result. We auto-refund stuck creative missions within 24 hours; check your email for the receipt. You can try a new upload below.'
-            : 'Our analysis pipeline ran into an error processing this creative. If you were charged, our system auto-refunds failed missions within 24 hours.'}
+            ? "Your creative was uploaded, but the analysis pipeline never returned a result. Contact support and we'll prioritize a re-run of your mission at no extra cost. You can also try a new upload below."
+            : "Our analysis pipeline ran into an error processing this creative. Contact support and we'll prioritize a re-run of your mission at no extra cost."}
         </p>
         <div className="mt-2 flex flex-col sm:flex-row items-center gap-3">
           <Link

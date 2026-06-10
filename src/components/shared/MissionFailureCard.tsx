@@ -4,6 +4,11 @@ import { AlertCircle, Rocket } from 'lucide-react';
 
 interface MissionFailureCardProps {
   failureReason?: string | null;
+  // Pass 43 T4a — partialRefundId / partialRefundAmountCents are retained
+  // in the prop type for caller compatibility (ResultsPage passes them)
+  // but are NO LONGER rendered. The NO REFUNDS policy (Pass 42 G4, Terms
+  // §5.3) means the failure UI offers a prioritized re-run at no extra
+  // cost instead of promising a refund.
   partialRefundId?: string | null;
   partialRefundAmountCents?: number | null;
 }
@@ -21,22 +26,10 @@ const looksLikeStackTrace = (reason: string): boolean => {
   return STACK_TRACE_PATTERNS.some((re) => re.test(reason));
 };
 
-const formatRefundAmount = (cents: number): string => {
-  const dollars = cents / 100;
-  return dollars.toFixed(2);
-};
-
 export const MissionFailureCard = ({
   failureReason,
-  partialRefundId,
-  partialRefundAmountCents,
 }: MissionFailureCardProps) => {
   const navigate = useNavigate();
-
-  const hasRefund =
-    !!partialRefundId &&
-    typeof partialRefundAmountCents === 'number' &&
-    partialRefundAmountCents > 0;
 
   const friendlyReason =
     failureReason && !looksLikeStackTrace(failureReason)
@@ -64,30 +57,19 @@ export const MissionFailureCard = ({
         </div>
       </div>
 
+      {/* Pass 43 T4a — no-refund-consistent recovery copy. Replaces the
+          prior two-branch refund-promising block. */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 md:p-5 mb-5">
-        {hasRefund ? (
-          <p className="text-white/90 text-sm md:text-base leading-relaxed">
-            We've automatically refunded{' '}
-            <span className="font-bold text-[#ccff00]">
-              ${formatRefundAmount(partialRefundAmountCents as number)}
-            </span>{' '}
-            to your original payment method. It should arrive in 5-10 business
-            days.
-          </p>
-        ) : (
-          <p className="text-white/90 text-sm md:text-base leading-relaxed">
-            We owe you a refund - our team has been alerted and will process it
-            within 1 business day. If you don't see it within a few business
-            days, email{' '}
-            <a
-              href="mailto:support@vett.it"
-              className="text-[#ccff00] font-bold hover:underline"
-            >
-              support@vett.it
-            </a>
-            .
-          </p>
-        )}
+        <p className="text-white/90 text-sm md:text-base leading-relaxed">
+          Our team has been alerted. Email{' '}
+          <a
+            href="mailto:support@vett.it"
+            className="text-[#ccff00] font-bold hover:underline"
+          >
+            support@vett.it
+          </a>{' '}
+          and we'll prioritize a re-run of your mission at no extra cost.
+        </p>
       </div>
 
       <button

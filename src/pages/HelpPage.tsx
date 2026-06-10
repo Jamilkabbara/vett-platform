@@ -60,9 +60,11 @@ const FAQS: FAQ[] = [
   },
   {
     category: 'Pricing',
+    // Pass 43 T4a — no-refund-consistent answer (was promising partial +
+    // full refunds, contradicting the NO REFUNDS policy / Terms §5.3).
     question: 'What if a mission fails to deliver?',
     answer:
-      'If a mission completes with fewer respondents than contracted, we automatically partial-refund the difference to the original payment method. Full failures (analysis errors, payment issues) trigger a full refund. The refund is processed within 24 hours via Stripe and you receive an email confirmation.',
+      'VETT missions are final and non-refundable. If your screener criteria are too strict for the audience we can reach, you receive a partial delivery of however many respondents qualified, and the synthesized insights are honest about the smaller sample. If the analysis pipeline errors out entirely, contact support and we will prioritize a re-run of your mission at no extra cost.',
   },
   {
     category: 'Targeting',

@@ -222,8 +222,19 @@ export function AdminPage() {
           </div>
 
           {/* Panel */}
+          {/* Pass 43 T2 — render the panel switch as a function call,
+              NOT as <ActivePanel />. ActivePanel is defined inline so
+              it gets a new function identity every AdminPage render;
+              mounting it as a JSX component made React unmount+remount
+              the entire panel subtree on every state change (including
+              the setSidebarOpen(false) that fires alongside setTab).
+              That remount raced each panel's data-fetch useEffect,
+              producing the "sidebar highlights but right pane doesn't
+              swap / goes blank" flakiness. Calling ActivePanel() inlines
+              the switch result into AdminPage's own tree so panels
+              reconcile normally. */}
           <div className="flex-1 overflow-y-auto p-5 sm:p-7">
-            <ActivePanel />
+            {ActivePanel()}
           </div>
         </main>
       </div>
