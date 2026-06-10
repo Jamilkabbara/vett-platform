@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, BarChart2, CheckCircle2, Trash2, Loader2, Search, Sparkles, DollarSign } from 'lucide-react';
+import { RefreshCw, BarChart2, CheckCircle2, Trash2, Loader2, Search, Sparkles, DollarSign, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+// Pass 43 T2 — user-friendly error copy for the Mark Paid modal.
+import { userFacingError } from '../../lib/errorCopy';
 
 interface AdminMission {
   id: string;
@@ -49,6 +51,13 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
   const [search, setSearch]             = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [offset, setOffset]             = useState(0);
+  // Pass 43 T2 — Mark Paid is now a controlled React modal (was
+  // window.prompt, which silently no-ops in some Chromium configs and
+  // left an orphaned toast.loading → "frozen page" bug from the Pass 42
+  // audit). markPaidModal holds the target mission id; markPaidReason
+  // is the controlled input.
+  const [markPaidModal, setMarkPaidModal] = useState<{ id: string } | null>(null);
+  const [markPaidReason, setMarkPaidReason] = useState('');
   const LIMIT = 50;
 
   const fetchMissions = useCallback(async (s: string, sf: string, off: number) => {
@@ -95,35 +104,47 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
     setBusy(false);
   };
 
-  // Pass 42 F1 — admin override that promotes a pending_payment
-  // mission to paid without Stripe. Prompts for a reason (required
-  // by backend, logged to admin_actions).
-  const markPaid = async (id: string) => {
-    const reason = window.prompt(
-      'Reason for admin override (logged to admin_actions):',
-      'demo / comp / testing',
-    );
-    if (!reason || !reason.trim()) return;
+  // Pass 43 T2 — open the Mark Paid modal. Pure state, no async work,
+  // no blocking DOM call. The DollarSign button calls this.
+  const openMarkPaid = (id: string) => {
+    setMarkPaidReason('demo / comp / testing');
+    setMarkPaidModal({ id });
+  };
+
+  // Pass 43 T2 — submit handler from the controlled modal. Replaces the
+  // Pass 42 window.prompt flow that froze the page. try/catch/finally
+  // guarantees the loading toast is always dismissed and busy is always
+  // cleared, under every failure mode.
+  const submitMarkPaid = async () => {
+    if (!markPaidModal) return;
+    const reason = markPaidReason.trim();
+    if (reason.length < 3) {
+      toast.error('Reason is required (min 3 characters)');
+      return;
+    }
+    const id = markPaidModal.id;
     setBusy(true);
     const t = toast.loading('Marking as paid…');
     try {
       const res = await apiFetch(`/api/admin/missions/${id}/mark-paid`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: reason.trim() }),
+        body: JSON.stringify({ reason }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || 'mark-paid failed');
+        throw new Error(j.message || j.error || 'mark-paid failed');
       }
       setMissions(m => m.map(x => x.id === id
         ? { ...x, status: 'paid', paid_at: new Date().toISOString() }
         : x));
       toast.success('Marked as paid (admin override)', { id: t });
+      setMarkPaidModal(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'mark-paid failed', { id: t });
+      toast.error(userFacingError(err), { id: t });
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   const reanalyze = async (id: string) => {
@@ -307,7 +328,7 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
                           Only visible on pending_payment / draft. */}
                       {(m.status === 'pending_payment' || m.status === 'draft') && (
                         <button
-                          onClick={() => markPaid(m.id)}
+                          onClick={() => openMarkPaid(m.id)}
                           disabled={busy}
                           title="Mark as paid (admin override) — internal/demo/comp only"
                           className="p-1.5 rounded-lg text-gray-500 hover:text-lime hover:bg-lime/10 transition-colors"
@@ -383,6 +404,59 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
                 className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 disabled:opacity-50 transition-colors"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pass 43 T2 — Mark Paid controlled modal. Replaces window.prompt. */}
+      {markPaidModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="font-black text-white text-lg">Mark mission as paid (admin override)</h3>
+              <button
+                onClick={() => setMarkPaidModal(null)}
+                disabled={busy}
+                aria-label="Cancel"
+                className="p-1 text-gray-500 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-gray-400 text-sm mb-4">
+              Promotes this mission to <strong className="text-white">paid</strong> without
+              Stripe. Internal / demo / comp only. The reason is logged to the
+              admin_actions audit table.
+            </p>
+            <label className="block text-gray-300 text-[11px] font-bold uppercase tracking-wider mb-1.5">
+              Reason (logged)
+            </label>
+            <input
+              type="text"
+              autoFocus
+              value={markPaidReason}
+              onChange={e => setMarkPaidReason(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !busy) submitMarkPaid(); }}
+              placeholder="e.g. demo for prospect / comp / internal test"
+              className="w-full px-4 py-2.5 rounded-xl bg-[#1e293b] border border-gray-700 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent mb-1"
+            />
+            <p className="text-gray-600 text-[10px] mb-5">Minimum 3 characters.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setMarkPaidModal(null)}
+                disabled={busy}
+                className="flex-1 py-2.5 rounded-xl border border-gray-700 text-gray-400 text-sm hover:text-white transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitMarkPaid}
+                disabled={busy || markPaidReason.trim().length < 3}
+                className="flex-1 py-2.5 rounded-xl bg-lime text-black text-sm font-bold hover:bg-lime/90 disabled:opacity-50 transition-colors"
+              >
+                {busy ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Confirm'}
               </button>
             </div>
           </div>
