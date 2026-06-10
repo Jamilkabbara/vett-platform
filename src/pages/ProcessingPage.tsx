@@ -130,10 +130,11 @@ export function ProcessingPage() {
         <div className="max-w-xl mx-auto min-h-[60vh] flex flex-col items-center justify-center text-center gap-4">
           <AlertCircle className="w-12 h-12 text-red-400" />
           <h2 className="text-2xl font-display font-bold text-t1">Mission failed</h2>
+          {/* Pass 43 T4a — no-refund-consistent copy. */}
           <p className="text-t3 text-sm leading-relaxed">
             {mission?.failure_reason
               ? `Reason: ${mission.failure_reason}`
-              : 'An error occurred during processing. If your payment captured, you are automatically refunded within 24 hours.'}
+              : "An error occurred during processing. Contact support and we'll prioritize a re-run of your mission at no extra cost."}
           </p>
           <Link
             to={`/results/${missionId}`}

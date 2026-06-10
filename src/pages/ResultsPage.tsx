@@ -1859,34 +1859,18 @@ export const ResultsPage = () => {
                             {mission.paidFor ?? '—'}{' '}
                             qualified respondents
                           </h3>
+                          {/* Pass 43 T4a — no-refund-consistent partial-
+                              delivery copy. Removed the three refund-promising
+                              branches (Terms §5.3: missions are final and
+                              non-refundable; a strict screener yields a partial
+                              delivery, not a refund). */}
                           <p className="text-amber-100/75 text-sm leading-relaxed">
                             The screener was strict for this audience. We
                             over-recruited up to 5&times; to try to hit your
-                            target, but the screener kept dropping personas.{' '}
-                            {mission.partialRefundCents != null && mission.partialRefundCents > 0 ? (
-                              <>
-                                We&rsquo;ve refunded{' '}
-                                <strong className="text-white">
-                                  ${(mission.partialRefundCents / 100).toFixed(2)}
-                                </strong>{' '}
-                                proportionally for the gap &mdash; it&rsquo;ll
-                                land on your card in 5&ndash;10 business days.
-                              </>
-                            ) : mission.refundRequestedCents != null && mission.refundRequestedCents > 0 ? (
-                              <>
-                                A{' '}
-                                <strong className="text-white">
-                                  ${(mission.refundRequestedCents / 100).toFixed(2)}
-                                </strong>{' '}
-                                refund for the gap is being processed by our
-                                team and will land within one business day.
-                              </>
-                            ) : (
-                              <>
-                                Our team has been notified about the gap and
-                                will reach out about a refund within one business day.
-                              </>
-                            )}
+                            target, but the screener kept dropping personas. The
+                            insights below are built on the qualified respondents
+                            we did reach &mdash; honest signal at a smaller
+                            sample size.
                           </p>
                           <p className="text-amber-100/55 text-xs leading-relaxed mt-2">
                             Tip for next time: loosen the screener criteria
