@@ -310,8 +310,10 @@ export const ResultsPage = () => {
     target: number;
     percent: number;
   } | null>(null);
-  // Pass 23 Bug 23.80: failure state now carries refund metadata so the
-  // failure UI can branch between "we refunded $X" and "we owe you a refund".
+  // Pass 45 T3 — refund metadata is legacy-forensic only (pre-Pass-44
+  // missions may carry partial_refund_* values from the old auto-refund
+  // era). It is NEVER rendered as refund-promising copy: NO REFUNDS
+  // policy (Terms §5.3). Kept for admin forensics display only.
   const [missionFailed, setMissionFailed] = useState<{
     reason: string;
     partialRefundId?: string | null;
@@ -384,8 +386,8 @@ export const ResultsPage = () => {
       }
 
       // Pass 20 Bug 7: fatal failure — render error state, stop polling.
-      // Pass 23 Bug 23.80: also fetch refund metadata from missions table so
-      // the failure card can show "we refunded $X" vs "we owe you a refund".
+      // Pass 45 T3 — legacy refund metadata fetch (forensic only; never
+      // rendered as customer-facing refund copy — NO REFUNDS policy).
       if (data.status === 'failed') {
         const reason = data.error || 'Mission could not complete.';
         setMissionFailed({ reason });
@@ -1836,10 +1838,9 @@ export const ResultsPage = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                {/* Pass 23 Bug 23.25 — partial-delivery banner. Appears above
-                    the Executive Summary when delivery_status='partial'. The
-                    refund-already-issued vs refund-pending copy splits on
-                    whether partial_refund_amount_cents is populated. */}
+                {/* Partial-delivery banner (delivery_status='partial'). Copy is
+                    no-refund-consistent since Pass 43 T4a; Pass 45 T3 removed
+                    the stale comment describing the old refund branches. */}
                 {mission.deliveryStatus === 'partial' && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
