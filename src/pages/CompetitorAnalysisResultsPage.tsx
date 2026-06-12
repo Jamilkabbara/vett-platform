@@ -1,10 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
 // Pass 42 C4 — universal chart sections (Sentiment, Distributions, Segments).
 import { UniversalCharts } from '../components/results/UniversalCharts';
+// Pass 46 Phase 1 — universal results action bar (back / export / share).
+import { ResultsActionBar } from '../components/results/ResultsActionBar';
 
 /**
  * Pass 31 B2 — Competitor Analysis results page (Brand Health
@@ -31,6 +33,12 @@ interface CompetitorMission {
   category?: string;
   competitor_brands?: string[];
   attribute_battery?: string[];
+  // Pass 46 Phase 1 — status gate + action-bar metadata.
+  status?: string;
+  title?: string | null;
+  goal_type?: string | null;
+  completed_at?: string | null;
+  qualified_respondent_count?: number | null;
 }
 
 interface CompetitorQuestion {
@@ -120,7 +128,7 @@ export function CompetitorAnalysisResultsPage() {
     (async () => {
       const { data, error: fetchErr } = await supabase
         .from('missions')
-        .select('id, questions, brand_name, category, competitor_brands, attribute_battery, aggregated_by_question')
+        .select('id, questions, brand_name, category, competitor_brands, attribute_battery, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count')
         .eq('id', missionId)
         .single();
       if (fetchErr || !data) {
@@ -207,14 +215,26 @@ export function CompetitorAnalysisResultsPage() {
       <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-3 px-5">
         <AlertCircle className="w-12 h-12 text-red-400" />
         <h2 className="text-lg font-bold text-[var(--t1)]">{error}</h2>
+        <Link to="/missions" className="text-[var(--lime)] text-sm underline">← Back to missions</Link>
       </div>
     );
   }
-  if (brands.length === 0 || !focal) {
+  // Pass 46 Phase 1 — gate on mission.status, not derived data (false "still generating" on completed missions, audit P0-3).
+  // (`!focal` only happens when the mission row is absent — kept as crash guard + type narrowing.)
+  if (!focal || (mission?.status !== 'completed' && brands.length === 0)) {
     return (
-      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-3 px-5 text-center">
-        <Logo />
-        <p className="text-sm text-[var(--t2)] mt-4">Brand Health Tracker analysis still generating.</p>
+      <div className="min-h-screen bg-[var(--bg)] flex flex-col">
+        <ResultsActionBar
+          missionId={missionId}
+          title={mission?.title}
+          goalType={mission?.goal_type}
+          completedAt={mission?.completed_at}
+          qualified={mission?.qualified_respondent_count}
+        />
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 px-5 text-center">
+          <Logo />
+          <p className="text-sm text-[var(--t2)] mt-4">Brand Health Tracker analysis still generating.</p>
+        </div>
       </div>
     );
   }
@@ -237,6 +257,13 @@ export function CompetitorAnalysisResultsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)]">
+      <ResultsActionBar
+        missionId={missionId}
+        title={mission?.title}
+        goalType={mission?.goal_type}
+        completedAt={mission?.completed_at}
+        qualified={mission?.qualified_respondent_count}
+      />
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -366,6 +393,15 @@ export function CompetitorAnalysisResultsPage() {
           Brand Health Tracker on synthetic respondents. Per-brand cells stabilize at n≥200; for confident competitor comparisons consider 400+.
         </p>
       </div>
+
+      <ResultsActionBar
+        variant="footer"
+        missionId={missionId}
+        title={mission?.title}
+        goalType={mission?.goal_type}
+        completedAt={mission?.completed_at}
+        qualified={mission?.qualified_respondent_count}
+      />
     </div>
   );
 }

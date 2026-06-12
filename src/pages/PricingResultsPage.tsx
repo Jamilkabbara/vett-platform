@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Loader2, AlertCircle, DollarSign, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
@@ -7,6 +7,8 @@ import { Logo } from '../components/ui/Logo';
 import { UniversalCharts } from '../components/results/UniversalCharts';
 // Pass 42 D2 — methodology-specific WTP + demand curve.
 import { PricingCharts } from '../components/results/charts/PricingCharts';
+// Pass 46 Phase 1 — universal action bar (back nav + methodology label + export/share).
+import { ResultsActionBar } from '../components/results/ResultsActionBar';
 
 /**
  * Pass 29 B5 — Pricing Research results page.
@@ -35,6 +37,13 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 
 interface PricingMission {
   id: string;
+  // Pass 46 Phase 1 — status gates the "still generating" state; the
+  // remaining fields feed the ResultsActionBar header/footer.
+  status?: string;
+  title?: string | null;
+  goal_type?: string | null;
+  completed_at?: string | null;
+  qualified_respondent_count?: number | null;
   questions: PricingQuestion[];
   pricing_currency?: string;
   pricing_expected_min?: number | null;
@@ -228,7 +237,7 @@ export function PricingResultsPage() {
     (async () => {
       const { data, error: fetchErr } = await supabase
         .from('missions')
-        .select('id, questions, pricing_currency, pricing_expected_min, pricing_expected_max, brand_name, aggregated_by_question')
+        .select('id, status, title, goal_type, completed_at, qualified_respondent_count, questions, pricing_currency, pricing_expected_min, pricing_expected_max, brand_name, aggregated_by_question')
         .eq('id', missionId)
         .single();
       if (fetchErr || !data) {
@@ -278,24 +287,49 @@ export function PricingResultsPage() {
       <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-3 px-5">
         <AlertCircle className="w-12 h-12 text-red-400" />
         <h2 className="text-lg font-bold text-[var(--t1)]">{error}</h2>
+        {/* Pass 46 Phase 1 — error state must still offer a way out. */}
+        <Link to="/missions" className="text-[var(--lime)] text-sm hover:underline mt-2">
+          ← Back to missions
+        </Link>
       </div>
     );
   }
 
-  if (!vw && !gg) {
+  // Pass 46 Phase 1 — gate on mission.status, not derived data (audit P0-3).
+  // A completed mission with missing/unparseable curves renders the full
+  // page below instead — every section there has its own '—' / conditional
+  // fallback, so nothing crashes when vw and gg are null.
+  if (mission?.status !== 'completed' && (!vw && !gg)) {
     return (
-      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-3 px-5 text-center">
-        <Logo />
-        <p className="text-sm text-[var(--t2)] mt-4">Pricing analysis still generating.</p>
-        <p className="text-xs text-[var(--t3)] max-w-md">
-          The 4 Van Westendorp + 5 Gabor-Granger curves render here once the simulator finishes.
-        </p>
+      <div className="min-h-screen bg-[var(--bg)]">
+        <ResultsActionBar
+          missionId={missionId}
+          title={mission?.title}
+          goalType={mission?.goal_type}
+          completedAt={mission?.completed_at}
+          qualified={mission?.qualified_respondent_count}
+        />
+        <div className="flex flex-col items-center justify-center gap-3 px-5 text-center min-h-[80vh]">
+          <Logo />
+          <p className="text-sm text-[var(--t2)] mt-4">Pricing analysis still generating.</p>
+          <p className="text-xs text-[var(--t3)] max-w-md">
+            The 4 Van Westendorp + 5 Gabor-Granger curves render here once the simulator finishes.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)]">
+      {/* Pass 46 Phase 1 — sticky action bar: back nav + label + export/share. */}
+      <ResultsActionBar
+        missionId={missionId}
+        title={mission?.title}
+        goalType={mission?.goal_type}
+        completedAt={mission?.completed_at}
+        qualified={mission?.qualified_respondent_count}
+      />
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -425,6 +459,16 @@ export function PricingResultsPage() {
           Curves derived from synthetic respondents calibrated to the audience spec. Use as directional pricing signal; for high-stakes launches, validate against real-customer panels.
         </p>
       </div>
+
+      {/* Pass 46 Phase 1 — footer twin of the action bar. */}
+      <ResultsActionBar
+        variant="footer"
+        missionId={missionId}
+        title={mission?.title}
+        goalType={mission?.goal_type}
+        completedAt={mission?.completed_at}
+        qualified={mission?.qualified_respondent_count}
+      />
     </div>
   );
 }

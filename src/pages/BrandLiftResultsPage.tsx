@@ -18,6 +18,8 @@ import { ResearchResultsPage } from './ResearchResultsPage';
 import { UniversalCharts } from '../components/results/UniversalCharts';
 // Pass 42 D1 — methodology-specific BrandLift charts (pre/post + lift delta).
 import { BrandLiftCharts } from '../components/results/charts/BrandLiftCharts';
+// Pass 46 Phase 1 — universal action bar (back nav + methodology label + export/share).
+import { ResultsActionBar } from '../components/results/ResultsActionBar';
 import {
   BrandLiftScoreDial,
   FunnelVisualization,
@@ -121,6 +123,17 @@ interface FilterAPIResult {
   brand_lift_results: BrandLiftResultsShape | null;
 }
 
+// Pass 46 Phase 1 — typed mission fields this page consumes (status gate,
+// action bar props). The select('*') row keeps every other column typed
+// as unknown via the index signature, same as the old Record type.
+interface BrandLiftMissionRow extends Record<string, unknown> {
+  status?: string;
+  title?: string | null;
+  goal_type?: string | null;
+  completed_at?: string | null;
+  qualified_respondent_count?: number | null;
+}
+
 // Pass 28 C — URL <-> filter state serialization. Keeps shareable links
 // carrying filter context and survives a full page reload.
 function filtersToParams(f: BrandLiftFilters): URLSearchParams {
@@ -152,7 +165,7 @@ function paramsToFilters(p: URLSearchParams): BrandLiftFilters {
 
 export function BrandLiftResultsPage() {
   const { missionId } = useParams<{ missionId: string }>();
-  const [mission, setMission] = useState<Record<string, unknown> | null>(null);
+  const [mission, setMission] = useState<BrandLiftMissionRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [channelFilter, setChannelFilter] = useState<string | null>(null);
@@ -298,21 +311,51 @@ export function BrandLiftResultsPage() {
       typeof insights === 'object' &&
       Object.keys(insights as Record<string, unknown>).length > 0;
     if (status === 'completed' && insightsPresent) {
+      // Pass 46 Phase 1 — honest labeling: brand_lift missions keep their
+      // methodology identity even on the generic fallback (audit P0-4).
+      // Bespoke lift report lands in Phase 4.
+      //
+      // The bar is NOT mounted out here: ResearchResultsPage renders
+      // inside OverlayPage (fixed inset-0 z-50 backdrop), which would
+      // cover any sibling mounted above it. Instead the delegate mounts
+      // ResultsActionBar itself (barAlreadyMounted defaults to false)
+      // from the SAME mission row, whose goal_type='brand_lift' makes
+      // methodologyLabel() read "Brand Lift Study" — never "General
+      // Research".
       return <ResearchResultsPage />;
     }
     return (
-      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-3 px-5 text-center">
-        <Logo />
-        <p className="text-sm text-[var(--t2)] mt-4">Brand Lift report still generating.</p>
-        <p className="text-xs text-[var(--t3)] max-w-md">
-          This page updates automatically when the synthesis pipeline finishes.
-        </p>
+      <div className="min-h-screen bg-[var(--bg)]">
+        {/* Pass 46 Phase 1 — bar mounts in the still-generating state too,
+            so back-nav + raw export never disappear. */}
+        <ResultsActionBar
+          missionId={missionId}
+          title={mission?.title}
+          goalType="brand_lift"
+          completedAt={mission?.completed_at}
+          qualified={mission?.qualified_respondent_count}
+        />
+        <div className="flex flex-col items-center justify-center gap-3 px-5 text-center min-h-[80vh]">
+          <Logo />
+          <p className="text-sm text-[var(--t2)] mt-4">Brand Lift report still generating.</p>
+          <p className="text-xs text-[var(--t3)] max-w-md">
+            This page updates automatically when the synthesis pipeline finishes.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)]">
+      {/* Pass 46 Phase 1 — sticky action bar: back nav + label + export/share. */}
+      <ResultsActionBar
+        missionId={missionId}
+        title={mission?.title}
+        goalType="brand_lift"
+        completedAt={mission?.completed_at}
+        qualified={mission?.qualified_respondent_count}
+      />
       <header className="px-6 pt-6 pb-4 space-y-3">
         <div className="flex items-center justify-between">
           <Logo />
@@ -462,6 +505,16 @@ export function BrandLiftResultsPage() {
           </p>
         </div>
       )}
+
+      {/* Pass 46 Phase 1 — footer twin of the action bar. */}
+      <ResultsActionBar
+        variant="footer"
+        missionId={missionId}
+        title={mission?.title}
+        goalType="brand_lift"
+        completedAt={mission?.completed_at}
+        qualified={mission?.qualified_respondent_count}
+      />
     </div>
   );
 }
