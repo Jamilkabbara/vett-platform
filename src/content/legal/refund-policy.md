@@ -1,178 +1,103 @@
 # Refund Policy
 
-**Last Updated:** May 2, 2026  
-**Effective Date:** May 2, 2026
+**Last Updated:** June 12, 2026  
+**Effective Date:** June 12, 2026
 
-This Refund Policy outlines when and how refunds are issued for VETT (vettit.ai) services. Please read this policy carefully before purchasing.
-
----
-
-## 1. General Policy
-
-VETT operates on a **pay-per-mission** model. Once a mission is initiated and AI processing begins, the service has been delivered. As a result, we generally **do not offer refunds** for completed missions.
-
-However, we recognize that issues can arise. The following scenarios outline when refunds may be granted.
+This Refund Policy explains how payments and remedies work for VETT (vettit.ai). Please read it carefully before purchasing. By placing an order, you agree to these terms.
 
 ---
 
-## 2. Eligible for Refund
+## 1. General Policy: No Cash Refunds
 
-You may be eligible for a full refund in the following situations:
+VETT operates on a **pay-per-mission** model. When you submit a mission, VETT immediately begins AI processing — generating respondents, running your survey, and producing analysis. Because this work and its associated compute cost are incurred as soon as a mission starts, **all sales are final and we do not issue cash refunds.**
 
-### 2.1 Technical Failure
+Instead of refunds, VETT stands behind its service with a **re-run remedy** (Section 2). If something goes wrong on our side, we fix it by re-running your mission or issuing a re-run credit — not by returning money.
 
-- The mission failed to complete due to a VETT system error
-- Results were not delivered within the expected timeframe (typically minutes for small missions, up to 24 hours for large ones)
-- Output files were corrupted or unreadable due to platform issues
-
-### 2.2 Duplicate Charges
-
-- You were accidentally charged multiple times for the same mission
-- Stripe processing errors resulted in duplicate transactions
-
-### 2.3 Unauthorized Charges
-
-- A charge was made to your account without authorization (account compromise)
-- You report the unauthorized charge within 60 days of the transaction
-
-### 2.4 Service Misrepresentation
-
-- The mission delivered fundamentally different from what was advertised
-- A clear product defect prevents the mission from delivering value
+The only exceptions are the limited situations in Section 3, which we honor because payment-network rules and applicable law require it.
 
 ---
 
-## 3. Not Eligible for Refund
+## 2. Our Remedy: Re-Runs, Not Refunds
 
-Refunds will **not** be issued in the following situations:
+If a mission fails to deliver because of a problem on VETT's side, we will make it right by re-running the mission or issuing a credit for an equivalent mission at no additional charge. This applies to:
 
-### 3.1 Successful Mission Completion
+- **Technical failure** — a mission that fails to complete due to a VETT system error.
+- **Non-delivery** — results that are never produced because of a platform fault.
+- **Corrupted output** — result or export files that are unreadable due to a platform issue.
 
-- The mission ran successfully and delivered results, even if you are unsatisfied with the insights
-- You changed your mind about needing the research after completion
-- Results did not match your expectations (synthetic data is directional, not predictive)
+To request a re-run, email **support@vettit.ai** with your account email and Mission ID (found in your dashboard). We aim to respond within **2 business days**. Re-run credits are valid for **12 months** from issuance, are non-transferable, and carry no cash value.
 
-### 3.2 User Error
-
-- You provided incorrect screener parameters
-- You uploaded the wrong creative asset
-- You submitted the mission accidentally
-
-For user errors, contact support@vettit.ai. We may offer a discount on a re-run as a courtesy, at our discretion.
-
-### 3.3 Misuse of Service
-
-- The mission violated our Terms of Service
-- The account was suspended for policy violations
+A mission that **completes and delivers results is considered delivered**, even if the number of qualified respondents is lower than requested (a "partial" delivery). Partial deliveries are not eligible for a cash refund; where a partial delivery results from a VETT-side fault, the remedy is a re-run or credit at our discretion.
 
 ---
 
-## 4. How to Request a Refund
+## 3. Limited Exceptions (Required by Card Networks and Law)
 
-To request a refund:
+We will return funds **only** in the following situations, which we honor because card-network rules or applicable law require it:
 
-1. **Email us at:** refunds@vettit.ai
-2. **Subject line:** "Refund Request — [Mission ID]"
-3. **Include:**
-   - Your account email
-   - Mission ID (found in your dashboard)
-   - Reason for refund
-   - Supporting screenshots or details (if applicable)
+### 3.1 Duplicate Charges
+If you were charged more than once for the same mission due to a processing error, we will reverse the duplicate charge(s). You keep the single mission you paid for.
 
-We aim to respond within **2 business days** and resolve all refund requests within **7 business days**.
+### 3.2 Unauthorized or Fraudulent Charges
+If a charge was made without your authorization (for example, through a compromised account or card), report it to **support@vettit.ai** within **60 days** of the transaction and we will investigate and reverse confirmed unauthorized charges.
+
+These exceptions exist to comply with payment-network requirements and consumer-protection law. They are not a general satisfaction guarantee.
 
 ---
 
-## 5. Refund Method
+## 4. Not Eligible
 
-Approved refunds are issued via the original payment method:
+To be explicit, the following are **not** eligible for a cash refund (the Section 2 re-run remedy may apply where a VETT-side fault is involved):
 
-- **Credit card:** Refunded to the same card; appears within 5–10 business days
-- **Other payment methods:** Refunded according to processor terms
-
-In rare cases where the original payment method is unavailable (expired card, closed account), we may issue refunds as account credit valid for future missions.
-
----
-
-## 6. Partial Refunds
-
-In some cases, we may offer partial refunds:
-
-- If a mission completed with degraded quality (e.g., fewer respondents than ordered due to a technical issue)
-- If a mission delivered late but still completed
-
-The amount of partial refund is at VETT's discretion based on the issue.
+- A mission that ran and delivered results, including where you are dissatisfied with the insights. Synthetic respondent data is **directional, not predictive**, and is described as such throughout the product.
+- Partial deliveries (fewer qualified respondents than requested).
+- Changing your mind after a mission has started or completed.
+- User error — incorrect screener parameters, wrong creative uploaded, or a mission submitted by mistake. Contact **support@vettit.ai**; we may offer a re-run credit as a courtesy, at our discretion.
+- Missions removed or accounts suspended for violating our Terms of Service.
 
 ---
 
-## 7. Promotional Pricing and Credits
+## 5. Promotional Pricing and Credits
 
-- **Promotional codes** (e.g., launch discounts) are non-refundable to cash; only the amount actually charged is refundable
-- **Account credits** issued as goodwill or for technical issues are non-transferable and have no cash value
-- Credits expire 12 months after issuance unless otherwise specified
-
----
-
-## 8. Subscription Refunds
-
-VETT does not offer recurring subscriptions. All purchases are pay-per-mission. This policy applies to one-time mission purchases.
-
-If we introduce subscription products in the future, separate subscription refund terms will apply.
+- **Promotional codes** reduce the amount charged; only the amount actually charged is ever subject to the limited exceptions in Section 3.
+- **Re-run credits** issued under Section 2 are non-transferable, have no cash value, and expire **12 months** after issuance.
 
 ---
 
-## 9. Chargebacks and Disputes
+## 6. Chargebacks and Disputes
 
-If you believe a charge was unauthorized or incorrect, please contact us **before initiating a chargeback** with your card issuer. Chargebacks may result in:
+If you believe a charge was duplicated or unauthorized, please contact **support@vettit.ai before** initiating a chargeback with your card issuer — we can usually resolve these faster directly. Initiating a chargeback on a mission that was delivered as described may result in:
 
 - Account suspension
 - Loss of access to historical mission data
 - Inability to use VETT in the future
 
-We are committed to resolving issues directly and quickly. Email refunds@vettit.ai first.
+---
+
+## 7. Service Discontinuation
+
+If VETT permanently discontinues a mission type for which you hold an **unused, prepaid credit**, we will honor that credit toward another mission type of equal value or, where no equivalent exists, reverse the original charge for the unused credit.
 
 ---
 
-## 10. Special Circumstances
+## 8. Changes to This Policy
 
-### 10.1 Service Discontinuation
-
-If VETT discontinues a specific feature or mission type that you've prepaid for, we will issue full refunds for any unused, prepaid services.
-
-### 10.2 Account Closure (by VETT)
-
-If we close your account due to a violation of our Terms of Service, prepaid amounts are forfeited. If we close your account for reasons unrelated to violation (e.g., business decision), unused prepaid amounts will be refunded.
-
-### 10.3 Force Majeure
-
-In the event of extreme circumstances beyond our control (natural disasters, government actions, internet infrastructure failures) that prevent service delivery, we will work with affected users on a case-by-case basis to provide refunds or credits.
+We may update this Refund Policy from time to time. Material changes will be communicated by email or a prominent website notice and apply to purchases made after the change date.
 
 ---
 
-## 11. Changes to This Policy
+## 9. Your Statutory Consumer Rights
 
-We may update this Refund Policy from time to time. Material changes will be communicated via email or prominent website notice. Updates apply to purchases made after the change date.
-
-Your continued use of VETT after policy changes constitutes acceptance of the updated terms.
+This policy does not override mandatory consumer-protection rights you may have under applicable law, including the **UAE Consumer Protection Law (Federal Law No. 15 of 2020)** and, where applicable, the **EU Consumer Rights Directive**. Where such laws grant you stronger rights than this policy, those laws prevail. Note that many jurisdictions allow a business to disapply the standard "cooling-off" cancellation right for digital services that begin immediately with the customer's consent — which is the case when you submit a VETT mission.
 
 ---
 
-## 12. Consumer Rights
+## 10. Contact
 
-This policy does not affect statutory consumer rights you may have under applicable law (e.g., EU Consumer Rights Directive, UAE Consumer Protection Law). Where mandatory consumer protection laws provide stronger refund rights, those laws apply.
-
----
-
-## 13. Contact
-
-For refund requests or questions:
-
-**VETT (Vettit.ai)**  
-**Refund requests:** refunds@vettit.ai  
-**General support:** support@vettit.ai  
-**Response time:** Within 2 business days  
-**Resolution time:** Within 7 business days
+**VETT (vettit.ai)**  
+**Support:** support@vettit.ai  
+**Response time:** within 2 business days
 
 ---
 
-*We're committed to being fair and reasonable. If something goes wrong, contact us — we'll do our best to make it right.*
+*We stand behind our work. If a mission fails on our side, tell us and we'll re-run it — that's our commitment to you.*
