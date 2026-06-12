@@ -27,7 +27,8 @@ jobs:
     # On PR events, the screenshot check below is the gate.
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Pass 45 T7b — must exceed DEPLOY_WAIT_S (20 min) plus checkout.
+    timeout-minutes: 25
     steps:
       - name: Check out merged code
         uses: actions/checkout@v4
@@ -54,10 +55,12 @@ jobs:
           EXPECTED_SHA:  ${{ steps.expected.outputs.sha }}
           EXPECTED_PASS: ${{ steps.expected.outputs.pass }}
           ORIGIN:        ${{ secrets.PROD_ORIGIN || 'https://www.vettit.ai' }}
-          # Vercel auto-deploys complete in ~90s p50, ~5 min p99.
-          # We poll for up to 6 min before failing.
-          DEPLOY_WAIT_S: 360
-          POLL_EVERY_S: 15
+          # Vercel auto-deploys complete in ~90s p50, but queueing +
+          # build cache misses push the tail well past 5 min. Pass 45
+          # T7b: poll up to 20 min so a slow-but-successful deploy
+          # never false-fails the gate (it false-failed once at 6 min).
+          DEPLOY_WAIT_S: 1200
+          POLL_EVERY_S: 30
         run: |
           set -euo pipefail
           elapsed=0
