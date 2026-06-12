@@ -16,7 +16,7 @@ interface ProgressResponse {
   recruited: number;
   qualified: number;
   target: number;
-  status: 'pending' | 'recruiting' | 'target_hit' | 'ceiling_hit';
+  status: 'pending' | 'recruiting' | 'target_hit' | 'ceiling_hit' | 'incomplete';
   spent_usd: number;
   spend_ceiling_usd: number;
   mission_status: string;
@@ -42,7 +42,7 @@ export function RecruitmentProgress({ missionId }: Props) {
         setData(r);
         setError(null);
         // Stop polling when the loop has exited.
-        if (r.status === 'target_hit' || r.status === 'ceiling_hit') return;
+        if (r.status === 'target_hit' || r.status === 'ceiling_hit' || r.status === 'incomplete') return;
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : 'progress fetch failed');
@@ -58,8 +58,9 @@ export function RecruitmentProgress({ missionId }: Props) {
 
   if (error || !data) return null;
   // Hide once the loop has finished — the surrounding processing
-  // step view takes over.
-  if (data.status === 'target_hit' || data.status === 'ceiling_hit') return null;
+  // step view takes over. Pass 45 T2b adds 'incomplete' (infra-caused
+  // non-target exit, distinct from a genuine budget ceiling_hit).
+  if (data.status === 'target_hit' || data.status === 'ceiling_hit' || data.status === 'incomplete') return null;
 
   const remaining = Math.max(0, data.target - data.qualified);
   const pct = data.target > 0 ? Math.min(100, (data.qualified / data.target) * 100) : 0;

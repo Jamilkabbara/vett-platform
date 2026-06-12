@@ -29,8 +29,12 @@ export function GoalGrid({
   className = '',
   disabled = false,
 }: GoalGridProps) {
-  const regular = MISSION_GOALS.filter((g) => g.variant === 'regular');
-  const special = MISSION_GOALS.filter((g) => g.variant === 'special');
+  // Pass 45 T7a — comingSoon goals (Audience Profiling, Market Entry)
+  // are excluded from the setup grid entirely: a paying user mid-flow
+  // should never see an unbuyable option. They remain on the landing
+  // page's RESEARCH_TYPES list as roadmap marketing.
+  const regular = MISSION_GOALS.filter((g) => g.variant === 'regular' && !g.comingSoon);
+  const special = MISSION_GOALS.filter((g) => g.variant === 'special' && !g.comingSoon);
 
   return (
     <div
