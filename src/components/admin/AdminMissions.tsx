@@ -171,6 +171,14 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
    * The button is disabled while any single-mission action is in flight
    * to keep cost predictable.
    */
+  // Pass 44 — window.confirm replaced with a controlled modal (same
+  // pattern as Pass 43's markPaidModal; same root cause as the Mark
+  // Paid hang — blocking DOM modals are unreliable in admin surfaces).
+  // Step 1 (bulkReanalyze): dry-run to count stale missions, then open
+  // the modal. Step 2 (runBulkReanalyze): the modal's Confirm fires the
+  // real run.
+  const [bulkConfirm, setBulkConfirm] = useState<{ count: number } | null>(null);
+
   const bulkReanalyze = async () => {
     setBusy(true);
     const t = toast.loading('Finding stale missions…');
@@ -192,14 +200,22 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
         toast.success('No stale missions found');
         return;
       }
-      const ok = window.confirm(
-        `Reanalyze ${count} stale mission${count === 1 ? '' : 's'}? ` +
-        `Each call costs ~$0.10–0.30 in AI spend. The action runs sequentially ` +
-        `and reports per-mission success/failure when done.`
-      );
-      if (!ok) return;
+      setBulkConfirm({ count });
+    } catch (err: unknown) {
+      toast.dismiss(t);
+      toast.error(err instanceof Error ? err.message : 'Bulk reanalyze failed');
+    } finally {
+      setBusy(false);
+    }
+  };
 
-      const t2 = toast.loading(`Reanalyzing ${count} mission${count === 1 ? '' : 's'}…`);
+  const runBulkReanalyze = async () => {
+    if (!bulkConfirm) return;
+    const count = bulkConfirm.count;
+    setBulkConfirm(null);
+    setBusy(true);
+    const t2 = toast.loading(`Reanalyzing ${count} mission${count === 1 ? '' : 's'}…`);
+    try {
       const res = await apiFetch('/api/admin/missions/bulk-reanalyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -220,7 +236,7 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
       // Refresh the table so updated rows show their new state.
       fetchMissions(search, statusFilter, offset);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Bulk reanalyze failed');
+      toast.error(err instanceof Error ? err.message : 'Bulk reanalyze failed', { id: t2 });
     } finally {
       setBusy(false);
     }
@@ -490,6 +506,49 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
                 className="flex-1 py-2.5 rounded-xl bg-lime text-black text-sm font-bold hover:bg-lime/90 disabled:opacity-50 transition-colors"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pass 44 — bulk-reanalyze confirm modal. Replaces window.confirm
+          (same blocking-DOM-modal class of bug as the Mark Paid hang). */}
+      {bulkConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="font-black text-white text-lg">
+                Reanalyze {bulkConfirm.count} stale mission{bulkConfirm.count === 1 ? '' : 's'}?
+              </h3>
+              <button
+                onClick={() => setBulkConfirm(null)}
+                disabled={busy}
+                aria-label="Cancel"
+                className="p-1 text-gray-500 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-gray-400 text-sm mb-5">
+              Each call costs ~$0.10–0.30 in AI spend. The run processes
+              missions sequentially and reports per-mission success/failure
+              when done.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setBulkConfirm(null)}
+                disabled={busy}
+                className="flex-1 py-2.5 rounded-xl border border-gray-700 text-gray-400 text-sm hover:text-white transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={runBulkReanalyze}
+                disabled={busy}
+                className="flex-1 py-2.5 rounded-xl bg-lime text-black text-sm font-bold hover:bg-lime/90 disabled:opacity-50 transition-colors"
+              >
+                {busy ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Run reanalyze'}
               </button>
             </div>
           </div>
