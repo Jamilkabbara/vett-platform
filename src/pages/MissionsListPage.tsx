@@ -628,11 +628,16 @@ export const MissionsListPage = () => {
                           completed missions where delivery_status='partial'.
                           'full' renders nothing (the green completed pill is
                           enough). */}
+                      {/* Pass 44 — "refund issued" claim removed (NO
+                          REFUNDS policy, Terms §5.3). Partial delivery
+                          means the screener was strict; the badge now
+                          states that honestly without asserting a
+                          refund that doesn't exist. */}
                       {(mission.status || '').toUpperCase() === 'COMPLETED'
                         && mission.delivery_status === 'partial' && (
                         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-500/30 bg-amber-500/10">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
-                            Partial · refund issued
+                            Partial · strict screener
                           </span>
                         </div>
                       )}
