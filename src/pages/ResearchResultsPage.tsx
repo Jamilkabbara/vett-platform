@@ -37,7 +37,7 @@ import { QuestionDistributions } from '../components/results/QuestionDistributio
 import { SentimentBreakdown } from '../components/results/SentimentBreakdown';
 import { SegmentComparison } from '../components/results/SegmentComparison';
 // Pass 46 Phase 1 — universal action bar (back nav + methodology label + export/share).
-import { ResultsActionBar } from '../components/results/ResultsActionBar';
+import { ResultsActionBar, methodologyLabel } from '../components/results/ResultsActionBar';
 
 interface MissionRow {
   id: string;
@@ -578,8 +578,12 @@ export function ResearchResultsPage({ barAlreadyMounted = false }: ResearchResul
           <Link to="/missions" className="inline-flex items-center gap-1.5 text-t3 hover:text-t1 text-xs">
             <ArrowLeft className="w-3.5 h-3.5" /> All missions
           </Link>
+          {/* Pass 46 Phase 1 — label from the mission's goal_type, not a
+              hardcoded "General research": this page is also the fallback
+              renderer for brand_lift (audit P0-4) and AdTesting agg-less
+              missions, which must keep their methodology identity. */}
           <p className="text-[10px] uppercase tracking-widest text-lime font-display font-bold">
-            General research · {mission.status === 'completed' ? 'Mission complete' : mission.status}
+            {methodologyLabel(mission.goal_type)} · {mission.status === 'completed' ? 'Mission complete' : mission.status}
           </p>
           <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-t1">
             {mission.title || mission.brief || 'Your mission'}
