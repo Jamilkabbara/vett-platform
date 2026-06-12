@@ -36,6 +36,8 @@ import { InsightErrorBoundary } from '../components/shared/InsightErrorBoundary'
 import { QuestionDistributions } from '../components/results/QuestionDistributions';
 import { SentimentBreakdown } from '../components/results/SentimentBreakdown';
 import { SegmentComparison } from '../components/results/SegmentComparison';
+// Pass 46 Phase 1 — universal action bar (back nav + methodology label + export/share).
+import { ResultsActionBar } from '../components/results/ResultsActionBar';
 
 interface MissionRow {
   id: string;
@@ -477,7 +479,15 @@ function RecommendationList({
   );
 }
 
-export function ResearchResultsPage() {
+// Pass 46 Phase 1 — when a methodology page (e.g. BrandLiftResultsPage)
+// delegates to this generic renderer AND has already mounted its own
+// ResultsActionBar above it, it passes barAlreadyMounted so we skip the
+// header bar here and avoid doubling. The footer bar always renders.
+interface ResearchResultsPageProps {
+  barAlreadyMounted?: boolean;
+}
+
+export function ResearchResultsPage({ barAlreadyMounted = false }: ResearchResultsPageProps = {}) {
   const { missionId } = useParams<{ missionId: string }>();
   const [mission, setMission] = useState<MissionRow | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -549,6 +559,20 @@ export function ResearchResultsPage() {
       {/* Pass 37 A1 — space-y-4 (was space-y-6) so hero → KPI strip
           gap is ≤16px. OverlayPage adds py-24 padding outside this. */}
       <div className="max-w-5xl mx-auto space-y-4">
+        {/* Pass 46 Phase 1 — sticky action bar: back nav + methodology
+            label (from mission.goal_type, so a brand_lift mission that
+            lands here via the BrandLift fallback still reads "Brand Lift
+            Study") + export/share. Skipped when the delegating page
+            already mounted one. */}
+        {!barAlreadyMounted && (
+          <ResultsActionBar
+            missionId={missionId}
+            title={mission.title}
+            goalType={mission.goal_type}
+            completedAt={mission.completed_at}
+            qualified={mission.qualified_respondent_count}
+          />
+        )}
         {/* Hero */}
         <div className="space-y-2">
           <Link to="/missions" className="inline-flex items-center gap-1.5 text-t3 hover:text-t1 text-xs">
@@ -610,6 +634,11 @@ export function ResearchResultsPage() {
           }
           qualifiedRate={rate}
         />
+        {/* Phase 4 slot: methodology headline + centerpiece render here */}
+        {/* Pass 46 Phase 1 — generic charts demoted below the (Phase 4)
+            headline + centerpiece slot per the report spec two-layer
+            architecture. */}
+        <h2 className="font-display font-bold text-t1 text-[15px] mt-8 mb-3">Supporting Detail</h2>
         {/* Pass 42 C4 — Sentiment donut above the executive summary. */}
         <InsightErrorBoundary label="Sentiment Breakdown">
           <SentimentBreakdown missionId={missionId} />
@@ -679,6 +708,17 @@ export function ResearchResultsPage() {
 
         {/* Pass 37 A1 — Pass 36 had a no-insights fallback here that
             never fired because KPI strip now always renders. Dropped. */}
+
+        {/* Pass 46 Phase 1 — footer twin of the action bar. Always
+            renders, in both the direct and the BrandLift-fallback usage. */}
+        <ResultsActionBar
+          variant="footer"
+          missionId={missionId}
+          title={mission.title}
+          goalType={mission.goal_type}
+          completedAt={mission.completed_at}
+          qualified={mission.qualified_respondent_count}
+        />
       </div>
     </OverlayPage>
   );

@@ -1,10 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Loader2, AlertCircle, Trophy, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/ui/Logo';
 // Pass 42 C4 — universal chart sections (Sentiment, Distributions, Segments).
 import { UniversalCharts } from '../components/results/UniversalCharts';
+// Pass 46 Phase 1 — universal results action bar (back / export / share).
+import { ResultsActionBar } from '../components/results/ResultsActionBar';
 
 /**
  * Pass 30 B4 — Compare Concepts results page (sequential monadic).
@@ -28,6 +30,11 @@ interface CompareMission {
   concepts?: Array<{ id: string; name: string; description?: string; price_usd?: number }>;
   brand_name?: string;
   category?: string;
+  status?: string;
+  title?: string | null;
+  goal_type?: string | null;
+  completed_at?: string | null;
+  qualified_respondent_count?: number | null;
 }
 
 interface CompareQuestion {
@@ -93,7 +100,7 @@ export function CompareResultsPage() {
     (async () => {
       const { data, error: fetchErr } = await supabase
         .from('missions')
-        .select('id, questions, concepts, brand_name, category, aggregated_by_question')
+        .select('id, questions, concepts, brand_name, category, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count')
         .eq('id', missionId)
         .single();
       if (fetchErr || !data) {
@@ -147,22 +154,42 @@ export function CompareResultsPage() {
       <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-3 px-5">
         <AlertCircle className="w-12 h-12 text-red-400" />
         <h2 className="text-lg font-bold text-[var(--t1)]">{error}</h2>
+        <Link to="/missions" className="text-[var(--lime)] text-sm underline">← Back to missions</Link>
       </div>
     );
   }
-  if (scores.length === 0) {
+  // Pass 46 Phase 1 — gate on mission.status, not derived data (false "still generating" on completed missions, audit P0-3).
+  if (mission?.status !== 'completed' && scores.length === 0) {
     return (
-      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-3 px-5 text-center">
-        <Logo />
-        <p className="text-sm text-[var(--t2)] mt-4">Compare Concepts analysis still generating.</p>
+      <div className="min-h-screen bg-[var(--bg)] flex flex-col">
+        <ResultsActionBar
+          missionId={missionId}
+          title={mission?.title}
+          goalType={mission?.goal_type}
+          completedAt={mission?.completed_at}
+          qualified={mission?.qualified_respondent_count}
+        />
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 px-5 text-center">
+          <Logo />
+          <p className="text-sm text-[var(--t2)] mt-4">Compare Concepts analysis still generating.</p>
+        </div>
       </div>
     );
   }
 
-  const winner = scores[0];
+  // Completed missions can reach here with zero concepts — guard the deref.
+  const winner: ConceptScore | undefined = scores[0];
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)]">
+      {/* Pass 46 Phase 1 — universal results action bar. */}
+      <ResultsActionBar
+        missionId={missionId}
+        title={mission?.title}
+        goalType={mission?.goal_type}
+        completedAt={mission?.completed_at}
+        qualified={mission?.qualified_respondent_count}
+      />
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -175,24 +202,26 @@ export function CompareResultsPage() {
         <UniversalCharts missionId={missionId} />
 
         {/* Winner */}
-        <section className="rounded-2xl p-6 border border-[var(--lime)]/40 bg-[var(--lime)]/5 space-y-2">
-          <div className="flex items-center gap-2 text-[var(--lime)]">
-            <Trophy className="w-5 h-5" />
-            <span className="text-[10px] uppercase tracking-widest font-display font-bold">Winner</span>
-          </div>
-          <h2 className="text-3xl font-display font-black text-white">{winner.name}</h2>
-          <div className="flex items-baseline gap-4 text-xs">
-            <span className="text-[var(--t2)]">
-              Composite <span className="text-[var(--lime)] font-bold tabular-nums">{winner.composite}</span>
-            </span>
-            <span className="text-[var(--t2)]">
-              Win rate <span className="text-[var(--lime)] font-bold tabular-nums">{winner.winRate}%</span>
-            </span>
-            <span className="text-[var(--t2)]">
-              Intent <span className="text-[var(--lime)] font-bold tabular-nums">{winner.intent}%</span>
-            </span>
-          </div>
-        </section>
+        {winner && (
+          <section className="rounded-2xl p-6 border border-[var(--lime)]/40 bg-[var(--lime)]/5 space-y-2">
+            <div className="flex items-center gap-2 text-[var(--lime)]">
+              <Trophy className="w-5 h-5" />
+              <span className="text-[10px] uppercase tracking-widest font-display font-bold">Winner</span>
+            </div>
+            <h2 className="text-3xl font-display font-black text-white">{winner.name}</h2>
+            <div className="flex items-baseline gap-4 text-xs">
+              <span className="text-[var(--t2)]">
+                Composite <span className="text-[var(--lime)] font-bold tabular-nums">{winner.composite}</span>
+              </span>
+              <span className="text-[var(--t2)]">
+                Win rate <span className="text-[var(--lime)] font-bold tabular-nums">{winner.winRate}%</span>
+              </span>
+              <span className="text-[var(--t2)]">
+                Intent <span className="text-[var(--lime)] font-bold tabular-nums">{winner.intent}%</span>
+              </span>
+            </div>
+          </section>
+        )}
 
         {/* Score table */}
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
@@ -301,6 +330,16 @@ export function CompareResultsPage() {
           Sequential monadic on synthetic respondents calibrated to the audience spec. For high-stakes launches, validate against real-customer panels.
         </p>
       </div>
+
+      {/* Pass 46 Phase 1 — footer action bar twin. */}
+      <ResultsActionBar
+        variant="footer"
+        missionId={missionId}
+        title={mission?.title}
+        goalType={mission?.goal_type}
+        completedAt={mission?.completed_at}
+        qualified={mission?.qualified_respondent_count}
+      />
     </div>
   );
 }
