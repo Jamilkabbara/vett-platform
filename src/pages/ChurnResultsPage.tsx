@@ -7,6 +7,8 @@ import { Logo } from '../components/ui/Logo';
 import { UniversalCharts } from '../components/results/UniversalCharts';
 // Pass 46 Phase 1 — universal results action bar (back / export / share).
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
+// Pass 46 Phase 4 — research-grade churn driver + win-back headline + hero centerpiece.
+import { ChurnCenterpiece } from '../components/results/centerpieces/ChurnCenterpiece';
 
 /**
  * Pass 31 B6 — Churn Research results page (Driver Tree + Win-Back).
@@ -41,6 +43,8 @@ interface ChurnMission {
   goal_type?: string | null;
   completed_at?: string | null;
   qualified_respondent_count?: number | null;
+  // Pass 46 Phase 4 — deterministic churn analysis block (computeChurn).
+  analysis?: any;
 }
 
 interface ChurnQuestion {
@@ -116,7 +120,7 @@ export function ChurnResultsPage() {
     (async () => {
       const { data, error: fetchErr } = await supabase
         .from('missions')
-        .select('id, questions, brand_name, churn_definition, churn_customer_type, churn_winback_possible, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count')
+        .select('id, questions, brand_name, churn_definition, churn_customer_type, churn_winback_possible, aggregated_by_question, analysis, status, title, goal_type, completed_at, qualified_respondent_count')
         .eq('id', missionId)
         .single();
       if (fetchErr || !data) {
@@ -246,6 +250,9 @@ export function ChurnResultsPage() {
           Churn Research · Driver Tree + Win-Back
         </span>
       </header>
+
+      {/* Pass 46 Phase 4 — research-grade headline + hero, above Supporting Detail. */}
+      <ChurnCenterpiece analysis={(mission as any).analysis} mission={mission} />
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
         {/* Pass 42 C4 — universal chart sections. */}

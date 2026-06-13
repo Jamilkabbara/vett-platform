@@ -9,6 +9,8 @@ import { UniversalCharts } from '../components/results/UniversalCharts';
 import { NamingCharts } from '../components/results/charts/NamingCharts';
 // Pass 46 Phase 1 — universal results action bar (back / export / share).
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
+// Pass 46 Phase 4 — research-grade report centerpiece (headline + hero visual).
+import { NamingCenterpiece } from '../components/results/centerpieces/NamingCenterpiece';
 
 /**
  * Pass 31 B4 — Naming & Messaging results page.
@@ -41,6 +43,8 @@ interface NamingMission {
   goal_type?: string | null;
   completed_at?: string | null;
   qualified_respondent_count?: number | null;
+  // Pass 46 Phase 4 — deterministic analysis block (computeNaming output).
+  analysis?: any;
 }
 
 interface NamingQuestion {
@@ -115,7 +119,7 @@ export function NamingResultsPage() {
     (async () => {
       const { data, error: fetchErr } = await supabase
         .from('missions')
-        .select('id, questions, naming_candidates, naming_criteria, naming_test_type, brand_personality, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count')
+        .select('id, questions, naming_candidates, naming_criteria, naming_test_type, brand_personality, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count, analysis')
         .eq('id', missionId)
         .single();
       if (fetchErr || !data) {
@@ -264,6 +268,9 @@ export function NamingResultsPage() {
           Naming & Messaging · Monadic + Paired{mission?.naming_test_type !== 'names' ? ' + TURF' : ''}
         </span>
       </header>
+
+      {/* Pass 46 Phase 4 — research-grade headline + hero visual, above the supporting-detail dashboard. */}
+      <NamingCenterpiece analysis={(mission as any).analysis} mission={mission} />
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
         {/* Pass 42 C4 — universal chart sections. */}

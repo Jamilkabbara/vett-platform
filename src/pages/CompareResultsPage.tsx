@@ -7,6 +7,8 @@ import { Logo } from '../components/ui/Logo';
 import { UniversalCharts } from '../components/results/UniversalCharts';
 // Pass 46 Phase 1 — universal results action bar (back / export / share).
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
+// Pass 46 Phase 4 — research-grade report centerpiece (headline + hero visual).
+import { CompareCenterpiece } from '../components/results/centerpieces/CompareCenterpiece';
 
 /**
  * Pass 30 B4 — Compare Concepts results page (sequential monadic).
@@ -35,6 +37,8 @@ interface CompareMission {
   goal_type?: string | null;
   completed_at?: string | null;
   qualified_respondent_count?: number | null;
+  // Pass 46 Phase 4 — deterministic analysis block (computeCompare output).
+  analysis?: any;
 }
 
 interface CompareQuestion {
@@ -100,7 +104,7 @@ export function CompareResultsPage() {
     (async () => {
       const { data, error: fetchErr } = await supabase
         .from('missions')
-        .select('id, questions, concepts, brand_name, category, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count')
+        .select('id, questions, concepts, brand_name, category, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count, analysis')
         .eq('id', missionId)
         .single();
       if (fetchErr || !data) {
@@ -196,6 +200,9 @@ export function CompareResultsPage() {
           Compare Concepts · Sequential Monadic
         </span>
       </header>
+
+      {/* Pass 46 Phase 4 — research-grade headline + hero visual, above the supporting-detail dashboard. */}
+      <CompareCenterpiece analysis={(mission as any).analysis} mission={mission} />
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
         {/* Pass 42 C4 — universal chart sections. */}

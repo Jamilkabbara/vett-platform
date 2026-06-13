@@ -9,6 +9,8 @@ import { UniversalCharts } from '../components/results/UniversalCharts';
 import { RoadmapScatter } from '../components/results/charts/RoadmapScatter';
 // Pass 46 Phase 1 — universal results action bar (back / export / share).
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
+// Pass 46 Phase 4 — research-grade report centerpiece (headline + Kano/MaxDiff charts).
+import { RoadmapCenterpiece } from '../components/results/centerpieces/RoadmapCenterpiece';
 
 /**
  * Pass 29 B7 — Feature Roadmap results page.
@@ -46,6 +48,8 @@ interface RoadmapMission {
   goal_type?: string | null;
   completed_at?: string | null;
   qualified_respondent_count?: number | null;
+  // Pass 46 Phase 4 — deterministic roadmap analysis (computeRoadmap); feeds the centerpiece.
+  analysis?: any;
 }
 
 interface RoadmapQuestion {
@@ -299,7 +303,7 @@ export function RoadmapResultsPage() {
     (async () => {
       const { data, error: fetchErr } = await supabase
         .from('missions')
-        .select('id, questions, roadmap_features, brand_name, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count')
+        .select('id, questions, roadmap_features, brand_name, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count, analysis')
         .eq('id', missionId)
         .single();
       if (fetchErr || !data) {
@@ -377,6 +381,11 @@ export function RoadmapResultsPage() {
           Feature Roadmap · MaxDiff + Kano
         </span>
       </header>
+
+      {/* Pass 46 Phase 4 — research-grade centerpiece: consumer-first headline +
+          Kano quadrant scatter + MaxDiff diverging priority bars, read from the
+          deterministic analysis block. Sits above the Supporting Detail. */}
+      <RoadmapCenterpiece analysis={(mission as any).analysis} mission={mission} />
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
         {/* Pass 42 C4 — universal chart sections. */}
