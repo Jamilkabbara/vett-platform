@@ -166,6 +166,13 @@ function paramsToFilters(p: URLSearchParams): BrandLiftFilters {
   };
 }
 
+// Pass 47 — minimal shape of the computed brand_lift analysis block we
+// gate the bespoke render on (full shape consumed by BrandLiftCenterpiece).
+type BlAnalysisShape = {
+  cells?: { exposed?: { n?: number }; control?: { n?: number } };
+  funnel?: unknown[];
+};
+
 export function BrandLiftResultsPage() {
   const { missionId } = useParams<{ missionId: string }>();
   const [mission, setMission] = useState<BrandLiftMissionRow | null>(null);
@@ -306,6 +313,67 @@ export function BrandLiftResultsPage() {
   // This delegation does cost a second mission fetch (ResearchResultsPage
   // re-reads via useParams), but that's a single Supabase call (~50ms)
   // and avoids duplicating the renderer.
+  // Pass 47 — render the bespoke brand-lift report from the COMPUTED
+  // analysis object (deterministic exposed-vs-control funnel) whenever
+  // it's present, regardless of the legacy `brand_lift_results` column.
+  // Before this, the page always fell through to ResearchResultsPage
+  // because brand_lift_results is a dead/never-populated column — so the
+  // Phase-4 BrandLiftCenterpiece never mounted and the page showed the
+  // generic research view (with the narrator's "contact support"
+  // summary). Gate on analysis.cells + funnel, not the dead column.
+  const blAnalysis = (mission as unknown as { analysis?: BlAnalysisShape })?.analysis;
+  const hasComputedLift = !!(
+    blAnalysis &&
+    typeof blAnalysis === 'object' &&
+    blAnalysis.cells &&
+    Array.isArray(blAnalysis.funnel) &&
+    blAnalysis.funnel.length > 0
+  );
+  if (!blr && hasComputedLift) {
+    const execSummary = (mission as unknown as { insights?: { executive_summary?: string } })
+      ?.insights?.executive_summary;
+    return (
+      <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)]">
+        <ResultsActionBar
+          missionId={missionId}
+          title={mission?.title}
+          goalType="brand_lift"
+          completedAt={mission?.completed_at}
+          qualified={mission?.qualified_respondent_count}
+        />
+        <header className="px-6 pt-6 pb-2 flex items-center justify-between">
+          <Logo />
+          <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
+            Brand Lift Study · Exposed vs Control
+          </span>
+        </header>
+        <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
+          {/* The methodology centerpiece: exposed-vs-control funnel + lift table. */}
+          <BrandLiftCenterpiece analysis={blAnalysis} mission={mission} />
+
+          {execSummary && (
+            <section className="rounded-2xl border border-[var(--b1)] bg-[var(--bg2)] p-5">
+              <h2 className="font-display font-bold text-[var(--t1)] text-[15px] mb-2">Executive summary</h2>
+              <p className="font-body text-[13px] text-[var(--t2)] whitespace-pre-line leading-relaxed">{execSummary}</p>
+            </section>
+          )}
+
+          {/* Supporting detail — universal distribution / sentiment charts. */}
+          <h2 className="font-display font-bold text-[var(--t1)] text-[15px] mt-8">Supporting Detail</h2>
+          <UniversalCharts missionId={missionId} />
+        </div>
+        <ResultsActionBar
+          variant="footer"
+          missionId={missionId}
+          title={mission?.title}
+          goalType="brand_lift"
+          completedAt={mission?.completed_at}
+          qualified={mission?.qualified_respondent_count}
+        />
+      </div>
+    );
+  }
+
   if (!blr) {
     const status = mission?.status as string | undefined;
     const insights = mission?.insights;
