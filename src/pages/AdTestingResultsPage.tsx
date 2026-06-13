@@ -12,6 +12,9 @@ import { ResearchResultsPage } from './ResearchResultsPage';
 import { UniversalCharts } from '../components/results/UniversalCharts';
 // Pass 46 Phase 1 — universal results action bar (back / export / share).
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
+// Pass 46 Phase 4 — research-grade ad-effectiveness centerpiece (headline +
+// funnel), reading the deterministic marketing block from mission.analysis.
+import { MarketingCenterpiece } from '../components/results/centerpieces/MarketingCenterpiece';
 
 /**
  * Pass 31 A1 (closes Pass 30 B6 deferral) — Test Marketing/Ads
@@ -46,6 +49,10 @@ interface MarketingMission {
   campaign_format?: string;
   campaign_objective?: string;
   intended_message?: string;
+  // Pass 46 Phase 4 — deterministic analysis block (computeMarketing output)
+  // consumed by MarketingCenterpiece. Loosely typed; the centerpiece reads
+  // the documented shape defensively.
+  analysis?: any;
   // Pass 46 Phase 1 — status gate + action-bar metadata.
   status?: string;
   title?: string | null;
@@ -158,7 +165,7 @@ export function AdTestingResultsPage() {
       // robust against schema drift.
       const { data, error: fetchErr } = await supabase
         .from('missions')
-        .select('id, questions, brand_name, category, creative_media_url, creative_media_type, campaign_channel, campaign_format, campaign_objective, intended_message, aggregated_by_question, status, insights, title, goal_type, completed_at, qualified_respondent_count')
+        .select('id, questions, brand_name, category, creative_media_url, creative_media_type, campaign_channel, campaign_format, campaign_objective, intended_message, aggregated_by_question, analysis, status, insights, title, goal_type, completed_at, qualified_respondent_count')
         .eq('id', missionId)
         .single();
 
@@ -336,6 +343,12 @@ export function AdTestingResultsPage() {
           Test Marketing · Ad Effectiveness
         </span>
       </header>
+
+      {/* Pass 46 Phase 4 — research-grade centerpiece (consumer-first headline
+          + ad-effectiveness funnel). Reads the deterministic marketing block
+          from mission.analysis; honest null-state when no stage is scorable.
+          Sits ABOVE the existing dashboard ("Supporting Detail" layer). */}
+      <MarketingCenterpiece analysis={(mission as any).analysis} mission={mission} />
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
         {/* Pass 42 C4 — universal chart sections. */}

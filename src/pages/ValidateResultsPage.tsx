@@ -7,6 +7,8 @@ import { Logo } from '../components/ui/Logo';
 import { UniversalCharts } from '../components/results/UniversalCharts';
 // Pass 46 Phase 1 — universal results action bar (back / export / share).
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
+// Pass 46 Phase 4 — research-grade concept-test headline + hero centerpiece.
+import { ValidateCenterpiece } from '../components/results/centerpieces/ValidateCenterpiece';
 
 /**
  * Pass 30 B2 — Validate Product results page (concept test).
@@ -42,6 +44,8 @@ interface ValidateMission {
   goal_type?: string | null;
   completed_at?: string | null;
   qualified_respondent_count?: number | null;
+  // Pass 46 Phase 4 — deterministic concept-test analysis block (computeValidate).
+  analysis?: any;
 }
 
 interface ValidateQuestion {
@@ -115,7 +119,7 @@ export function ValidateResultsPage() {
     (async () => {
       const { data, error: fetchErr } = await supabase
         .from('missions')
-        .select('id, questions, brand_name, category, concept_description, concept_media_url, concept_media_type, concept_price_usd, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count')
+        .select('id, questions, brand_name, category, concept_description, concept_media_url, concept_media_type, concept_price_usd, aggregated_by_question, analysis, status, title, goal_type, completed_at, qualified_respondent_count')
         .eq('id', missionId)
         .single();
       if (fetchErr || !data) {
@@ -248,6 +252,9 @@ export function ValidateResultsPage() {
           Validate Product · Concept Test
         </span>
       </header>
+
+      {/* Pass 46 Phase 4 — research-grade headline + hero, above Supporting Detail. */}
+      <ValidateCenterpiece analysis={(mission as any).analysis} mission={mission} />
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
         {/* Pass 42 C4 — universal chart sections (above the methodology-

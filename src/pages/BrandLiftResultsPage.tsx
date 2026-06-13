@@ -20,6 +20,9 @@ import { UniversalCharts } from '../components/results/UniversalCharts';
 import { BrandLiftCharts } from '../components/results/charts/BrandLiftCharts';
 // Pass 46 Phase 1 — universal action bar (back nav + methodology label + export/share).
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
+// Pass 46 Phase 4 — research-grade lift report centerpiece (headline + funnel),
+// reading the deterministic brand_lift block from mission.analysis.
+import { BrandLiftCenterpiece } from '../components/results/centerpieces/BrandLiftCenterpiece';
 import {
   BrandLiftScoreDial,
   FunnelVisualization,
@@ -443,6 +446,12 @@ export function BrandLiftResultsPage() {
           </p>
         )}
       </header>
+      {/* Pass 46 Phase 4 — research-grade centerpiece (consumer-first headline
+          + exposed/control brand funnel). Reads the deterministic brand_lift
+          block from mission.analysis; renders an honest null-state when lift
+          can't be computed. Sits ABOVE the existing dashboard, which is now
+          the "Supporting Detail" layer. */}
+      <BrandLiftCenterpiece analysis={(mission as any).analysis} mission={mission} />
       {filterEmpty ? (
         <div className="px-6 pb-12 max-w-6xl mx-auto">
           <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-8 text-center space-y-3">

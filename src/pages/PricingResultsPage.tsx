@@ -9,6 +9,8 @@ import { UniversalCharts } from '../components/results/UniversalCharts';
 import { PricingCharts } from '../components/results/charts/PricingCharts';
 // Pass 46 Phase 1 — universal action bar (back nav + methodology label + export/share).
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
+// Pass 46 Phase 4 — research-grade report centerpiece (headline + VW/GG charts).
+import { PricingCenterpiece } from '../components/results/centerpieces/PricingCenterpiece';
 
 /**
  * Pass 29 B5 — Pricing Research results page.
@@ -49,6 +51,8 @@ interface PricingMission {
   pricing_expected_min?: number | null;
   pricing_expected_max?: number | null;
   brand_name?: string;
+  // Pass 46 Phase 4 — deterministic pricing analysis (computePricing); feeds the centerpiece.
+  analysis?: any;
 }
 
 interface PricingQuestion {
@@ -237,7 +241,7 @@ export function PricingResultsPage() {
     (async () => {
       const { data, error: fetchErr } = await supabase
         .from('missions')
-        .select('id, status, title, goal_type, completed_at, qualified_respondent_count, questions, pricing_currency, pricing_expected_min, pricing_expected_max, brand_name, aggregated_by_question')
+        .select('id, status, title, goal_type, completed_at, qualified_respondent_count, questions, pricing_currency, pricing_expected_min, pricing_expected_max, brand_name, aggregated_by_question, analysis')
         .eq('id', missionId)
         .single();
       if (fetchErr || !data) {
@@ -336,6 +340,11 @@ export function PricingResultsPage() {
           Pricing Research · Van Westendorp + Gabor-Granger
         </span>
       </header>
+
+      {/* Pass 46 Phase 4 — research-grade centerpiece: consumer-first headline +
+          Van Westendorp 4-line chart + Gabor-Granger demand/revenue, read from
+          the deterministic analysis block. Sits above the Supporting Detail. */}
+      <PricingCenterpiece analysis={(mission as any).analysis} mission={mission} />
 
       <div className="px-6 pb-12 space-y-5 max-w-6xl mx-auto">
         {/* Pass 42 C4 — universal chart sections. */}
