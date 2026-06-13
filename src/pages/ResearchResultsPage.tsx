@@ -38,6 +38,10 @@ import { SentimentBreakdown } from '../components/results/SentimentBreakdown';
 import { SegmentComparison } from '../components/results/SegmentComparison';
 // Pass 46 Phase 1 — universal action bar (back nav + methodology label + export/share).
 import { ResultsActionBar, methodologyLabel } from '../components/results/ResultsActionBar';
+// Pass 48 — canonical report: brief header + full survey appendix.
+import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
+import { ReportHeader } from '../components/results/report/ReportHeader';
+import { FullSurveySection } from '../components/results/report/FullSurveySection';
 
 interface MissionRow {
   id: string;
@@ -492,6 +496,8 @@ export function ResearchResultsPage({ barAlreadyMounted = false }: ResearchResul
   const [mission, setMission] = useState<MissionRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Pass 48 — canonical report: brief header + full survey appendix.
+  const { report } = useCanonicalReport(missionId);
 
   useEffect(() => {
     if (!missionId) {
@@ -573,6 +579,8 @@ export function ResearchResultsPage({ barAlreadyMounted = false }: ResearchResul
             qualified={mission.qualified_respondent_count}
           />
         )}
+        {/* Pass 48 — canonical report brief header (brief + sample summary). */}
+        {report && <ReportHeader report={report} />}
         {/* Hero */}
         <div className="space-y-2">
           <Link to="/missions" className="inline-flex items-center gap-1.5 text-t3 hover:text-t1 text-xs">
@@ -638,6 +646,9 @@ export function ResearchResultsPage({ barAlreadyMounted = false }: ResearchResul
           }
           qualifiedRate={rate}
         />
+        {/* Pass 48 — canonical report: full survey appendix (every question,
+            correct widget) sits immediately before the Supporting Detail block. */}
+        {report && <FullSurveySection survey={report.survey} />}
         {/* Phase 4 slot: methodology headline + centerpiece render here */}
         {/* Pass 46 Phase 1 — generic charts demoted below the (Phase 4)
             headline + centerpiece slot per the report spec two-layer

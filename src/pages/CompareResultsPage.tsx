@@ -9,6 +9,10 @@ import { UniversalCharts } from '../components/results/UniversalCharts';
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
 // Pass 46 Phase 4 — research-grade report centerpiece (headline + hero visual).
 import { CompareCenterpiece } from '../components/results/centerpieces/CompareCenterpiece';
+// Pass 48 Phase 2 — canonical report: brief/sample header + full-survey appendix.
+import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
+import { ReportHeader } from '../components/results/report/ReportHeader';
+import { FullSurveySection } from '../components/results/report/FullSurveySection';
 
 /**
  * Pass 30 B4 — Compare Concepts results page (sequential monadic).
@@ -98,6 +102,8 @@ export function CompareResultsPage() {
   const [agg, setAgg] = useState<Record<string, AggregatedAnswer>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Pass 48 Phase 2 — canonical report (brief header + full-survey appendix).
+  const { report } = useCanonicalReport(missionId);
 
   useEffect(() => {
     if (!missionId) return;
@@ -194,6 +200,8 @@ export function CompareResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 Phase 2 — canonical brief + sample header. */}
+      {report && <ReportHeader report={report} />}
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -230,7 +238,9 @@ export function CompareResultsPage() {
           </section>
         )}
 
-        {/* Score table */}
+        {/* Score table — Pass 48 Phase 2: gate on ≥1 row; a header above an
+            empty <tbody> was the audit's "Per-Concept Scores" empty shell. */}
+        {scores.length > 0 && (
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
           <header>
             <h3 className="text-sm font-semibold text-[var(--t1)]">Per-Concept Scores</h3>
@@ -271,8 +281,11 @@ export function CompareResultsPage() {
             </table>
           </div>
         </section>
+        )}
 
-        {/* Forced-choice bar */}
+        {/* Forced-choice bar — Pass 48 Phase 2: gate on ≥1 row so the header
+            never renders above an empty list. */}
+        {scores.length > 0 && (
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
           <header>
             <h3 className="text-sm font-semibold text-[var(--t1)]">Forced Choice</h3>
@@ -291,34 +304,37 @@ export function CompareResultsPage() {
             </div>
           ))}
         </section>
+        )}
 
-        {/* Best/worst themes */}
+        {/* Best/worst themes — Pass 48 Phase 2: gate on ≥1 concept actually
+            having verbatims. The audit found this rendered the title above a
+            body that was entirely "No responses yet" placeholders; a header
+            with no real body must never render. Concepts without verbatims are
+            still dropped inside so we never show an empty per-concept block. */}
+        {scores.some((s) => s.bestWorst.length > 0) && (
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
           <header>
             <h3 className="text-sm font-semibold text-[var(--t1)]">Best / Worst Themes</h3>
             <p className="text-xs text-[var(--t3)] mt-0.5">Sampled open-text responses per concept.</p>
           </header>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {scores.map((s) => (
+            {scores.filter((s) => s.bestWorst.length > 0).map((s) => (
               <div key={s.id} className="space-y-2">
                 <h4 className="text-[12px] uppercase tracking-widest text-[var(--t3)] font-display font-bold">
                   {s.name}
                 </h4>
-                {s.bestWorst.length === 0 ? (
-                  <p className="text-[11px] text-[var(--t4)] italic">No responses yet.</p>
-                ) : (
-                  <ul className="space-y-1.5">
-                    {s.bestWorst.slice(0, 4).map((v, i) => (
-                      <li key={i} className="text-[11px] text-[var(--t2)] bg-[var(--bg3)] rounded-lg px-2 py-1.5">
-                        &ldquo;{v}&rdquo;
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <ul className="space-y-1.5">
+                  {s.bestWorst.slice(0, 4).map((v, i) => (
+                    <li key={i} className="text-[11px] text-[var(--t2)] bg-[var(--bg3)] rounded-lg px-2 py-1.5">
+                      &ldquo;{v}&rdquo;
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
         </section>
+        )}
 
         {/* Industry benchmarks */}
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-2">
@@ -337,6 +353,9 @@ export function CompareResultsPage() {
           Sequential monadic on synthetic respondents calibrated to the audience spec. For high-stakes launches, validate against real-customer panels.
         </p>
       </div>
+
+      {/* Pass 48 Phase 2 — complete per-question appendix (canonical renderers). */}
+      {report && <FullSurveySection survey={report.survey} />}
 
       {/* Pass 46 Phase 1 — footer action bar twin. */}
       <ResultsActionBar

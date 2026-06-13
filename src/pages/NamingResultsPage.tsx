@@ -11,6 +11,10 @@ import { NamingCharts } from '../components/results/charts/NamingCharts';
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
 // Pass 46 Phase 4 — research-grade report centerpiece (headline + hero visual).
 import { NamingCenterpiece } from '../components/results/centerpieces/NamingCenterpiece';
+// Pass 48 Phase 2 — canonical report: brief/sample header + full-survey appendix.
+import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
+import { ReportHeader } from '../components/results/report/ReportHeader';
+import { FullSurveySection } from '../components/results/report/FullSurveySection';
 
 /**
  * Pass 31 B4 — Naming & Messaging results page.
@@ -113,6 +117,8 @@ export function NamingResultsPage() {
   const [agg, setAgg] = useState<Record<string, AggregatedAnswer>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Pass 48 Phase 2 — canonical report (brief header + full-survey appendix).
+  const { report } = useCanonicalReport(missionId);
 
   useEffect(() => {
     if (!missionId) return;
@@ -262,6 +268,8 @@ export function NamingResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 Phase 2 — canonical brief + sample header. */}
+      {report && <ReportHeader report={report} />}
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -307,7 +315,9 @@ export function NamingResultsPage() {
           </section>
         )}
 
-        {/* Per-candidate score table */}
+        {/* Per-candidate score table — Pass 48 Phase 2: gate on ≥1 row so the
+            column header never renders above an empty <tbody> (empty-shell). */}
+        {scores.length > 0 && (
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
           <header>
             <h3 className="text-sm font-semibold text-[var(--t1)]">Per-Candidate Scores</h3>
@@ -350,6 +360,7 @@ export function NamingResultsPage() {
             </table>
           </div>
         </section>
+        )}
 
         {/* TURF reach (taglines only) */}
         {turfPortfolio && (
@@ -390,33 +401,34 @@ export function NamingResultsPage() {
           </section>
         )}
 
-        {/* Word associations per candidate */}
+        {/* Word associations per candidate — Pass 48 Phase 2: gate on ≥1
+            candidate actually having verbatims so the heading never sits above
+            a body of "No responses yet" placeholders. Candidates without
+            associations are dropped inside (no empty per-candidate block). */}
+        {scores.some((s) => s.associations.length > 0) && (
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
           <header>
             <h3 className="text-sm font-semibold text-[var(--t1)]">Word Associations</h3>
             <p className="text-xs text-[var(--t3)] mt-0.5">Sampled open-text responses per candidate.</p>
           </header>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {scores.map((s) => (
+            {scores.filter((s) => s.associations.length > 0).map((s) => (
               <div key={s.id} className="space-y-2">
                 <h4 className="text-[12px] uppercase tracking-widest text-[var(--t3)] font-display font-bold">
                   {s.text}
                 </h4>
-                {s.associations.length === 0 ? (
-                  <p className="text-[11px] text-[var(--t4)] italic">No responses yet.</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {s.associations.slice(0, 5).map((v, i) => (
-                      <li key={i} className="text-[11px] text-[var(--t2)] bg-[var(--bg3)] rounded px-2 py-1">
-                        &ldquo;{v}&rdquo;
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <ul className="space-y-1">
+                  {s.associations.slice(0, 5).map((v, i) => (
+                    <li key={i} className="text-[11px] text-[var(--t2)] bg-[var(--bg3)] rounded px-2 py-1">
+                      &ldquo;{v}&rdquo;
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
         </section>
+        )}
 
         {/* Industry benchmarks + recommendation */}
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
@@ -443,6 +455,9 @@ export function NamingResultsPage() {
           Naming methodology runs on synthetic respondents calibrated to your audience spec. For high-stakes brand launches, validate with real-customer panels.
         </p>
       </div>
+
+      {/* Pass 48 Phase 2 — complete per-question appendix (canonical renderers). */}
+      {report && <FullSurveySection survey={report.survey} />}
 
       {/* Pass 46 Phase 1 — footer action bar twin. */}
       <ResultsActionBar

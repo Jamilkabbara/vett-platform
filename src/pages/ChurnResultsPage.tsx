@@ -9,6 +9,10 @@ import { UniversalCharts } from '../components/results/UniversalCharts';
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
 // Pass 46 Phase 4 — research-grade churn driver + win-back headline + hero centerpiece.
 import { ChurnCenterpiece } from '../components/results/centerpieces/ChurnCenterpiece';
+// Pass 48 Phase 2 — canonical report: brief/sample header + full-survey appendix.
+import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
+import { ReportHeader } from '../components/results/report/ReportHeader';
+import { FullSurveySection } from '../components/results/report/FullSurveySection';
 
 /**
  * Pass 31 B6 — Churn Research results page (Driver Tree + Win-Back).
@@ -114,6 +118,8 @@ export function ChurnResultsPage() {
   const [agg, setAgg] = useState<Record<string, AggregatedAnswer>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Pass 48 Phase 2 — canonical report (brief header + full-survey appendix).
+  const { report } = useCanonicalReport(missionId);
 
   useEffect(() => {
     if (!missionId) return;
@@ -244,6 +250,8 @@ export function ChurnResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 Phase 2 — canonical brief + sample header. */}
+      {report && <ReportHeader report={report} />}
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -282,7 +290,10 @@ export function ChurnResultsPage() {
           </div>
         </div>
 
-        {/* Driver tree (flat list with hierarchy hint via indent / connector) */}
+        {/* Driver tree (flat list with hierarchy hint via indent / connector)
+            — Pass 48 Phase 2: gate on ≥1 reason so the header never renders
+            above an empty driver list (empty-shell). */}
+        {stages.sortedReasons.length > 0 && (
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
           <header>
             <h3 className="text-sm font-semibold text-[var(--t1)]">Churn Driver Tree</h3>
@@ -306,6 +317,7 @@ export function ChurnResultsPage() {
             })}
           </div>
         </section>
+        )}
 
         {/* Tenure distribution */}
         {Object.keys(stages.tenureDist).length > 0 && (
@@ -333,8 +345,11 @@ export function ChurnResultsPage() {
           </section>
         )}
 
-        {/* Win-back potential + triggers */}
+        {/* Win-back potential + triggers — Pass 48 Phase 2: gate each card on
+            having real data so neither header renders above an all-0% / empty
+            body (empty-shell). */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Object.keys(stages.winbackDist).length > 0 && (
           <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
             <header>
               <h3 className="text-sm font-semibold text-[var(--t1)]">Win-back Probability</h3>
@@ -356,37 +371,38 @@ export function ChurnResultsPage() {
               );
             })}
           </section>
+          )}
 
+          {sortedTriggers.length > 0 && (
           <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
             <header>
               <h3 className="text-sm font-semibold text-[var(--t1)]">Top Win-back Triggers</h3>
               <p className="text-xs text-[var(--t3)] mt-0.5">% who&apos;d respond to each.</p>
             </header>
-            {sortedTriggers.length === 0 ? (
-              <p className="text-[11px] text-[var(--t4)] italic">No win-back trigger responses yet.</p>
-            ) : (
-              sortedTriggers.map(([trigger, count]) => {
-                const pct = stages.triggersN > 0 ? Math.round(((Number(count) || 0) / stages.triggersN) * 100) : 0;
-                return (
-                  <div key={trigger} className="grid grid-cols-[1fr_50px] gap-2 items-center text-xs">
-                    <div className="relative h-4 bg-[var(--bg3)] rounded">
-                      <div
-                        className="absolute top-0 left-0 h-full bg-[var(--lime)]/70 rounded"
-                        style={{ width: `${pct}%` }}
-                      />
-                      <span className="absolute inset-0 px-2 flex items-center text-[10px] text-white truncate">
-                        {trigger}
-                      </span>
-                    </div>
-                    <span className="text-right tabular-nums text-[var(--t1)] font-semibold">{pct}%</span>
+            {sortedTriggers.map(([trigger, count]) => {
+              const pct = stages.triggersN > 0 ? Math.round(((Number(count) || 0) / stages.triggersN) * 100) : 0;
+              return (
+                <div key={trigger} className="grid grid-cols-[1fr_50px] gap-2 items-center text-xs">
+                  <div className="relative h-4 bg-[var(--bg3)] rounded">
+                    <div
+                      className="absolute top-0 left-0 h-full bg-[var(--lime)]/70 rounded"
+                      style={{ width: `${pct}%` }}
+                    />
+                    <span className="absolute inset-0 px-2 flex items-center text-[10px] text-white truncate">
+                      {trigger}
+                    </span>
                   </div>
-                );
-              })
-            )}
+                  <span className="text-right tabular-nums text-[var(--t1)] font-semibold">{pct}%</span>
+                </div>
+              );
+            })}
           </section>
+          )}
         </div>
 
-        {/* CES at exit */}
+        {/* CES at exit — Pass 48 Phase 2: gate on ≥1 response so the header +
+            mean + 7-bar scale never render as an all-0% empty shell. */}
+        {Object.keys(stages.cesDist).length > 0 && (
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
           <header>
             <h3 className="text-sm font-semibold text-[var(--t1)]">Customer Effort to Exit</h3>
@@ -412,6 +428,7 @@ export function ChurnResultsPage() {
             );
           })}
         </section>
+        )}
 
         {/* Warning signs */}
         {stages.warningVerbatims.length > 0 && (
@@ -465,6 +482,9 @@ export function ChurnResultsPage() {
           Churn driver analysis on synthetic respondents. Sample floor 100; for confident win-back trigger heatmaps consider 200+.
         </p>
       </div>
+
+      {/* Pass 48 Phase 2 — complete per-question appendix (canonical renderers). */}
+      {report && <FullSurveySection survey={report.survey} />}
 
       <ResultsActionBar
         variant="footer"

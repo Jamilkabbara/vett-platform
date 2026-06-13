@@ -11,6 +11,10 @@ import { RoadmapScatter } from '../components/results/charts/RoadmapScatter';
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
 // Pass 46 Phase 4 — research-grade report centerpiece (headline + Kano/MaxDiff charts).
 import { RoadmapCenterpiece } from '../components/results/centerpieces/RoadmapCenterpiece';
+// Pass 48 Phase 2 — canonical report (one source of truth for web + chat + exports).
+import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
+import { ReportHeader } from '../components/results/report/ReportHeader';
+import { FullSurveySection } from '../components/results/report/FullSurveySection';
 
 /**
  * Pass 29 B7 — Feature Roadmap results page.
@@ -316,6 +320,9 @@ export function RoadmapResultsPage() {
     })();
   }, [missionId]);
 
+  // Pass 48 Phase 2 — canonical report (header + full-survey appendix).
+  const { report } = useCanonicalReport(missionId);
+
   const utility = useMemo(() => mission ? computeUtility(mission, agg) : [], [mission, agg]);
   const kano = useMemo(() => mission ? classifyKano(mission, agg) : [], [mission, agg]);
 
@@ -375,6 +382,8 @@ export function RoadmapResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 Phase 2 — canonical report header (brief + sample summary). */}
+      {report && <ReportHeader report={report} />}
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -394,6 +403,8 @@ export function RoadmapResultsPage() {
         <RoadmapScatter missionId={missionId} />
 
         {/* Hero — top 3 to build */}
+        {/* Pass 48 Phase 2 — gate empty-shell: hide heading when no MaxDiff utilities. */}
+        {top3.length > 0 && (
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
           <h3 className="text-sm font-semibold text-[var(--t1)]">
             Top 3 to build first
@@ -427,8 +438,11 @@ export function RoadmapResultsPage() {
             })}
           </div>
         </section>
+        )}
 
         {/* MaxDiff utility bars */}
+        {/* Pass 48 Phase 2 — gate empty-shell: hide heading when no utilities computed. */}
+        {utility.length > 0 && (
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
           <header>
             <h3 className="text-sm font-semibold text-[var(--t1)]">MaxDiff Utility</h3>
@@ -468,6 +482,7 @@ export function RoadmapResultsPage() {
             ))}
           </div>
         </section>
+        )}
 
         {/* Kano 2D quadrant */}
         {kano.length > 0 && (
@@ -492,6 +507,8 @@ export function RoadmapResultsPage() {
         )}
 
         {/* Combined recommendation table */}
+        {/* Pass 48 Phase 2 — gate empty-shell: hide table when no recommendations. */}
+        {recommendations.length > 0 && (
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
           <header>
             <h3 className="text-sm font-semibold text-[var(--t1)]">Build Recommendation</h3>
@@ -542,6 +559,7 @@ export function RoadmapResultsPage() {
             </table>
           </div>
         </section>
+        )}
 
         {/* Industry benchmarks */}
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-2">
@@ -569,6 +587,9 @@ export function RoadmapResultsPage() {
           MaxDiff + Kano on synthetic respondents. Use as directional signal for roadmap prioritization; for high-risk launches, validate with real-customer interviews.
         </p>
       </div>
+
+      {/* Pass 48 Phase 2 — "The full survey" appendix (every Q with its correct widget). */}
+      {report && <FullSurveySection survey={report.survey} />}
 
       <ResultsActionBar
         variant="footer"

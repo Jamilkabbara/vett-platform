@@ -23,6 +23,10 @@ import { ResultsActionBar } from '../components/results/ResultsActionBar';
 // Pass 46 Phase 4 — research-grade lift report centerpiece (headline + funnel),
 // reading the deterministic brand_lift block from mission.analysis.
 import { BrandLiftCenterpiece } from '../components/results/centerpieces/BrandLiftCenterpiece';
+// Pass 48 Phase 2 — canonical report (one source of truth for web + chat + exports).
+import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
+import { ReportHeader } from '../components/results/report/ReportHeader';
+import { FullSurveySection } from '../components/results/report/FullSurveySection';
 import {
   BrandLiftScoreDial,
   FunnelVisualization,
@@ -190,6 +194,8 @@ export function BrandLiftResultsPage() {
   // so the filter row badge reflects what the backend actually computed.
   const [filterResult, setFilterResult] = useState<FilterAPIResult | null>(null);
   const [filterLoading, setFilterLoading] = useState(false);
+  // Pass 48 Phase 2 — canonical report (header + full-survey appendix).
+  const { report } = useCanonicalReport(missionId);
   const filtersActive = filters.markets.length > 0 || filters.channels.length > 0
     || filters.channelCategories.length > 0 || filters.genders !== null
     || filters.ageGroups.length > 0 || filters.exposureMode !== 'all'
@@ -341,6 +347,8 @@ export function BrandLiftResultsPage() {
           completedAt={mission?.completed_at}
           qualified={mission?.qualified_respondent_count}
         />
+        {/* Pass 48 Phase 2 — canonical report header (brief + sample summary). */}
+        {report && <ReportHeader report={report} />}
         <header className="px-6 pt-6 pb-2 flex items-center justify-between">
           <Logo />
           <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -357,6 +365,9 @@ export function BrandLiftResultsPage() {
               <p className="font-body text-[13px] text-[var(--t2)] whitespace-pre-line leading-relaxed">{execSummary}</p>
             </section>
           )}
+
+          {/* Pass 48 Phase 2 — "The full survey" appendix (every Q with its correct widget). */}
+          {report && <FullSurveySection survey={report.survey} />}
 
           {/* Supporting detail — universal distribution / sentiment charts. */}
           <h2 className="font-display font-bold text-[var(--t1)] text-[15px] mt-8">Supporting Detail</h2>
