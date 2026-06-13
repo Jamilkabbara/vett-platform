@@ -41,24 +41,11 @@ import {
    Data — the prototype's content, extracted so the JSX stays readable
 ════════════════════════════════════════════════════════════════════ */
 
-const TICKER_ITEMS = [
-  'JUST VETTED IN DUBAI: Meal Kit Subscription',
-  'JUST VETTED IN RIYADH: FinTech Super App',
-  'JUST VETTED IN LONDON: AI Recruitment Tool',
-  'JUST VETTED IN LAGOS: Mobile Payment Platform',
-  'JUST VETTED IN SINGAPORE: B2B SaaS Dashboard',
-  'JUST VETTED IN PARIS: Sustainable Fashion Brand',
-  'JUST VETTED IN TORONTO: EdTech Platform',
-  'JUST VETTED IN NAIROBI: AgriTech Marketplace',
-  'JUST VETTED IN BERLIN: AI Legal Assistant',
-  'JUST VETTED IN MUMBAI: D2C Wellness Brand',
-  'JUST VETTED IN CAIRO: E-Commerce Marketplace',
-  'JUST VETTED IN SÃO PAULO: Crypto Exchange',
-  'JUST VETTED IN AMSTERDAM: Green Energy App',
-  'JUST VETTED IN SEOUL: Beauty Subscription Box',
-  'JUST VETTED IN AUSTIN: Vegan Energy Drink',
-  'JUST VETTED IN ISTANBUL: Ride-Hailing App',
-];
+// Pass 46 follow-up — the hardcoded "just vetted" ticker strings were
+// removed. The ticker is now fed by real completed missions via
+// GET /api/missions/recent-vetted (see LandingPage's tickerItems state)
+// and hidden entirely until ≥5 real items exist. Fabricated social
+// proof must never ship on a research-credibility product.
 
 const COMPANY_LOGOS = ['Google', 'Uber', 'Stripe', 'Airbnb', 'Noon', 'Careem'];
 
@@ -238,6 +225,32 @@ export function LandingPage() {
   // Track landing page view (once per mount). Pass 22 Bug 22.4 — capture
   // referrer + UTM + viewport so the admin micro-funnel can segment by source.
   useEffect(() => { trackFunnel('landing_view', landingMetadata()); }, []);
+
+  // Pass 46 follow-up — the "just vetted" ticker is now fed by REAL
+  // completed missions, anonymized to location + category by the public
+  // GET /api/missions/recent-vetted endpoint (never briefs/titles). The
+  // ticker is hidden entirely until ≥5 real items exist; we never render
+  // fabricated social proof.
+  const [tickerItems, setTickerItems] = useState<string[]>([]);
+  useEffect(() => {
+    const API_URL =
+      import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/missions/recent-vetted`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const items: Array<{ location: string; category: string }> = data?.items || [];
+        if (!cancelled && items.length >= 5) {
+          setTickerItems(items.map((i) => `JUST VETTED IN ${i.location.toUpperCase()}: ${i.category}`));
+        }
+      } catch {
+        // Network/endpoint failure → leave empty → ticker stays hidden.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Keep the input in sync if the URL changes (e.g. back/forward navigation)
   useEffect(() => {
@@ -557,7 +570,9 @@ export function LandingPage() {
       </section>
 
       {/* ── Live ticker ─────────────────────────────────────── */}
-      <Ticker items={TICKER_ITEMS} />
+      {/* Pass 46 follow-up — real completed missions only; hidden until
+          ≥5 exist (tickerItems is only set past that threshold). */}
+      {tickerItems.length >= 5 && <Ticker items={tickerItems} />}
 
       {/* ── Logos strip ─────────────────────────────────────── */}
       <section className="bg-bg border-b border-b1 px-6 py-6">
