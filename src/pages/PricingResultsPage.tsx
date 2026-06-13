@@ -11,6 +11,10 @@ import { PricingCharts } from '../components/results/charts/PricingCharts';
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
 // Pass 46 Phase 4 — research-grade report centerpiece (headline + VW/GG charts).
 import { PricingCenterpiece } from '../components/results/centerpieces/PricingCenterpiece';
+// Pass 48 — canonical report: brief header + full survey appendix.
+import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
+import { ReportHeader } from '../components/results/report/ReportHeader';
+import { FullSurveySection } from '../components/results/report/FullSurveySection';
 
 /**
  * Pass 29 B5 — Pricing Research results page.
@@ -235,6 +239,8 @@ export function PricingResultsPage() {
   const [agg, setAgg] = useState<Record<string, AggregatedAnswer>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Pass 48 — canonical report: brief header + full survey appendix.
+  const { report } = useCanonicalReport(missionId);
 
   useEffect(() => {
     if (!missionId) return;
@@ -334,6 +340,8 @@ export function PricingResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 — canonical report brief header (brief + sample summary). */}
+      {report && <ReportHeader report={report} />}
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -463,6 +471,9 @@ export function PricingResultsPage() {
             </li>
           </ul>
         </section>
+
+        {/* Pass 48 — canonical report: full survey appendix (every question, correct widget). */}
+        {report && <FullSurveySection survey={report.survey} />}
 
         <p className="text-[11px] text-[var(--t3)] text-center pt-6 max-w-2xl mx-auto">
           Curves derived from synthetic respondents calibrated to the audience spec. Use as directional pricing signal; for high-stakes launches, validate against real-customer panels.

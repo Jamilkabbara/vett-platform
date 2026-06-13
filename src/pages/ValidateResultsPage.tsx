@@ -9,6 +9,10 @@ import { UniversalCharts } from '../components/results/UniversalCharts';
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
 // Pass 46 Phase 4 — research-grade concept-test headline + hero centerpiece.
 import { ValidateCenterpiece } from '../components/results/centerpieces/ValidateCenterpiece';
+// Pass 48 — canonical report: brief header + full survey appendix.
+import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
+import { ReportHeader } from '../components/results/report/ReportHeader';
+import { FullSurveySection } from '../components/results/report/FullSurveySection';
 
 /**
  * Pass 30 B2 — Validate Product results page (concept test).
@@ -113,6 +117,8 @@ export function ValidateResultsPage() {
   const [agg, setAgg] = useState<Record<string, AggregatedAnswer>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Pass 48 — canonical report: brief header + full survey appendix.
+  const { report } = useCanonicalReport(missionId);
 
   useEffect(() => {
     if (!missionId) return;
@@ -246,6 +252,8 @@ export function ValidateResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 — canonical report brief header (brief + sample summary). */}
+      {report && <ReportHeader report={report} />}
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -374,11 +382,24 @@ export function ValidateResultsPage() {
         </section>
 
         {/* Verbatim themes */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <ThemeCard title="Word association" verbatims={themes.wordAssoc} />
-          <ThemeCard title="Top concerns" verbatims={themes.concerns} />
-          <ThemeCard title="Who it's for" verbatims={themes.audience} />
-        </div>
+        {/* Pass 48 — empty-shell fix: render the theme grid only when at least
+            one card has verbatims, and only the cards that do, so no bare
+            "No responses yet." placeholder header renders. */}
+        {(() => {
+          const themeCards = [
+            { title: 'Word association', verbatims: themes.wordAssoc },
+            { title: 'Top concerns', verbatims: themes.concerns },
+            { title: "Who it's for", verbatims: themes.audience },
+          ].filter((c) => c.verbatims.length > 0);
+          if (themeCards.length === 0) return null;
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {themeCards.map((c) => (
+                <ThemeCard key={c.title} title={c.title} verbatims={c.verbatims} />
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Price fairness */}
         {mission?.concept_price_usd != null && Object.keys(scores.priceDist).length > 0 && (
@@ -431,6 +452,9 @@ export function ValidateResultsPage() {
             </li>
           </ul>
         </section>
+
+        {/* Pass 48 — canonical report: full survey appendix (every question, correct widget). */}
+        {report && <FullSurveySection survey={report.survey} />}
 
         <p className="text-[11px] text-[var(--t3)] text-center pt-6 max-w-2xl mx-auto">
           Concept test on synthetic respondents calibrated to the audience spec. Use as directional pre-launch signal; for high-stakes decisions, validate with real-customer panels.

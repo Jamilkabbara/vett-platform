@@ -9,6 +9,10 @@ import { UniversalCharts } from '../components/results/UniversalCharts';
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
 // Pass 46 Phase 4 — research-grade NPS/CSAT/CES headline + hero centerpiece.
 import { SatisfactionCenterpiece } from '../components/results/centerpieces/SatisfactionCenterpiece';
+// Pass 48 — canonical report: brief header + full survey appendix.
+import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
+import { ReportHeader } from '../components/results/report/ReportHeader';
+import { FullSurveySection } from '../components/results/report/FullSurveySection';
 
 /**
  * Pass 29 B9 — Customer Satisfaction results page.
@@ -139,6 +143,8 @@ export function CSATResultsPage() {
   const [agg, setAgg] = useState<Record<string, AggregatedAnswer>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Pass 48 — canonical report: brief header + full survey appendix.
+  const { report } = useCanonicalReport(missionId);
 
   useEffect(() => {
     if (!missionId) return;
@@ -241,6 +247,8 @@ export function CSATResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 — canonical report brief header (brief + sample summary). */}
+      {report && <ReportHeader report={report} />}
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -392,6 +400,8 @@ export function CSATResultsPage() {
         </div>
 
         {/* Driver verbatims */}
+        {/* Pass 48 — empty-shell fix: render only drivers that have ≥1 verbatim,
+            so a "Driver Verbatims" column never renders a bare label + "No responses". */}
         {drivers.some((d) => d.verbatims.length > 0) && (
           <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
             <header>
@@ -401,7 +411,7 @@ export function CSATResultsPage() {
               </p>
             </header>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {drivers.map((d) => (
+              {drivers.filter((d) => d.verbatims.length > 0).map((d) => (
                 <div key={d.id} className="space-y-2">
                   <h4 className="text-[11px] uppercase tracking-widest text-[var(--t3)] font-display font-bold">
                     {d.label}
@@ -412,15 +422,15 @@ export function CSATResultsPage() {
                         &ldquo;{v}&rdquo;
                       </li>
                     ))}
-                    {d.verbatims.length === 0 && (
-                      <li className="text-[11px] text-[var(--t4)] italic">No responses yet.</li>
-                    )}
                   </ul>
                 </div>
               ))}
             </div>
           </section>
         )}
+
+        {/* Pass 48 — canonical report: full survey appendix (every question, correct widget). */}
+        {report && <FullSurveySection survey={report.survey} />}
 
         <p className="text-[11px] text-[var(--t3)] text-center pt-6 max-w-2xl mx-auto">
           NPS / CSAT / CES on synthetic respondents calibrated to the audience spec. Industry bands shown for orientation; combine with real-customer panel readings for absolute claims.

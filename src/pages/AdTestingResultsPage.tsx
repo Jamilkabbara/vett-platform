@@ -15,6 +15,10 @@ import { ResultsActionBar } from '../components/results/ResultsActionBar';
 // Pass 46 Phase 4 — research-grade ad-effectiveness centerpiece (headline +
 // funnel), reading the deterministic marketing block from mission.analysis.
 import { MarketingCenterpiece } from '../components/results/centerpieces/MarketingCenterpiece';
+// Pass 48 Phase 2 — canonical report (one source of truth for web + chat + exports).
+import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
+import { ReportHeader } from '../components/results/report/ReportHeader';
+import { FullSurveySection } from '../components/results/report/FullSurveySection';
 
 /**
  * Pass 31 A1 (closes Pass 30 B6 deferral) — Test Marketing/Ads
@@ -211,6 +215,9 @@ export function AdTestingResultsPage() {
     })();
   }, [missionId]);
 
+  // Pass 48 Phase 2 — canonical report (header + full-survey appendix).
+  const { report } = useCanonicalReport(missionId);
+
   const stages = useMemo(() => {
     if (!mission) return null;
     const find = (stage: string) => mission.questions.find((q) => q.funnel_stage === stage);
@@ -337,6 +344,8 @@ export function AdTestingResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 Phase 2 — canonical report header (brief + sample summary). */}
+      {report && <ReportHeader report={report} />}
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -571,6 +580,9 @@ export function AdTestingResultsPage() {
           Ad effectiveness on synthetic respondents calibrated to the audience spec. For high-spend launches, validate against real-customer panels.
         </p>
       </div>
+
+      {/* Pass 48 Phase 2 — "The full survey" appendix (every Q with its correct widget). */}
+      {report && <FullSurveySection survey={report.survey} />}
 
       <ResultsActionBar
         variant="footer"

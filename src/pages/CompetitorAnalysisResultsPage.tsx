@@ -9,6 +9,10 @@ import { UniversalCharts } from '../components/results/UniversalCharts';
 import { ResultsActionBar } from '../components/results/ResultsActionBar';
 // Pass 46 Phase 4 — research-grade report centerpiece (headline + hero visual).
 import { CompetitorCenterpiece } from '../components/results/centerpieces/CompetitorCenterpiece';
+// Pass 48 Phase 2 — canonical report: brief/sample header + full-survey appendix.
+import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
+import { ReportHeader } from '../components/results/report/ReportHeader';
+import { FullSurveySection } from '../components/results/report/FullSurveySection';
 
 /**
  * Pass 31 B2 — Competitor Analysis results page (Brand Health
@@ -126,6 +130,8 @@ export function CompetitorAnalysisResultsPage() {
   const [agg, setAgg] = useState<Record<string, AggregatedAnswer>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Pass 48 Phase 2 — canonical report (brief header + full-survey appendix).
+  const { report } = useCanonicalReport(missionId);
 
   useEffect(() => {
     if (!missionId) return;
@@ -268,6 +274,8 @@ export function CompetitorAnalysisResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 Phase 2 — canonical brief + sample header. */}
+      {report && <ReportHeader report={report} />}
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <Logo />
         <span className="text-[11px] uppercase tracking-widest text-[var(--t3)]">
@@ -400,6 +408,9 @@ export function CompetitorAnalysisResultsPage() {
           Brand Health Tracker on synthetic respondents. Per-brand cells stabilize at n≥200; for confident competitor comparisons consider 400+.
         </p>
       </div>
+
+      {/* Pass 48 Phase 2 — complete per-question appendix (canonical renderers). */}
+      {report && <FullSurveySection survey={report.survey} />}
 
       <ResultsActionBar
         variant="footer"
