@@ -14,7 +14,7 @@ import { RoadmapCenterpiece } from '../components/results/centerpieces/RoadmapCe
 // Pass 48 Phase 2 — canonical report (one source of truth for web + chat + exports).
 import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
 import { ReportHeader } from '../components/results/report/ReportHeader';
-import { FullSurveySection } from '../components/results/report/FullSurveySection';
+import { FilterableSurvey } from '../components/results/report/FilterableSurvey';
 // Pass 48 — grounded results copilot
 import { ChatWidget } from '../components/chat/ChatWidget';
 import { resultsChatSuggestions } from '../components/chat/resultsChatSuggestions';
@@ -592,7 +592,7 @@ export function RoadmapResultsPage() {
       </div>
 
       {/* Pass 48 Phase 2 — "The full survey" appendix (every Q with its correct widget). */}
-      {report && <FullSurveySection survey={report.survey} />}
+      {report && <FilterableSurvey missionId={missionId} report={report} />}
 
       <ResultsActionBar
         variant="footer"

@@ -37,6 +37,16 @@ export interface CanonicalReport {
   survey: CanonicalSurveyQuestion[];
   data_quality_notes: Array<{ question_number: number; question_id: string; note: string }>;
   methodology_disclaimer: string;
+  // Pass 49 Phase 4 — response/segment filter (set by GET /report).
+  segments?: SegmentOption[];
+  active_segment?: { key: string; label: string; n: number } | null;
+}
+
+export interface SegmentOption {
+  key: string;
+  label: string;
+  group: string;
+  n: number;
 }
 
 export function useCanonicalReport(missionId: string | undefined) {

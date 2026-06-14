@@ -41,7 +41,7 @@ import { ResultsActionBar, methodologyLabel } from '../components/results/Result
 // Pass 48 — canonical report: brief header + full survey appendix.
 import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
 import { ReportHeader } from '../components/results/report/ReportHeader';
-import { FullSurveySection } from '../components/results/report/FullSurveySection';
+import { FilterableSurvey } from '../components/results/report/FilterableSurvey';
 // Pass 48 — grounded results copilot (also covers the brand_lift / marketing
 // fallback paths that delegate here).
 import { ChatWidget } from '../components/chat/ChatWidget';
@@ -652,7 +652,7 @@ export function ResearchResultsPage({ barAlreadyMounted = false }: ResearchResul
         />
         {/* Pass 48 — canonical report: full survey appendix (every question,
             correct widget) sits immediately before the Supporting Detail block. */}
-        {report && <FullSurveySection survey={report.survey} />}
+        {report && <FilterableSurvey missionId={missionId} report={report} />}
         {/* Phase 4 slot: methodology headline + centerpiece render here */}
         {/* Pass 46 Phase 1 — generic charts demoted below the (Phase 4)
             headline + centerpiece slot per the report spec two-layer
