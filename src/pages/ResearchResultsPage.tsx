@@ -694,13 +694,11 @@ export function ResearchResultsPage({ barAlreadyMounted = false }: ResearchResul
             return tens ? <TensionsFlagged items={tens} /> : null;
           })()}
         </InsightErrorBoundary>
-        <InsightErrorBoundary label="Per-Question Insights">
-          {Array.isArray(insights.per_question_insights) && insights.per_question_insights.length > 0 && (
-            <PerQuestionInsights items={insights.per_question_insights} />
-          )}
-        </InsightErrorBoundary>
-        {/* Pass 42 C4 — Response distribution charts between
-            Per-Question Insights (narrative) and Recommendations. */}
+        {/* Pass 49 — per-question "what this means" now renders once, in the
+            canonical FilterableSurvey below (survey[].insight). The legacy
+            PerQuestionInsights section read the old insights shape and
+            duplicated that content, so it was removed. */}
+        {/* Pass 42 C4 — Response distribution charts before Recommendations. */}
         <InsightErrorBoundary label="Response Distributions">
           <QuestionDistributions missionId={missionId} />
         </InsightErrorBoundary>
