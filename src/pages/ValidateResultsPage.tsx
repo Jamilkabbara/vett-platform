@@ -302,7 +302,7 @@ export function ValidateResultsPage() {
           <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-3">
             <h3 className="text-sm font-semibold text-[var(--t1)]">Concept Tested</h3>
             {mission.concept_media_url && mission.concept_media_type === 'image' && (
-              <img src={mission.concept_media_url} alt="" className="max-h-64 rounded-xl mx-auto" />
+              <img src={mission.concept_media_url} alt="Concept tested in this validation study" className="max-h-64 rounded-xl mx-auto" />
             )}
             {mission.concept_media_url && mission.concept_media_type === 'video' && (
               <video src={mission.concept_media_url} controls className="max-h-64 rounded-xl w-full" />

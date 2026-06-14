@@ -387,7 +387,7 @@ export function AdTestingResultsPage() {
             {mission.creative_media_type === 'video' ? (
               <video src={mission.creative_media_url} controls className="max-h-64 mx-auto rounded-xl" />
             ) : (
-              <img src={mission.creative_media_url} alt="" className="max-h-64 mx-auto rounded-xl" />
+              <img src={mission.creative_media_url} alt="Creative tested in this ad study" className="max-h-64 mx-auto rounded-xl" />
             )}
           </section>
         )}
