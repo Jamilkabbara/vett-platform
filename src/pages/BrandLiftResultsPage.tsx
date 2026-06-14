@@ -27,6 +27,9 @@ import { BrandLiftCenterpiece } from '../components/results/centerpieces/BrandLi
 import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
 import { ReportHeader } from '../components/results/report/ReportHeader';
 import { FullSurveySection } from '../components/results/report/FullSurveySection';
+// Pass 48 — grounded results copilot
+import { ChatWidget } from '../components/chat/ChatWidget';
+import { resultsChatSuggestions } from '../components/chat/resultsChatSuggestions';
 import {
   BrandLiftScoreDial,
   FunnelVisualization,
@@ -381,6 +384,8 @@ export function BrandLiftResultsPage() {
           completedAt={mission?.completed_at}
           qualified={mission?.qualified_respondent_count}
         />
+        {/* Pass 48 — grounded results copilot */}
+        <ChatWidget scope="results" missionId={missionId} suggestions={resultsChatSuggestions('brand_lift')} />
       </div>
     );
   }
@@ -603,6 +608,8 @@ export function BrandLiftResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 — grounded results copilot */}
+      <ChatWidget scope="results" missionId={missionId} suggestions={resultsChatSuggestions('brand_lift')} />
     </div>
   );
 }

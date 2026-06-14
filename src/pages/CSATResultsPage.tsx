@@ -13,6 +13,9 @@ import { SatisfactionCenterpiece } from '../components/results/centerpieces/Sati
 import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
 import { ReportHeader } from '../components/results/report/ReportHeader';
 import { FullSurveySection } from '../components/results/report/FullSurveySection';
+// Pass 48 — grounded results copilot
+import { ChatWidget } from '../components/chat/ChatWidget';
+import { resultsChatSuggestions } from '../components/chat/resultsChatSuggestions';
 
 /**
  * Pass 29 B9 — Customer Satisfaction results page.
@@ -446,6 +449,8 @@ export function CSATResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 — grounded results copilot */}
+      <ChatWidget scope="results" missionId={missionId} suggestions={resultsChatSuggestions('satisfaction')} />
     </div>
   );
 }

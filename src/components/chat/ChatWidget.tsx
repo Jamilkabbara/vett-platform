@@ -43,6 +43,9 @@ interface ChatWidgetProps {
   onClose?: () => void;
   /** Override the eyebrow title. Defaults depend on scope. */
   title?: string;
+  /** Pass 48 — starter prompts shown as clickable chips on the empty state
+   *  (methodology-tailored for the results copilot). */
+  suggestions?: string[];
 }
 
 /**
@@ -97,6 +100,7 @@ export const ChatWidget = ({
   isOpen: controlledOpen,
   onClose,
   title,
+  suggestions,
 }: ChatWidgetProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = anchor === 'inline' ? !!controlledOpen : internalOpen;
@@ -148,8 +152,8 @@ export const ChatWidget = ({
   }, [messages, streamingDraft, isStreaming]);
 
   // ─ Send via SSE, with fallback to non-streaming ──────────
-  async function sendMessage() {
-    const trimmed = input.trim();
+  async function sendMessage(textOverride?: string) {
+    const trimmed = (typeof textOverride === 'string' ? textOverride : input).trim();
     if (!trimmed || isStreaming) return;
     if (quota.remaining <= 0) { setShowOverage(true); return; }
 
@@ -385,6 +389,23 @@ export const ChatWidget = ({
             <p className="text-white/30 text-[11px] leading-relaxed mt-3">
               {meta.resetSentence}
             </p>
+            {/* Pass 48 — methodology-tailored starter prompts so a non-
+                researcher knows what to ask. Each is grounded in this
+                report (the copilot reads the same CanonicalReport). */}
+            {Array.isArray(suggestions) && suggestions.length > 0 && (
+              <div className="mt-4 flex flex-col gap-1.5">
+                {suggestions.slice(0, 4).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => sendMessage(s)}
+                    className="text-left text-[12px] text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 transition-colors"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

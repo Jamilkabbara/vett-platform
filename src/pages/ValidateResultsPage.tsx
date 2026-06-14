@@ -13,6 +13,9 @@ import { ValidateCenterpiece } from '../components/results/centerpieces/Validate
 import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
 import { ReportHeader } from '../components/results/report/ReportHeader';
 import { FullSurveySection } from '../components/results/report/FullSurveySection';
+// Pass 48 — grounded results copilot
+import { ChatWidget } from '../components/chat/ChatWidget';
+import { resultsChatSuggestions } from '../components/chat/resultsChatSuggestions';
 
 /**
  * Pass 30 B2 — Validate Product results page (concept test).
@@ -470,6 +473,8 @@ export function ValidateResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 — grounded results copilot */}
+      <ChatWidget scope="results" missionId={missionId} suggestions={resultsChatSuggestions('validate')} />
     </div>
   );
 }
