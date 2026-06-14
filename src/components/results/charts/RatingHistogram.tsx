@@ -20,11 +20,15 @@ interface Props {
 export function RatingHistogram({ data }: Props) {
   if (!data || !data.buckets || typeof data.buckets !== 'object') return null;
 
-  const scaleMax = data.scale_max ?? 5;
-  // Build ordered rows 1..scaleMax (even for buckets with 0 counts so
-  // the X axis is uniform).
+  // Pass 49 — render the question's TRUE scale range. The backend chart_data
+  // now emits scale_min + scale_max from the canonical detectScale (0-10 NPS,
+  // 1-7 CES, 1-5), so build a bucket for EVERY point in [min, max] — including
+  // zero-count buckets — so the axis is full and the distribution shape shows.
+  // Was: started at 1 and capped at scale_max ?? 5, truncating 1-7 / 0-10.
+  const scaleMin = data.scale_min ?? 1;
+  const scaleMax = data.scale_max ?? Math.max(scaleMin + 1, 5);
   const rows: Array<{ name: string; value: number }> = [];
-  for (let r = 1; r <= scaleMax; r += 1) {
+  for (let r = scaleMin; r <= scaleMax; r += 1) {
     rows.push({ name: String(r), value: data.buckets[String(r)] || 0 });
   }
   if (rows.every((r) => r.value === 0)) return null;
