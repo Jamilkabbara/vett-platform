@@ -155,7 +155,11 @@ export const ChatWidget = ({
   async function sendMessage(textOverride?: string) {
     const trimmed = (typeof textOverride === 'string' ? textOverride : input).trim();
     if (!trimmed || isStreaming) return;
-    if (quota.remaining <= 0) { setShowOverage(true); return; }
+    // Pass 49 — out of quota: just stop. The composer already renders the
+    // "Get more" overage CTA when quota.remaining === 0; the old
+    // setShowOverage() modal state was removed, so calling it here threw a
+    // ReferenceError that crashed every send / suggestion-tap on results pages.
+    if (quota.remaining <= 0) return;
 
     setInput('');
     setError(null);
