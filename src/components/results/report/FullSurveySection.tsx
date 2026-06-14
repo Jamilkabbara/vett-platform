@@ -150,6 +150,12 @@ export function FullSurveySection({ survey }: { survey: CanonicalSurveyQuestion[
               </span>
             </div>
             <QuestionBody q={q} />
+            {q.insight && (
+              <div className="mt-3 rounded-lg bg-bg3/60 border-l-2 border-lime pl-3 pr-3 py-2">
+                <div className="font-display font-bold text-lime text-[9px] uppercase tracking-wider mb-0.5">What this means</div>
+                <p className="font-body text-[12px] text-t2 leading-snug">{q.insight}</p>
+              </div>
+            )}
           </div>
         ))}
       </div>
