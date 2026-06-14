@@ -41,6 +41,7 @@ import { api } from '../lib/apiClient';
 import { logPaymentError } from '../lib/paymentErrorLogger';
 import { CREATIVE_ATTENTION_TIERS } from '../utils/pricingEngine';
 import { CreativeAttentionTierSlider } from '../components/creative-attention/CreativeAttentionTierSlider';
+import { getGoalById } from '../data/missionGoals';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -258,6 +259,29 @@ export function CreativeAttentionPage() {
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  // Pass 49 Phase 5 — creative_attention is disabled: the pipeline persists
+  // zero responses, so it produces no report. Block the creation flow even via
+  // deep-link to /creative-attention/new. Pass 50 (P0) fixes the pipeline.
+  if (getGoalById('creative_attention')?.comingSoon) {
+    return (
+      <div className="min-h-screen bg-bg1 flex flex-col items-center justify-center px-6 text-center">
+        <Logo className="mb-6" />
+        <div className="text-4xl mb-3">🎬</div>
+        <h1 className="font-display font-black text-t1 text-2xl mb-2">Creative Attention is coming soon</h1>
+        <p className="font-body text-t3 max-w-md mb-7 leading-relaxed">
+          We're upgrading this methodology — it's temporarily unavailable. Explore our
+          live research types in the meantime; they're ready to run now.
+        </p>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => navigate('/setup')}>Start a study</Button>
+          <Link to="/methodologies" className="font-body text-sm text-t3 hover:text-t1 underline underline-offset-4">
+            See all methodologies
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)] flex flex-col">
