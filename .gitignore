@@ -27,3 +27,8 @@ dist-ssr
 # at every build. Each commit's SHA is captured at build time, so storing
 # the file in git would churn it on every commit.
 public/version.json
+
+# Claude Code worktrees + dev artifacts (never commit / never web-serve)
+.claude/worktrees/
+public/generate_logos.py
+public/README.txt
