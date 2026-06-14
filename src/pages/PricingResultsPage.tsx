@@ -15,6 +15,9 @@ import { PricingCenterpiece } from '../components/results/centerpieces/PricingCe
 import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
 import { ReportHeader } from '../components/results/report/ReportHeader';
 import { FullSurveySection } from '../components/results/report/FullSurveySection';
+// Pass 48 — grounded results copilot
+import { ChatWidget } from '../components/chat/ChatWidget';
+import { resultsChatSuggestions } from '../components/chat/resultsChatSuggestions';
 
 /**
  * Pass 29 B5 — Pricing Research results page.
@@ -489,6 +492,8 @@ export function PricingResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 — grounded results copilot */}
+      <ChatWidget scope="results" missionId={missionId} suggestions={resultsChatSuggestions('pricing')} />
     </div>
   );
 }

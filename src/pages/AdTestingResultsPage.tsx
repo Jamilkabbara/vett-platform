@@ -19,6 +19,9 @@ import { MarketingCenterpiece } from '../components/results/centerpieces/Marketi
 import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
 import { ReportHeader } from '../components/results/report/ReportHeader';
 import { FullSurveySection } from '../components/results/report/FullSurveySection';
+// Pass 48 — grounded results copilot
+import { ChatWidget } from '../components/chat/ChatWidget';
+import { resultsChatSuggestions } from '../components/chat/resultsChatSuggestions';
 
 /**
  * Pass 31 A1 (closes Pass 30 B6 deferral) — Test Marketing/Ads
@@ -592,6 +595,8 @@ export function AdTestingResultsPage() {
         completedAt={mission?.completed_at}
         qualified={mission?.qualified_respondent_count}
       />
+      {/* Pass 48 — grounded results copilot */}
+      <ChatWidget scope="results" missionId={missionId} suggestions={resultsChatSuggestions('marketing')} />
     </div>
   );
 }

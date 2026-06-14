@@ -42,6 +42,10 @@ import { ResultsActionBar, methodologyLabel } from '../components/results/Result
 import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
 import { ReportHeader } from '../components/results/report/ReportHeader';
 import { FullSurveySection } from '../components/results/report/FullSurveySection';
+// Pass 48 — grounded results copilot (also covers the brand_lift / marketing
+// fallback paths that delegate here).
+import { ChatWidget } from '../components/chat/ChatWidget';
+import { resultsChatSuggestions } from '../components/chat/resultsChatSuggestions';
 
 interface MissionRow {
   id: string;
@@ -734,6 +738,8 @@ export function ResearchResultsPage({ barAlreadyMounted = false }: ResearchResul
           completedAt={mission.completed_at}
           qualified={mission.qualified_respondent_count}
         />
+        {/* Pass 48 — grounded results copilot */}
+        <ChatWidget scope="results" missionId={missionId} suggestions={resultsChatSuggestions(mission.goal_type)} />
       </div>
     </OverlayPage>
   );
