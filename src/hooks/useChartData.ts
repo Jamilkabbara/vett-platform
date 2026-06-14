@@ -33,6 +33,7 @@ export interface QuestionDistribution {
   options?: string[];
   counts?: number[];
   percentages?: number[];
+  scale_min?: number;
   scale_max?: number;
   buckets?: Record<string, number>;
   mean?: number;
