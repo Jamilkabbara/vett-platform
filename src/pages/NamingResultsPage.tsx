@@ -14,7 +14,7 @@ import { NamingCenterpiece } from '../components/results/centerpieces/NamingCent
 // Pass 48 Phase 2 — canonical report: brief/sample header + full-survey appendix.
 import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
 import { ReportHeader } from '../components/results/report/ReportHeader';
-import { FullSurveySection } from '../components/results/report/FullSurveySection';
+import { FilterableSurvey } from '../components/results/report/FilterableSurvey';
 // Pass 48 — grounded results copilot
 import { ChatWidget } from '../components/chat/ChatWidget';
 import { resultsChatSuggestions } from '../components/chat/resultsChatSuggestions';
@@ -460,7 +460,7 @@ export function NamingResultsPage() {
       </div>
 
       {/* Pass 48 Phase 2 — complete per-question appendix (canonical renderers). */}
-      {report && <FullSurveySection survey={report.survey} />}
+      {report && <FilterableSurvey missionId={missionId} report={report} />}
 
       {/* Pass 46 Phase 1 — footer action bar twin. */}
       <ResultsActionBar

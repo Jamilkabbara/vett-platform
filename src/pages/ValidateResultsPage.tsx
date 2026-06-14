@@ -12,7 +12,7 @@ import { ValidateCenterpiece } from '../components/results/centerpieces/Validate
 // Pass 48 — canonical report: brief header + full survey appendix.
 import { useCanonicalReport } from '../components/results/report/useCanonicalReport';
 import { ReportHeader } from '../components/results/report/ReportHeader';
-import { FullSurveySection } from '../components/results/report/FullSurveySection';
+import { FilterableSurvey } from '../components/results/report/FilterableSurvey';
 // Pass 48 — grounded results copilot
 import { ChatWidget } from '../components/chat/ChatWidget';
 import { resultsChatSuggestions } from '../components/chat/resultsChatSuggestions';
@@ -457,7 +457,7 @@ export function ValidateResultsPage() {
         </section>
 
         {/* Pass 48 — canonical report: full survey appendix (every question, correct widget). */}
-        {report && <FullSurveySection survey={report.survey} />}
+        {report && <FilterableSurvey missionId={missionId} report={report} />}
 
         <p className="text-[11px] text-[var(--t3)] text-center pt-6 max-w-2xl mx-auto">
           Concept test on synthetic respondents calibrated to the audience spec. Use as directional pre-launch signal; for high-stakes decisions, validate with real-customer panels.
