@@ -15,6 +15,7 @@ export interface CanonicalSurveyQuestion {
   renderer_label: string;
   options: string[];
   isScreening: boolean;
+  insight?: string | null;
   data: Record<string, unknown>;
 }
 export interface CanonicalReport {
