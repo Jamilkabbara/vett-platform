@@ -21,7 +21,6 @@ import { useParams, Link } from 'react-router-dom';
 import {
   Loader2, AlertCircle, ArrowLeft, Users, Clock,
   Sparkles, TrendingUp, AlertTriangle, MessageCircleQuestion,
-  CheckCircle2,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { OverlayPage } from '../components/layout/OverlayPage';
@@ -633,16 +632,10 @@ export function ResearchResultsPage({ barAlreadyMounted = false }: ResearchResul
         <InsightErrorBoundary label="Response Distributions">
           <QuestionDistributions missionId={missionId} />
         </InsightErrorBoundary>
-        <InsightErrorBoundary label="Recommendations">
-          {Array.isArray(insights.recommendations) && insights.recommendations.length > 0 && (
-            <RecommendationList
-              title="Recommendations"
-              icon={<CheckCircle2 className="w-4 h-4 text-lime" aria-hidden />}
-              items={insights.recommendations}
-              accent="border-lime/30"
-            />
-          )}
-        </InsightErrorBoundary>
+        {/* B1 — Recommendations now render once, in the canonical FilterableSurvey
+            (report.recommendations), so web matches PDF/PPTX/XLSX. The legacy
+            per-page RecommendationList(insights.recommendations) was removed to
+            avoid duplicating the same list. */}
         <InsightErrorBoundary label="Suggested Follow-Ups">
           {Array.isArray(insights.follow_ups) && insights.follow_ups.length > 0 && (
             <RecommendationList

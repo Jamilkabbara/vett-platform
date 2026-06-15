@@ -50,8 +50,27 @@ export function FilterableSurvey({ missionId, report }: { missionId: string | un
   const groups: Record<string, SegmentOption[]> = {};
   for (const s of segments) (groups[s.group] ||= []).push(s);
 
+  const recommendations = Array.isArray(report.recommendations) ? report.recommendations : [];
+
   return (
     <>
+      {/* B1 — Recommendations (grounded action list), same canonical source as
+          the PDF/PPTX/XLSX. Rendered before the full-survey appendix. */}
+      {recommendations.length > 0 && (
+        <section className="px-6 pb-6 max-w-6xl mx-auto w-full">
+          <h2 className="font-display font-bold text-t1 text-[15px] mb-1">Recommendations</h2>
+          <p className="font-body text-[12px] text-t3 mb-4">What to do next, grounded in the findings above.</p>
+          <ol className="space-y-2.5">
+            {recommendations.map((r, i) => (
+              <li key={i} className="flex gap-3 rounded-xl border border-b2 bg-bg2/40 p-4">
+                <span className="shrink-0 font-display font-black text-lime text-[13px] mt-[1px]">{i + 1}</span>
+                <p className="font-body text-[13px] text-t2 leading-relaxed">{r}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       {segments.length > 0 && (
         <div className="px-6 max-w-6xl mx-auto w-full">
           <div className="flex items-center gap-3 flex-wrap rounded-xl border border-b2 bg-bg2/40 px-4 py-3">
