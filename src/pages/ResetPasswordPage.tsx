@@ -12,27 +12,28 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 
 /**
- * /reset-password — password-update form reached via email link.
+ * /reset-password — password-update form reached via the recovery email link.
  *
- * Flow (PKCE):
- *   1. ForgotPasswordPage calls resetPasswordForEmail with redirectTo=/reset-password.
- *   2. Supabase emails a link → supabase.co/auth/v1/verify?…&redirect_to=/reset-password
- *   3. Supabase verify endpoint redirects to /reset-password?code=XXX
- *   4. Supabase JS client (flowType:'pkce') auto-exchanges the code using the
- *      code_verifier stored in localStorage, fires onAuthStateChange with
- *      event=PASSWORD_RECOVERY.
- *   5. This page shows the form, user submits → supabase.auth.updateUser({ password }).
- *   6. Navigate to /signin on success.
+ * Two link formats are supported (the Supabase email template decides which):
  *
- * Gmail/Outlook pre-fetcher safety: link prefetchers hit the Supabase verify
- * URL (step 2) which redirects to the app URL (step 3). Prefetchers don't run
- * JS, so they never trigger the code exchange (step 4). The code survives
- * until the user's own browser loads the page.
+ *   • ?token_hash=…&type=recovery  — PRIMARY (prefetch-proof + cross-device).
+ *     We hold the token and only consume it (verifyOtp) on the user's submit
+ *     gesture: a link-scanner that prefetches the page can't run JS, so the
+ *     token survives until the real click, and token_hash needs no PKCE
+ *     code_verifier, so it works even when the email is opened on a different
+ *     device. (Requires the recovery template to use {{ .TokenHash }}.)
  *
- * Error cases handled:
- *   - No code in URL (direct navigation) → "invalid link" state
- *   - Supabase returns error hash (otp_expired, etc.) → error state
- *   - Code exchange times out → error state
+ *   • ?code=… (PKCE) or #access_token (implicit) — fallback for the default
+ *     template. We ACTIVELY establish the recovery session — read the
+ *     detectSessionInUrl auto-exchange, or call exchangeCodeForSession
+ *     ourselves — and surface the REAL error. The old code passively waited
+ *     for a PASSWORD_RECOVERY event with an 8s timeout, but a recovery
+ *     exchange fires SIGNED_IN/INITIAL_SESSION (not PASSWORD_RECOVERY), so it
+ *     timed out every time with "the reset link may have expired". (PKCE
+ *     ?code= only works same-device — it needs the code_verifier in storage —
+ *     which is why the token_hash template above is the real fix.)
+ *
+ * On submit → supabase.auth.updateUser({ password }) → navigate to /signin.
  */
 
 type PageState = 'waiting' | 'ready' | 'error' | 'submitting' | 'done';
@@ -86,7 +87,7 @@ export function ResetPasswordPage() {
       return;
     }
 
-    // No code and no hash params at all → direct navigation, not a valid link.
+    // No token_hash, no code, no implicit token → direct navigation, not a link.
     const code = new URLSearchParams(window.location.search).get('code');
     const hasFragment = window.location.hash.includes('access_token');
     if (!code && !hasFragment) {
@@ -95,27 +96,37 @@ export function ResetPasswordPage() {
       return;
     }
 
-    // Listen for the PASSWORD_RECOVERY event that fires once the Supabase
-    // client has exchanged the code for a session (happens automatically with
-    // detectSessionInUrl:true, which is the default).
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setPageState('ready');
+    // ?code= / #access_token path. ACTIVELY establish the recovery session and
+    // surface the real error — never a blind wait. getSession() awaits the
+    // client's detectSessionInUrl processing, so a successful auto-exchange is
+    // already reflected here (OAuth relies on that auto-exchange, so we must not
+    // disable it). If no session landed and we have a ?code=, exchange it
+    // ourselves to get the actual error instead of a silent 8s timeout.
+    let cancelled = false;
+    (async () => {
+      try {
+        let { data: { session } } = await supabase.auth.getSession();
+        if (!session && code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          session = data.session;
+        }
+        if (!session) {
+          throw new Error(
+            'We couldn’t verify this reset link — it may have expired or been opened on a different device. Request a new one.',
+          );
+        }
+        if (!cancelled) setPageState('ready');
+      } catch (err) {
+        if (cancelled) return;
+        setErrorMsg(prettifyAuthError(err, {
+          fallback: 'The reset link is invalid or has expired. Request a new one from the sign-in page.',
+        }));
+        setPageState('error');
       }
-    });
+    })();
 
-    // Safety timeout — if the exchange hasn't fired after 8s, surface an error.
-    const timeout = setTimeout(() => {
-      setErrorMsg(
-        'The reset link may have expired. Request a new one from the sign-in page.',
-      );
-      setPageState('error');
-    }, 8000);
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
