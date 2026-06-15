@@ -43,6 +43,10 @@ export default {
           DEFAULT: '#6366F1',
         },
 
+        // §3 design system — sentiment + low-n flag (mirrors backend exports/shared.js BRAND)
+        coral: '#F2787F', // negative sentiment
+        amber: '#E7B45A', // low-n / directional confidence flag
+
         // "VETT IT" purple gradient stops (btn-vi)
         'purple-from': '#6d28d9',
         'purple-to':   '#4f46e5',
