@@ -33,6 +33,7 @@ export interface CanonicalReport {
   headline: { metric: string; value: string; all: Array<{ label: string; value: string }> } | null;
   centerpiece: { methodology: string; data: Record<string, unknown> } | null;
   key_findings: Array<Record<string, unknown>>;
+  recommendations?: string[];
   exec_summary: string | null;
   survey: CanonicalSurveyQuestion[];
   data_quality_notes: Array<{ question_number: number; question_id: string; note: string }>;
