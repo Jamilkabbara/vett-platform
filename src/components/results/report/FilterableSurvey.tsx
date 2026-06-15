@@ -19,17 +19,21 @@ export function FilterableSurvey({ missionId, report }: { missionId: string | un
   const [segKey, setSegKey] = useState<string | null>(null);
   const [segReport, setSegReport] = useState<CanonicalReport | null>(null);
   const [loading, setLoading] = useState(false);
+  const [segError, setSegError] = useState(false);
 
   useEffect(() => {
-    if (!missionId || !segKey) { setSegReport(null); return; }
+    if (!missionId || !segKey) { setSegReport(null); setSegError(false); return; }
     let cancelled = false;
     setLoading(true);
+    setSegError(false);
     (async () => {
       try {
         const res = await api.get(`/api/results/${missionId}/report?segment=${encodeURIComponent(segKey)}`);
         if (!cancelled) setSegReport(res.report || null);
       } catch {
-        if (!cancelled) setSegReport(null);
+        // Surface the failure instead of silently snapping back to the full
+        // view (which would look like the filter did nothing).
+        if (!cancelled) { setSegReport(null); setSegError(true); }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -68,6 +72,12 @@ export function FilterableSurvey({ missionId, report }: { missionId: string | un
               ))}
             </select>
             {loading && <span className="font-body text-[11px] text-t3">updating…</span>}
+            {segError && !loading && (
+              <span className="font-body text-[11px] text-red-400">
+                Couldn't load that segment — showing all respondents.{' '}
+                <button type="button" onClick={() => setSegKey(null)} className="underline underline-offset-2">Dismiss</button>
+              </span>
+            )}
             {active && !loading && (
               <>
                 <span className="font-body text-[12px] text-t3">

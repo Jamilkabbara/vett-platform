@@ -73,15 +73,17 @@ function MultiDist({ data }: { data: Record<string, any> }) {
 
 function AttributeBattery({ data }: { data: Record<string, any> }) {
   if (data.shape === 'matrix' && Array.isArray(data.per_attribute)) {
+    // Pass 49 — fill bars over the battery's true scale (1-7/0-10), not /5.
+    const scaleMax = Number(data.scale_max) || 5;
     return (
       <div className="space-y-1">
         {data.per_attribute.map((a: any) => (
           <div key={a.attribute} className="flex items-center gap-2 text-[12px]">
             <span className="w-44 shrink-0 truncate text-t2" title={a.attribute}>{a.attribute}</span>
             <span className="flex-1 h-3 rounded bg-bg3 overflow-hidden">
-              <span className="block h-full bg-lime" style={{ width: `${Math.min(100, (a.average / 5) * 100)}%` }} />
+              <span className="block h-full bg-lime" style={{ width: `${Math.min(100, (a.average / scaleMax) * 100)}%` }} />
             </span>
-            <span className="w-20 text-right text-t3 tabular-nums">{a.average} (n={a.n})</span>
+            <span className="w-20 text-right text-t3 tabular-nums">{a.average} / {scaleMax} (n={a.n})</span>
           </div>
         ))}
       </div>

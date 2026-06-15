@@ -29,6 +29,7 @@ function MultiPill<T extends string = string>({ label, options, value, onChange,
     <div className="relative inline-flex items-center gap-1">
       <label className="text-[10px] uppercase tracking-wider text-[var(--t3)]">{label}</label>
       <select
+        aria-label={label}
         multiple={false}
         disabled={disabled}
         value=""
@@ -61,6 +62,7 @@ function SinglePill<T extends string = string>({ label, options, value, onChange
     <div className="relative inline-flex items-center gap-1">
       <label className="text-[10px] uppercase tracking-wider text-[var(--t3)]">{label}</label>
       <select
+        aria-label={label}
         disabled={disabled}
         value={value || ''}
         onChange={(e) => onChange((e.target.value || null) as T | null)}
@@ -100,6 +102,7 @@ export function IncrementalityFilterDropdown({ value, onChange, disabled }: Incr
     <div className="relative inline-flex items-center gap-1">
       <label className="text-[10px] uppercase tracking-wider text-[var(--t3)]">Incrementality</label>
       <select
+        aria-label="Incrementality"
         disabled={disabled}
         value={value}
         onChange={(e) => onChange(e.target.value as ExposureMode)}

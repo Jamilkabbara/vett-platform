@@ -150,24 +150,6 @@ function InsightEmptyState({ message }: { message: string }) {
   );
 }
 
-function significanceBadge(sig: string | undefined): React.ReactNode {
-  if (!sig) return null;
-  const s = sig.toLowerCase();
-  const color =
-    s === 'high'   ? 'bg-red/15 text-red-300 border-red/30' :
-    s === 'medium' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
-    s === 'low'    ? 'bg-bg3 text-t3 border-b1' :
-                     'bg-bg3 text-t3 border-b1';
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[10px] font-display font-bold uppercase tracking-wider ${color}`}
-      aria-label={`Significance: ${sig}`}
-    >
-      {sig}
-    </span>
-  );
-}
-
 function parseInsights(raw: ResearchInsights | string | null | undefined): ResearchInsights {
   if (!raw) return {};
   if (typeof raw === 'string') {
@@ -359,57 +341,6 @@ function TensionsFlagged({ items }: { items: NonNullable<ResearchInsights['contr
             );
           })}
         </ul>
-      )}
-    </div>
-  );
-}
-
-function PerQuestionInsights({ items }: { items: NonNullable<ResearchInsights['per_question_insights']> }) {
-  // Pass 40 CRASH40-2 — accept current production shape
-  // {body, headline, question_id, significance} alongside legacy
-  // {insight, summary, question}. Live audit showed 5 placeholder
-  // "—" rows because the renderer indexed q.insight || q.summary
-  // (neither present on Pass 35+ data shape).
-  const usable = items.filter((q): q is NonNullable<typeof q> => {
-    if (q == null) return false;
-    return Boolean(q.headline || q.body || q.insight || q.summary || q.question);
-  });
-  return (
-    <div className="rounded-2xl bg-bg2 border border-b1 p-6">
-      <h2 className="text-xs font-display font-black text-lime uppercase tracking-widest mb-4 flex items-center gap-2">
-        <Users className="w-4 h-4" aria-hidden />
-        Per-question insights
-      </h2>
-      {usable.length === 0 ? (
-        <InsightEmptyState message="No per-question insights were generated for this mission." />
-      ) : (
-        <div className="space-y-4">
-          {usable.map((q, i) => {
-            // Heading priority: headline (Pass 35+ shape) > question (legacy)
-            const heading = q.headline || q.question;
-            // Body priority: body > insight > summary
-            const body = q.body || q.insight || q.summary;
-            return (
-              <div key={q.question_id || i} className="border-l-2 border-b1 pl-4">
-                <div className="flex items-baseline gap-2 mb-1.5 flex-wrap">
-                  {heading && (
-                    <p className={
-                      q.headline
-                        ? 'text-t1 font-display font-bold text-sm'
-                        : 'text-t3 text-xs font-mono'
-                    }>
-                      {heading}
-                    </p>
-                  )}
-                  {significanceBadge(q.significance)}
-                </div>
-                {body && (
-                  <p className="text-t2 text-sm leading-relaxed">{body}</p>
-                )}
-              </div>
-            );
-          })}
-        </div>
       )}
     </div>
   );
