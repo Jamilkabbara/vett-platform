@@ -9,11 +9,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    // PKCE flow prevents Gmail/Outlook link-prefetchers from consuming the
-    // one-time OTP token before the user clicks. With PKCE the verify URL
-    // still redirects to the app with a `?code=` query param, but that code
-    // can only be exchanged by the browser that holds the code_verifier in
-    // localStorage — link prefetchers never run JS so the exchange never fires.
+    // PKCE is kept for OAuth. NOTE: PKCE does NOT fix the password-reset email
+    // prefetch burn — the Supabase /auth/v1/verify GET consumes the recovery
+    // token regardless of flow, so a Gmail/Outlook link-scanner's prefetch
+    // still burns it (proven on prod). The real fix (A1) is the token_hash
+    // flow: the recovery email links to /reset-password?token_hash=…&type=recovery
+    // (the APP, not /verify), and ResetPasswordPage calls verifyOtp() on the
+    // user's submit gesture — a prefetcher loads the page but never runs JS, so
+    // the token survives until the real click. (Requires the Supabase recovery
+    // email template to use {{ .TokenHash }} — see vett-ops/BUG-reset-password-email.md.)
     flowType: 'pkce',
   },
 });
