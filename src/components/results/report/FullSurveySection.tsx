@@ -107,16 +107,65 @@ function MaxDiffMini({ data }: { data: Record<string, any> }) {
   );
 }
 
+function sentimentClass(s: string): string {
+  if (s === 'positive') return 'bg-lime text-bg';
+  if (s === 'negative') return 'bg-red/80 text-bg';
+  return 'bg-bg3 text-t2 border border-b2';
+}
+
+/**
+ * Open-end question. With theme clusters (P2-1) it renders a visual —
+ * theme-frequency bars + sentiment chips + representative quotes — with the raw
+ * verbatims tucked into a disclosure. Without themes it falls back to verbatims.
+ */
 function Verbatims({ data }: { data: Record<string, any> }) {
   const items: string[] = data.verbatims || [];
-  if (items.length === 0) return <p className="text-[12px] text-t3 italic">No open-text responses.</p>;
-  const shown = items.slice(0, 8);
+  const themes: Array<Record<string, any>> = Array.isArray(data.themes) ? data.themes : [];
+
+  if (themes.length === 0) {
+    if (items.length === 0) return <p className="text-[12px] text-t3 italic">No open-text responses.</p>;
+    const shown = items.slice(0, 8);
+    return (
+      <div className="space-y-1.5">
+        {shown.map((v, i) => (
+          <p key={i} className="text-[12px] text-t2 italic border-l-2 border-b2 pl-2.5 leading-snug">“{v}”</p>
+        ))}
+        {items.length > shown.length && <p className="text-[11px] text-t3">+{items.length - shown.length} more</p>}
+      </div>
+    );
+  }
+
+  const n = data.n || items.length || 0;
   return (
-    <div className="space-y-1.5">
-      {shown.map((v, i) => (
-        <p key={i} className="text-[12px] text-t2 italic border-l-2 border-b2 pl-2.5 leading-snug">“{v}”</p>
+    <div className="space-y-2">
+      <p className="text-[11px] text-t3">Themes across {n} open-ended responses</p>
+      {themes.map((t, i) => (
+        <div key={i} className="space-y-1">
+          <div className="flex items-center gap-2 text-[12px]">
+            <span className="w-44 shrink-0 truncate text-t2 flex items-center gap-1.5" title={t.label}>
+              <span className="truncate">{t.label}</span>
+              <span className={`shrink-0 text-[8px] uppercase tracking-wide px-1 py-[1px] rounded ${sentimentClass(t.sentiment)}`}>{t.sentiment}</span>
+            </span>
+            <span className="flex-1 h-3 rounded bg-bg3 overflow-hidden">
+              <span className="block h-full bg-lime" style={{ width: `${t.pct}%` }} />
+            </span>
+            <span className="w-20 shrink-0 text-right text-t3 tabular-nums">{t.pct}% ({t.count})</span>
+          </div>
+          {Array.isArray(t.quotes) && t.quotes.map((q: string, j: number) => (
+            <p key={j} className="text-[11px] text-t3 italic pl-2.5 leading-snug">“{q}”</p>
+          ))}
+        </div>
       ))}
-      {items.length > shown.length && <p className="text-[11px] text-t3">+{items.length - shown.length} more</p>}
+      {items.length > 0 && (
+        <details className="mt-1">
+          <summary className="text-[11px] text-t3 cursor-pointer hover:text-t2 select-none">Representative verbatims ({items.length})</summary>
+          <div className="space-y-1.5 mt-1.5">
+            {items.slice(0, 8).map((v, i) => (
+              <p key={i} className="text-[12px] text-t2 italic border-l-2 border-b2 pl-2.5 leading-snug">“{v}”</p>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }
