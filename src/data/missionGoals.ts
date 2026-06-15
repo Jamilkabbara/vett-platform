@@ -5,12 +5,16 @@
  * ──────────────────────────────────────────────────────────────────
  * Two variants:
  *
- *   - `regular` (12 entries) renders in the 4-column grid: emoji,
- *     short label, sub-hint, optional "NEW" tag.
+ *   - `regular` renders in the 4-column grid: emoji, short label,
+ *     sub-hint, optional "NEW" tag.
  *
- *   - `special` (2 entries) spans the full grid width and renders
- *     with an inline description + pill tags. This variant powers
- *     Brand Lift (lime-accent) and Creative Attention (purple-accent).
+ *   - `special` spans the full grid width and renders with an inline
+ *     description + pill tags. This variant powers Brand Lift and
+ *     Creative Attention (purple-accent).
+ *
+ * Goals flagged `comingSoon` (audience_profiling, market_entry, and — Pass 49
+ * — creative_attention while its zero-response pipeline is fixed) are filtered
+ * OUT of the setup grid by GoalGrid so a user can't start one.
  *     The `creative_attention` goal opts the textarea into an image
  *     / video upload affordance in Commit 3.
  *

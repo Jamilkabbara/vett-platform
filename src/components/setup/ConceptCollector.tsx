@@ -193,7 +193,7 @@ export function ConceptCollector({ userId, state, onChange }: Props) {
           ) : (
             <div className="mt-1.5 rounded-xl overflow-hidden bg-black relative">
               {state.mediaType === 'image' ? (
-                <img src={state.mediaUrl} alt="" className="max-h-56 mx-auto" />
+                <img src={state.mediaUrl} alt="Uploaded concept preview" className="max-h-56 mx-auto" />
               ) : (
                 <video src={state.mediaUrl} controls className="max-h-56 w-full" />
               )}

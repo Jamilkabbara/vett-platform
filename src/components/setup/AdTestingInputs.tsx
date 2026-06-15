@@ -168,7 +168,7 @@ export function AdTestingInputs({ userId, state, onChange }: Props) {
         ) : (
           <div className="mt-1.5 rounded-xl overflow-hidden bg-black relative">
             {state.creativeMediaType === 'image' ? (
-              <img src={state.creativeUrl} alt="" className="max-h-56 mx-auto" />
+              <img src={state.creativeUrl} alt="Uploaded creative preview" className="max-h-56 mx-auto" />
             ) : (
               <video src={state.creativeUrl} controls className="max-h-56 w-full" />
             )}

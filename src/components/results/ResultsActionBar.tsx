@@ -209,6 +209,9 @@ export function ResultsActionBar({
               type="button"
               onClick={() => setOpen((v) => !v)}
               disabled={busy !== null}
+              aria-haspopup="menu"
+              aria-expanded={open}
+              aria-label="Export report"
               className="inline-flex items-center gap-1.5 rounded-lg bg-lime px-2.5 py-1.5 text-black hover:opacity-90 transition-opacity font-display font-bold text-[12px] disabled:opacity-60"
             >
               <Download size={13} aria-hidden />
@@ -216,11 +219,12 @@ export function ResultsActionBar({
               <ChevronDown size={12} aria-hidden />
             </button>
             {open && (
-              <div className="absolute right-0 mt-1.5 w-52 rounded-xl border border-b2 bg-bg3 shadow-xl overflow-hidden z-50">
+              <div role="menu" className="absolute right-0 mt-1.5 w-52 rounded-xl border border-b2 bg-bg3 shadow-xl overflow-hidden z-50">
                 {FORMATS.map(({ format, label: fLabel, Icon }) => (
                   <button
                     key={format}
                     type="button"
+                    role="menuitem"
                     onClick={() => handleExport(format)}
                     className="w-full flex items-center gap-2 px-3 py-2 text-left text-t1 hover:bg-white/5 transition-colors font-body text-[12px]"
                   >
