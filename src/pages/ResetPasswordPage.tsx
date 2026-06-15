@@ -57,6 +57,10 @@ export function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [fieldError, setFieldError] = useState('');
+  // A1 — prefetch-proof flow: when the email links here with ?token_hash, we
+  // hold the token and only consume it (verifyOtp) on the user's submit gesture.
+  const [tokenHash, setTokenHash] = useState<string | null>(null);
+  const [otpType, setOtpType] = useState<string>('recovery');
 
   useEffect(() => {
     // Surface any error Supabase encoded in the URL hash immediately.
@@ -64,6 +68,21 @@ export function ResetPasswordPage() {
     if (hashErr) {
       setErrorMsg(hashErr);
       setPageState('error');
+      return;
+    }
+
+    // A1 — prefetch-proof recovery. The email links to THIS page with
+    // ?token_hash=…&type=recovery (no Supabase /verify hop, which scanners burn
+    // on GET). Do NOT verify on load: a link-scanner prefetching this page
+    // can't run JS, so the token survives until the user clicks "Set new
+    // password" (handleSubmit calls verifyOtp). This is the actual fix for the
+    // "email link is invalid or has expired" bug — PKCE alone didn't help
+    // because the /verify GET consumed the token regardless of flow.
+    const tokenHashParam = new URLSearchParams(window.location.search).get('token_hash');
+    if (tokenHashParam) {
+      setTokenHash(tokenHashParam);
+      setOtpType(new URLSearchParams(window.location.search).get('type') || 'recovery');
+      setPageState('ready');
       return;
     }
 
@@ -114,6 +133,15 @@ export function ResetPasswordPage() {
 
     setPageState('submitting');
     try {
+      // Prefetch-proof path: consume the recovery token now (on the gesture),
+      // not on page load. Establishes the recovery session, then sets the pw.
+      if (tokenHash) {
+        const { error: vErr } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: otpType as 'recovery',
+        });
+        if (vErr) throw vErr;
+      }
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       setPageState('done');
