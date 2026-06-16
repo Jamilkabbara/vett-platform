@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import './premium-results.css';
+import { Centerpiece } from './Centerpiece';
 import { api } from '../../../lib/apiClient';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../ui/Toast';
@@ -385,6 +386,9 @@ export function PremiumResults({ missionId }: { missionId: string }) {
                 <p>{report.synthesis || report.exec_summary}</p>
               </div>
             )}
+
+            {/* SIGNATURE HERO (per-type centerpiece — methodology's signature read) */}
+            <Centerpiece report={report} />
 
             {/* 01 QUESTIONS */}
             {report.survey.length > 0 && (
