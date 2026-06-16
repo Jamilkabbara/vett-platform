@@ -13,10 +13,8 @@ import { PricingResultsPage } from './PricingResultsPage';
 import { RoadmapResultsPage } from './RoadmapResultsPage';
 // Pass 29 B9 — customer-satisfaction results (NPS + CSAT + CES with
 // industry benchmark bands). Routed when goal_type === 'satisfaction'.
-import { CSATResultsPage } from './CSATResultsPage';
 // Pass 30 B2 — Validate Product results (concept-test viz + recommendation).
 // Routed when goal_type === 'validate'.
-import { ValidateResultsPage } from './ValidateResultsPage';
 // Pass 30 B4 — Compare Concepts results (sequential monadic).
 // Routed when goal_type === 'compare'.
 import { CompareResultsPage } from './CompareResultsPage';
@@ -37,7 +35,10 @@ import { ChurnResultsPage } from './ChurnResultsPage';
 // through to the generic ResultsPage which left a vast black gap
 // below the hero (May 11 demo failure). Routed when goal_type ===
 // 'research' or its 'general_research' alias.
-import { ResearchResultsPage } from './ResearchResultsPage';
+// WO §4 — universal premium results (mockup 1:1), driven by the canonical
+// report. Rolling out per methodology starting with the survey families that
+// the §6 acceptance targets (validate, satisfaction) + general research.
+import { PremiumResults } from '../components/results/premium/PremiumResults';
 
 /**
  * Pass 25 Phase 0.2 — central router for /results/:missionId.
@@ -112,11 +113,12 @@ export function ResultsRouter() {
   if (goalType === 'roadmap') {
     return <RoadmapResultsPage />;
   }
+  // WO §4 — premium universal results for the survey families (acceptance targets).
   if (goalType === 'satisfaction') {
-    return <CSATResultsPage />;
+    return <PremiumResults missionId={missionId!} />;
   }
   if (goalType === 'validate') {
-    return <ValidateResultsPage />;
+    return <PremiumResults missionId={missionId!} />;
   }
   if (goalType === 'compare') {
     return <CompareResultsPage />;
@@ -133,9 +135,9 @@ export function ResultsRouter() {
   if (goalType === 'churn_research') {
     return <ChurnResultsPage />;
   }
-  // Pass 36 A0c — dedicated renderer for research / general_research.
+  // WO §4 — general research now uses the universal premium results.
   if (goalType === 'research' || goalType === 'general_research') {
-    return <ResearchResultsPage />;
+    return <PremiumResults missionId={missionId!} />;
   }
   return <ResultsPage />;
 }

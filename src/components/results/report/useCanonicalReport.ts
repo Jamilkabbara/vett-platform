@@ -35,12 +35,25 @@ export interface CanonicalReport {
   key_findings: Array<Record<string, unknown>>;
   recommendations?: string[];
   exec_summary: string | null;
+  // §3 — premium content beats (one canonical source for web + exports).
+  finding?: string | null;
+  synthesis?: string | null;
+  screening?: { question_id: string; question: string; qualified: number | null; distribution: Record<string, number> } | null;
+  personas?: Array<{ name: string; role?: string; description?: string; share?: string | number }>;
   survey: CanonicalSurveyQuestion[];
   data_quality_notes: Array<{ question_number: number; question_id: string; note: string }>;
   methodology_disclaimer: string;
   // Pass 49 Phase 4 — response/segment filter (set by GET /report).
   segments?: SegmentOption[];
   active_segment?: { key: string; label: string; n: number } | null;
+}
+
+export interface CanonicalTheme {
+  label: string;
+  count: number;
+  pct: number;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  quotes: string[];
 }
 
 export interface SegmentOption {
