@@ -166,6 +166,108 @@ function ValidateHero({ a }: { a: any }) {
   );
 }
 
+/* ── roadmap: MaxDiff priority + Kano must-haves ── */
+function RoadmapHero({ a }: { a: any }) {
+  const feats = (a.maxdiff?.features || []).filter((f: any) => f && f.utility != null).slice(0, 6);
+  const maxU = Math.max(1, ...feats.map((f: any) => Math.abs(Number(f.utility))));
+  const rows = feats.map((f: any) => ({ label: f.label || f.feature_id, pct: (Math.abs(Number(f.utility)) / maxU) * 100, meta: String(round(f.utility, 2)), tone: (Number(f.utility) >= 0 ? 'lime' : 'coral') as const }));
+  const mustHaves = (a.kano?.features || []).filter((f: any) => f && f.classification === 'must_be').length;
+  return (
+    <>
+      <SectionHead n="◆" title="Feature priority" meta="MaxDiff · Kano" />
+      <MetricStrip items={[
+        { value: feats[0] ? (feats[0].label || feats[0].feature_id) : '—', label: 'Top-priority feature', lime: true },
+        { value: String((a.maxdiff?.features || []).length), label: 'Features ranked' },
+        { value: String(mustHaves), label: 'Kano must-haves' },
+      ]} />
+      {rows.length > 0 && <div style={{ marginTop: 28 }}><Bars rows={rows} /></div>}
+    </>
+  );
+}
+
+/* ── naming: winning name + appeal ranking ── */
+function NamingHero({ a }: { a: any }) {
+  const winnerId = a.winner?.candidate_id;
+  const useWin = (a.candidates || []).some((c: any) => c.pairwise_win_rate?.pct != null);
+  const maxC = Math.max(1, ...(a.candidates || []).map((c: any) => Number(c.composite) || 0));
+  const cands = (a.candidates || []).slice().sort((x: any, y: any) => (y.pairwise_win_rate?.pct ?? y.composite ?? 0) - (x.pairwise_win_rate?.pct ?? x.composite ?? 0));
+  const winner = cands.find((c: any) => c.candidate_id === winnerId) || cands[0];
+  const rows = cands.slice(0, 6).map((c: any) => {
+    const hasWin = useWin && c.pairwise_win_rate?.pct != null;
+    return { label: c.label || c.candidate_id, pct: hasWin ? pctNum(c.pairwise_win_rate.pct) : Math.round((Number(c.composite) / maxC) * 100), meta: hasWin ? `${pctNum(c.pairwise_win_rate.pct)}%` : `${round(c.composite, 1)}`, tone: (c.candidate_id === winnerId ? 'lime' : 'indigo') as const };
+  });
+  return (
+    <>
+      <SectionHead n="◆" title="Name & message" meta={useWin ? 'pairwise win rate' : 'composite appeal'} />
+      <MetricStrip items={[
+        { value: winner ? (winner.label || winner.candidate_id) : '—', label: 'Winning name', lime: true },
+        { value: winner?.pairwise_win_rate?.pct != null ? `${pctNum(winner.pairwise_win_rate.pct)}% win` : (winner?.composite != null ? `${round(winner.composite, 1)}` : '—'), label: useWin ? 'Win rate' : 'Composite appeal' },
+        { value: String((a.candidates || []).length), label: 'Names tested' },
+      ]} />
+      {rows.length > 0 && <div style={{ marginTop: 28 }}><Bars rows={rows} /></div>}
+    </>
+  );
+}
+
+/* ── competitor: share of preference + your standing ── */
+function CompetitorHero({ a }: { a: any }) {
+  const brands = (a.brands || []).filter((b: any) => b && b.use_pct);
+  const rows = brands.slice().sort((x: any, y: any) => (y.use_pct?.pct || 0) - (x.use_pct?.pct || 0)).slice(0, 6)
+    .map((b: any) => ({ label: `${b.label}${b.is_focal ? ' (you)' : ''}`, pct: pctNum(b.use_pct?.pct), meta: `${pctNum(b.use_pct?.pct)}%`, tone: (b.is_focal ? 'lime' : 'indigo') as const }));
+  const focal = brands.find((b: any) => b.is_focal);
+  return (
+    <>
+      <SectionHead n="◆" title="Competitive position" meta="share of preference" />
+      <MetricStrip items={[
+        { value: a.focal_brand || '—', label: 'Focal brand', lime: true },
+        { value: focal?.use_pct?.pct != null ? `${pctNum(focal.use_pct.pct)}%` : '—', label: 'Your share of preference' },
+        { value: focal?.nps?.score != null ? String(focal.nps.score) : '—', label: 'Your NPS' },
+      ]} />
+      {rows.length > 0 && <div style={{ marginTop: 28 }}><Bars rows={rows} /></div>}
+    </>
+  );
+}
+
+/* ── marketing: ad appeal / persuasion ── */
+function MarketingHero({ a }: { a: any }) {
+  const f = a.funnel || {};
+  const aided = f.recall_aided?.correct_rate ?? f.recall_aided?.positive_rate;
+  const rows = ([
+    f.likeability?.mean != null && { label: 'Likeability', pct: (Number(f.likeability.mean) / 7) * 100, meta: `${round(f.likeability.mean)}/7`, tone: 'lime' as const },
+    f.persuasion?.mean != null && { label: 'Persuasion', pct: (Number(f.persuasion.mean) / 7) * 100, meta: `${round(f.persuasion.mean)}/7`, tone: 'indigo' as const },
+    f.stopping_power?.mean != null && { label: 'Stopping power', pct: (Number(f.stopping_power.mean) / 7) * 100, meta: `${round(f.stopping_power.mean)}/7`, tone: 'indigo' as const },
+  ].filter(Boolean)) as Array<{ label: string; pct: number; meta: string; tone: 'lime' | 'indigo' }>;
+  return (
+    <>
+      <SectionHead n="◆" title="Ad effectiveness" meta="appeal · persuasion" />
+      <MetricStrip items={[
+        { value: f.likeability?.mean != null ? `${round(f.likeability.mean)}/7` : '—', label: 'Likeability (mean)', lime: true },
+        { value: f.persuasion?.mean != null ? `${round(f.persuasion.mean)}/7` : '—', label: 'Persuasion (mean)' },
+        { value: aided != null ? `${Math.round(Number(aided) * 100)}%` : '—', label: 'Aided recall' },
+      ]} />
+      {rows.length > 0 && <div style={{ marginTop: 28 }}><Bars rows={rows} /></div>}
+    </>
+  );
+}
+
+/* ── churn: top driver + winnable + driver breakdown ── */
+function ChurnHero({ a }: { a: any }) {
+  const drivers = (a.drivers?.ranked || []).filter((d: any) => d && (d.reason || d.option || d.label));
+  const rows = drivers.slice(0, 6).map((d: any) => ({ label: d.reason || d.option || d.label, pct: pctNum(d.pct_of_respondents), meta: `${pctNum(d.pct_of_respondents)}%`, tone: 'coral' as const }));
+  const top = drivers[0];
+  return (
+    <>
+      <SectionHead n="◆" title="Why customers leave" meta="churn drivers" />
+      <MetricStrip items={[
+        { value: top ? (top.reason || top.option || top.label) : '—', label: 'Top churn driver', lime: true },
+        { value: top?.pct_of_respondents != null ? `${pctNum(top.pct_of_respondents)}%` : '—', label: 'Cite the top driver' },
+        { value: a.winback?.winnable_pct != null ? `${pctNum(a.winback.winnable_pct)}%` : '—', label: 'Winnable (would return)' },
+      ]} />
+      {rows.length > 0 && <div style={{ marginTop: 28 }}><Bars rows={rows} /></div>}
+    </>
+  );
+}
+
 export function Centerpiece({ report }: { report: CanonicalReport }) {
   const a = report.centerpiece?.data as any;
   const m = report.centerpiece?.methodology || report.header.methodology;
@@ -176,7 +278,12 @@ export function Centerpiece({ report }: { report: CanonicalReport }) {
     case 'compare': return <CompareHero a={a} />;
     case 'pricing': return <PricingHero a={a} />;
     case 'validate': return <ValidateHero a={a} />;
-    default: return null; // research + not-yet-built types use the generic KPI hero
+    case 'roadmap': return <RoadmapHero a={a} />;
+    case 'naming': case 'naming_messaging': return <NamingHero a={a} />;
+    case 'competitor': return <CompetitorHero a={a} />;
+    case 'marketing': return <MarketingHero a={a} />;
+    case 'churn': case 'churn_research': return <ChurnHero a={a} />;
+    default: return null; // research uses the generic KPI hero (its archetype IS the mockup)
   }
 }
 
