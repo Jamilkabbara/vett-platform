@@ -107,6 +107,9 @@ import {
   BRAND_LIFT_TIERS,
   calculateBrandLiftMissionPrice,
 } from '../utils/pricingEngine';
+// §E — screen-aware Setup Advisor copilot. Mounted here (not via SiteWideAskVett,
+// which now hides on /setup) so it answers about THIS draft, not the portfolio.
+import { ChatWidget } from '../components/chat/ChatWidget';
 
 /**
  * Mission Setup — Commit 4 of the redesign (Prompt 3).
@@ -240,13 +243,21 @@ export const MissionSetupPage = () => {
     // pricing, etc.) so every entry point resolves to a canonical backend
     // goal_type. Without this the type-specific setup never renders and an
     // invalid goal_type is persisted.
+    // §A0 gating backstop — a deep-link (/setup?goal=… from the landing cards
+    // or /methodologies) must NEVER preselect a Coming-Soon type, or a deferred
+    // methodology (market_entry / audience_profiling) could be configured and
+    // PURCHASED before its pipeline is live. comingSoon resolves to 'validate'.
     const fromUrl = searchParams.get('goal');
-    if (fromUrl) return normalizeGoalType(fromUrl);
+    if (fromUrl) {
+      const g = normalizeGoalType(fromUrl);
+      if (!getGoalById(g)?.comingSoon) return g;
+    }
     try {
       const fromSession = sessionStorage.getItem('vett_landing_goal');
       if (fromSession) {
         sessionStorage.removeItem('vett_landing_goal');
-        return normalizeGoalType(fromSession);
+        const g = normalizeGoalType(fromSession);
+        if (!getGoalById(g)?.comingSoon) return g;
       }
     } catch { /* private mode — fall through */ }
     const intent = (location.state as { intent?: string } | null)?.intent;
@@ -261,6 +272,19 @@ export const MissionSetupPage = () => {
     }
     return 'validate';
   });
+
+  // §A0 — if a deep-link tried to preselect a Coming-Soon type (we fell back to
+  // 'validate' in the initializer above), tell the user why rather than swap silently.
+  useEffect(() => {
+    const raw = searchParams.get('goal');
+    if (!raw) return;
+    const goal = getGoalById(normalizeGoalType(raw));
+    if (goal?.comingSoon) {
+      toast.info(`${goal.label} is coming soon — pick another methodology for now.`);
+    }
+    // mount-only: the deep-link goal is read from the initial URL
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [missionDescription, setMissionDescription] = useState<string>(() => {
     const state = location.state as
@@ -478,6 +502,40 @@ export const MissionSetupPage = () => {
   })();
 
   const selectedGoal = getGoalById(missionGoal);
+
+  // §E — live on-screen state handed to the Setup Advisor each turn, so it
+  // answers about THIS draft (the selected type + the values entered so far)
+  // instead of the dashboard portfolio. Only fields the user can actually see
+  // are included; per-type blocks are spread in conditionally.
+  const setupPageState: Record<string, unknown> = {
+    research_type: missionGoal,
+    research_type_label: selectedGoal?.label ?? missionGoal,
+    brief: missionDescription || null,
+    brief_chars: charCount,
+    ...(isUniversalShown && {
+      brand: universalInputs.brand || null,
+      category: universalInputs.category || null,
+      audience: universalInputs.audienceDescription || null,
+      competitors: universalInputs.competitors.length ? universalInputs.competitors : null,
+    }),
+    ...(isBrandLift && {
+      brand: brandLiftState.brand || null,
+      markets: brandLiftState.markets,
+      channels: brandLiftState.channels.map((c) => c.display_name),
+      respondent_count: brandLiftState.respondentCount,
+      structure: 'lift study (exposed vs. control split)',
+    }),
+    ...(isAudienceProfiling && {
+      markets: audienceInputs.markets || null,
+      segmentation_focus: audienceInputs.segmentationFocus || null,
+    }),
+    ...(isMarketEntry && {
+      current_market: marketEntryInputs.currentMarket || null,
+      target_markets: marketEntryInputs.targetMarkets || null,
+      price_point: marketEntryInputs.price || null,
+    }),
+  };
+
   const placeholder = useMemo(
     () => getPlaceholderForGoal(missionGoal),
     [missionGoal],
@@ -1864,6 +1922,11 @@ export const MissionSetupPage = () => {
           </div>
         </div>
       </section>
+
+      {/* §E — screen-aware Setup Advisor. Floating bottom-right; receives the
+          live draft state so answers are grounded in THIS setup, not the
+          portfolio. SiteWideAskVett hides on /setup so there's no double-mount. */}
+      <ChatWidget scope="setup" pageState={setupPageState} />
     </div>
   );
 };

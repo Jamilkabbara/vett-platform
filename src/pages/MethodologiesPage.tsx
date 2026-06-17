@@ -64,7 +64,9 @@ const METHODOLOGIES: Methodology[] = [
     detail: 'Per-frame analysis of 24 emotions (Plutchik 8 + 16 nuanced), attention decay curves, distinctive brand asset score, channel-specific predicted dwell time, platform fit.',
     framework: 'Attention prediction calibrated to TVision / Lumen industry norms; emotion taxonomy from peer-reviewed Plutchik + research-derived nuanced set.',
     startsAt: '$19',
-    status: 'live',
+    // §A0 — Coming-Soon (mirrors comingSoon in missionGoals.ts). Was 'live',
+    // which advertised + linked it to a purchasable /setup flow.
+    status: 'in_progress',
     goalId: 'creative_attention',
   },
   {

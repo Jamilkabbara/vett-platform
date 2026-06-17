@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { CanonicalReport } from '../report/useCanonicalReport';
 
 /*
@@ -78,15 +79,54 @@ function BrandLiftHero({ a }: { a: any }) {
     const lift = isProp ? Math.round(f.lift_abs * 100) : Number(round(f.lift_abs, 1));
     return { label: f.text ? String(f.text).slice(0, 36) : (f.funnel_stage || 'Stage'), pct: Math.max(6, Math.min(100, Math.abs(lift) * (isProp ? 2 : 12))), meta: `+${lift}${isProp ? ' pts' : ''}`, tone: 'lime' as const };
   });
+  // §D2 — per-KPI lift table: exposed, control, absolute (pp), relative (%), significance.
+  const cellVal = (f: any, c: any) => (f.type === 'proportion'
+    ? (c?.rate != null ? `${Math.round(c.rate * 100)}%` : '—')
+    : (c?.mean != null ? String(round(c.mean)) : '—'));
+  const absLift = (f: any) => (f.type === 'proportion'
+    ? `${f.lift_abs >= 0 ? '+' : ''}${Math.round(f.lift_abs * 100)} pp`
+    : `${f.lift_abs >= 0 ? '+' : ''}${round(f.lift_abs, 1)}`);
+  const relLift = (f: any) => (f.lift_rel_pct != null ? `${f.lift_rel_pct >= 0 ? '+' : ''}${Math.round(f.lift_rel_pct)}%` : '—');
+  const sig = (s: any) => (s?.sig95 ? '95%' : s?.sig90 ? '90%' : 'dir.');
+  const th: CSSProperties = { padding: '8px 10px 8px 0', fontWeight: 600 };
+  const td: CSSProperties = { padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontSize: 12 };
   return (
     <>
       <SectionHead n="◆" title="Campaign lift" meta="exposed vs. control" />
       <MetricStrip items={[
-        { value: String(a.summary?.stages_lifted ?? '—'), label: 'Funnel stages lifted', lime: true },
+        { value: String(a.summary?.stages_lifted ?? '—'), label: 'KPIs lifted', lime: true },
         { value: String(a.summary?.stages_sig95 ?? '—'), label: 'Significant at 95%' },
         { value: a.cells?.exposed?.n != null ? `${a.cells.exposed.n}/${a.cells?.control?.n ?? '?'}` : '—', label: 'Exposed / control n' },
       ]} />
       {rows.length > 0 && <div style={{ marginTop: 28 }}><Bars rows={rows} /></div>}
+      {stages.length > 0 && (
+        <div className="rv" style={{ marginTop: 24, overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ color: 'var(--muted)', borderBottom: '1px solid var(--hair)' }}>
+                <th style={{ ...th, textAlign: 'left' }}>KPI</th>
+                <th style={{ ...th, textAlign: 'right' }}>Exposed</th>
+                <th style={{ ...th, textAlign: 'right' }}>Control</th>
+                <th style={{ ...th, textAlign: 'right' }}>Abs lift</th>
+                <th style={{ ...th, textAlign: 'right' }}>Rel lift</th>
+                <th style={{ ...th, textAlign: 'right', paddingRight: 0 }}>Sig</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stages.map((f: any, i: number) => (
+                <tr key={i} style={{ borderBottom: '1px solid var(--hair)' }}>
+                  <td style={{ padding: '8px 10px 8px 0', color: 'var(--text)' }}>{f.text ? String(f.text).slice(0, 42) : (f.funnel_stage || 'KPI')}</td>
+                  <td style={td}>{cellVal(f, f.exposed)}</td>
+                  <td style={{ ...td, color: 'var(--muted)' }}>{cellVal(f, f.control)}</td>
+                  <td style={{ ...td, color: f.lift_abs >= 0 ? 'var(--lime)' : 'var(--coral)', fontWeight: 700 }}>{absLift(f)}</td>
+                  <td style={{ ...td, color: 'var(--muted)' }}>{relLift(f)}</td>
+                  <td style={{ ...td, paddingRight: 0, fontSize: 11, color: (f.significance?.sig95 || f.significance?.sig90) ? 'var(--lime)' : 'var(--faint)' }}>{sig(f.significance)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }
