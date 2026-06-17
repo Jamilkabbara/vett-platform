@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ChevronRight, Beaker, Sparkles } from 'lucide-react';
 import { OverlayPage } from '../components/layout/OverlayPage';
+import { getGoalById } from '../data/missionGoals';
 
 /**
  * Pass 32 C1 — /methodologies marketing page.
@@ -22,7 +23,10 @@ interface Methodology {
   detail: string;
   framework: string;
   startsAt: string;
-  status: 'live' | 'in_progress';
+  /** @deprecated — the live/coming-soon split now derives from comingSoon
+   *  (missionGoals.ts, mirror of backend src/config/comingSoon.js). Retained
+   *  only so existing entries type-check; not read for gating. */
+  status?: 'live' | 'in_progress';
   goalId?: string;
 }
 
@@ -162,8 +166,12 @@ const METHODOLOGIES: Methodology[] = [
 ];
 
 export const MethodologiesPage = () => {
-  const live = METHODOLOGIES.filter(m => m.status === 'live');
-  const inProgress = METHODOLOGIES.filter(m => m.status === 'in_progress');
+  // §A0 single source of truth — the live / coming-soon split derives from the
+  // comingSoon flag in missionGoals.ts (mirror of the backend authority), so
+  // un-gating a type is ONE switch there, not a second `status` here.
+  const isGated = (m: Methodology) => !!(m.goalId && getGoalById(m.goalId)?.comingSoon);
+  const live = METHODOLOGIES.filter(m => !isGated(m));
+  const inProgress = METHODOLOGIES.filter(m => isGated(m));
 
   return (
     <OverlayPage>
