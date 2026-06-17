@@ -869,7 +869,10 @@ export const MissionSetupPage = () => {
               brand_name: brandLiftState.brand,
               brand_lift_template: brandLiftState.kpiTemplate,
               markets: brandLiftState.markets.join(','),
-              channel_ids: brandLiftState.channels.map((c) => c.id).join(','),
+              // §2.2 — pass channel DISPLAY NAMES (MBC, Shahid, TOD) so the
+              // channel-specific recall questions name the real channels, not
+              // slug ids. Lift is computed from responses, not channel ids.
+              channel_ids: brandLiftState.channels.map((c) => c.display_name || c.id).join(','),
               channel_count: String(brandLiftState.channels.length),
               competitors: brandLiftState.competitors.join('|'),
               wave_mode: brandLiftState.wave.mode,
