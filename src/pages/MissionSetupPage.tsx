@@ -273,14 +273,18 @@ export const MissionSetupPage = () => {
     return 'validate';
   });
 
-  // §A0 — if a deep-link tried to preselect a Coming-Soon type (we fell back to
-  // 'validate' in the initializer above), tell the user why rather than swap silently.
+  // §A0 — a deep-link to a Coming-Soon type (e.g. /setup?goal=market_entry) must
+  // not land the user on a stand-in mission. Redirect to /methodologies (where
+  // deferred types are listed as upcoming) and explain why. The initializer
+  // already resolved comingSoon → 'validate' for the transient first render
+  // before this effect runs; the server-side gate is the authoritative backstop.
   useEffect(() => {
     const raw = searchParams.get('goal');
     if (!raw) return;
     const goal = getGoalById(normalizeGoalType(raw));
     if (goal?.comingSoon) {
-      toast.info(`${goal.label} is coming soon — pick another methodology for now.`);
+      toast.info(`${goal.label} is coming soon — here are the methodologies you can run now.`);
+      navigate('/methodologies', { replace: true });
     }
     // mount-only: the deep-link goal is read from the initial URL
     // eslint-disable-next-line react-hooks/exhaustive-deps
