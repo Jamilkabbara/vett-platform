@@ -10,7 +10,10 @@
   --text:#ECEDF2; --muted:#8A8DA0; --faint:#54576A; --dim:#3C3F4F;
   --lime:#BEF264; --lime-dim:#7e9a3e; --indigo:#6366F1; --indigo-dim:#42446f;
   --coral:#F2787F; --amber:#E7B45A;
-  --serif:"Instrument Serif",Georgia,serif;
+  /* Font revert — the Instrument Serif "finding voice" read thin/flimsy on the
+     dark brand and clashed with the geometric system. Manrope is the only
+     display family now (Inter for body). No serif anywhere. */
+  --serif:Manrope,system-ui,sans-serif;
   --mono:ui-monospace,"SF Mono",Menlo,monospace;
   --r:16px;
   background:var(--ink); color:var(--text);
@@ -57,8 +60,8 @@
 /* hero */
 .premium .hero{padding:54px 0 0}
 .premium .hero .eyebrow{margin-bottom:24px}
-.premium .finding{font-family:var(--serif); font-weight:400; font-size:54px; line-height:1.04; letter-spacing:-.01em; max-width:18ch; color:var(--text)}
-.premium .finding em{font-style:italic; color:var(--lime)}
+.premium .finding{font-family:Manrope,system-ui,sans-serif; font-weight:800; font-size:50px; line-height:1.08; letter-spacing:-.03em; max-width:20ch; color:var(--text)}
+.premium .finding em{font-style:normal; font-weight:800; color:var(--lime)}
 .premium .hero .lede{margin-top:22px; font-size:16px; color:var(--muted); max-width:58ch; line-height:1.6}
 .premium .hero .lede b{color:var(--text); font-weight:500}
 
