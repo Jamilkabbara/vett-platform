@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, X, Check, ChevronDown, ChevronUp, Sparkles, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { channelsForMarkets, MAPPED_MARKET_CODES } from '../../data/marketPlatforms';
 
 export interface ChannelMaster {
   id: string;
@@ -40,6 +41,7 @@ const CHANNEL_UPLIFT_TIERS = [
 
 const CATEGORY_LABELS: Record<string, string> = {
   tv: 'TV (Linear)',
+  vod: 'VOD / Streaming',
   ctv: 'CTV / Streaming',
   cinema: 'Cinema',
   digital_video: 'Digital Video',
@@ -71,15 +73,28 @@ export function ChannelPicker({ selected, onChange, aiSuggestedIds = [], selecte
       setChannels([]);
       return;
     }
+    // §D1 — the localized per-market platform map takes precedence (fixes the
+    // MENA-country-code vs region-tag mismatch that left KSA/UAE/Egypt/GCC
+    // empty). channels_master is queried only for any market NOT in the map.
+    const mappedCodes = selectedMarkets.filter((m) => MAPPED_MARKET_CODES.has(m));
+    const unmappedCodes = selectedMarkets.filter((m) => !MAPPED_MARKET_CODES.has(m));
+    const mapped: ChannelMaster[] = channelsForMarkets(mappedCodes).map((c, i) => ({
+      id: c.id, display_name: c.display_name, category: c.category, is_mena_specific: true, display_order: i,
+    }));
+    if (unmappedCodes.length === 0) {
+      setChannels(mapped);
+      return;
+    }
     (async () => {
       // Pass 27 — filter by markets[] && selected OR is_global = TRUE.
-      // PostgREST `or` filter syntax: column.op.value
       const { data } = await supabase
         .from('channels_master')
         .select('id, display_name, category, is_mena_specific, display_order, markets, is_global')
-        .or(`markets.ov.{${selectedMarkets.join(',')}},is_global.eq.true`)
+        .or(`markets.ov.{${unmappedCodes.join(',')}},is_global.eq.true`)
         .order('display_order');
-      if (data) setChannels(data as ChannelMaster[]);
+      const seen = new Set(mapped.map((c) => c.display_name.toLowerCase()));
+      const extra = (data || []).filter((c) => !seen.has(String(c.display_name).toLowerCase()));
+      setChannels([...mapped, ...(extra as ChannelMaster[])]);
     })();
   }, [selectedMarkets.join(',')]);
 
