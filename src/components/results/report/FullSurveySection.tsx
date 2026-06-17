@@ -17,7 +17,7 @@ function Bar({ label, count, total, suffix }: { label: string; count: number; to
   const p = pct(count, total);
   return (
     <div className="flex items-center gap-2 text-[12px]">
-      <span className="w-40 shrink-0 truncate text-t2" title={label}>{label}</span>
+      <span className="w-40 shrink-0 break-words text-t2" title={label}>{label}</span>
       <span className="flex-1 h-3 rounded bg-bg3 overflow-hidden">
         <span className="block h-full bg-lime" style={{ width: `${p}%` }} />
       </span>
@@ -79,7 +79,7 @@ function AttributeBattery({ data }: { data: Record<string, any> }) {
       <div className="space-y-1">
         {data.per_attribute.map((a: any) => (
           <div key={a.attribute} className="flex items-center gap-2 text-[12px]">
-            <span className="w-44 shrink-0 truncate text-t2" title={a.attribute}>{a.attribute}</span>
+            <span className="w-44 shrink-0 break-words text-t2" title={a.attribute}>{a.attribute}</span>
             <span className="flex-1 h-3 rounded bg-bg3 overflow-hidden">
               <span className="block h-full bg-lime" style={{ width: `${Math.min(100, (a.average / scaleMax) * 100)}%` }} />
             </span>
@@ -101,7 +101,7 @@ function MaxDiffMini({ data }: { data: Record<string, any> }) {
     <div className="space-y-1 text-[12px]">
       <div className="flex gap-2 text-t3 font-semibold"><span className="w-44">Feature</span><span className="w-16 text-right">Best</span><span className="w-16 text-right">Worst</span></div>
       {feats.map((f) => (
-        <div key={f} className="flex gap-2"><span className="w-44 truncate text-t2" title={f}>{f}</span><span className="w-16 text-right text-lime tabular-nums">{best[f] || 0}</span><span className="w-16 text-right text-t3 tabular-nums">{worst[f] || 0}</span></div>
+        <div key={f} className="flex gap-2"><span className="w-44 break-words text-t2" title={f}>{f}</span><span className="w-16 text-right text-lime tabular-nums">{best[f] || 0}</span><span className="w-16 text-right text-t3 tabular-nums">{worst[f] || 0}</span></div>
       ))}
     </div>
   );
@@ -142,7 +142,7 @@ function Verbatims({ data }: { data: Record<string, any> }) {
       {themes.map((t, i) => (
         <div key={i} className="space-y-1">
           <div className="flex items-center gap-2 text-[12px]">
-            <span className="w-44 shrink-0 truncate text-t2 flex items-center gap-1.5" title={t.label}>
+            <span className="w-44 shrink-0 break-words text-t2 flex items-center gap-1.5" title={t.label}>
               <span className="truncate">{t.label}</span>
               <span className={`shrink-0 text-[8px] uppercase tracking-wide px-1 py-[1px] rounded ${sentimentClass(t.sentiment)}`}>{t.sentiment}</span>
             </span>

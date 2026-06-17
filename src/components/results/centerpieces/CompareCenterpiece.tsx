@@ -285,6 +285,7 @@ function FinalChoiceBars({
               className="fill-t1 font-display"
               style={{ fontSize: '12px', fontWeight: isWinner ? 800 : 600 }}
             >
+              <title>{c.label || c.concept_id}</title>
               {(c.label || c.concept_id).slice(0, 22)}
             </text>
             <text x={0} y={y + BAR_H + 12} className="fill-t3 font-body" style={{ fontSize: '9px' }}>
@@ -410,6 +411,7 @@ function HeadToHead({
                     className={isWinner ? 'fill-lime font-body' : 'fill-t3 font-body'}
                     style={{ fontSize: '10px', fontWeight: isWinner ? 700 : 400 }}
                   >
+                    <title>{c.label || c.concept_id}</title>
                     {(c.label || c.concept_id).slice(0, 18)}
                   </text>
                   <rect x={TRACK_X} y={y} width={TRACK_W} height={BAR_H} rx={2} className="fill-t3/12" />
