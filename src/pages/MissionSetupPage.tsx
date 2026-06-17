@@ -100,6 +100,8 @@ import {
   MISSION_GOALS,
   getGoalById,
   getPlaceholderForGoal,
+  getRecommendedN,
+  normalizeGoalType,
 } from '../data/missionGoals';
 import {
   BRAND_LIFT_TIERS,
@@ -234,13 +236,17 @@ export const MissionSetupPage = () => {
   // sessionStorage is cleared on consumption so a stale value doesn't
   // bleed into the next visit.
   const [missionGoal, setMissionGoal] = useState<string>(() => {
+    // §2.5 — normalize legacy/landing goal aliases (pricing_research →
+    // pricing, etc.) so every entry point resolves to a canonical backend
+    // goal_type. Without this the type-specific setup never renders and an
+    // invalid goal_type is persisted.
     const fromUrl = searchParams.get('goal');
-    if (fromUrl) return fromUrl;
+    if (fromUrl) return normalizeGoalType(fromUrl);
     try {
       const fromSession = sessionStorage.getItem('vett_landing_goal');
       if (fromSession) {
         sessionStorage.removeItem('vett_landing_goal');
-        return fromSession;
+        return normalizeGoalType(fromSession);
       }
     } catch { /* private mode — fall through */ }
     const intent = (location.state as { intent?: string } | null)?.intent;
@@ -398,8 +404,10 @@ export const MissionSetupPage = () => {
             // missionGoal omitted — clears the stale CA goal silently
           });
           try { localStorage.removeItem(DRAFT_KEY_OLD); } catch { /* no-op */ }
-        } else if (draft.missionGoal && getGoalById(draft.missionGoal)) {
-          setMissionGoal(draft.missionGoal);
+        } else if (draft.missionGoal) {
+          // §2.5 — normalize legacy aliases from older drafts too.
+          const g = normalizeGoalType(draft.missionGoal);
+          if (getGoalById(g)) setMissionGoal(g);
         }
         if (typeof draft.missionDescription === 'string') {
           setMissionDescription(draft.missionDescription);
@@ -1599,6 +1607,15 @@ export const MissionSetupPage = () => {
                       onChange={setUniversalInputs}
                     />
                   </div>
+                )}
+                {/* §2.4 — recommended sample size for the chosen method (advisory;
+                    we never force-raise the default). Smaller samples still run
+                    but render as directional. */}
+                {selectedGoal && missionGoal !== 'research' && missionGoal !== 'creative_attention' && (
+                  <p className="mt-3 font-body text-[11px] text-t3">
+                    <span className="text-amber font-semibold">Recommended sample:</span>{' '}
+                    n≥{getRecommendedN(missionGoal)} for a confident read. Smaller samples still run — results are then shown as directional.
+                  </p>
                 )}
                 {isPricing && (
                   <div className="mt-4">
