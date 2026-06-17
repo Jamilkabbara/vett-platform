@@ -2,56 +2,23 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { ResultsPage } from './ResultsPage';
 import { CreativeAttentionResultsPage } from './CreativeAttentionResultsPage';
-import { BrandLiftResultsPage } from './BrandLiftResultsPage';
-// Pass 29 B5 — pricing-research results page (Van Westendorp 4-curve
-// + Gabor-Granger demand). Routed when goal_type === 'pricing'.
-import { PricingResultsPage } from './PricingResultsPage';
-// Pass 29 B7 — feature-roadmap results (MaxDiff utility bars +
-// Kano quadrant). Routed when goal_type === 'roadmap'.
-import { RoadmapResultsPage } from './RoadmapResultsPage';
-// Pass 29 B9 — customer-satisfaction results (NPS + CSAT + CES with
-// industry benchmark bands). Routed when goal_type === 'satisfaction'.
-import { CSATResultsPage } from './CSATResultsPage';
-// Pass 30 B2 — Validate Product results (concept-test viz + recommendation).
-// Routed when goal_type === 'validate'.
-import { ValidateResultsPage } from './ValidateResultsPage';
-// Pass 30 B4 — Compare Concepts results (sequential monadic).
-// Routed when goal_type === 'compare'.
-import { CompareResultsPage } from './CompareResultsPage';
-// Pass 31 A1 — Test Marketing/Ads results (ad effectiveness, Kantar
-// Link tradition). Routed when goal_type === 'marketing'. Closes
-// the Pass 30 B6 deferral.
-import { AdTestingResultsPage } from './AdTestingResultsPage';
-// Pass 31 B2 — Competitor Analysis results (Brand Health Tracker).
-// Routed when goal_type === 'competitor'.
-import { CompetitorAnalysisResultsPage } from './CompetitorAnalysisResultsPage';
-// Pass 31 B4 — Naming & Messaging results (monadic + paired + TURF).
-// Routed when goal_type === 'naming_messaging'.
-import { NamingResultsPage } from './NamingResultsPage';
-// Pass 31 B6 — Churn Research results (driver tree + win-back).
-// Routed when goal_type === 'churn_research'.
-import { ChurnResultsPage } from './ChurnResultsPage';
-// Pass 36 A0c — General research dedicated renderer. Was falling
-// through to the generic ResultsPage which left a vast black gap
-// below the hero (May 11 demo failure). Routed when goal_type ===
-// 'research' or its 'general_research' alias.
-import { ResearchResultsPage } from './ResearchResultsPage';
+// WO — the universal premium results shell. Reads the ONE canonical report and
+// leads with the methodology's signature hero (Centerpiece). Every survey
+// methodology routes here; the per-type bespoke pages it replaces (CSAT,
+// Pricing, Roadmap, Compare, AdTesting, Competitor, Naming, Churn, BrandLift,
+// Validate, Research, generic) are superseded by shell + Centerpiece + the
+// insight-led question body, so web and the exports can't drift.
+import { PremiumResults } from '../components/results/premium/PremiumResults';
 
 /**
- * Pass 25 Phase 0.2 — central router for /results/:missionId.
+ * Central router for /results/:missionId.
  *
- * Probes mission.goal_type (lightweight single-column query) and dispatches
- * to the page that matches the mission family. Without this, every mission
- * type was rendered through the generic ResultsPage which only knows how
- * to display question/insight data — Creative Attention missions sat in
- * "still generating" forever because their data lives elsewhere.
- *
- * Both downstream pages do their own data fetching, so this component
- * stays minimal: probe → dispatch → render.
- *
- * Pass 25 Phase 1E: brand_lift routes to BrandLiftResultsPage.
+ * Probes mission.goal_type, then dispatches:
+ *   - creative_attention → its bespoke page (different data model —
+ *     creative_analysis frames/emotion, not the survey canonical report;
+ *     resurrection track owns its showcase rebuild).
+ *   - everything else    → the universal PremiumResults shell.
  */
 export function ResultsRouter() {
   const { missionId } = useParams<{ missionId: string }>();
@@ -103,41 +70,7 @@ export function ResultsRouter() {
   if (goalType === 'creative_attention') {
     return <CreativeAttentionResultsPage />;
   }
-  if (goalType === 'brand_lift') {
-    return <BrandLiftResultsPage />;
-  }
-  if (goalType === 'pricing') {
-    return <PricingResultsPage />;
-  }
-  if (goalType === 'roadmap') {
-    return <RoadmapResultsPage />;
-  }
-  if (goalType === 'satisfaction') {
-    return <CSATResultsPage />;
-  }
-  if (goalType === 'validate') {
-    return <ValidateResultsPage />;
-  }
-  if (goalType === 'compare') {
-    return <CompareResultsPage />;
-  }
-  if (goalType === 'marketing') {
-    return <AdTestingResultsPage />;
-  }
-  if (goalType === 'competitor') {
-    return <CompetitorAnalysisResultsPage />;
-  }
-  if (goalType === 'naming_messaging') {
-    return <NamingResultsPage />;
-  }
-  if (goalType === 'churn_research') {
-    return <ChurnResultsPage />;
-  }
-  // Pass 36 A0c — dedicated renderer for research / general_research.
-  if (goalType === 'research' || goalType === 'general_research') {
-    return <ResearchResultsPage />;
-  }
-  return <ResultsPage />;
+  return <PremiumResults missionId={missionId!} />;
 }
 
 export default ResultsRouter;
