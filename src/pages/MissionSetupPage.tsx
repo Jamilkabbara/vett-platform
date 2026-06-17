@@ -243,13 +243,21 @@ export const MissionSetupPage = () => {
     // pricing, etc.) so every entry point resolves to a canonical backend
     // goal_type. Without this the type-specific setup never renders and an
     // invalid goal_type is persisted.
+    // §A0 gating backstop — a deep-link (/setup?goal=… from the landing cards
+    // or /methodologies) must NEVER preselect a Coming-Soon type, or a deferred
+    // methodology (market_entry / audience_profiling) could be configured and
+    // PURCHASED before its pipeline is live. comingSoon resolves to 'validate'.
     const fromUrl = searchParams.get('goal');
-    if (fromUrl) return normalizeGoalType(fromUrl);
+    if (fromUrl) {
+      const g = normalizeGoalType(fromUrl);
+      if (!getGoalById(g)?.comingSoon) return g;
+    }
     try {
       const fromSession = sessionStorage.getItem('vett_landing_goal');
       if (fromSession) {
         sessionStorage.removeItem('vett_landing_goal');
-        return normalizeGoalType(fromSession);
+        const g = normalizeGoalType(fromSession);
+        if (!getGoalById(g)?.comingSoon) return g;
       }
     } catch { /* private mode — fall through */ }
     const intent = (location.state as { intent?: string } | null)?.intent;
@@ -264,6 +272,19 @@ export const MissionSetupPage = () => {
     }
     return 'validate';
   });
+
+  // §A0 — if a deep-link tried to preselect a Coming-Soon type (we fell back to
+  // 'validate' in the initializer above), tell the user why rather than swap silently.
+  useEffect(() => {
+    const raw = searchParams.get('goal');
+    if (!raw) return;
+    const goal = getGoalById(normalizeGoalType(raw));
+    if (goal?.comingSoon) {
+      toast.info(`${goal.label} is coming soon — pick another methodology for now.`);
+    }
+    // mount-only: the deep-link goal is read from the initial URL
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [missionDescription, setMissionDescription] = useState<string>(() => {
     const state = location.state as

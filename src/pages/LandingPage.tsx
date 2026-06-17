@@ -34,8 +34,8 @@ import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
 // sync with VOLUME_TIERS[0]/CREATIVE_ATTENTION_TIERS[0].
 import {
   STARTING_PRICE_USD,
-  STARTING_PRICE_CREATIVE_USD,
 } from '../utils/pricingEngine';
+import { getGoalById } from '../data/missionGoals';
 
 /* ══════════════════════════════════════════════════════════════════
    Data — the prototype's content, extracted so the JSX stays readable
@@ -72,12 +72,12 @@ const RESEARCH_TYPES: Array<{
   { emoji: '📣', title: 'Creative & Ad Testing',        desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                            tag: `From $${STARTING_PRICE_USD}`,                 goalId: 'marketing' },
   { emoji: '⭐', title: 'Customer Satisfaction',        desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                        tag: 'From $99',                                    goalId: 'satisfaction' },
   { emoji: '🗺️', title: 'Feature Roadmap',              desc: 'Let your users tell you what to build next. Kano model prioritisation.',                            tag: 'From $99',                                    goalId: 'roadmap' },
-  { emoji: '🌍', title: 'Market Entry',                 desc: 'Validate demand in new geographies before expanding. Test any country, any city.',                    tag: 'From $99',                                    goalId: 'market_entry' },
+  { emoji: '🌍', title: 'Market Entry',                 desc: 'Validate demand in new geographies before expanding. Test any country, any city.',                    tag: 'Coming soon',                                 goalId: 'market_entry' },
   { emoji: '📡', title: 'Brand Lift Study',             desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',           tag: 'From $99',                                    goalId: 'brand_lift' },
-  { emoji: '🎬', title: 'Creative Attention Analysis',  desc: 'Measure emotional response, attention, and engagement on your video or image creatives with research-grade emotion mapping.', tag: `NEW · From $${STARTING_PRICE_CREATIVE_USD}`, tagColor: 'pur', featured: true, goalId: 'creative_attention' },
+  { emoji: '🎬', title: 'Creative Attention Analysis',  desc: 'Measure emotional response, attention, and engagement on your video or image creatives with research-grade emotion mapping.', tag: 'Coming soon', tagColor: 'pur', featured: true, goalId: 'creative_attention' },
   { emoji: '🔄', title: 'Churn Research',               desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',         tag: 'From $99',                                  goalId: 'churn_research' },
   { emoji: '🔍', title: 'Competitor Analysis',          desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',               tag: 'From $99',                                  goalId: 'competitor' },
-  { emoji: '🎯', title: 'Audience Profiling',           desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',                  tag: 'From $99',                                  goalId: 'audience_profiling' },
+  { emoji: '🎯', title: 'Audience Profiling',           desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',                  tag: 'Coming soon',                               goalId: 'audience_profiling' },
   { emoji: '✍️', title: 'Naming & Messaging',           desc: 'Test product names, taglines, and positioning across your target audience.',                          tag: `From $${STARTING_PRICE_USD}`,               goalId: 'naming_messaging' },
 ];
 
@@ -336,6 +336,15 @@ export function LandingPage() {
    * Pass `goalId=null` for generic CTAs that should clear any stale goal.
    */
   const goWithGoal = (goalId: string | null) => {
+    // §A0 — Coming-Soon types (market_entry / audience_profiling /
+    // creative_attention) are shown on the grid as upcoming but are NOT yet
+    // purchasable. Route them to /methodologies (where they're listed as in
+    // progress) instead of a setup/checkout flow. When a type is un-gated
+    // (comingSoon removed) this guard falls through and normal routing resumes.
+    if (goalId && getGoalById(goalId)?.comingSoon) {
+      navigate('/methodologies');
+      return;
+    }
     try {
       if (goalId) sessionStorage.setItem('vett_landing_goal', goalId);
       else sessionStorage.removeItem('vett_landing_goal');
