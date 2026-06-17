@@ -268,10 +268,110 @@ function ChurnHero({ a }: { a: any }) {
   );
 }
 
-export function Centerpiece({ report }: { report: CanonicalReport }) {
-  const a = report.centerpiece?.data as any;
-  const m = report.centerpiece?.methodology || report.header.methodology;
-  if (!a || typeof a !== 'object') return null;
+/* ── audience_profiling: segment map + segment cards ── */
+function AudienceProfilingHero({ a }: { a: any }) {
+  const segs: any[] = Array.isArray(a.segments) ? a.segments : [];
+  const palette = ['#BEF264', '#6366F1', '#E7B45A', '#F2787F'];
+  if (a.posture !== 'segmented' || !segs.length) {
+    const rows = (a.dimensions || []).map((d: any) => {
+      const att = a.aggregate?.attitudes?.[d.key];
+      return att && att.mean != null ? { label: d.label, pct: (Number(att.mean) / 7) * 100, meta: `${round(att.mean)}/7`, tone: 'indigo' as const } : null;
+    }).filter(Boolean) as Array<{ label: string; pct: number; meta: string; tone: 'indigo' }>;
+    return (
+      <>
+        <SectionHead n="◆" title="Audience profile" meta="aggregate" />
+        <MetricStrip items={[{ value: String(a.n ?? '—'), label: 'Respondents profiled', lime: true }]} />
+        {rows.length > 0 && <div style={{ marginTop: 28 }}><Bars rows={rows} /></div>}
+      </>
+    );
+  }
+  const primary = segs.find((s) => s.is_primary) || segs[0];
+  const keyDim = (a.dimensions || []).find((d: any) => d.key === a.key_dimension)?.label || a.key_dimension;
+  const maxAbs = Math.max(1, ...segs.map((s) => Math.abs(s.coords?.x ?? 0)), ...segs.map((s) => Math.abs(s.coords?.y ?? 0)));
+  return (
+    <>
+      <SectionHead n="◆" title="Audience segments" meta={`${a.segment_count} segments`} />
+      <MetricStrip items={[
+        { value: String(a.segment_count), label: 'Segments identified', lime: true },
+        { value: primary ? `${pctNum(primary.size_pct)}%` : '—', label: `Primary: ${primary?.name || ''}` },
+        { value: keyDim || '—', label: 'Key differentiator' },
+      ]} />
+      <div className="rv" style={{ marginTop: 28, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+        <svg width="220" height="220" viewBox="-110 -110 220 220" style={{ flex: 'none', background: 'var(--raise)', borderRadius: 12 }} aria-label="Segmentation map">
+          <line x1="-100" y1="0" x2="100" y2="0" stroke="var(--hair)" />
+          <line x1="0" y1="-100" x2="0" y2="100" stroke="var(--hair)" />
+          {segs.map((s, i) => {
+            const cx = ((s.coords?.x ?? 0) / maxAbs) * 88;
+            const cy = -((s.coords?.y ?? 0) / maxAbs) * 88;
+            const r = Math.max(9, Math.min(34, Math.sqrt(Math.max(1, s.size_pct)) * 4));
+            return (
+              <g key={i}>
+                <circle cx={cx} cy={cy} r={r} fill={palette[i % 4]} fillOpacity={s.is_primary ? 0.85 : 0.4} stroke={palette[i % 4]} />
+                <text x={cx} y={cy + 3} textAnchor="middle" fontSize="9" fontWeight="700" fill="#0B0C15">{pctNum(s.size_pct)}%</text>
+              </g>
+            );
+          })}
+        </svg>
+        <div style={{ flex: '1 1 280px', minWidth: 260 }}>
+          {segs.map((s, i) => (
+            <div key={i} style={{ padding: '11px 0', borderBottom: '1px solid var(--hair)' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: palette[i % 4], display: 'inline-block' }} />
+                <strong style={{ color: 'var(--text)' }}>{s.name}</strong>
+                {s.is_primary && <span className="mono" style={{ fontSize: 9.5, color: 'var(--lime)' }}>PRIMARY</span>}
+                <span style={{ marginLeft: 'auto', fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--lime)' }}>{pctNum(s.size_pct)}% · n={s.n}</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                {(s.signature || []).map((sg: any) => `${sg.label} ${sg.mean}/7`).join(' · ')}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ── market_entry: per-market demand scorecard + go/no-go signal ── */
+function MarketEntryHero({ a }: { a: any }) {
+  const markets: any[] = Array.isArray(a.markets) ? a.markets : [];
+  const sigColor = (s: string) => (s === 'go' ? 'var(--lime)' : s === 'caution' ? 'var(--amber)' : 'var(--coral)');
+  const sigText = (s: string) => (s ? s.replace('_', '-').toUpperCase() : '—');
+  return (
+    <>
+      <SectionHead n="◆" title="Market demand" meta="go · caution · no-go" />
+      <MetricStrip items={[
+        { value: a.recommended_market || '—', label: 'Recommended market', lime: true },
+        { value: a.best_demand_index != null ? `${a.best_demand_index}/100` : '—', label: 'Best demand index' },
+        { value: a.top_barrier || '—', label: 'Top barrier' },
+      ]} />
+      <div className="rv" style={{ marginTop: 24 }}>
+        {markets.map((m, i) => (
+          <div key={i} style={{ padding: '14px 0', borderBottom: '1px solid var(--hair)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <strong style={{ color: 'var(--text)', fontSize: 15 }}>{m.market}</strong>
+              <span className="mono" style={{ fontSize: 9.5, padding: '2px 8px', borderRadius: 5, border: `1px solid ${sigColor(m.signal)}`, color: sigColor(m.signal) }}>
+                {sigText(m.signal)}{m.directional ? ' · directional' : ''}
+              </span>
+              <span style={{ marginLeft: 'auto', fontFamily: 'var(--mono)', fontSize: 13, color: sigColor(m.signal) }}>{m.demand_index ?? '—'}/100</span>
+            </div>
+            <div className="bar-track" style={{ marginTop: 8 }}>
+              <div className="bar-fill" style={{ width: `${Math.max(0, Math.min(100, m.demand_index || 0))}%`, background: sigColor(m.signal) }} />
+            </div>
+            <div style={{ display: 'flex', gap: 18, marginTop: 8, fontSize: 12, color: 'var(--muted)', flexWrap: 'wrap' }}>
+              {m.purchase_intent_pct != null && <span>Intent <b style={{ color: 'var(--text)' }}>{m.purchase_intent_pct}%</b></span>}
+              {m.appeal_mean != null && <span>Appeal <b style={{ color: 'var(--text)' }}>{m.appeal_mean}/7</b></span>}
+              {m.wtp != null && <span>WTP <b style={{ color: 'var(--text)' }}>{m.wtp}</b></span>}
+              {m.barriers?.[0] && <span>Top barrier: <b style={{ color: 'var(--text)' }}>{m.barriers[0].label}</b></span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function heroFor(m: string | null, a: any): JSX.Element | null {
   switch (m) {
     case 'satisfaction': return <SatisfactionHero a={a} />;
     case 'brand_lift': return <BrandLiftHero a={a} />;
@@ -283,8 +383,34 @@ export function Centerpiece({ report }: { report: CanonicalReport }) {
     case 'competitor': return <CompetitorHero a={a} />;
     case 'marketing': return <MarketingHero a={a} />;
     case 'churn': case 'churn_research': return <ChurnHero a={a} />;
+    case 'audience_profiling': return <AudienceProfilingHero a={a} />;
+    case 'market_entry': return <MarketEntryHero a={a} />;
     default: return null; // research uses the generic KPI hero (its archetype IS the mockup)
   }
+}
+
+export function Centerpiece({ report }: { report: CanonicalReport }) {
+  const a = report.centerpiece?.data as any;
+  const m = report.centerpiece?.methodology || report.header.methodology;
+  const gate = report.centerpiece?.gate;
+  if (!a || typeof a !== 'object') return null;
+  const hero = heroFor(m, a);
+  if (!hero) return null;
+
+  // §2.4 — when the sample can't support an authoritative read, lead with the
+  // directional banner and (for hard-gated methods like pricing/roadmap) damp
+  // the lime headline so the point estimate is never read as confident.
+  const directional = gate && gate.posture === 'directional' && gate.note;
+  if (!directional) return hero;
+  return (
+    <div className={gate?.suppress_headline ? 'cp-block cp-damp' : 'cp-block'}>
+      <div className="cp-gate rv">
+        <span className="cp-gate-tag">Directional</span>
+        <span className="cp-gate-note">{gate!.note}{gate!.n ? ` · n=${gate!.n}` : ''}</span>
+      </div>
+      {hero}
+    </div>
+  );
 }
 
 export default Centerpiece;

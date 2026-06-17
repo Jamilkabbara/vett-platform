@@ -18,6 +18,16 @@ export interface CanonicalSurveyQuestion {
   insight?: string | null;
   data: Record<string, unknown>;
 }
+/** §2.4 — statistical-integrity verdict attached to the centerpiece. */
+export interface StatGate {
+  posture: 'authoritative' | 'directional';
+  note: string | null;
+  suppress_headline: boolean;
+  threshold: number;
+  n: number;
+  reason: string | null;
+}
+
 export interface CanonicalReport {
   schema_version: number;
   header: {
@@ -31,7 +41,12 @@ export interface CanonicalReport {
     };
   };
   headline: { metric: string; value: string; all: Array<{ label: string; value: string }> } | null;
-  centerpiece: { methodology: string; data: Record<string, unknown> } | null;
+  centerpiece: {
+    methodology: string;
+    data: Record<string, unknown>;
+    // §2.4 — statistical-integrity gate (set by buildReport.js/statGate.js).
+    gate?: StatGate;
+  } | null;
   key_findings: Array<Record<string, unknown>>;
   recommendations?: string[];
   exec_summary: string | null;

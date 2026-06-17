@@ -100,6 +100,8 @@ import {
   MISSION_GOALS,
   getGoalById,
   getPlaceholderForGoal,
+  getRecommendedN,
+  normalizeGoalType,
 } from '../data/missionGoals';
 import {
   BRAND_LIFT_TIERS,
@@ -234,13 +236,17 @@ export const MissionSetupPage = () => {
   // sessionStorage is cleared on consumption so a stale value doesn't
   // bleed into the next visit.
   const [missionGoal, setMissionGoal] = useState<string>(() => {
+    // §2.5 — normalize legacy/landing goal aliases (pricing_research →
+    // pricing, etc.) so every entry point resolves to a canonical backend
+    // goal_type. Without this the type-specific setup never renders and an
+    // invalid goal_type is persisted.
     const fromUrl = searchParams.get('goal');
-    if (fromUrl) return fromUrl;
+    if (fromUrl) return normalizeGoalType(fromUrl);
     try {
       const fromSession = sessionStorage.getItem('vett_landing_goal');
       if (fromSession) {
         sessionStorage.removeItem('vett_landing_goal');
-        return fromSession;
+        return normalizeGoalType(fromSession);
       }
     } catch { /* private mode — fall through */ }
     const intent = (location.state as { intent?: string } | null)?.intent;
@@ -335,6 +341,16 @@ export const MissionSetupPage = () => {
   // Pass 31 B5 — Churn Research (driver tree + win-back) state.
   const isChurn = missionGoal === 'churn_research';
   const [churnState, setChurnState] = useState<ChurnInputsState>(CHURN_DEFAULT_STATE);
+
+  // WO §3.2 — Audience Profiling (psychographic + behavioural segmentation).
+  // Universal inputs supply brand/category/audience; these add the segmentation
+  // specifics the generator reads from clarify.
+  const isAudienceProfiling = missionGoal === 'audience_profiling';
+  const [audienceInputs, setAudienceInputs] = useState({ markets: '', segmentationFocus: '' });
+
+  // WO §3.3 — Market Entry (geo demand validation).
+  const isMarketEntry = missionGoal === 'market_entry';
+  const [marketEntryInputs, setMarketEntryInputs] = useState({ currentMarket: '', targetMarkets: '', price: '' });
   // Adaptive clarify — populated by /api/ai/clarify with ≤15s timeout.
   // null === "fall back to the static Market/Stage/Price cards".
   const [dynamicClarify, setDynamicClarify] = useState<
@@ -398,8 +414,10 @@ export const MissionSetupPage = () => {
             // missionGoal omitted — clears the stale CA goal silently
           });
           try { localStorage.removeItem(DRAFT_KEY_OLD); } catch { /* no-op */ }
-        } else if (draft.missionGoal && getGoalById(draft.missionGoal)) {
-          setMissionGoal(draft.missionGoal);
+        } else if (draft.missionGoal) {
+          // §2.5 — normalize legacy aliases from older drafts too.
+          const g = normalizeGoalType(draft.missionGoal);
+          if (getGoalById(g)) setMissionGoal(g);
         }
         if (typeof draft.missionDescription === 'string') {
           setMissionDescription(draft.missionDescription);
@@ -449,6 +467,8 @@ export const MissionSetupPage = () => {
     if (isMarketing)  return validateAdTesting(adTesting).length === 0;
     if (isCompetitor) return validateCompetitorAnalysis(competitorState, universalInputs.competitors.length).length === 0;
     if (isChurn)      return !universalEmpty && validateChurn(churnState).length === 0;
+    if (isAudienceProfiling) return !universalEmpty;
+    if (isMarketEntry)       return !universalEmpty && !!marketEntryInputs.targetMarkets.trim();
     if (isBrandLift) {
       const bl = brandLiftState;
       return !!bl.brand.trim() && !!bl.creative && bl.markets.length >= 1
@@ -861,7 +881,10 @@ export const MissionSetupPage = () => {
               brand_name: brandLiftState.brand,
               brand_lift_template: brandLiftState.kpiTemplate,
               markets: brandLiftState.markets.join(','),
-              channel_ids: brandLiftState.channels.map((c) => c.id).join(','),
+              // §2.2 — pass channel DISPLAY NAMES (MBC, Shahid, TOD) so the
+              // channel-specific recall questions name the real channels, not
+              // slug ids. Lift is computed from responses, not channel ids.
+              channel_ids: brandLiftState.channels.map((c) => c.display_name || c.id).join(','),
               channel_count: String(brandLiftState.channels.length),
               competitors: brandLiftState.competitors.join('|'),
               wave_mode: brandLiftState.wave.mode,
@@ -965,6 +988,21 @@ export const MissionSetupPage = () => {
               churn_winback_possible: String(churnState.winbackPossible),
             }
           : {};
+        // WO §3.2 — audience profiling context fed to the segmentation generator.
+        const audienceProfilingPromptCtx: Record<string, string> = isAudienceProfiling
+          ? {
+              segmentation_focus: audienceInputs.segmentationFocus,
+              markets: audienceInputs.markets,
+            }
+          : {};
+        // WO §3.3 — market entry context fed to the geo demand-validation generator.
+        const marketEntryPromptCtx: Record<string, string> = isMarketEntry
+          ? {
+              current_market: marketEntryInputs.currentMarket,
+              target_markets: marketEntryInputs.targetMarkets,
+              price: marketEntryInputs.price,
+            }
+          : {};
         // Pass 29 B2 — universal inputs forwarded for every methodology.
         const universalPromptCtx: Record<string, string> = isUniversalShown
           ? {
@@ -992,6 +1030,8 @@ export const MissionSetupPage = () => {
             ...competitorPromptCtx,
             ...namingPromptCtx,
             ...churnPromptCtx,
+            ...audienceProfilingPromptCtx,
+            ...marketEntryPromptCtx,
           },
         });
       } catch (aiErr) {
@@ -1147,6 +1187,13 @@ export const MissionSetupPage = () => {
           }
         : {};
 
+      // WO §3.3 — market_entry persists its target markets in the shared
+      // targeted_markets column so the per-market demand analysis can group by
+      // market. (concept / current market / price flow to generation via clarify.)
+      const marketEntryFields: Record<string, unknown> = isMarketEntry
+        ? { targeted_markets: marketEntryInputs.targetMarkets.split(',').map((s) => s.trim()).filter(Boolean) }
+        : {};
+
       // Pass 29 B4 — pricing schema columns. Methodology fixed to
       // van_westendorp_plus_gabor_granger for now (the Pass 29 prompt
       // generator's only branch).
@@ -1263,6 +1310,7 @@ export const MissionSetupPage = () => {
         ...namingFields,
         ...churnFields,
         ...brandLiftFields,
+        ...marketEntryFields,
       };
 
       const { data: missionData, error } = await supabase
@@ -1600,6 +1648,15 @@ export const MissionSetupPage = () => {
                     />
                   </div>
                 )}
+                {/* §2.4 — recommended sample size for the chosen method (advisory;
+                    we never force-raise the default). Smaller samples still run
+                    but render as directional. */}
+                {selectedGoal && missionGoal !== 'research' && missionGoal !== 'creative_attention' && (
+                  <p className="mt-3 font-body text-[11px] text-t3">
+                    <span className="text-amber font-semibold">Recommended sample:</span>{' '}
+                    n≥{getRecommendedN(missionGoal)} for a confident read. Smaller samples still run — results are then shown as directional.
+                  </p>
+                )}
                 {isPricing && (
                   <div className="mt-4">
                     <PricingInputs
@@ -1677,12 +1734,69 @@ export const MissionSetupPage = () => {
                   </div>
                 )}
 
+                {/* WO §3.2 — audience profiling specifics (universal inputs above supply brand/category/audience). */}
+                {isAudienceProfiling && (
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <label className="font-body text-[12px] text-[var(--t2)] block mb-1">Segmentation focus <span className="text-[var(--t3)]">(optional)</span></label>
+                      <input
+                        value={audienceInputs.segmentationFocus}
+                        onChange={(e) => setAudienceInputs((s) => ({ ...s, segmentationFocus: e.target.value }))}
+                        placeholder="e.g. attitudes to price, health, and sustainability"
+                        className="w-full bg-[var(--bg3)] text-[var(--t1)] text-sm rounded-lg px-3 py-2 border border-[var(--b1)] focus:border-[var(--lime)] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-body text-[12px] text-[var(--t2)] block mb-1">Target market(s) <span className="text-[var(--t3)]">(optional)</span></label>
+                      <input
+                        value={audienceInputs.markets}
+                        onChange={(e) => setAudienceInputs((s) => ({ ...s, markets: e.target.value }))}
+                        placeholder="e.g. UAE, Saudi Arabia"
+                        className="w-full bg-[var(--bg3)] text-[var(--t1)] text-sm rounded-lg px-3 py-2 border border-[var(--b1)] focus:border-[var(--lime)] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* WO §3.3 — market entry specifics. */}
+                {isMarketEntry && (
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <label className="font-body text-[12px] text-[var(--t2)] block mb-1">Current market</label>
+                      <input
+                        value={marketEntryInputs.currentMarket}
+                        onChange={(e) => setMarketEntryInputs((s) => ({ ...s, currentMarket: e.target.value }))}
+                        placeholder="e.g. United Arab Emirates"
+                        className="w-full bg-[var(--bg3)] text-[var(--t1)] text-sm rounded-lg px-3 py-2 border border-[var(--b1)] focus:border-[var(--lime)] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-body text-[12px] text-[var(--t2)] block mb-1">Target market(s) to validate</label>
+                      <input
+                        value={marketEntryInputs.targetMarkets}
+                        onChange={(e) => setMarketEntryInputs((s) => ({ ...s, targetMarkets: e.target.value }))}
+                        placeholder="e.g. Saudi Arabia, Egypt"
+                        className="w-full bg-[var(--bg3)] text-[var(--t1)] text-sm rounded-lg px-3 py-2 border border-[var(--b1)] focus:border-[var(--lime)] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-body text-[12px] text-[var(--t2)] block mb-1">Price / positioning <span className="text-[var(--t3)]">(optional)</span></label>
+                      <input
+                        value={marketEntryInputs.price}
+                        onChange={(e) => setMarketEntryInputs((s) => ({ ...s, price: e.target.value }))}
+                        placeholder="e.g. AED 15 delivery fee, premium tier"
+                        className="w-full bg-[var(--bg3)] text-[var(--t1)] text-sm rounded-lg px-3 py-2 border border-[var(--b1)] focus:border-[var(--lime)] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Primary CTA — reveals clarify. Hidden once clarify is open. */}
                 {!showClarify && (
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing || isCompetitor || isNaming || isChurn) ? handleGenerate : handleRevealClarify}
+                      onClick={(isPricing || isRoadmap || isCSAT || isValidate || isCompare || isMarketing || isCompetitor || isNaming || isChurn || isAudienceProfiling || isMarketEntry) ? handleGenerate : handleRevealClarify}
                       disabled={isSubmitting || revealingClarify}
                       // Pass 35 A5 — visual state keyed to methodologyReady,
                       // not just brief length. Per-methodology inputs

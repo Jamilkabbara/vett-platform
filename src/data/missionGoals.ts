@@ -215,6 +215,40 @@ export function getGoalById(id: string): MissionGoal | undefined {
   return MISSION_GOALS.find((g) => g.id === id);
 }
 
+/*
+ * §2.5 — legacy/landing goal aliases → canonical backend goal_type.
+ * The landing catalog historically used descriptive ids that don't match the
+ * goal_types the backend dispatches generation/analysis on. Without mapping,
+ * clicking those cards persisted an invalid goal_type and rendered a generic
+ * setup (no type-specific inputs). Applied wherever a goal enters the setup.
+ */
+const GOAL_ALIASES: Record<string, string> = {
+  pricing_research: 'pricing',
+  customer_satisfaction: 'satisfaction',
+  feature_roadmap: 'roadmap',
+  competitor_analysis: 'competitor',
+};
+
+/** Normalize any goal alias to a valid canonical goal_type (fallback 'validate'). */
+export function normalizeGoalType(goal: string | null | undefined): string {
+  if (!goal) return 'validate';
+  const canonical = GOAL_ALIASES[goal] || goal;
+  return getGoalById(canonical) ? canonical : 'validate';
+}
+
+/*
+ * §2.4 — recommended minimum sample per method, surfaced at setup so users
+ * pick a defensible n (advisory only — we don't force-raise the default, which
+ * would change price). Mirrors statGate.js thresholds: segmentation needs 50;
+ * everything else 30 for a confident point read.
+ */
+const RECOMMENDED_N: Record<string, number> = {
+  audience_profiling: 50,
+};
+export function getRecommendedN(goal: string | null | undefined): number {
+  return RECOMMENDED_N[normalizeGoalType(goal)] || 30;
+}
+
 /** Get the placeholder for a goal id, or a sensible fallback. */
 export function getPlaceholderForGoal(id: string): string {
   return getGoalById(id)?.placeholder ?? SHARED_FALLBACK_PLACEHOLDER;
