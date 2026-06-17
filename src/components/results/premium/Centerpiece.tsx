@@ -268,10 +268,7 @@ function ChurnHero({ a }: { a: any }) {
   );
 }
 
-export function Centerpiece({ report }: { report: CanonicalReport }) {
-  const a = report.centerpiece?.data as any;
-  const m = report.centerpiece?.methodology || report.header.methodology;
-  if (!a || typeof a !== 'object') return null;
+function heroFor(m: string | null, a: any): JSX.Element | null {
   switch (m) {
     case 'satisfaction': return <SatisfactionHero a={a} />;
     case 'brand_lift': return <BrandLiftHero a={a} />;
@@ -285,6 +282,30 @@ export function Centerpiece({ report }: { report: CanonicalReport }) {
     case 'churn': case 'churn_research': return <ChurnHero a={a} />;
     default: return null; // research uses the generic KPI hero (its archetype IS the mockup)
   }
+}
+
+export function Centerpiece({ report }: { report: CanonicalReport }) {
+  const a = report.centerpiece?.data as any;
+  const m = report.centerpiece?.methodology || report.header.methodology;
+  const gate = report.centerpiece?.gate;
+  if (!a || typeof a !== 'object') return null;
+  const hero = heroFor(m, a);
+  if (!hero) return null;
+
+  // §2.4 — when the sample can't support an authoritative read, lead with the
+  // directional banner and (for hard-gated methods like pricing/roadmap) damp
+  // the lime headline so the point estimate is never read as confident.
+  const directional = gate && gate.posture === 'directional' && gate.note;
+  if (!directional) return hero;
+  return (
+    <div className={gate?.suppress_headline ? 'cp-block cp-damp' : 'cp-block'}>
+      <div className="cp-gate rv">
+        <span className="cp-gate-tag">Directional</span>
+        <span className="cp-gate-note">{gate!.note}{gate!.n ? ` · n=${gate!.n}` : ''}</span>
+      </div>
+      {hero}
+    </div>
+  );
 }
 
 export default Centerpiece;
