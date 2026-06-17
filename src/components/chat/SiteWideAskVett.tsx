@@ -34,6 +34,7 @@ const HIDE_PATTERNS = [
   /^\/admin/,
   /^\/results\/[^/]+/,
   /^\/creative-results\/[^/]+/,
+  /^\/setup/, // §E — the setup page mounts its own scope='setup' advisor (screen-aware)
   /^\/payment-success/,
   /^\/payment-cancel/,
   /^\/help/,

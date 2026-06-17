@@ -107,6 +107,9 @@ import {
   BRAND_LIFT_TIERS,
   calculateBrandLiftMissionPrice,
 } from '../utils/pricingEngine';
+// §E — screen-aware Setup Advisor copilot. Mounted here (not via SiteWideAskVett,
+// which now hides on /setup) so it answers about THIS draft, not the portfolio.
+import { ChatWidget } from '../components/chat/ChatWidget';
 
 /**
  * Mission Setup — Commit 4 of the redesign (Prompt 3).
@@ -478,6 +481,40 @@ export const MissionSetupPage = () => {
   })();
 
   const selectedGoal = getGoalById(missionGoal);
+
+  // §E — live on-screen state handed to the Setup Advisor each turn, so it
+  // answers about THIS draft (the selected type + the values entered so far)
+  // instead of the dashboard portfolio. Only fields the user can actually see
+  // are included; per-type blocks are spread in conditionally.
+  const setupPageState: Record<string, unknown> = {
+    research_type: missionGoal,
+    research_type_label: selectedGoal?.label ?? missionGoal,
+    brief: missionDescription || null,
+    brief_chars: charCount,
+    ...(isUniversalShown && {
+      brand: universalInputs.brand || null,
+      category: universalInputs.category || null,
+      audience: universalInputs.audienceDescription || null,
+      competitors: universalInputs.competitors.length ? universalInputs.competitors : null,
+    }),
+    ...(isBrandLift && {
+      brand: brandLiftState.brand || null,
+      markets: brandLiftState.markets,
+      channels: brandLiftState.channels.map((c) => c.display_name),
+      respondent_count: brandLiftState.respondentCount,
+      structure: 'lift study (exposed vs. control split)',
+    }),
+    ...(isAudienceProfiling && {
+      markets: audienceInputs.markets || null,
+      segmentation_focus: audienceInputs.segmentationFocus || null,
+    }),
+    ...(isMarketEntry && {
+      current_market: marketEntryInputs.currentMarket || null,
+      target_markets: marketEntryInputs.targetMarkets || null,
+      price_point: marketEntryInputs.price || null,
+    }),
+  };
+
   const placeholder = useMemo(
     () => getPlaceholderForGoal(missionGoal),
     [missionGoal],
@@ -1864,6 +1901,11 @@ export const MissionSetupPage = () => {
           </div>
         </div>
       </section>
+
+      {/* §E — screen-aware Setup Advisor. Floating bottom-right; receives the
+          live draft state so answers are grounded in THIS setup, not the
+          portfolio. SiteWideAskVett hides on /setup so there's no double-mount. */}
+      <ChatWidget scope="setup" pageState={setupPageState} />
     </div>
   );
 };

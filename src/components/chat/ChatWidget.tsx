@@ -36,6 +36,8 @@ interface Quota { used: number; limit: number; remaining: number; }
 interface ChatWidgetProps {
   scope: ChatScope;
   missionId?: string | null;
+  /** §E — live on-screen state (e.g. setup form: goal_type + values) sent each turn so the copilot answers about THIS page. */
+  pageState?: Record<string, unknown> | null;
   /** Defaults to bottom-right. Pass null to render inline wherever the parent mounts it. */
   anchor?: 'floating' | 'inline';
   /** When the parent owns open state (inline mode), pass these in. */
@@ -96,6 +98,7 @@ async function authHeaders(): Promise<HeadersInit> {
 export const ChatWidget = ({
   scope,
   missionId = null,
+  pageState = null,
   anchor = 'floating',
   isOpen: controlledOpen,
   onClose,
@@ -171,7 +174,7 @@ export const ChatWidget = ({
       const res = await fetch(`${API_URL}/api/chat/stream`, {
         method: 'POST',
         headers: await authHeaders(),
-        body: JSON.stringify({ scope, missionId, message: trimmed }),
+        body: JSON.stringify({ scope, missionId, message: trimmed, pageState }),
       });
 
       // 402 = quota_exceeded (server-side guard). Pass 23 Bug 23.0e v2 —
@@ -242,7 +245,7 @@ export const ChatWidget = ({
         const res = await fetch(`${API_URL}/api/chat/message`, {
           method: 'POST',
           headers: await authHeaders(),
-          body: JSON.stringify({ scope, missionId, message: trimmed }),
+          body: JSON.stringify({ scope, missionId, message: trimmed, pageState }),
         });
         const data = await res.json();
         if (res.status === 402 || data.blocked) {
