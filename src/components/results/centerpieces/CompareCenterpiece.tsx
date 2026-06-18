@@ -31,6 +31,8 @@
  *  - never fake a chart: honest null-state instead
  */
 
+import { HeroBarList } from './HeroBarList';
+
 const SMALL_N = 10;
 
 // Pass 46 Phase 4 — each rating dimension's scale max (compare.js header:
@@ -265,6 +267,23 @@ function FinalChoiceBars({
   const height = PAD + ranked.length * ROW_H + 4;
   const smallBase = base > 0 && base < SMALL_N;
 
+  // §F2 — concept labels can be full sentences; the SVG axis can't wrap, so for
+  // long labels render the wrapping HTML bar list (full labels, never sliced).
+  if (ranked.some((c) => (c.label || c.concept_id).length > 24)) {
+    return (
+      <HeroBarList
+        rows={ranked.map((c) => ({
+          label: c.label || c.concept_id,
+          pct: c.final_choice_pct?.pct ?? null,
+          sub: c.final_choice_pct
+            ? `${c.final_choice_pct.count}/${c.final_choice_pct.base} chose${smallBase ? ' · directional' : ''}`
+            : 'no vote',
+          isWinner: c.concept_id === winnerId,
+        }))}
+      />
+    );
+  }
+
   return (
     <svg
       viewBox={`0 0 ${VB_W} ${height}`}
@@ -285,8 +304,7 @@ function FinalChoiceBars({
               className="fill-t1 font-display"
               style={{ fontSize: '12px', fontWeight: isWinner ? 800 : 600 }}
             >
-              <title>{c.label || c.concept_id}</title>
-              {(c.label || c.concept_id).slice(0, 22)}
+              {(c.label || c.concept_id).slice(0, 24)}
             </text>
             <text x={0} y={y + BAR_H + 12} className="fill-t3 font-body" style={{ fontSize: '9px' }}>
               {fc ? `${fc.count}/${fc.base} chose${smallBase ? ' · directional' : ''}` : 'no vote'}

@@ -45,6 +45,8 @@ const CRITERION_LABEL: Record<string, string> = {
   modern: 'Modern',
 };
 
+import { HeroBarList } from './HeroBarList';
+
 interface RatingStats { mean: number; stddev?: number; n: number; ci_low?: number; ci_high?: number }
 interface PairwiseWinRate { pct: number; wins: number; appearances: number }
 interface Candidate {
@@ -274,6 +276,29 @@ function PreferenceBars({
   // Scale: pairwise/composite share are both 0-100 → full track = 100.
   const maxVal = 100;
 
+  // §F2 — name labels can be long; the SVG axis can't wrap, so for long labels
+  // render the wrapping HTML bar list (full labels, never sliced).
+  if (ranked.some((c) => (c.label || c.candidate_id).length > 24)) {
+    return (
+      <HeroBarList
+        rows={ranked.map((c) => {
+          const val = shareValue(c, mode);
+          const n = mode === 'pairwise'
+            ? (c.pairwise_win_rate?.appearances ?? 0)
+            : (c.criteria ? Math.max(0, ...Object.values(c.criteria).map((s) => s?.n ?? 0)) : 0);
+          const thin = n > 0 && n < SMALL_N;
+          return {
+            label: c.label || c.candidate_id,
+            pct: val,
+            valueText: val === null ? '—' : mode === 'pairwise' ? `${Math.round(val)}%` : (c.composite ?? 0).toFixed(1),
+            sub: `n=${n}${thin ? ' · directional' : ''}`,
+            isWinner: c.candidate_id === winnerId,
+          };
+        })}
+      />
+    );
+  }
+
   return (
     <svg
       viewBox={`0 0 ${VB_W} ${height}`}
@@ -301,8 +326,7 @@ function PreferenceBars({
               className="fill-t1 font-display"
               style={{ fontSize: '12px', fontWeight: isWinner ? 800 : 600 }}
             >
-              <title>{c.label || c.candidate_id}</title>
-              {(c.label || c.candidate_id).slice(0, 22)}
+              {(c.label || c.candidate_id).slice(0, 24)}
             </text>
             <text x={0} y={y + BAR_H + 12} className="fill-t3 font-body" style={{ fontSize: '9px' }}>
               {n > 0 ? `n=${n}${thin ? ' · directional' : ''}` : 'no data'}
