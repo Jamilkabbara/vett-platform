@@ -301,6 +301,7 @@ function PreferenceBars({
               className="fill-t1 font-display"
               style={{ fontSize: '12px', fontWeight: isWinner ? 800 : 600 }}
             >
+              <title>{c.label || c.candidate_id}</title>
               {(c.label || c.candidate_id).slice(0, 22)}
             </text>
             <text x={0} y={y + BAR_H + 12} className="fill-t3 font-body" style={{ fontSize: '9px' }}>
@@ -377,6 +378,7 @@ function AttributeHeatmap({
               className={isWinner ? 'fill-lime font-display' : 'fill-t1 font-display'}
               style={{ fontSize: '11px', fontWeight: isWinner ? 800 : 600 }}
             >
+              <title>{c.label || c.candidate_id}</title>
               {(c.label || c.candidate_id).slice(0, 20)}
             </text>
             {slugs.map((slug, j) => {

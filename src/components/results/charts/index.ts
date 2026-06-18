@@ -8,4 +8,5 @@ export { COLORS, SENTIMENT_COLORS } from './chartColors';
 export { CustomPieTooltip } from './CustomPieTooltip';
 export { DistributionPieChart } from './DistributionPieChart';
 export { DistributionBarChart } from './DistributionBarChart';
+export { DistributionBarList } from './DistributionBarList';
 export { RatingHistogram } from './RatingHistogram';

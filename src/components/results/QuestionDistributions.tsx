@@ -18,6 +18,7 @@ import {
 } from '../../hooks/useChartData';
 import {
   DistributionBarChart,
+  DistributionBarList,
   DistributionPieChart,
   RatingHistogram,
 } from './charts';
@@ -26,8 +27,27 @@ interface Props {
   missionId: string | undefined;
 }
 
+/**
+ * §F2 — a donut/legend (or Recharts bar axis) truncates sentence-length option
+ * labels with "…". When labels are long, OR the split is degenerate (every
+ * option tied — e.g. 5 unique reasons each n=1 → 5 equal slices), readable
+ * labels beat slice geometry: render the wrapping bar LIST instead.
+ */
+function hasLongLabels(q: QuestionDistribution): boolean {
+  const opts = Array.isArray(q.options) ? q.options : [];
+  return opts.some((o) => {
+    const s = String(o ?? '').trim();
+    return s.length > 24 || s.split(/\s+/).length >= 5;
+  });
+}
+function isDegenerate(q: QuestionDistribution): boolean {
+  const c = (Array.isArray(q.counts) ? q.counts : []).filter((n) => n > 0);
+  return c.length >= 4 && new Set(c).size === 1; // all tied
+}
+
 function pickChart(q: QuestionDistribution) {
   if (q.type === 'rating') return <RatingHistogram data={q} />;
+  if (hasLongLabels(q) || isDegenerate(q)) return <DistributionBarList data={q} />;
   if (Array.isArray(q.options) && q.options.length > 5) return <DistributionBarChart data={q} />;
   return <DistributionPieChart data={q} />;
 }
