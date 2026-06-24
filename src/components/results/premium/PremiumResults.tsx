@@ -73,7 +73,7 @@ function Donut({ data }: { data: Record<string, any> }) {
       </svg>
       <div className="legend">
         {entries.slice(0, 6).map(([opt, v], i) => (
-          <div className="li" key={opt}><span className="sw" style={{ background: palette[i % palette.length] }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{opt}</span><span className="lv">{v as number}</span></div>
+          <div className="li" key={opt}><span className="sw" style={{ background: palette[i % palette.length] }} /><span style={{ overflowWrap: 'anywhere', lineHeight: 1.35 }} title={String(opt)}>{opt}</span><span className="lv">{v as number}</span></div>
         ))}
       </div>
     </div>

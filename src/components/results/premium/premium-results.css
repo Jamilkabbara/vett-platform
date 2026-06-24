@@ -122,8 +122,9 @@
 
 /* bars */
 .premium .bars{display:flex; flex-direction:column; gap:11px; flex:1; min-width:0}
-.premium .bar-row{display:grid; grid-template-columns:140px 1fr 44px; align-items:center; gap:13px; font-size:13px}
-.premium .bar-row .lab{color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:450}
+.premium .bar-row{display:grid; grid-template-columns:minmax(150px,34%) 1fr 44px; align-items:center; gap:13px; font-size:13px}
+/* D4 — full option label: wrap to as many lines as needed, never clip with "…". */
+.premium .bar-row .lab{color:var(--text); white-space:normal; overflow-wrap:anywhere; line-height:1.35; font-weight:450}
 .premium .bar-track{height:6px; background:var(--raise); border-radius:3px; overflow:hidden}
 .premium .bar-fill{height:100%; border-radius:3px; width:0; background:var(--lime); transition:width 1s cubic-bezier(.22,1,.36,1)}
 .premium .bar-fill.indigo{background:var(--indigo)}
@@ -132,8 +133,8 @@
 /* donut */
 .premium .donut-wrap{display:flex; align-items:center; gap:20px}
 .premium .legend{display:flex; flex-direction:column; gap:9px; font-size:13px}
-.premium .legend .li{display:flex; align-items:center; gap:9px}
-.premium .legend .sw{width:9px;height:9px;border-radius:2px;flex:none}
+.premium .legend .li{display:flex; align-items:flex-start; gap:9px}
+.premium .legend .sw{width:9px;height:9px;border-radius:2px;flex:none;margin-top:4px}
 .premium .legend .lv{font-family:var(--mono); font-size:11px; color:var(--muted); margin-left:auto; padding-left:14px}
 
 /* histogram */
