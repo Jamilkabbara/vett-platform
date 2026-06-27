@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import './premium-results.css';
 import { Centerpiece } from './Centerpiece';
 import { api } from '../../../lib/apiClient';
@@ -272,6 +274,7 @@ export function PremiumResults({ missionId }: { missionId: string }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
@@ -343,6 +346,10 @@ export function PremiumResults({ missionId }: { missionId: string }) {
   return (
     <div className="premium" ref={rootRef}>
       <div className="topbar">
+        {/* D8 — a clear back affordance on the results page (every non-CA type
+            routes through this shell; the CA page has its own). Mirrors the CA
+            page: ArrowLeft + label → the missions list at /dashboard. */}
+        <button className="btn" onClick={() => navigate('/dashboard')} aria-label="Back to dashboard"><ArrowLeft /> Dashboard</button>
         <div className="logo"><span className="mark"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" fill="#0B0C15" /></svg></span>VETT</div>
         <div className="spacer" />
         <div className="exports">
