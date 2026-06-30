@@ -261,7 +261,7 @@ The VETT mobile app on iOS and Android is governed by these same Terms. Addition
 - **Push notifications are opt-in:** You explicitly grant permission. Revoke any time via your device's notification settings.
 - **18+ requirement applies:** The mobile app is intended for adult users. The App Store / Play Store rating reflects this exactly.
 - **App Store / Play Store EULA:** Where the platform's standard EULA applies (Apple Media Services Terms, Google Play Terms), those terms govern your relationship with the platform; these VETT Terms govern your relationship with VETT.
-- **Refund policy applies:** All Pass 34 C1 auto-refund + manual refund mechanisms apply equally to mobile payments.
+- **Refund policy applies:** All auto-refund and manual refund mechanisms apply equally to mobile payments.
 
 ---
 

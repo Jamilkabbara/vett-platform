@@ -581,9 +581,9 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
             <p className="text-t4 text-[10px] mb-3 leading-snug">
               Counts <span className="font-mono">funnel_events</span> with a
               session_id (i.e. user funnel-paths in a single session).
-              Pass 34 C4 backfilled missing <span className="font-mono">mission_completed</span>
+              A backfill added missing <span className="font-mono">mission_completed</span>
               events with session_id=NULL because the originating sessions
-              were lost — those are excluded here on purpose. For mission-
+              were lost, those are excluded here on purpose. For mission-
               based truth, see Conversion Funnel above.
             </p>
             {!microFunnel ? (
