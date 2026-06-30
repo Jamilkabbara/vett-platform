@@ -9,9 +9,9 @@ This Refund Policy explains how payments and remedies work for VETT (vettit.ai).
 
 ## 1. General Policy: No Cash Refunds
 
-VETT operates on a **pay-per-mission** model. When you submit a mission, VETT immediately begins AI processing — generating respondents, running your survey, and producing analysis. Because this work and its associated compute cost are incurred as soon as a mission starts, **all sales are final and we do not issue cash refunds.**
+VETT operates on a **pay-per-mission** model. When you submit a mission, VETT immediately begins AI processing, generating respondents, running your survey, and producing analysis. Because this work and its associated compute cost are incurred as soon as a mission starts, **all sales are final and we do not issue cash refunds.**
 
-Instead of refunds, VETT stands behind its service with a **re-run remedy** (Section 2). If something goes wrong on our side, we fix it by re-running your mission or issuing a re-run credit — not by returning money.
+Instead of refunds, VETT stands behind its service with a **re-run remedy** (Section 2). If something goes wrong on our side, we fix it by re-running your mission or issuing a re-run credit, not by returning money.
 
 The only exceptions are the limited situations in Section 3, which we honor because payment-network rules and applicable law require it.
 
@@ -21,9 +21,9 @@ The only exceptions are the limited situations in Section 3, which we honor beca
 
 If a mission fails to deliver because of a problem on VETT's side, we will make it right by re-running the mission or issuing a credit for an equivalent mission at no additional charge. This applies to:
 
-- **Technical failure** — a mission that fails to complete due to a VETT system error.
-- **Non-delivery** — results that are never produced because of a platform fault.
-- **Corrupted output** — result or export files that are unreadable due to a platform issue.
+- **Technical failure**, a mission that fails to complete due to a VETT system error.
+- **Non-delivery**, results that are never produced because of a platform fault.
+- **Corrupted output**, result or export files that are unreadable due to a platform issue.
 
 To request a re-run, email **support@vettit.ai** with your account email and Mission ID (found in your dashboard). We aim to respond within **2 business days**. Re-run credits are valid for **12 months** from issuance, are non-transferable, and carry no cash value.
 
@@ -52,7 +52,7 @@ To be explicit, the following are **not** eligible for a cash refund (the Sectio
 - A mission that ran and delivered results, including where you are dissatisfied with the insights. Synthetic respondent data is **directional, not predictive**, and is described as such throughout the product.
 - Partial deliveries (fewer qualified respondents than requested).
 - Changing your mind after a mission has started or completed.
-- User error — incorrect screener parameters, wrong creative uploaded, or a mission submitted by mistake. Contact **support@vettit.ai**; we may offer a re-run credit as a courtesy, at our discretion.
+- User error, incorrect screener parameters, wrong creative uploaded, or a mission submitted by mistake. Contact **support@vettit.ai**; we may offer a re-run credit as a courtesy, at our discretion.
 - Missions removed or accounts suspended for violating our Terms of Service.
 
 ---
@@ -66,7 +66,7 @@ To be explicit, the following are **not** eligible for a cash refund (the Sectio
 
 ## 6. Chargebacks and Disputes
 
-If you believe a charge was duplicated or unauthorized, please contact **support@vettit.ai before** initiating a chargeback with your card issuer — we can usually resolve these faster directly. Initiating a chargeback on a mission that was delivered as described may result in:
+If you believe a charge was duplicated or unauthorized, please contact **support@vettit.ai before** initiating a chargeback with your card issuer, we can usually resolve these faster directly. Initiating a chargeback on a mission that was delivered as described may result in:
 
 - Account suspension
 - Loss of access to historical mission data
@@ -88,7 +88,7 @@ We may update this Refund Policy from time to time. Material changes will be com
 
 ## 9. Your Statutory Consumer Rights
 
-This policy does not override mandatory consumer-protection rights you may have under applicable law, including the **UAE Consumer Protection Law (Federal Law No. 15 of 2020)** and, where applicable, the **EU Consumer Rights Directive**. Where such laws grant you stronger rights than this policy, those laws prevail. Note that many jurisdictions allow a business to disapply the standard "cooling-off" cancellation right for digital services that begin immediately with the customer's consent — which is the case when you submit a VETT mission.
+This policy does not override mandatory consumer-protection rights you may have under applicable law, including the **UAE Consumer Protection Law (Federal Law No. 15 of 2020)** and, where applicable, the **EU Consumer Rights Directive**. Where such laws grant you stronger rights than this policy, those laws prevail. Note that many jurisdictions allow a business to disapply the standard "cooling-off" cancellation right for digital services that begin immediately with the customer's consent, which is the case when you submit a VETT mission.
 
 ---
 
@@ -100,4 +100,4 @@ This policy does not override mandatory consumer-protection rights you may have 
 
 ---
 
-*We stand behind our work. If a mission fails on our side, tell us and we'll re-run it — that's our commitment to you.*
+*We stand behind our work. If a mission fails on our side, tell us and we'll re-run it, that's our commitment to you.*

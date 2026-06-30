@@ -38,7 +38,7 @@ import {
 import { getGoalById } from '../data/missionGoals';
 
 /* ══════════════════════════════════════════════════════════════════
-   Data — the prototype's content, extracted so the JSX stays readable
+   Data, the prototype's content, extracted so the JSX stays readable
 ════════════════════════════════════════════════════════════════════ */
 
 // Pass 46 follow-up — the hardcoded "just vetted" ticker strings were
@@ -122,7 +122,7 @@ const HEATMAP_CELLS = [
 ];
 
 const COMPARISON_ROWS: Array<[string, string, string, string]> = [
-  ['Time to results', 'Minutes', '4–8 weeks', 'Days (if lucky)'],
+  ['Time to results', 'Minutes', '4-8 weeks', 'Days (if lucky)'],
   ['Survey design', 'AI-built instantly', 'Human researcher', 'You do it all'],
   ['Respondents', 'AI consumer panel', 'Recruited panel', 'Your own network'],
   // Pass 37 A8 — reads from STARTING_PRICE_USD.
@@ -348,7 +348,7 @@ export function LandingPage() {
     try {
       if (goalId) sessionStorage.setItem('vett_landing_goal', goalId);
       else sessionStorage.removeItem('vett_landing_goal');
-    } catch { /* private mode — fall through to URL param */ }
+    } catch { /* private mode, fall through to URL param */ }
     // Creative Attention has its own dedicated upload flow with per-asset
     // pricing — must NOT route through /setup (would create an orphan
     // mission with no media_type, blocked by the Bug 23.61 validator).
@@ -434,11 +434,11 @@ export function LandingPage() {
                 1. The flex-1 input had no `min-w-0`. Flex items default to
                    `min-width: auto` (= intrinsic content size). When the
                    typewriter rendered a long phrase, the input's intrinsic
-                   width pushed siblings off — on desktop the >_ prompt and
+                   width pushed siblings off, on desktop the >_ prompt and
                    on mobile the wrapped/extended placeholder could collide
                    with adjacent elements. `min-w-0` lets the input shrink
                    below its content's natural width and respect flex-1.
-                2. `w-full` on the input fights flex-basis arithmetic — at
+                2. `w-full` on the input fights flex-basis arithmetic, at
                    certain widths the browser computes 100% of parent + the
                    prompt's width, overflowing the row. Removed.
                 Also added `truncate` semantics so a placeholder longer than
@@ -965,7 +965,7 @@ export function LandingPage() {
         </SectionCenter>
         {/* Pass 23 Bug 23.51 — tabbed pricing (Validate / Brand Lift /
             Creative Attention). Default tab: Validate (most common).
-            Pass 23 Bug 23.63 — `goWithGoal` threaded through so the per-
+            Pass 23 Bug 23.63, `goWithGoal` threaded through so the per-
             tab CTA sets the goal_type before routing to /setup or
             /creative-attention/new. */}
         <PricingTabbed goWithGoal={goWithGoal} />
