@@ -31,10 +31,9 @@ import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
 // Previously "$35" was hardcoded in 6 places and lagged the actual
 // entry tier (now $9 / Sniff Test). Importing these guarantees the
 // pricing ticker, headline, comparison table, and footer stay in
-// sync with VOLUME_TIERS[0]/CREATIVE_ATTENTION_TIERS[0].
-import {
-  STARTING_PRICE_USD,
-} from '../utils/pricingEngine';
+// PR B — all displayed prices read the single flag-aware source (usePricingTiers
+// -> GET /api/pricing/tiers), never a hardcoded value or the frontend ladder.
+import { usePricingTiers } from '../hooks/usePricingTiers';
 import { getGoalById } from '../data/missionGoals';
 
 /* ══════════════════════════════════════════════════════════════════
@@ -67,18 +66,18 @@ const RESEARCH_TYPES: Array<{
   // get "From $9"; CA gets "From $19"; the $99+ tags reflect the
   // BrandLift / methodology-specific minimums (Pulse, etc.) which
   // require ≥50 respondents and don't dip below $99.
-  { emoji: '🚀', title: 'Product Validation',           desc: 'Test if your idea has real demand before building. Find your PMF signal fast.',                       tag: `From $${STARTING_PRICE_USD}`,                 goalId: 'validate' },
-  { emoji: '💰', title: 'Pricing Research',             desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.',                  tag: 'From $99',                                    goalId: 'pricing' },
-  { emoji: '📣', title: 'Creative & Ad Testing',        desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                            tag: `From $${STARTING_PRICE_USD}`,                 goalId: 'marketing' },
-  { emoji: '⭐', title: 'Customer Satisfaction',        desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                        tag: 'From $99',                                    goalId: 'satisfaction' },
-  { emoji: '🗺️', title: 'Feature Roadmap',              desc: 'Let your users tell you what to build next. Kano model prioritisation.',                            tag: 'From $99',                                    goalId: 'roadmap' },
+  { emoji: '🚀', title: 'Product Validation',           desc: 'Test if your idea has real demand before building. Find your PMF signal fast.',                       tag: '__from__',                 goalId: 'validate' },
+  { emoji: '💰', title: 'Pricing Research',             desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.',                  tag: '__from__',                                    goalId: 'pricing' },
+  { emoji: '📣', title: 'Creative & Ad Testing',        desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                            tag: '__from__',                 goalId: 'marketing' },
+  { emoji: '⭐', title: 'Customer Satisfaction',        desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                        tag: '__from__',                                    goalId: 'satisfaction' },
+  { emoji: '🗺️', title: 'Feature Roadmap',              desc: 'Let your users tell you what to build next. Kano model prioritisation.',                            tag: '__from__',                                    goalId: 'roadmap' },
   { emoji: '🌍', title: 'Market Entry',                 desc: 'Validate demand in new geographies before expanding. Test any country, any city.',                    tag: 'Coming soon',                                 goalId: 'market_entry' },
-  { emoji: '📡', title: 'Brand Lift Study',             desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',           tag: 'From $99',                                    goalId: 'brand_lift' },
+  { emoji: '📡', title: 'Brand Lift Study',             desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',           tag: '__from__',                                    goalId: 'brand_lift' },
   { emoji: '🎬', title: 'Creative Attention Analysis',  desc: 'Measure emotional response, attention, and engagement on your video or image creatives with research-grade emotion mapping.', tag: 'Coming soon', tagColor: 'pur', featured: true, goalId: 'creative_attention' },
-  { emoji: '🔄', title: 'Churn Research',               desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',         tag: 'From $99',                                  goalId: 'churn_research' },
-  { emoji: '🔍', title: 'Competitor Analysis',          desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',               tag: 'From $99',                                  goalId: 'competitor' },
+  { emoji: '🔄', title: 'Churn Research',               desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',         tag: '__from__',                                  goalId: 'churn_research' },
+  { emoji: '🔍', title: 'Competitor Analysis',          desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',               tag: '__from__',                                  goalId: 'competitor' },
   { emoji: '🎯', title: 'Audience Profiling',           desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',                  tag: 'Coming soon',                               goalId: 'audience_profiling' },
-  { emoji: '✍️', title: 'Naming & Messaging',           desc: 'Test product names, taglines, and positioning across your target audience.',                          tag: `From $${STARTING_PRICE_USD}`,               goalId: 'naming_messaging' },
+  { emoji: '✍️', title: 'Naming & Messaging',           desc: 'Test product names, taglines, and positioning across your target audience.',                          tag: '__from__',               goalId: 'naming_messaging' },
 ];
 
 const LOOP_STEPS = [
@@ -126,7 +125,7 @@ const COMPARISON_ROWS: Array<[string, string, string, string]> = [
   ['Survey design', 'AI-built instantly', 'Human researcher', 'You do it all'],
   ['Respondents', 'AI consumer panel', 'Recruited panel', 'Your own network'],
   // Pass 37 A8 — reads from STARTING_PRICE_USD.
-  ['Starting price', `From $${STARTING_PRICE_USD}`, '$10,000+ per study', 'Free but limited'],
+  ['Starting price', '__from__', '$10,000+ per study', 'Free but limited'],
   ['AI insights', 'Per data point', 'Manual deck, weeks later', 'None included'],
   ['Reports', 'PDF + PPT + XLS free', 'PDF, weeks later', 'CSV only'],
   ['Creative testing', 'Video + image + emotions', 'Separate study, months', 'Not available'],
@@ -150,51 +149,9 @@ const TESTIMONIALS = [
   },
 ];
 
-// Pass 23 Bug 23.PRICING + 23.51 — goal-keyed tier ladders for the
-// landing pricing teaser. Three tabs: Validate / Brand Lift / Creative
-// Attention. Mirrors src/utils/pricingEngine.ts.
-const PRICING_TABS: ReadonlyArray<{
-  id: string;
-  label: string;
-  tagline: string;
-  tiers: ReadonlyArray<{ range: string; price: string; label: string; perResp?: string }>;
-}> = [
-  {
-    id: 'validate',
-    label: 'Validate',
-    tagline: 'Product, naming, and message validation. Pay per respondent.',
-    tiers: [
-      { range: '5 personas',    price: '$9',    label: 'Sniff Test', perResp: '$1.80/resp' },
-      { range: '10 personas',   price: '$35',   label: 'Validate',   perResp: '$3.50/resp' },
-      { range: '50 personas',   price: '$99',   label: 'Confidence', perResp: '$1.98/resp' },
-      { range: '250 personas',  price: '$299',  label: 'Deep Dive',  perResp: '$1.20/resp' },
-      { range: '1,000 personas', price: '$899',  label: 'Scale',      perResp: '$0.90/resp' },
-      { range: '5,000 personas', price: '$1,990', label: 'Enterprise', perResp: '$0.40/resp' },
-    ],
-  },
-  {
-    id: 'brand_lift',
-    label: 'Brand Lift',
-    tagline: 'Awareness, recall, sentiment, and intent. Statistical sample sizes only.',
-    tiers: [
-      { range: '50 personas',   price: '$99',   label: 'Pulse',      perResp: '$1.98/resp' },
-      { range: '200 personas',  price: '$299',  label: 'Tracker',    perResp: '$1.50/resp' },
-      { range: '500 personas',  price: '$599',  label: 'Wave',       perResp: '$1.20/resp' },
-      { range: '2,000 personas', price: '$1,499', label: 'Enterprise', perResp: '$0.75/resp' },
-    ],
-  },
-  {
-    id: 'creative_attention',
-    label: 'Creative Attention',
-    tagline: 'Frame-by-frame attention, emotion, and message clarity. Per-asset.',
-    tiers: [
-      { range: '1 image',  price: '$19',  label: 'Image' },
-      { range: '1 video',  price: '$39',  label: 'Video' },
-      { range: '5 assets', price: '$79',  label: 'Bundle' },
-      { range: '20 assets', price: '$249', label: 'Series' },
-    ],
-  },
-];
+// PR B — the hardcoded goal-keyed pricing teaser ladders were deleted. The
+// pricing section (PricingTabbed) now renders the ONE canonical ladder from
+// GET /api/pricing/tiers via usePricingTiers() — a single flag-aware source.
 
 const HERO_PLACEHOLDERS = [
   'Will UAE consumers pay for a meal kit subscription?',
@@ -214,6 +171,12 @@ const HERO_PLACEHOLDERS = [
 export function LandingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // PR B — the single client price source. Every "$X" on this page renders from
+  // this (flag-aware: V1 today, V2 after the flip). Fallback "$9" only shows for
+  // the brief moment before the fetch resolves, matching the ladder floor.
+  const pricing = usePricingTiers();
+  const fromLabel = pricing.startingFromLabel ?? '$9';
 
   // Hero input — empty unless a ?q= URL param is present.
   const initialQuery = useMemo(() => {
@@ -567,7 +530,7 @@ export function LandingPage() {
         {/* Pass 37 A8 — "$35" → STARTING_PRICE_USD ($9). */}
         <div className="mt-5 flex flex-col md:flex-row flex-wrap items-center justify-center gap-1.5 md:gap-3.5 font-body text-[12px] text-t3">
           <span>
-            Surveys from <span className="text-lime font-bold">${STARTING_PRICE_USD}</span>
+            Surveys from <span className="text-lime font-bold">{fromLabel}</span>
           </span>
           <Sep />
           <span>Results in minutes</span>
@@ -612,14 +575,14 @@ export function LandingPage() {
             Not 4 weeks.
           </SecH2>
           <SecSub>
-            Agencies take a month and $10k. VETT takes minutes and from ${STARTING_PRICE_USD}. Get the
+            Agencies take a month and $10k. VETT takes minutes and from {fromLabel}. Get the
             signal you need to move fast.
           </SecSub>
           {/* Pass 37 A8 — "$35" → STARTING_PRICE_USD ($9). The header
               hero claim and the comparison stat now match the actual
               entry tier on the pricing slider. */}
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-[900px] mx-auto">
-            <StatCard n={`$${STARTING_PRICE_USD}`} tail="" body="Starting price per mission. No subscriptions, ever." />
+            <StatCard n={fromLabel} tail="" body="Starting price per mission. No subscriptions, ever." />
             <StatCard n="2" tail="min" body="Average time from launch to full research insights." />
             <StatCard n="150" tail="+" body="Markets worldwide. Any country, any city." />
           </div>
@@ -668,7 +631,7 @@ export function LandingPage() {
                   rt.tagColor === 'pur' ? 'text-pur' : 'text-lime',
                 ].join(' ')}
               >
-                {rt.tag}
+                {rt.tag === '__from__' ? `From ${fromLabel}` : rt.tag}
               </div>
             </button>
           ))}
@@ -906,7 +869,7 @@ export function LandingPage() {
                     {label}
                   </td>
                   <td className="font-body font-semibold text-[12px] md:text-[13px] text-lime bg-lime/[0.03] border-b border-t5 px-3 md:px-5 py-3">
-                    {vett}
+                    {vett === '__from__' ? `From ${fromLabel}` : vett}
                   </td>
                   <td className="font-body text-[12px] md:text-[13px] text-t2 border-b border-t5 px-3 md:px-5 py-3">
                     {agency}
@@ -1015,7 +978,7 @@ export function LandingPage() {
         {/* Pass 37 A8 — final hardcoded "$9" replaced; full circle to
             STARTING_PRICE_USD. */}
         <p className="mt-4 font-body text-[12px] text-t3">
-          No subscription · Pay per mission · From ${STARTING_PRICE_USD} · 150+ markets · Every respondent matches your audience
+          No subscription · Pay per mission · From {fromLabel} · 150+ markets · Every respondent matches your audience
         </p>
       </section>
 
@@ -1128,69 +1091,45 @@ export function LandingPage() {
  * back up to the goal-card grid.
  */
 function PricingTabbed({ goWithGoal }: { goWithGoal: (goalId: string | null) => void }) {
-  const [activeId, setActiveId] = useState<string>('validate');
-  const active = PRICING_TABS.find((t) => t.id === activeId) ?? PRICING_TABS[0];
-  const ctaCopy = active.id === 'creative_attention'
-    ? 'Start a Creative Attention analysis'
-    : active.id === 'brand_lift'
-      ? 'Start a Brand Lift study'
-      : 'Start a Validate mission';
+  // PR B — ONE canonical ladder for every goal type (goal is a free choice
+  // within a tier, not a separate price), rendered from the single flag-aware
+  // source (usePricingTiers -> /api/pricing/tiers). No goal tabs, no hardcoded
+  // prices; V1 today, V2 after the flip with no code change here.
+  const pricing = usePricingTiers();
+  const tiers = pricing.data?.tiers ?? [];
   return (
     <div className="mt-10 max-w-[1100px] mx-auto">
-      <div
-        role="tablist"
-        aria-label="Pricing by goal"
-        className="flex flex-wrap items-center justify-center gap-2 mb-4"
-      >
-        {PRICING_TABS.map((tab) => {
-          const isActive = tab.id === activeId;
-          return (
-            <button
-              key={tab.id}
-              role="tab"
-              aria-selected={isActive}
-              type="button"
-              onClick={() => setActiveId(tab.id)}
-              className={[
-                'px-4 py-2 rounded-lg font-display font-bold text-[12px] uppercase tracking-widest transition-colors',
-                isActive
-                  ? 'bg-lime text-black border border-lime'
-                  : 'bg-bg3 text-t2 border border-b2 hover:border-t3',
-              ].join(' ')}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
       <p className="text-center font-body text-[13px] text-t3 max-w-[640px] mx-auto mb-6">
-        {active.tagline}
+        One ladder, priced by sample size. Choose any research type within a tier, the price is the same.
       </p>
-      <div
-        className={[
-          'grid gap-3',
-          active.tiers.length <= 4 ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6',
-        ].join(' ')}
-      >
-        {active.tiers.map((t) => (
-          <KpiCard
-            key={t.label}
-            label={t.label}
-            value={t.price}
-            sub={t.perResp ? `${t.range} · ${t.perResp}` : t.range}
-            valueColor="lime"
-          />
-        ))}
-      </div>
-      {/* Pass 23 Bug 23.63 — per-tab CTA. Wires through goWithGoal so the
-          right goal_type is preserved through any sign-in round-trip. */}
+      {tiers.length > 0 ? (
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
+          {tiers.map((t) => (
+            <KpiCard
+              key={t.id}
+              label={t.name}
+              value={t.fromLabel}
+              sub={t.custom ? 'Contact sales' : `${t.respondents.toLocaleString()} respondents`}
+              valueColor="lime"
+            />
+          ))}
+        </div>
+      ) : (
+        // Graceful fallback while the tiers fetch is loading or if it fails
+        // (e.g. before /api/pricing/tiers is deployed with PR A).
+        <p className="text-center font-body text-[14px] text-t2">
+          Pricing starts at <span className="text-lime font-bold">{pricing.startingFromLabel ?? '$9'}</span> per mission.
+        </p>
+      )}
+      {/* CTA wires through goWithGoal (null = default start) so the goal_type
+          is preserved through any sign-in round-trip. */}
       <div className="mt-6 flex justify-center">
         <button
           type="button"
-          onClick={() => goWithGoal(active.id)}
+          onClick={() => goWithGoal(null)}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-lime/10 border border-lime/30 text-lime hover:bg-lime hover:text-black font-display font-bold text-[12px] uppercase tracking-widest transition-colors"
         >
-          {ctaCopy} →
+          Start a mission →
         </button>
       </div>
     </div>

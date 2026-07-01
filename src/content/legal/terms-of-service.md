@@ -48,7 +48,7 @@ We reserve the right to suspend or terminate accounts that violate these Terms.
 
 VETT generates AI-modeled synthetic personas to deliver market research insights based on your inputs. The Service includes:
 
-- Mission types: Sniff Test, Validate, Confidence, Scale, Premium, Creative Attention
+- Pricing tiers by sample size: Sniff, Validate, Confidence, Scale, and Enterprise (custom quote)
 - AI-generated synthetic personas across 193 countries
 - AI synthesis: insights, contradictions, cross-segment analysis
 - Multi-format exports: CSV, JSON, PDF, PPTX, XLSX
@@ -67,14 +67,7 @@ For high-stakes decisions (legal, regulatory, medical), we recommend supplementi
 
 Current pricing is published at vettit.ai. Prices are in USD and subject to change with 30 days' notice for active subscribers.
 
-| Mission Type | Price |
-|---|---|
-| Sniff Test (5 respondents) | $9 |
-| Validate (10 respondents) | $19 |
-| Confidence (50 respondents) | $99 |
-| Scale (1,000 respondents) | $899 |
-| Premium (5,000 respondents) | $1,990 |
-| Creative Attention (per asset) | $19 |
+[[PRICING_TABLE]]
 
 ### 5.2 Payment
 
