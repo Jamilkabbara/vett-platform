@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { fetchMissionRow } from '../lib/missionAccess';
 import { Logo } from '../components/ui/Logo';
 // Pass 41 BUG2 — universal renderer fallback when this page can't
 // produce its marketing-specific stages (missing aggregated_by_question
@@ -170,11 +171,7 @@ export function AdTestingResultsPage() {
       // schema variant), retry with a minimal select to determine
       // whether the row exists at all. This makes the fallback path
       // robust against schema drift.
-      const { data, error: fetchErr } = await supabase
-        .from('missions')
-        .select('id, questions, brand_name, category, creative_media_url, creative_media_type, campaign_channel, campaign_format, campaign_objective, intended_message, aggregated_by_question, analysis, status, insights, title, goal_type, completed_at, qualified_respondent_count')
-        .eq('id', missionId)
-        .single();
+      const { data, error: fetchErr } = await fetchMissionRow(missionId, 'id, questions, brand_name, category, creative_media_url, creative_media_type, campaign_channel, campaign_format, campaign_objective, intended_message, aggregated_by_question, analysis, status, insights, title, goal_type, completed_at, qualified_respondent_count');
 
       if (fetchErr || !data) {
         // Probe: does the row exist at all? If yes, the fetch failed

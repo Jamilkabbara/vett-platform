@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { fetchMissionRow } from '../lib/missionAccess';
 import { Logo } from '../components/ui/Logo';
 // Pass 42 C4 — universal chart sections (Sentiment, Distributions, Segments).
 import { UniversalCharts } from '../components/results/UniversalCharts';
@@ -127,11 +128,7 @@ export function ChurnResultsPage() {
   useEffect(() => {
     if (!missionId) return;
     (async () => {
-      const { data, error: fetchErr } = await supabase
-        .from('missions')
-        .select('id, questions, brand_name, churn_definition, churn_customer_type, churn_winback_possible, aggregated_by_question, analysis, status, title, goal_type, completed_at, qualified_respondent_count')
-        .eq('id', missionId)
-        .single();
+      const { data, error: fetchErr } = await fetchMissionRow(missionId, 'id, questions, brand_name, churn_definition, churn_customer_type, churn_winback_possible, aggregated_by_question, analysis, status, title, goal_type, completed_at, qualified_respondent_count');
       if (fetchErr || !data) {
         setError('Mission not found');
       } else {

@@ -20,9 +20,9 @@ import { AdminBlog }      from '../components/admin/AdminBlog';
 import { PromosPanel }    from '../components/admin/PromosPanel';
 import { AdminPaymentErrors } from '../components/admin/AdminPaymentErrors';
 import { ErrorBoundary }  from '../components/shared/ErrorBoundary';
+import { ADMIN_EMAIL } from '../lib/adminConfig';
 
 const API_URL    = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
-const ADMIN_EMAIL = 'kabbarajamil@gmail.com';
 
 type SidebarTab =
   | 'overview' | 'revenue' | 'ai-costs' | 'costs'

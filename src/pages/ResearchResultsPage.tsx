@@ -23,6 +23,7 @@ import {
   Sparkles, TrendingUp, AlertTriangle, MessageCircleQuestion,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { fetchMissionRow } from '../lib/missionAccess';
 import { OverlayPage } from '../components/layout/OverlayPage';
 // Pass 40 CRASH40-3 — wrap each insight section so a render error in
 // one (schema drift, unknown object shape, etc.) degrades only that
@@ -441,16 +442,13 @@ export function ResearchResultsPage({ barAlreadyMounted = false }: ResearchResul
     }
     let cancelled = false;
     (async () => {
-      const { data, error: fetchErr } = await supabase
-        .from('missions')
-        .select(
-          // Pass 42 A4 — also fetch delivery_status, target_qualified_count,
-          // recruitment_status so the hero can render the partial-
-          // delivery copy when applicable.
-          'id, title, brief, goal_type, status, respondent_count, delivered_respondent_count, total_simulated_count, qualified_respondent_count, qualification_rate, completed_at, insights, delivery_status, target_qualified_count, recruitment_status',
-        )
-        .eq('id', missionId)
-        .maybeSingle();
+      const { data, error: fetchErr } = await fetchMissionRow(
+        missionId,
+        // Pass 42 A4 — also fetch delivery_status, target_qualified_count,
+        // recruitment_status so the hero can render the partial-
+        // delivery copy when applicable.
+        'id, title, brief, goal_type, status, respondent_count, delivered_respondent_count, total_simulated_count, qualified_respondent_count, qualification_rate, completed_at, insights, delivery_status, target_qualified_count, recruitment_status',
+      );
       if (cancelled) return;
       if (fetchErr || !data) {
         setError('Mission not found.');

@@ -23,6 +23,7 @@ import {
   Minus, AlertCircle, CheckCircle2, Lightbulb,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { fetchMissionRow } from '../lib/missionAccess';
 import { Logo } from '../components/ui/Logo';
 
 // Pass 37 A5 — Creative attention staleness threshold. A CA mission that
@@ -109,11 +110,7 @@ export function CreativeAttentionResultsPage() {
     if (!missionId) return;
 
     const fetchMission = async () => {
-      const { data, error: fetchErr } = await supabase
-        .from('missions')
-        .select('*')
-        .eq('id', missionId)
-        .single();
+      const { data, error: fetchErr } = await fetchMissionRow(missionId, '*');
 
       if (fetchErr || !data) {
         setError('Mission not found');

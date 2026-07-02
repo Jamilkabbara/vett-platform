@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { fetchMissionRow } from '../lib/missionAccess';
 import { Logo } from '../components/ui/Logo';
 // Pass 41 BUG1 — when a brand_lift mission has status='completed' but
 // no aggregated `brand_lift_results` column (e.g. synthesis ran the
@@ -207,11 +208,7 @@ export function BrandLiftResultsPage() {
   useEffect(() => {
     if (!missionId) return;
     (async () => {
-      const { data, error: fetchErr } = await supabase
-        .from('missions')
-        .select('*')
-        .eq('id', missionId)
-        .single();
+      const { data, error: fetchErr } = await fetchMissionRow<BrandLiftMissionRow>(missionId, '*');
       if (fetchErr || !data) {
         setError('Mission not found');
       } else {

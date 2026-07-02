@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Loader2, AlertCircle, DollarSign, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { fetchMissionRow } from '../lib/missionAccess';
 import { Logo } from '../components/ui/Logo';
 // Pass 42 C4 — universal chart sections (Sentiment, Distributions, Segments).
 import { UniversalCharts } from '../components/results/UniversalCharts';
@@ -248,11 +249,7 @@ export function PricingResultsPage() {
   useEffect(() => {
     if (!missionId) return;
     (async () => {
-      const { data, error: fetchErr } = await supabase
-        .from('missions')
-        .select('id, status, title, goal_type, completed_at, qualified_respondent_count, questions, pricing_currency, pricing_expected_min, pricing_expected_max, brand_name, aggregated_by_question, analysis')
-        .eq('id', missionId)
-        .single();
+      const { data, error: fetchErr } = await fetchMissionRow(missionId, 'id, status, title, goal_type, completed_at, qualified_respondent_count, questions, pricing_currency, pricing_expected_min, pricing_expected_max, brand_name, aggregated_by_question, analysis');
       if (fetchErr || !data) {
         setError('Mission not found');
       } else {
