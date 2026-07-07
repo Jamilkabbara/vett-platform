@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/apiClient';
 import { VOLUME_TIERS } from '../utils/pricingEngine';
 import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
+import { RecommendedNextMissions } from '../components/results/RecommendedNextMissions';
 import { deliveryNoun } from '../lib/missionDeliveryUnit';
 // Pass 42 G3 — user-friendly error copy. Internal logs keep the
 // technical message; user-visible surfaces show the mapped version.
@@ -502,6 +503,18 @@ export const MissionsListPage = () => {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Recommended next missions — keyed off the most recent COMPLETED
+              mission (status compared case-insensitively: the DB stores
+              lowercase, older code paths uppercase). Self-hiding component. */}
+          {(() => {
+            const lastCompleted = missions
+              .filter((m) => (m.status || '').toUpperCase() === 'COMPLETED')
+              .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
+            return lastCompleted
+              ? <RecommendedNextMissions missionId={lastCompleted.id} variant="cards" />
+              : null;
+          })()}
 
           {fetchError ? (
             // Pass 36 A4 — fetch failure: distinct from "empty state" so
