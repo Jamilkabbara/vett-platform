@@ -265,6 +265,30 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
     }
   };
 
+  // WO#4 Phase 2 — the analysis + aggregations backfill endpoints existed with
+  // no UI wiring (server-only). Same contract as chart-data: 202 + pending_count,
+  // runs async in the background.
+  const backfillGeneric = async (path: string, label: string) => {
+    setBusy(true);
+    const t = toast.loading(`Starting ${label} backfill…`);
+    try {
+      const res = await apiFetch(path, { method: 'POST' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.message || j.error || 'backfill failed');
+      }
+      const j = await res.json();
+      toast.success(
+        `${label} backfill started for ${j.pending_count ?? '?'} mission${j.pending_count === 1 ? '' : 's'}. Runs in background.`,
+        { id: t },
+      );
+    } catch (err) {
+      toast.error(userFacingError(err), { id: t });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const STATUS_OPTIONS = ['', 'draft', 'paid', 'processing', 'completed', 'failed'];
 
   return (
@@ -277,7 +301,7 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
             type="text"
             value={search}
             onChange={e => { setSearch(e.target.value); setOffset(0); }}
-            placeholder="Search briefs…"
+            placeholder="Search briefs or users…"
             className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
@@ -316,6 +340,25 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
         >
           <BarChart2 className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Backfill charts</span>
+        </button>
+        {/* WO#4 Phase 2 — previously server-only backfills, now invokable. */}
+        <button
+          onClick={() => backfillGeneric('/api/admin/backfill/analysis', 'Analysis')}
+          disabled={busy}
+          title="Backfill deterministic analysis on all completed missions that don't have it"
+          className="flex items-center gap-1.5 px-3 py-2.5 bg-lime/10 border border-lime/30 rounded-xl text-lime hover:bg-lime/20 disabled:opacity-40 transition-colors text-xs font-bold"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Backfill analysis</span>
+        </button>
+        <button
+          onClick={() => backfillGeneric('/api/admin/backfill/aggregations', 'Aggregations')}
+          disabled={busy}
+          title="Backfill aggregated_by_question on all completed missions that don't have it"
+          className="flex items-center gap-1.5 px-3 py-2.5 bg-lime/10 border border-lime/30 rounded-xl text-lime hover:bg-lime/20 disabled:opacity-40 transition-colors text-xs font-bold"
+        >
+          <BarChart2 className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Backfill aggs</span>
         </button>
       </div>
 

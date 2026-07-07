@@ -227,6 +227,17 @@ function ActivityTypePill({ type }: { type: string | undefined | null }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+// WO#4 Phase 2 — shape of GET /api/admin/insights (admin.js _generateInsights
+// + the route's envelope: generated_at + is_fresh appended).
+interface AiInsights {
+  headline: string | null;
+  insights: Array<{ type: 'positive' | 'negative' | 'neutral' | 'warning'; title: string; body: string; action: string | null }>;
+  opportunities: string[];
+  risks: string[];
+  generated_at: string;
+  is_fresh: boolean;
+}
+
 interface MicroFunnel {
   landing_view: number;
   signup_completed: number;
@@ -257,6 +268,11 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
   // we just fixed in Bug 22.1; the two will converge over the next weeks).
   const [microFunnel, setMicroFunnel]     = useState<MicroFunnel | null>(null);
   const [sessionFunnel, setSessionFunnel] = useState<SessionFunnel | null>(null);
+  // WO#4 Phase 2 — AI platform insights (GET /insights existed with no UI).
+  // Fetched ONCE on mount, best-effort: a stale server cache triggers a real
+  // Claude generation, so this must never ride the 60s auto-refresh loop.
+  const [aiInsights, setAiInsights] = useState<AiInsights | null>(null);
+  const [insightsBusy, setInsightsBusy] = useState(false);
 
   const rangeRef = useRef(range);
   rangeRef.current = range;
@@ -311,6 +327,29 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
     }, 60_000);
     return () => clearInterval(id);
   }, [fetchData]);
+
+  // AI insights — once on mount, best-effort (card hides itself on failure).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch('/api/admin/insights');
+        if (!res.ok) return;
+        const json: AiInsights = await res.json();
+        if (!cancelled) setAiInsights(json);
+      } catch { /* best-effort: overview must render without insights */ }
+    })();
+    return () => { cancelled = true; };
+  }, [apiFetch]);
+
+  const refreshInsights = useCallback(async () => {
+    setInsightsBusy(true);
+    try {
+      const res = await apiFetch('/api/admin/insights/refresh', { method: 'POST' });
+      if (res.ok) setAiInsights(await res.json());
+    } catch { /* keep the previous insights on failure */ }
+    finally { setInsightsBusy(false); }
+  }, [apiFetch]);
 
   // Supabase realtime — react to missions INSERT / UPDATE
   useEffect(() => {
@@ -715,6 +754,49 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
             )}
           </Section>
           </ErrorBoundary>
+
+          {/* WO#4 Phase 2 — AI Insights (endpoint existed with no UI). Renders
+              only when the best-effort fetch succeeded; never blocks overview. */}
+          {aiInsights && (
+            <ErrorBoundary label="AI Insights">
+            <Section title="AI Insights" icon={<Zap className="w-4 h-4" />}>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <p className="text-t1 text-[12px] font-semibold leading-snug">{aiInsights.headline ?? 'Platform insights'}</p>
+                <button
+                  type="button"
+                  onClick={refreshInsights}
+                  disabled={insightsBusy}
+                  title="Regenerate insights now (bypasses the 6h cache)"
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-white disabled:opacity-40 transition-colors flex-shrink-0"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${insightsBusy ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
+                {(aiInsights.insights ?? []).map((ins, i) => (
+                  <div key={i} className="py-2 border-b border-gray-800/60 last:border-0">
+                    <p className="text-[11px] font-bold leading-snug mb-0.5">
+                      <span className={
+                        ins.type === 'positive' ? 'text-green-400'
+                          : ins.type === 'negative' ? 'text-red-400'
+                            : ins.type === 'warning' ? 'text-amber-400' : 'text-t1'
+                      }>{ins.title}</span>
+                    </p>
+                    <p className="text-t4 text-[11px] leading-snug">{ins.body}</p>
+                    {ins.action && <p className="text-primary text-[10px] mt-1">→ {ins.action}</p>}
+                  </div>
+                ))}
+                {(aiInsights.opportunities ?? []).map((o, i) => (
+                  <p key={`o${i}`} className="text-[10px] text-green-400/80 leading-snug">▲ {o}</p>
+                ))}
+                {(aiInsights.risks ?? []).map((r, i) => (
+                  <p key={`r${i}`} className="text-[10px] text-red-400/80 leading-snug">▼ {r}</p>
+                ))}
+              </div>
+              <p className="text-t4 text-[9px] font-mono mt-2">generated {fmtRelative(aiInsights.generated_at)}</p>
+            </Section>
+            </ErrorBoundary>
+          )}
 
           {/* Mission Type Mix */}
           <ErrorBoundary label="Mission Type Mix">

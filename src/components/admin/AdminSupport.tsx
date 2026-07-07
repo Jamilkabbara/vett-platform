@@ -13,6 +13,7 @@ import {
   Headphones, Loader2, AlertCircle, X,
   Mail, MessageSquare, Smartphone, Globe,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface Ticket {
   id: string;
@@ -69,6 +70,7 @@ export const AdminSupport = ({ apiFetch }: AdminSupportProps) => {
   const [filter, setFilter]   = useState<StatusFilter>('all');
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [drafting, setDrafting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -108,6 +110,26 @@ export const AdminSupport = ({ apiFetch }: AdminSupportProps) => {
       load();
     } finally {
       setUpdating(false);
+    }
+  };
+
+  // WO#4 Phase 2 — POST /support/:id/ai-draft returns { draft } and persists
+  // ai_draft_response on the ticket server-side; mirror that in local state
+  // so the draft survives while the drawer stays open.
+  const generateDraft = async (id: string) => {
+    setDrafting(true);
+    const t = toast.loading('Generating AI draft…');
+    try {
+      const res = await apiFetch(`/api/admin/support/${id}/ai-draft`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { draft } = await res.json();
+      setTickets((prev) => prev.map((tk) => (tk.id === id ? { ...tk, ai_draft_response: draft } : tk)));
+      setSelected((prev) => (prev && prev.id === id ? { ...prev, ai_draft_response: draft } : prev));
+      toast.success('Draft ready', { id: t });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Draft generation failed', { id: t });
+    } finally {
+      setDrafting(false);
     }
   };
 
@@ -273,6 +295,27 @@ export const AdminSupport = ({ apiFetch }: AdminSupportProps) => {
                   rows={4}
                   className="w-full bg-[#0f172a] border border-gray-800 rounded-lg px-3 py-2 text-white text-xs"
                 />
+              </div>
+              {/* WO#4 Phase 2 — AI reply draft. The backend endpoint existed with
+                  no UI wiring; this button generates (or regenerates) a draft and
+                  the block renders whatever draft is on the ticket. */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">AI reply draft</p>
+                  <button
+                    type="button"
+                    onClick={() => generateDraft(selected.id)}
+                    disabled={drafting}
+                    className="px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/30 text-violet-300 text-[10px] font-bold hover:bg-violet-500/20 disabled:opacity-40 transition-colors"
+                  >
+                    {drafting ? 'Generating…' : (selected.ai_draft_response ? 'Regenerate draft' : 'AI draft reply')}
+                  </button>
+                </div>
+                {selected.ai_draft_response && (
+                  <div className="bg-[#0f172a] border border-gray-800 rounded-lg px-3 py-2 text-gray-300 text-xs whitespace-pre-wrap max-h-48 overflow-y-auto">
+                    {selected.ai_draft_response}
+                  </div>
+                )}
               </div>
               <div className="text-[10px] text-gray-500 space-y-1">
                 <p>Created {fmtTime(selected.created_at)}</p>
