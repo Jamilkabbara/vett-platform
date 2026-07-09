@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { fetchMissionRow } from '../lib/missionAccess';
 import { CreativeAttentionResultsPage } from './CreativeAttentionResultsPage';
 // WO — the universal premium results shell. Reads the ONE canonical report and
 // leads with the methodology's signature hero (Centerpiece). Every survey
@@ -34,11 +35,7 @@ export function ResultsRouter() {
     }
     let cancelled = false;
     (async () => {
-      const { data, error: fetchErr } = await supabase
-        .from('missions')
-        .select('goal_type')
-        .eq('id', missionId)
-        .single();
+      const { data, error: fetchErr } = await fetchMissionRow<{ goal_type: string | null }>(missionId, 'goal_type');
       if (cancelled) return;
       if (fetchErr || !data) {
         setError('Mission not found.');

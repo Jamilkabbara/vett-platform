@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Loader2, AlertCircle, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { fetchMissionRow } from '../lib/missionAccess';
 import { Logo } from '../components/ui/Logo';
 // Pass 42 C4 — universal chart sections (Sentiment, Distributions, Segments).
 import { UniversalCharts } from '../components/results/UniversalCharts';
@@ -308,11 +309,7 @@ export function RoadmapResultsPage() {
   useEffect(() => {
     if (!missionId) return;
     (async () => {
-      const { data, error: fetchErr } = await supabase
-        .from('missions')
-        .select('id, questions, roadmap_features, brand_name, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count, analysis')
-        .eq('id', missionId)
-        .single();
+      const { data, error: fetchErr } = await fetchMissionRow(missionId, 'id, questions, roadmap_features, brand_name, aggregated_by_question, status, title, goal_type, completed_at, qualified_respondent_count, analysis');
       if (fetchErr || !data) {
         setError('Mission not found');
       } else {
