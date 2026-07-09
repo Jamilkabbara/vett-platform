@@ -1958,8 +1958,14 @@ export const MissionSetupPage = () => {
 
       {/* §E — screen-aware Setup Advisor. Floating bottom-right; receives the
           live draft state so answers are grounded in THIS setup, not the
-          portfolio. SiteWideAskVett hides on /setup so there's no double-mount. */}
-      <ChatWidget scope="setup" pageState={setupPageState} />
+          portfolio. SiteWideAskVett hides on /setup so there's no double-mount.
+          Hidden on mobile (< md): the fixed bottom-right launcher otherwise
+          overlaps the full-width checkout CTA and blocks the tap (money-path).
+          Nobody needs the advisor mid-payment on a phone; it stays available on
+          tablet/desktop where there is room beside the CTA. */}
+      <div className="hidden md:block">
+        <ChatWidget scope="setup" pageState={setupPageState} />
+      </div>
     </div>
   );
 };
