@@ -103,6 +103,7 @@ import {
   getRecommendedN,
   normalizeGoalType,
 } from '../data/missionGoals';
+import { PREFILL_KEY, type SetupPrefill } from '../lib/nextMissions';
 import {
   BRAND_LIFT_TIERS,
   calculateBrandLiftMissionPrice,
@@ -408,8 +409,36 @@ export const MissionSetupPage = () => {
     const state = location.state as
       | { inputText?: string; prefill?: string; intent?: string }
       | null;
+
+    // Recommended-next-mission prefill (one-shot, consume-and-clear — same
+    // sessionStorage pattern as vett_landing_goal; the goal itself rides the
+    // existing ?goal= param so the missionGoal initializer stays untouched).
+    let recPrefill: SetupPrefill | null = null;
+    try {
+      const raw = sessionStorage.getItem(PREFILL_KEY);
+      if (raw) {
+        sessionStorage.removeItem(PREFILL_KEY);
+        recPrefill = JSON.parse(raw) as SetupPrefill;
+      }
+    } catch { /* private mode or corrupt payload — the goal still lands via ?goal= */ }
+    if (recPrefill) {
+      if (typeof recPrefill.brief === 'string' && recPrefill.brief.trim()) {
+        setMissionDescription(recPrefill.brief);
+      }
+      const p = recPrefill;
+      setUniversalInputs((prev) => ({
+        ...prev,
+        brand: p.brand || prev.brand,
+        category: p.category || prev.category,
+        audienceDescription: p.audience || prev.audienceDescription,
+        competitors: Array.isArray(p.competitors) && p.competitors.length
+          ? p.competitors.slice(0, 5)
+          : prev.competitors,
+      }));
+    }
+
     const hasIncomingPrefill =
-      !!state?.inputText || !!state?.prefill || !!queryPrefill;
+      !!state?.inputText || !!state?.prefill || !!queryPrefill || !!recPrefill;
 
     if (!hasIncomingPrefill) {
       const draft = readDraft();

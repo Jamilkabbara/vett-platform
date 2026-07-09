@@ -6,6 +6,7 @@ import { Centerpiece } from './Centerpiece';
 import { api } from '../../../lib/apiClient';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../ui/Toast';
+import { RecommendedNextMissions } from '../RecommendedNextMissions';
 import type { CanonicalReport, CanonicalSurveyQuestion, CanonicalTheme } from '../report/useCanonicalReport';
 
 /*
@@ -439,6 +440,11 @@ export function PremiumResults({ missionId }: { missionId: string }) {
                 </div>
               </>
             )}
+
+            {/* 05 NEXT MISSIONS — repeat-purchase cards, pre-filled from this
+                mission (owner decision "c"). Self-hiding: renders nothing for
+                non-owners, gated goal types, or fetch failures. */}
+            <RecommendedNextMissions missionId={missionId} variant="premium" />
 
             {/* METHODOLOGY */}
             <div className="method rv">
