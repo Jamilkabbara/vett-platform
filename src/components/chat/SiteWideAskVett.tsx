@@ -68,18 +68,31 @@ export function SiteWideAskVett() {
   if (loading) return null;
   if (HIDE_PATTERNS.some((re) => re.test(pathname))) return null;
 
+  // Mobile money-path — /dashboard/:missionId is MISSION CONTROL, the page
+  // that carries the Stripe checkout CTA at the bottom of the scroll (setup's
+  // Generate Survey navigates here to pay). #60 hid the SETUP page's own
+  // advisor on mobile, but THIS site-wide widget mounts on mission control
+  // (no /dashboard hide pattern) and its fixed bottom-right launcher sat on
+  // top of the Pay button on phones. Same approved treatment: hidden below
+  // the md breakpoint on that route, desktop copilot untouched. The /dashboard
+  // LIST route (no mission id) keeps the widget on all sizes.
+  const onMissionControl = /^\/dashboard\/[^/]+/.test(pathname);
+  const paySafeCls = onMissionControl ? 'hidden md:block' : '';
+
   // Authed: full chatbot (lazy-loaded).
   if (user) {
     return (
-      <Suspense fallback={null}>
-        <ChatWidget scope="dashboard" />
-      </Suspense>
+      <div className={paySafeCls}>
+        <Suspense fallback={null}>
+          <ChatWidget scope="dashboard" />
+        </Suspense>
+      </div>
     );
   }
 
   // Anonymous: floating button that pops a sign-in CTA. No API token spend.
   return (
-    <div ref={popoverRef} className="fixed bottom-6 right-6 z-[80]">
+    <div ref={popoverRef} className={`fixed bottom-6 right-6 z-[80] ${paySafeCls}`.trim()}>
       {anonOpen ? (
         <div
           role="dialog"
