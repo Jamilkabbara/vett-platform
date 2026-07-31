@@ -129,6 +129,14 @@ function mapQuestion(q: any, i: number): Question {
     qualifyingAnswer: q.qualifyingAnswer,
     aiRefined: true,
     hasPIIError: false,
+    // Preserve the backend's analysis question-role tag. market_entry's
+    // per-market demand analysis (computeMarketEntry) groups questions by
+    // `kind` with NO fallback, so dropping it here left every market's
+    // appeal / intent / WTP / barrier metrics null on missions created via
+    // the UI (the un-gate proof script sidesteps this by inserting backend
+    // questions directly). Carry it through so the persisted questions the
+    // analysis consumes retain their roles.
+    ...(typeof q.kind === 'string' && q.kind ? { kind: q.kind } : {}),
   };
 }
 
