@@ -45,6 +45,13 @@ const SUGGESTIONS: Record<string, string[]> = {
     'How many churned customers are winnable?',
     'What would bring them back?',
   ],
+  // Un-gate readiness (audience_profiling): segmentation-tailored prompts so
+  // this type gets relevant follow-ups instead of the generic DEFAULT set.
+  audience_profiling: [
+    'Which segment is most valuable to target?',
+    'What sets the primary segment apart?',
+    'Is the sample large enough to segment reliably?',
+  ],
   marketing: [
     'Did the ad land its message?',
     'Where is the ad strong vs weak?',
