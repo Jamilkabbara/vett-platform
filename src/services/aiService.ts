@@ -129,14 +129,18 @@ function mapQuestion(q: any, i: number): Question {
     qualifyingAnswer: q.qualifyingAnswer,
     aiRefined: true,
     hasPIIError: false,
-    // Preserve the backend's analysis question-role tag. market_entry's
+    // Preserve the backend's analysis question-role metadata. market_entry's
     // per-market demand analysis (computeMarketEntry) groups questions by
     // `kind` with NO fallback, so dropping it here left every market's
     // appeal / intent / WTP / barrier metrics null on missions created via
     // the UI (the un-gate proof script sidesteps this by inserting backend
-    // questions directly). Carry it through so the persisted questions the
-    // analysis consumes retain their roles.
+    // questions directly). audience_profiling's segmentation (computeAudienceProfiling)
+    // reads BOTH `kind` and `dimension` (attitudinal questions matched by
+    // dimension), so `dimension` must survive too or AP segments come back null
+    // through the same UI path. Carry both through so the persisted questions
+    // the analysis consumes retain their roles.
     ...(typeof q.kind === 'string' && q.kind ? { kind: q.kind } : {}),
+    ...(typeof q.dimension === 'string' && q.dimension ? { dimension: q.dimension } : {}),
   };
 }
 

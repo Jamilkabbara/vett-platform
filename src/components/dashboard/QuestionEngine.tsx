@@ -27,6 +27,13 @@ export interface Question {
    * never edits it.
    */
   kind?: string;
+  /**
+   * Analysis sub-axis emitted alongside `kind` for battery-style questions.
+   * audience_profiling's segmentation (computeAudienceProfiling) matches
+   * attitudinal questions by `dimension`, so it must survive persistence too
+   * or AP segments come back null on UI-created missions. Preserved verbatim.
+   */
+  dimension?: string;
   hasPIIError?: boolean;
 }
 
