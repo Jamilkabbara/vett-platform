@@ -75,6 +75,12 @@ const VsSyntheticUsersPage          = lazy(() => import('./pages/vs/VsSyntheticU
 const VsAaruPage                    = lazy(() => import('./pages/vs/VsAaruPage').then(m => ({ default: m.VsAaruPage })));
 const VsQuantilopePage              = lazy(() => import('./pages/vs/VsQuantilopePage').then(m => ({ default: m.VsQuantilopePage })));
 const VsTraditionalResearchPage     = lazy(() => import('./pages/vs/VsTraditionalResearchPage').then(m => ({ default: m.VsTraditionalResearchPage })));
+// Agent D redesign - HELD new landing + results pages, faithful ports of the
+// final mocks. Mounted ONLY on new /landing-v2 and /results-v2 routes so the
+// live /landing and /results pages stay visually unchanged. Owner swaps
+// routing when approved. Do NOT point live routes here without sign-off.
+const LandingV2Page                 = lazy(() => import('./pages/LandingV2Page').then(m => ({ default: m.LandingV2Page })));
+const ResultsV2Page                 = lazy(() => import('./pages/ResultsV2Page').then(m => ({ default: m.ResultsV2Page })));
 
 function App() {
   // Pass 22 Bug 22.1 — drain any funnel events that got queued in
@@ -202,6 +208,12 @@ function App() {
 
               {/* Internal design-system preview — not linked from the app. */}
               <Route path="/__design" element={<DesignSystemPreview />} />
+
+              {/* Agent D redesign - HELD. New landing + results pages behind
+                  dedicated routes; live /landing and /results are untouched.
+                  Owner flips live routing to these when approved. */}
+              <Route path="/landing-v2" element={<LandingV2Page />} />
+              <Route path="/results-v2" element={<ResultsV2Page />} />
 
               <Route path="*" element={<Navigate to="/landing" replace />} />
             </Routes>
