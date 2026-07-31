@@ -6,14 +6,29 @@ import { usePricingTiers, type PricingTiersData } from '../../hooks/usePricingTi
 /**
  * /terms route.
  *
- * Reads the canonical Terms markdown and renders it through LegalPage. PR B —
- * the price table is injected from the SINGLE flag-aware source
- * (usePricingTiers -> GET /api/pricing/tiers), replacing the `[[PRICING_TABLE]]`
- * token, so the contract shows V1 today and V2 after the owner flips PRICING_V2,
- * always matching what Stripe charges. No hardcoded prices in the markdown.
+ * Reads the canonical Terms markdown and renders it through LegalPage. The
+ * price table replaces the `[[PRICING_TABLE]]` token and is FLAG-AWARE:
+ *   - PRICING_V2 OFF (default, or endpoint unavailable): the live-today contract
+ *     table renders verbatim, so the Terms page is a no-op until the cutover.
+ *   - PRICING_V2 ON: the table is injected from the SINGLE source
+ *     (usePricingTiers -> GET /api/pricing/tiers), always matching what Stripe
+ *     charges. The flip needs no frontend deploy.
  */
+// Live-today contract table (flag OFF). Byte-for-byte what /terms shows now.
+const PRICING_TABLE_V1 = [
+  '| Mission Type | Price |',
+  '|---|---|',
+  '| Sniff Test (5 respondents) | $9 |',
+  '| Validate (10 respondents) | $19 |',
+  '| Confidence (50 respondents) | $99 |',
+  '| Scale (1,000 respondents) | $899 |',
+  '| Premium (5,000 respondents) | $1,990 |',
+  '| Creative Attention (per asset) | $19 |',
+].join('\n');
+
 function pricingTableMarkdown(data: PricingTiersData | null): string {
-  if (!data) return '_Current pricing is published at vettit.ai._';
+  // Flag off / not yet deployed / fetch failed => the live-today table.
+  if (!data || data.flagActive !== true) return PRICING_TABLE_V1;
   const rows = data.tiers.map((t) => {
     const resp = t.custom ? `${t.respondents.toLocaleString()}+` : t.respondents.toLocaleString();
     return `| ${t.name} | ${resp} | ${t.fromLabel} |`;

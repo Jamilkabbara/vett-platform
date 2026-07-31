@@ -48,7 +48,7 @@ We reserve the right to suspend or terminate accounts that violate these Terms.
 
 VETT generates AI-modeled synthetic personas to deliver market research insights based on your inputs. The Service includes:
 
-- Pricing tiers by sample size: Sniff, Validate, Confidence, Scale, and Enterprise (custom quote)
+- Mission types: Sniff Test, Validate, Confidence, Scale, Premium, Creative Attention
 - AI-generated synthetic personas across 193 countries
 - AI synthesis: insights, contradictions, cross-segment analysis
 - Multi-format exports: CSV, JSON, PDF, PPTX, XLSX

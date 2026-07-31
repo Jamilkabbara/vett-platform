@@ -66,18 +66,23 @@ const RESEARCH_TYPES: Array<{
   // get "From $9"; CA gets "From $19"; the $99+ tags reflect the
   // BrandLift / methodology-specific minimums (Pulse, etc.) which
   // require ≥50 respondents and don't dip below $99.
-  { emoji: '🚀', title: 'Product Validation',           desc: 'Test if your idea has real demand before building. Find your PMF signal fast.',                       tag: '__from__',                 goalId: 'validate' },
-  { emoji: '💰', title: 'Pricing Research',             desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.',                  tag: '__from__',                                    goalId: 'pricing' },
-  { emoji: '📣', title: 'Creative & Ad Testing',        desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                            tag: '__from__',                 goalId: 'marketing' },
-  { emoji: '⭐', title: 'Customer Satisfaction',        desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                        tag: '__from__',                                    goalId: 'satisfaction' },
-  { emoji: '🗺️', title: 'Feature Roadmap',              desc: 'Let your users tell you what to build next. Kano model prioritisation.',                            tag: '__from__',                                    goalId: 'roadmap' },
+  // NOTE (PR B): `tag` holds the FLAG-OFF (live-today) value. The renderer
+  // collapses every "From $…" tag to the single canonical floor ONLY when the
+  // PRICING_V2 flag is active (usePricingTiers().data.flagActive). With the flag
+  // off this page is a byte-for-byte no-op — each card shows exactly what it
+  // shows today ($9 entry goals, $99 statistical-sample goals, Coming soon).
+  { emoji: '🚀', title: 'Product Validation',           desc: 'Test if your idea has real demand before building. Find your PMF signal fast.',                       tag: 'From $9',                 goalId: 'validate' },
+  { emoji: '💰', title: 'Pricing Research',             desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.',                  tag: 'From $99',                                    goalId: 'pricing' },
+  { emoji: '📣', title: 'Creative & Ad Testing',        desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                            tag: 'From $9',                 goalId: 'marketing' },
+  { emoji: '⭐', title: 'Customer Satisfaction',        desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                        tag: 'From $99',                                    goalId: 'satisfaction' },
+  { emoji: '🗺️', title: 'Feature Roadmap',              desc: 'Let your users tell you what to build next. Kano model prioritisation.',                            tag: 'From $99',                                    goalId: 'roadmap' },
   { emoji: '🌍', title: 'Market Entry',                 desc: 'Validate demand in new geographies before expanding. Test any country, any city.',                    tag: 'Coming soon',                                 goalId: 'market_entry' },
-  { emoji: '📡', title: 'Brand Lift Study',             desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',           tag: '__from__',                                    goalId: 'brand_lift' },
+  { emoji: '📡', title: 'Brand Lift Study',             desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',           tag: 'From $99',                                    goalId: 'brand_lift' },
   { emoji: '🎬', title: 'Creative Attention Analysis',  desc: 'Measure emotional response, attention, and engagement on your video or image creatives with research-grade emotion mapping.', tag: 'Coming soon', tagColor: 'pur', featured: true, goalId: 'creative_attention' },
-  { emoji: '🔄', title: 'Churn Research',               desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',         tag: '__from__',                                  goalId: 'churn_research' },
-  { emoji: '🔍', title: 'Competitor Analysis',          desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',               tag: '__from__',                                  goalId: 'competitor' },
+  { emoji: '🔄', title: 'Churn Research',               desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',         tag: 'From $99',                                  goalId: 'churn_research' },
+  { emoji: '🔍', title: 'Competitor Analysis',          desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',               tag: 'From $99',                                  goalId: 'competitor' },
   { emoji: '🎯', title: 'Audience Profiling',           desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',                  tag: 'Coming soon',                               goalId: 'audience_profiling' },
-  { emoji: '✍️', title: 'Naming & Messaging',           desc: 'Test product names, taglines, and positioning across your target audience.',                          tag: '__from__',               goalId: 'naming_messaging' },
+  { emoji: '✍️', title: 'Naming & Messaging',           desc: 'Test product names, taglines, and positioning across your target audience.',                          tag: 'From $9',               goalId: 'naming_messaging' },
 ];
 
 const LOOP_STEPS = [
@@ -125,7 +130,7 @@ const COMPARISON_ROWS: Array<[string, string, string, string]> = [
   ['Survey design', 'AI-built instantly', 'Human researcher', 'You do it all'],
   ['Respondents', 'AI consumer panel', 'Recruited panel', 'Your own network'],
   // Pass 37 A8 — reads from STARTING_PRICE_USD.
-  ['Starting price', '__from__', '$10,000+ per study', 'Free but limited'],
+  ['Starting price', 'From $9', '$10,000+ per study', 'Free but limited'],
   ['AI insights', 'Per data point', 'Manual deck, weeks later', 'None included'],
   ['Reports', 'PDF + PPT + XLS free', 'PDF, weeks later', 'CSV only'],
   ['Creative testing', 'Video + image + emotions', 'Separate study, months', 'Not available'],
@@ -149,9 +154,53 @@ const TESTIMONIALS = [
   },
 ];
 
-// PR B — the hardcoded goal-keyed pricing teaser ladders were deleted. The
-// pricing section (PricingTabbed) now renders the ONE canonical ladder from
-// GET /api/pricing/tiers via usePricingTiers() — a single flag-aware source.
+// PR B — FLAG-OFF (live-today) pricing teaser. These goal-keyed ladders render
+// verbatim while PRICING_V2 is OFF, so deploying this page changes nothing users
+// see. When the owner flips the flag, PricingTabbed swaps to the ONE canonical
+// ladder from GET /api/pricing/tiers (usePricingTiers) — no frontend deploy at
+// flip time. Kept here (not deleted) purely to preserve the flag-off no-op.
+const PRICING_TABS: ReadonlyArray<{
+  id: string;
+  label: string;
+  tagline: string;
+  tiers: ReadonlyArray<{ range: string; price: string; label: string; perResp?: string }>;
+}> = [
+  {
+    id: 'validate',
+    label: 'Validate',
+    tagline: 'Product, naming, and message validation. Pay per respondent.',
+    tiers: [
+      { range: '5 personas',    price: '$9',    label: 'Sniff Test', perResp: '$1.80/resp' },
+      { range: '10 personas',   price: '$35',   label: 'Validate',   perResp: '$3.50/resp' },
+      { range: '50 personas',   price: '$99',   label: 'Confidence', perResp: '$1.98/resp' },
+      { range: '250 personas',  price: '$299',  label: 'Deep Dive',  perResp: '$1.20/resp' },
+      { range: '1,000 personas', price: '$899',  label: 'Scale',      perResp: '$0.90/resp' },
+      { range: '5,000 personas', price: '$1,990', label: 'Enterprise', perResp: '$0.40/resp' },
+    ],
+  },
+  {
+    id: 'brand_lift',
+    label: 'Brand Lift',
+    tagline: 'Awareness, recall, sentiment, and intent. Statistical sample sizes only.',
+    tiers: [
+      { range: '50 personas',   price: '$99',   label: 'Pulse',      perResp: '$1.98/resp' },
+      { range: '200 personas',  price: '$299',  label: 'Tracker',    perResp: '$1.50/resp' },
+      { range: '500 personas',  price: '$599',  label: 'Wave',       perResp: '$1.20/resp' },
+      { range: '2,000 personas', price: '$1,499', label: 'Enterprise', perResp: '$0.75/resp' },
+    ],
+  },
+  {
+    id: 'creative_attention',
+    label: 'Creative Attention',
+    tagline: 'Frame-by-frame attention, emotion, and message clarity. Per-asset.',
+    tiers: [
+      { range: '1 image',  price: '$19',  label: 'Image' },
+      { range: '1 video',  price: '$39',  label: 'Video' },
+      { range: '5 assets', price: '$79',  label: 'Bundle' },
+      { range: '20 assets', price: '$249', label: 'Series' },
+    ],
+  },
+];
 
 const HERO_PLACEHOLDERS = [
   'Will UAE consumers pay for a meal kit subscription?',
@@ -177,6 +226,10 @@ export function LandingPage() {
   // the brief moment before the fetch resolves, matching the ladder floor.
   const pricing = usePricingTiers();
   const fromLabel = pricing.startingFromLabel ?? '$9';
+  // Only collapse the per-goal "From $…" tags to the single canonical floor once
+  // the backend reports PRICING_V2 active. Flag off (or endpoint not yet
+  // deployed / fetch failed) => keep every live-today tag untouched.
+  const flagOn = pricing.data?.flagActive === true;
 
   // Hero input — empty unless a ?q= URL param is present.
   const initialQuery = useMemo(() => {
@@ -631,7 +684,7 @@ export function LandingPage() {
                   rt.tagColor === 'pur' ? 'text-pur' : 'text-lime',
                 ].join(' ')}
               >
-                {rt.tag === '__from__' ? `From ${fromLabel}` : rt.tag}
+                {flagOn && rt.tag.startsWith('From $') ? `From ${fromLabel}` : rt.tag}
               </div>
             </button>
           ))}
@@ -869,7 +922,7 @@ export function LandingPage() {
                     {label}
                   </td>
                   <td className="font-body font-semibold text-[12px] md:text-[13px] text-lime bg-lime/[0.03] border-b border-t5 px-3 md:px-5 py-3">
-                    {vett === '__from__' ? `From ${fromLabel}` : vett}
+                    {flagOn && vett.startsWith('From $') ? `From ${fromLabel}` : vett}
                   </td>
                   <td className="font-body text-[12px] md:text-[13px] text-t2 border-b border-t5 px-3 md:px-5 py-3">
                     {agency}
@@ -1091,11 +1144,29 @@ export function LandingPage() {
  * back up to the goal-card grid.
  */
 function PricingTabbed({ goWithGoal }: { goWithGoal: (goalId: string | null) => void }) {
-  // PR B — ONE canonical ladder for every goal type (goal is a free choice
-  // within a tier, not a separate price), rendered from the single flag-aware
-  // source (usePricingTiers -> /api/pricing/tiers). No goal tabs, no hardcoded
-  // prices; V1 today, V2 after the flip with no code change here.
+  // Flag-aware pricing teaser. The single source (usePricingTiers ->
+  // /api/pricing/tiers) reports whether PRICING_V2 is active.
+  //   - Flag OFF (default, or endpoint not yet deployed / fetch failed):
+  //     render the live-today goal-tabbed ladders VERBATIM. This page is a
+  //     byte-for-byte no-op until the cutover.
+  //   - Flag ON: render the ONE canonical ladder (goal is a free choice within
+  //     a tier, not a separate price) straight from the endpoint. No frontend
+  //     deploy at flip time.
   const pricing = usePricingTiers();
+  if (pricing.data?.flagActive === true) {
+    return <PricingCanonicalV2 pricing={pricing} goWithGoal={goWithGoal} />;
+  }
+  return <PricingTabbedV1 goWithGoal={goWithGoal} />;
+}
+
+/** Flag-ON: the single canonical ladder from GET /api/pricing/tiers. */
+function PricingCanonicalV2({
+  pricing,
+  goWithGoal,
+}: {
+  pricing: ReturnType<typeof usePricingTiers>;
+  goWithGoal: (goalId: string | null) => void;
+}) {
   const tiers = pricing.data?.tiers ?? [];
   return (
     <div className="mt-10 max-w-[1100px] mx-auto">
@@ -1115,14 +1186,10 @@ function PricingTabbed({ goWithGoal }: { goWithGoal: (goalId: string | null) => 
           ))}
         </div>
       ) : (
-        // Graceful fallback while the tiers fetch is loading or if it fails
-        // (e.g. before /api/pricing/tiers is deployed with PR A).
         <p className="text-center font-body text-[14px] text-t2">
           Pricing starts at <span className="text-lime font-bold">{pricing.startingFromLabel ?? '$9'}</span> per mission.
         </p>
       )}
-      {/* CTA wires through goWithGoal (null = default start) so the goal_type
-          is preserved through any sign-in round-trip. */}
       <div className="mt-6 flex justify-center">
         <button
           type="button"
@@ -1130,6 +1197,81 @@ function PricingTabbed({ goWithGoal }: { goWithGoal: (goalId: string | null) => 
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-lime/10 border border-lime/30 text-lime hover:bg-lime hover:text-black font-display font-bold text-[12px] uppercase tracking-widest transition-colors"
         >
           Start a mission →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Flag-OFF (live-today): the goal-tabbed teaser exactly as it ships today.
+ * Three ladders (Validate / Brand Lift / Creative Attention) in a tab switcher
+ * with a per-tab CTA. Unchanged from current production behaviour.
+ */
+function PricingTabbedV1({ goWithGoal }: { goWithGoal: (goalId: string | null) => void }) {
+  const [activeId, setActiveId] = useState<string>('validate');
+  const active = PRICING_TABS.find((t) => t.id === activeId) ?? PRICING_TABS[0];
+  const ctaCopy = active.id === 'creative_attention'
+    ? 'Start a Creative Attention analysis'
+    : active.id === 'brand_lift'
+      ? 'Start a Brand Lift study'
+      : 'Start a Validate mission';
+  return (
+    <div className="mt-10 max-w-[1100px] mx-auto">
+      <div
+        role="tablist"
+        aria-label="Pricing by goal"
+        className="flex flex-wrap items-center justify-center gap-2 mb-4"
+      >
+        {PRICING_TABS.map((tab) => {
+          const isActive = tab.id === activeId;
+          return (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={isActive}
+              type="button"
+              onClick={() => setActiveId(tab.id)}
+              className={[
+                'px-4 py-2 rounded-lg font-display font-bold text-[12px] uppercase tracking-widest transition-colors',
+                isActive
+                  ? 'bg-lime text-black border border-lime'
+                  : 'bg-bg3 text-t2 border border-b2 hover:border-t3',
+              ].join(' ')}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-center font-body text-[13px] text-t3 max-w-[640px] mx-auto mb-6">
+        {active.tagline}
+      </p>
+      <div
+        className={[
+          'grid gap-3',
+          active.tiers.length <= 4 ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6',
+        ].join(' ')}
+      >
+        {active.tiers.map((t) => (
+          <KpiCard
+            key={t.label}
+            label={t.label}
+            value={t.price}
+            sub={t.perResp ? `${t.range} · ${t.perResp}` : t.range}
+            valueColor="lime"
+          />
+        ))}
+      </div>
+      {/* Per-tab CTA. Wires through goWithGoal so the right goal_type is
+          preserved through any sign-in round-trip. */}
+      <div className="mt-6 flex justify-center">
+        <button
+          type="button"
+          onClick={() => goWithGoal(active.id)}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-lime/10 border border-lime/30 text-lime hover:bg-lime hover:text-black font-display font-bold text-[12px] uppercase tracking-widest transition-colors"
+        >
+          {ctaCopy} →
         </button>
       </div>
     </div>
