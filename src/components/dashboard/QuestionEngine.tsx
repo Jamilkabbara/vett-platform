@@ -17,6 +17,23 @@ export interface Question {
   qualifying_answers?: string[];
   /** Kept in sync with qualifying_answers for backend screening gate */
   screening_continue_on?: string[];
+  /**
+   * Analysis question-role tag emitted by the backend survey generator
+   * (e.g. market_entry: screener | appeal | intent | wtp | barrier |
+   * competitive | localisation). The deterministic analyses group questions
+   * by this tag — market_entry's per-market demand math (computeMarketEntry)
+   * has no fallback and reads ONLY `kind`, so it MUST survive from generation
+   * through persistence into missions.questions. Preserved verbatim; the UI
+   * never edits it.
+   */
+  kind?: string;
+  /**
+   * Analysis sub-axis emitted alongside `kind` for battery-style questions.
+   * audience_profiling's segmentation (computeAudienceProfiling) matches
+   * attitudinal questions by `dimension`, so it must survive persistence too
+   * or AP segments come back null on UI-created missions. Preserved verbatim.
+   */
+  dimension?: string;
   hasPIIError?: boolean;
 }
 
