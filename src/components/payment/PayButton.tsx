@@ -71,6 +71,23 @@ export function PayButton({
 
     try {
       const result = await (createSession ?? defaultCreateSession)();
+
+      // Free / 100%-off (type='free') promos carry no Stripe charge. The backend
+      // returns { free: true } instead of a Checkout URL; complete via the
+      // no-Stripe /free-launch path (it re-validates the code, marks the mission
+      // paid, and runs it), then land on the same /processing page the paid flow
+      // redirects to. Only the default mission flow can be free — custom
+      // createSession callers never receive this flag — and missionId is present
+      // there. Paid checkouts (with a url) skip this entirely.
+      if ((result as { free?: boolean })?.free === true && missionId) {
+        await api.post('/api/payments/free-launch', {
+          missionId,
+          promoCode: promoCode || undefined,
+        });
+        window.location.href = `/processing/${missionId}`;
+        return;
+      }
+
       if (!result?.url) {
         throw new Error('Server did not return a checkout URL');
       }
