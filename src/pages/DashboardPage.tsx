@@ -286,6 +286,11 @@ export const DashboardPage = () => {
   // Session and redirects to checkout.stripe.com. We still gate the click
   // with a "verifying" flag so a double-click doesn't spawn two sessions.
   const [verifyingQuote, setVerifyingQuote] = useState(false);
+  // Promo code typed in the pricing panel. Sent with create-checkout-session;
+  // internal type='free' codes (VETT100) come back as { free: true } and we
+  // divert to /api/payments/free-launch - they do NOT exist in Stripe, so the
+  // hosted checkout's own promo field rejects them by design.
+  const [promoCode, setPromoCode] = useState('');
 
   // Debounce timer for question-list saves — one pending write at a time.
   const persistTimerRef = useRef<number | null>(null);
@@ -664,9 +669,24 @@ export const DashboardPage = () => {
       }
 
       // Create the Stripe Checkout Session and redirect.
+      const trimmedPromo = promoCode.trim();
       const result = (await api.post('/api/payments/create-checkout-session', {
         missionId: missionIdForCheckout,
-      })) as { url?: string };
+        promoCode: trimmedPromo || undefined,
+      })) as { url?: string; free?: boolean };
+
+      // type='free' promo (e.g. VETT100): no Stripe involvement. The backend
+      // signalled { free: true }; complete via /free-launch (which re-validates
+      // the code server-side, marks the mission paid, and runs it), then land
+      // on the same /processing page the paid flow uses.
+      if (result?.free === true) {
+        await api.post('/api/payments/free-launch', {
+          missionId: missionIdForCheckout,
+          promoCode: trimmedPromo,
+        });
+        window.location.href = `/processing/${missionIdForCheckout}`;
+        return;
+      }
 
       if (!result?.url) {
         throw new Error('Server did not return a checkout URL');
@@ -688,6 +708,7 @@ export const DashboardPage = () => {
     state,
     pricing,
     verifyingQuote,
+    promoCode,
     respondentCount,
     questions,
     targeting,
@@ -884,6 +905,8 @@ export const DashboardPage = () => {
                   questions={questions}
                   targeting={targeting}
                   onLaunch={handleLaunch}
+                  promoCode={promoCode}
+                  onPromoCodeChange={setPromoCode}
                   missionId={state.kind === 'loaded' ? state.mission.id : null}
                   priceTierLabel={priceTierLabel(
                     (() => {
