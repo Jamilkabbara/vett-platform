@@ -123,6 +123,18 @@ interface MissionControlPricingProps {
    */
   missionId?: string | null;
   /**
+   * Promo code entry — state lives in the PARENT (DashboardPage) so the
+   * launch handler (and the sticky mobile bar, which shares it) can send the
+   * code to create-checkout-session. Internal codes like VETT100 exist only
+   * in the app's promo_codes table, NOT in Stripe, so Stripe's hosted promo
+   * field rejects them — the code must travel with the session request,
+   * where a type='free' code returns { free: true } and the parent diverts
+   * to /api/payments/free-launch (no Stripe). Input renders only when the
+   * setter is provided.
+   */
+  promoCode?: string;
+  onPromoCodeChange?: (value: string) => void;
+  /**
    * Pass 30 A2 — mission goal_type, used to look up the right
    * sample-size methodology bound and render SampleSizeGuidance
    * below the slider. When null/undefined the guidance is hidden
@@ -198,6 +210,8 @@ export const MissionControlPricing = ({
   isScreeningActive = false,
   onLaunch,
   onPersist,
+  promoCode = '',
+  onPromoCodeChange,
   priceTierLabel = null,
   goalType = null,
   conceptCount = 1,
@@ -549,6 +563,29 @@ export const MissionControlPricing = ({
 
       {/* Total + CTA (desktop) */}
       <div className="px-4 py-4">
+        {onPromoCodeChange && (
+          <div className="mb-3">
+            <label
+              htmlFor="mc-promo-code"
+              className="block font-display font-black text-[10px] text-t3 uppercase tracking-[0.12em] mb-1.5"
+            >
+              Promo code (optional)
+            </label>
+            <input
+              id="mc-promo-code"
+              type="text"
+              value={promoCode}
+              onChange={(e) => onPromoCodeChange(e.target.value)}
+              placeholder="e.g. VETT20"
+              autoComplete="off"
+              spellCheck={false}
+              className="w-full h-10 px-3 rounded-xl bg-gray-900 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-lime/40 uppercase"
+            />
+            <p className="mt-1 font-body text-[10px] text-t4">
+              Applied at checkout. Free codes launch instantly with no charge.
+            </p>
+          </div>
+        )}
         <div className="flex items-baseline justify-between mb-3">
           <span className="font-display font-black text-[11px] text-t3 uppercase tracking-[0.12em]">
             Total due
