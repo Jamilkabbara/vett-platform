@@ -12,7 +12,7 @@
  *     description + pill tags. This variant powers Brand Lift and
  *     Creative Attention (purple-accent).
  *
- * Goals flagged `comingSoon` (audience_profiling, market_entry, and — Pass 49
+ * Goals flagged `comingSoon` (market_entry, and — Pass 49
  * — creative_attention while its zero-response pipeline is fixed) are filtered
  * OUT of the setup grid by GoalGrid so a user can't start one.
  *     The `creative_attention` goal opts the textarea into an image
@@ -141,8 +141,6 @@ export const MISSION_GOALS: MissionGoal[] = [
     label: 'Audience Profiling',
     emoji: '🎯',
     hint: 'Who is my customer?',
-    // Pass 34 B4 — defer in the setup grid to match /methodologies.
-    comingSoon: true,
     variant: 'regular',
     placeholder:
       'e.g., I want to understand who actually buys my skincare brand — age, income, habits, the brands they compare us to, and which channels they discover new products on.',
