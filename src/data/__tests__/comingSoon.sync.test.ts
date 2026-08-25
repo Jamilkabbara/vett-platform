@@ -12,7 +12,7 @@ import { MISSION_GOALS } from '../missionGoals';
 
 // Mirror of the backend COMING_SOON_GOAL_TYPES. Update BOTH sides when un-gating
 // a type (after it passes live e2e — never on fixture data).
-const BACKEND_COMING_SOON = ['creative_attention', 'market_entry'];
+const BACKEND_COMING_SOON = ['creative_attention'];
 
 describe('Coming-Soon frontend↔backend sync', () => {
   it('frontend comingSoon flags match the backend gated set exactly', () => {
