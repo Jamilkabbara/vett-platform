@@ -81,7 +81,7 @@ const RESEARCH_TYPES: Array<{
   { emoji: '🎬', title: 'Creative Attention Analysis',  desc: 'Measure emotional response, attention, and engagement on your video or image creatives with research-grade emotion mapping.', tag: 'Coming soon', tagColor: 'pur', featured: true, goalId: 'creative_attention' },
   { emoji: '🔄', title: 'Churn Research',               desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',         tag: 'From $99',                                  goalId: 'churn_research' },
   { emoji: '🔍', title: 'Competitor Analysis',          desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',               tag: 'From $99',                                  goalId: 'competitor' },
-  { emoji: '🎯', title: 'Audience Profiling',           desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',                  tag: 'Coming soon',                               goalId: 'audience_profiling' },
+  { emoji: '🎯', title: 'Audience Profiling',           desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',                  tag: 'From $9',                                   goalId: 'audience_profiling' },
   { emoji: '✍️', title: 'Naming & Messaging',           desc: 'Test product names, taglines, and positioning across your target audience.',                          tag: 'From $9',               goalId: 'naming_messaging' },
 ];
 
