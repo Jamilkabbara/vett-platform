@@ -12,9 +12,8 @@
  *     description + pill tags. This variant powers Brand Lift and
  *     Creative Attention (purple-accent).
  *
- * Goals flagged `comingSoon` (— Pass 49
- * — creative_attention while its zero-response pipeline is fixed) are filtered
- * OUT of the setup grid by GoalGrid so a user can't start one.
+ * Goals flagged `comingSoon` (currently none - every research type is live)
+ * are filtered OUT of the setup grid by GoalGrid so a user can't start one.
  *     The `creative_attention` goal opts the textarea into an image
  *     / video upload affordance in Commit 3.
  *
@@ -196,10 +195,6 @@ export const MISSION_GOALS: MissionGoal[] = [
       'Upload a video or image — AI maps emotion, attention, and engagement frame by frame',
     tags: ['Emotions', 'Attention Heatmap', 'Engagement Score', 'Video + Image'],
     isNew: true,
-    // Pass 49 Phase 5 — disabled in setup (SOON treatment): the pipeline
-    // persists 0 responses for this methodology, so it produces no report.
-    // Pass 50 (P0) must fix the zero-response pipeline before re-enabling.
-    comingSoon: true,
     variant: 'special',
     placeholder:
       'e.g., Upload your 30s launch video or key image. I want to see where attention drops, which moments spark joy vs. confusion, and whether the brand reveal at the end lands or feels tacked on.',
