@@ -12,10 +12,12 @@ import toast from 'react-hot-toast';
 import {
   downloadCreativeAnalysisJson,
   downloadCreativeAnalysisCsv,
-  downloadCreativeAnalysisPdf,
-  downloadCreativeAnalysisPptx,
   downloadCreativeAnalysisXlsx,
 } from '../../lib/exporters/creativeAttentionExports';
+import { supabase } from '../../lib/supabase';
+
+const API_URL =
+  import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
 import type { CreativeAnalysis } from '../../types/creativeAnalysis';
 
 /**
@@ -26,8 +28,8 @@ import type { CreativeAnalysis } from '../../types/creativeAnalysis';
  * functions so opening this menu has no extra cost.
  *
  * Dropdown button next to the page title on /creative-results.
- *   - PDF:   branded one-page-per-section report (jsPDF + autotable)
- *   - PPTX:  multi-slide deck with bar chart for top emotions (pptxgenjs)
+ *   - PDF:   SERVER-SIDE canonical dark report (/api/results/:id/export/pdf)
+ *   - PPTX:  SERVER-SIDE canonical deck (/api/results/:id/export/pptx)
  *   - XLSX:  multi-sheet workbook with frame-level data (SheetJS xlsx)
  *   - CSV:   flattened sectioned spreadsheet (UTF-8 BOM, RFC-4180 CRLF)
  *   - JSON:  full creative_analysis JSONB + mission metadata
@@ -85,8 +87,35 @@ export function CreativeExportMenu({ analysis, missionId, brand }: CreativeExpor
 
   const handleCsv = () => runAsync('CSV', () => downloadCreativeAnalysisCsv(analysis, { missionId, brand }));
   const handleJson = () => runAsync('JSON', () => downloadCreativeAnalysisJson(analysis, { missionId, brand }));
-  const handlePdf = () => runAsync('PDF', () => downloadCreativeAnalysisPdf(analysis, { missionId, brand }));
-  const handlePptx = () => runAsync('PPTX', () => downloadCreativeAnalysisPptx(analysis, { missionId, brand }));
+
+  /**
+   * PDF + PPTX come from the BACKEND canonical exporters - the same
+   * /api/results/:id/export/:format every other mission type uses
+   * (dark branded templates, rendered server-side). The old client
+   * jsPDF/pptxgenjs implementations are deleted from the exporter
+   * module so they cannot be reached again.
+   */
+  const downloadServerExport = async (format: 'pdf' | 'pptx') => {
+    if (!missionId) throw new Error('missionId is required for server exports');
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {};
+    if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+    const res = await fetch(`${API_URL}/api/results/${missionId}/export/${format}`, { headers });
+    if (!res.ok) throw new Error(`Export failed (${res.status})`);
+    const blob = await res.blob();
+    const base = (brand || 'creative_attention').replace(/[^a-z0-9_\-]+/gi, '_').slice(0, 60);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${base}_${stamp}.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+  const handlePdf = () => runAsync('PDF', () => downloadServerExport('pdf'));
+  const handlePptx = () => runAsync('PPTX', () => downloadServerExport('pptx'));
   const handleXlsx = () => runAsync('XLSX', () => downloadCreativeAnalysisXlsx(analysis, { missionId, brand }));
 
   return (
