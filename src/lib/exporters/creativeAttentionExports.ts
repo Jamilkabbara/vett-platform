@@ -1,12 +1,13 @@
 /**
  * Pass 23 Bug 23.74 (quickship) — Creative Attention export helpers.
- * Pass 32 X3 added PDF/PPTX/XLSX; PDF + PPTX have since moved to the
- * backend (see below). XLSX remains client-side and lazy-imports the
- * xlsx lib only when its menu item is clicked.
+ * Pass 32 X3 added PDF/PPTX/XLSX client-side; all three have since
+ * moved to the backend canonical exporters (see below). Only JSON and
+ * CSV remain client-side.
  *
- * JSON / CSV / XLSX are client-side. PDF and PPTX are SERVER-SIDE via
- * /api/results/:id/export/:format (canonical dark templates) - see the
- * section comment below; the old client implementations are deleted.
+ * JSON / CSV are client-side. PDF, PPTX, and XLSX are SERVER-SIDE via
+ * /api/results/:id/export/:format (canonical dark templates + 6-sheet
+ * workbook) - see the section comment below; the old client
+ * implementations are deleted.
  *
  * Every exporter triggers a browser download via Blob + temp <a>;
  * no fetch, no auth headers, no backend round-trip.
@@ -18,7 +19,6 @@ import type {
   ChannelBenchmark,
 } from '../../types/creativeAnalysis';
 import { asPlatformFitObject } from '../../types/creativeAnalysis';
-import { EXPORT_DISCLOSURES } from './brandTokens';
 
 // ── Filename helpers ──────────────────────────────────────────────────────────
 
@@ -288,197 +288,13 @@ function aggregateEmotions(analysis: CreativeAnalysis): Record<string, number> {
   return out;
 }
 
-// ── PDF / PPTX: SERVER-SIDE ONLY ─────────────────────────────────────────────
+// ── PDF / PPTX / XLSX: SERVER-SIDE ONLY ─────────────────────────────────────
 // The client-side jsPDF + pptxgenjs exporters that lived here (Pass 32 X3 /
 // Pass 33 W9) are DELETED, not just unwired. They produced a white letter-size
 // document with hand-positioned text (truncated labels, colliding scores, an
 // empty per-frame chart for single-image missions) - a different product from
-// the canonical dark exports every other mission type ships. PDF and PPTX now
-// download from the backend (/api/results/:id/export/pdf|pptx), which renders
-// the canonical creative_attention templates. Do NOT reintroduce client-side
-// PDF/PPTX generation here; enrich the backend templates instead.
-
-export async function downloadCreativeAnalysisXlsx(
-  analysis: CreativeAnalysis,
-  meta: { missionId?: string; brand?: string | null },
-): Promise<void> {
-  const XLSX = await import('xlsx');
-
-  const summary = analysis.summary;
-  const eff = analysis.creative_effectiveness;
-  const att = analysis.attention;
-  const frames = analysis.frame_analyses ?? [];
-
-  const wb = XLSX.utils.book_new();
-
-  // ── Sheet 1 — Summary ─────────────────────────────────────────
-  const summaryRows: Array<Array<string | number>> = [
-    ['Field', 'Value'],
-    ['Brand', meta.brand ?? '—'],
-    ['Mission ID', meta.missionId ?? '—'],
-    ['Generated', new Date().toISOString().slice(0, 10)],
-    ['Asset type', analysis.is_video ? `Video (${analysis.total_frames} frames)` : 'Static image'],
-    [],
-    ['KPI', 'Value'],
-    ['Overall engagement score',
-      summary?.overall_engagement_score != null
-        ? `${summary.overall_engagement_score}/100`
-        : (eff?.score != null ? `${eff.score}/100` : '—')],
-    ['Effectiveness band', eff?.band ?? '—'],
-    ['Best platform fit',
-      (() => {
-        const p = (summary?.best_platform_fit ?? [])[0];
-        if (!p) return '—';
-        const obj = asPlatformFitObject(p);
-        return typeof p === 'string' ? p : (obj?.platform ?? '—');
-      })()],
-    ['Vs benchmark', summary?.vs_benchmark ?? '—'],
-    ['Attention arc summary', summary?.attention_arc ?? '—'],
-  ];
-  if (summary?.strengths && summary.strengths.length > 0) {
-    summaryRows.push([], ['#', 'Strength']);
-    summary.strengths.forEach((s, i) => summaryRows.push([i + 1, s]));
-  }
-  if (summary?.weaknesses && summary.weaknesses.length > 0) {
-    summaryRows.push([], ['#', 'Weakness']);
-    summary.weaknesses.forEach((s, i) => summaryRows.push([i + 1, s]));
-  }
-  if (att) {
-    summaryRows.push([],
-      ['Attention metric', 'Value'],
-      ['Active attention (sec)', att.predicted_active_attention_seconds ?? ''],
-      ['Passive attention (sec)', att.predicted_passive_attention_seconds ?? ''],
-      ['Active %', att.active_attention_pct ?? ''],
-      ['Passive %', att.passive_attention_pct ?? ''],
-      ['Non-attention %', att.non_attention_pct ?? ''],
-      ['Distinctive brand asset score', att.distinctive_brand_asset_score ?? ''],
-      ['DBA read time (sec)', att.dba_read_seconds ?? ''],
-    );
-  }
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
-  applyXlsxBranding(XLSX, summarySheet);
-  summarySheet['!cols'] = [{ wch: 30 }, { wch: 60 }];
-  XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
-
-  // ── Sheet 2 — Attention arc (per-frame core metrics) ──────────
-  const arcRows: Array<Array<string | number>> = [
-    ['Timestamp', 'Engagement', 'Message clarity', 'Audience resonance', 'Description'],
-  ];
-  for (const f of frames) {
-    arcRows.push([
-      f.timestamp,
-      f.engagement_score ?? 0,
-      f.message_clarity ?? 0,
-      typeof f.audience_resonance === 'string' || typeof f.audience_resonance === 'number'
-        ? f.audience_resonance
-        : '',
-      f.brief_description ?? '',
-    ]);
-  }
-  const arcSheet = XLSX.utils.aoa_to_sheet(arcRows);
-  applyXlsxBranding(XLSX, arcSheet);
-  arcSheet['!cols'] = [
-    { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 36 }, { wch: 60 },
-  ];
-  XLSX.utils.book_append_sheet(wb, arcSheet, 'Attention arc');
-
-  // ── Sheet 3 — Emotions (timestamp × emotion pivot) ───────────
-  const allEmotions = new Set<string>();
-  for (const f of frames) {
-    Object.keys(f.emotions || {}).forEach((e) => allEmotions.add(e));
-  }
-  const emotionCols = Array.from(allEmotions);
-  const emotionRows: Array<Array<string | number>> = [
-    ['Timestamp', ...emotionCols],
-  ];
-  for (const f of frames) {
-    emotionRows.push([
-      f.timestamp,
-      ...emotionCols.map((e) => Number(f.emotions?.[e] ?? 0)),
-    ]);
-  }
-  // Always include the averaged row at the top of body
-  if (frames.length > 0) {
-    emotionRows.push([
-      'AVERAGE',
-      ...emotionCols.map((e) => {
-        const vals = frames
-          .map((f) => Number(f.emotions?.[e] ?? 0))
-          .filter((v) => Number.isFinite(v));
-        return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
-      }),
-    ]);
-  }
-  const emotionSheet = XLSX.utils.aoa_to_sheet(emotionRows);
-  applyXlsxBranding(XLSX, emotionSheet);
-  XLSX.utils.book_append_sheet(wb, emotionSheet, 'Emotions');
-
-  // ── Sheet 4 — Hotspots (per-frame regions) ───────────────────
-  const hotspotRows: Array<Array<string | number>> = [
-    ['Timestamp', '#', 'Hotspot region'],
-  ];
-  for (const f of frames) {
-    const list = f.attention_hotspots ?? [];
-    if (list.length === 0) {
-      hotspotRows.push([f.timestamp, 0, '—']);
-      continue;
-    }
-    list.forEach((h, i) => hotspotRows.push([f.timestamp, i + 1, h]));
-  }
-  const hotspotSheet = XLSX.utils.aoa_to_sheet(hotspotRows);
-  applyXlsxBranding(XLSX, hotspotSheet);
-  hotspotSheet['!cols'] = [{ wch: 12 }, { wch: 6 }, { wch: 80 }];
-  XLSX.utils.book_append_sheet(wb, hotspotSheet, 'Hotspots');
-
-  // ── Sheet 5 — Recommendations (priority ranked) ──────────────
-  const recRows: Array<Array<string | number>> = [
-    ['Priority', 'Recommendation'],
-  ];
-  (summary?.recommendations ?? []).forEach((r, i) => recRows.push([i + 1, r]));
-  if (recRows.length === 1) recRows.push(['—', 'No recommendations generated for this analysis.']);
-  const recSheet = XLSX.utils.aoa_to_sheet(recRows);
-  applyXlsxBranding(XLSX, recSheet);
-  recSheet['!cols'] = [{ wch: 10 }, { wch: 100 }];
-  XLSX.utils.book_append_sheet(wb, recSheet, 'Recommendations');
-
-  // ── Sheet 6 — Methodology disclosure ─────────────────────────
-  const methSheet = XLSX.utils.aoa_to_sheet([
-    ['Methodology'],
-    [EXPORT_DISCLOSURES.creativeAttentionMethodology],
-    [],
-    [`Generated ${new Date().toISOString().slice(0, 19).replace('T', ' ')} UTC.`],
-  ]);
-  applyXlsxBranding(XLSX, methSheet);
-  methSheet['!cols'] = [{ wch: 120 }];
-  XLSX.utils.book_append_sheet(wb, methSheet, 'Methodology');
-
-  XLSX.writeFile(wb, safeFilename(meta.brand, 'xlsx'));
-}
-
-/**
- * Apply VETT lime header fill + bold + frozen first row to a SheetJS
- * worksheet. SheetJS Community Edition has limited cell-style support
- * — fills work in `xlsx` style mode but require !cols + !ref to
- * survive the writeFile. We apply a freeze pane unconditionally so
- * the header row stays visible while scrolling the data body.
- */
-function applyXlsxBranding(
-  XLSX: typeof import('xlsx'),
-  sheet: import('xlsx').WorkSheet,
-): void {
-  const range = XLSX.utils.decode_range(sheet['!ref'] ?? 'A1');
-  // Freeze top row — works across all SheetJS variants.
-  sheet['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2' };
-  // Style every header-row cell (best-effort; CE may strip fills,
-  // but bold + horizontal alignment usually survive).
-  for (let c = range.s.c; c <= range.e.c; c++) {
-    const addr = XLSX.utils.encode_cell({ r: 0, c });
-    const cell = sheet[addr];
-    if (!cell) continue;
-    cell.s = {
-      fill: { fgColor: { rgb: 'BEF264' } },
-      font: { bold: true, color: { rgb: '0B0C15' } },
-      alignment: { horizontal: 'left', vertical: 'center' },
-    };
-  }
-}
+// the canonical dark exports every other mission type ships. The client XLSX
+// went with them so the whole menu is ONE path: PDF, PPTX, and XLSX all
+// download from the backend (/api/results/:id/export/:format - XLSX routes to
+// the 6-sheet creative_attention workbook). Do NOT reintroduce client-side
+// PDF/PPTX/XLSX generation here; enrich the backend templates instead.

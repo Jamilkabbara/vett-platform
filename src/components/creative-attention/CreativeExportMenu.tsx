@@ -12,7 +12,6 @@ import toast from 'react-hot-toast';
 import {
   downloadCreativeAnalysisJson,
   downloadCreativeAnalysisCsv,
-  downloadCreativeAnalysisXlsx,
 } from '../../lib/exporters/creativeAttentionExports';
 import { supabase } from '../../lib/supabase';
 
@@ -30,7 +29,7 @@ import type { CreativeAnalysis } from '../../types/creativeAnalysis';
  * Dropdown button next to the page title on /creative-results.
  *   - PDF:   SERVER-SIDE canonical dark report (/api/results/:id/export/pdf)
  *   - PPTX:  SERVER-SIDE canonical deck (/api/results/:id/export/pptx)
- *   - XLSX:  multi-sheet workbook with frame-level data (SheetJS xlsx)
+ *   - XLSX:  SERVER-SIDE 6-sheet workbook (/api/results/:id/export/xlsx)
  *   - CSV:   flattened sectioned spreadsheet (UTF-8 BOM, RFC-4180 CRLF)
  *   - JSON:  full creative_analysis JSONB + mission metadata
  *
@@ -95,7 +94,7 @@ export function CreativeExportMenu({ analysis, missionId, brand }: CreativeExpor
    * jsPDF/pptxgenjs implementations are deleted from the exporter
    * module so they cannot be reached again.
    */
-  const downloadServerExport = async (format: 'pdf' | 'pptx') => {
+  const downloadServerExport = async (format: 'pdf' | 'pptx' | 'xlsx') => {
     if (!missionId) throw new Error('missionId is required for server exports');
     const { data: { session } } = await supabase.auth.getSession();
     const headers: Record<string, string> = {};
@@ -116,7 +115,7 @@ export function CreativeExportMenu({ analysis, missionId, brand }: CreativeExpor
   };
   const handlePdf = () => runAsync('PDF', () => downloadServerExport('pdf'));
   const handlePptx = () => runAsync('PPTX', () => downloadServerExport('pptx'));
-  const handleXlsx = () => runAsync('XLSX', () => downloadCreativeAnalysisXlsx(analysis, { missionId, brand }));
+  const handleXlsx = () => runAsync('XLSX', () => downloadServerExport('xlsx'));
 
   return (
     <div className="relative" ref={containerRef}>
