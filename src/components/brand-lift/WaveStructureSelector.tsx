@@ -1,12 +1,9 @@
-import { Calendar, Repeat, Zap } from 'lucide-react';
+import { Flag, Repeat, Zap } from 'lucide-react';
 
 export type WaveMode = 'single_wave' | 'pre_post' | 'continuous';
 
 export interface WaveConfig {
   mode: WaveMode;
-  campaignStart?: string;
-  campaignEnd?: string;
-  durationWeeks?: number;
 }
 
 interface Props {
@@ -15,28 +12,49 @@ interface Props {
 }
 
 const MODES: Array<{ id: WaveMode; title: string; desc: string; icon: typeof Zap }> = [
-  { id: 'single_wave', title: 'Single Wave', desc: 'One snapshot of your audience post-campaign.', icon: Zap },
-  { id: 'pre_post',    title: 'Pre + Post',   desc: 'Two waves: baseline before launch + post-campaign.', icon: Repeat },
-  { id: 'continuous',  title: 'Continuous',   desc: 'Multiple waves at fixed intervals during the campaign.', icon: Calendar },
+  {
+    id: 'single_wave',
+    title: 'Post-Campaign Read',
+    desc: 'Questions are worded to measure recall, awareness and intent after the campaign has run.',
+    icon: Zap,
+  },
+  {
+    id: 'pre_post',
+    title: 'Baseline Framing',
+    desc: 'Questions are worded to establish a pre-campaign benchmark you can re-run as a separate mission later.',
+    icon: Flag,
+  },
+  {
+    id: 'continuous',
+    title: 'Tracking Framing',
+    desc: 'Questions are worded for repeat use, so the wording stays constant across any missions you commission later.',
+    icon: Repeat,
+  },
 ];
 
-const DURATION_OPTIONS = [2, 4, 6, 8, 12];
-
 /**
- * Pass 25 Phase 1C — wave structure selector. Validates end > start.
+ * Pass 25 Phase 1C — originally a "wave structure" selector.
+ *
+ * Honesty fix: the pipeline has no wave capability. `wave_mode` is the only
+ * field here that reaches anything — MissionSetupPage forwards it in
+ * clarify_answers and the backend appends a single `Wave Mode: <mode>` line to
+ * the brand-lift question-generation prompt. There is no scheduler, no second
+ * fieldwork round, and no cross-mission comparison. So this control is now
+ * presented for what it actually is: a questionnaire-framing hint.
+ *
+ * The former campaignStart / campaignEnd / durationWeeks inputs were removed:
+ * they were never forwarded to the generator and were never persisted by the
+ * backend (no such columns in ALLOWED_COLUMNS), so their only effects were to
+ * gate the launch button and to imply VETT would schedule fieldwork.
  */
 export function WaveStructureSelector({ value, onChange }: Props) {
-  const needsDates = value.mode !== 'single_wave';
-  const datesValid = !needsDates || (
-    value.campaignStart && value.campaignEnd &&
-    new Date(value.campaignEnd) > new Date(value.campaignStart)
-  );
-
   return (
     <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-[var(--t1)]">Measurement Structure</h3>
-        <p className="text-xs text-[var(--t3)] mt-0.5">How do you want to measure brand lift?</p>
+        <h3 className="text-sm font-semibold text-[var(--t1)]">Questionnaire Framing</h3>
+        <p className="text-xs text-[var(--t3)] mt-0.5">
+          How should the questions be worded? This changes the wording only.
+        </p>
       </div>
 
       <div className="grid sm:grid-cols-3 gap-3">
@@ -61,57 +79,12 @@ export function WaveStructureSelector({ value, onChange }: Props) {
         })}
       </div>
 
-      {needsDates && (
-        <div className="grid sm:grid-cols-2 gap-3 pt-2">
-          <label className="text-xs text-[var(--t3)] block">
-            Campaign start
-            <input
-              type="date"
-              value={value.campaignStart || ''}
-              onChange={(e) => onChange({ ...value, campaignStart: e.target.value })}
-              className="mt-1 w-full bg-[var(--bg3)] text-[var(--t1)] text-sm rounded-lg px-3 py-2 border border-[var(--b1)] focus:border-[var(--lime)] focus:outline-none"
-            />
-          </label>
-          <label className="text-xs text-[var(--t3)] block">
-            Campaign end
-            <input
-              type="date"
-              value={value.campaignEnd || ''}
-              onChange={(e) => onChange({ ...value, campaignEnd: e.target.value })}
-              className="mt-1 w-full bg-[var(--bg3)] text-[var(--t1)] text-sm rounded-lg px-3 py-2 border border-[var(--b1)] focus:border-[var(--lime)] focus:outline-none"
-            />
-          </label>
-        </div>
-      )}
-
-      {value.mode === 'continuous' && (
-        <div className="pt-2">
-          <p className="text-xs text-[var(--t3)] mb-2">Duration</p>
-          <div className="flex gap-2 flex-wrap">
-            {DURATION_OPTIONS.map(weeks => {
-              const selected = value.durationWeeks === weeks;
-              return (
-                <button
-                  key={weeks}
-                  type="button"
-                  onClick={() => onChange({ ...value, durationWeeks: weeks })}
-                  className={`text-xs px-3 py-1.5 rounded-full border ${
-                    selected
-                      ? 'bg-[var(--lime)] text-black border-[var(--lime)]'
-                      : 'border-[var(--b1)] text-[var(--t2)] hover:border-[var(--t1)]'
-                  }`}
-                >
-                  {weeks} weeks
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {needsDates && !datesValid && (
-        <p className="text-xs text-amber-400">Campaign end must be after campaign start.</p>
-      )}
+      <p className="text-[11px] text-[var(--t3)] leading-relaxed border-t border-[var(--b1)] pt-3">
+        Every brand-lift mission delivers <span className="text-[var(--t1)]">one round of fieldwork</span>.
+        Lift is measured inside that round from campaign-exposed vs unexposed respondents. VETT does not
+        schedule, run, or compare a second round — measuring change over time means commissioning another
+        mission yourself.
+      </p>
     </div>
   );
 }

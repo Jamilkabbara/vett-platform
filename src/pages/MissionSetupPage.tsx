@@ -776,12 +776,6 @@ export const MissionSetupPage = () => {
     // these in BrandLiftSetupSection; this is a defense-in-depth check.
     if (isBrandLift) {
       const bl = brandLiftState;
-      const wavesNeedDates = bl.wave.mode !== 'single_wave';
-      const datesValid =
-        !wavesNeedDates ||
-        (bl.wave.campaignStart &&
-          bl.wave.campaignEnd &&
-          new Date(bl.wave.campaignEnd) > new Date(bl.wave.campaignStart));
       if (
         // Pass 34 B2 — brand name is required so the generator can
         // substitute it into funnel questions. Without it the model
@@ -790,7 +784,6 @@ export const MissionSetupPage = () => {
         !bl.creative ||
         bl.markets.length < 1 ||
         bl.channels.length < 1 ||
-        !datesValid ||
         bl.competitors.length < 2 ||
         !bl.kpiTemplate
       ) {

@@ -103,7 +103,7 @@ const RULES: Record<string, Rule[]> = {
     { goal: 'pricing', why: () => 'Test whether pricing or packaging is quietly driving the churn.', brief: (p) => `Test pricing and packaging for ${p}: is the current price a churn driver, and what structure would retain more customers.` },
   ],
   brand_lift: [
-    { goal: 'marketing', why: () => 'Test the next creative before it goes live, not after.', brief: (p) => `Test the next campaign creative for ${p}: recall, message takeout, and intent, benchmarked against the last wave.` },
+    { goal: 'marketing', why: () => 'Test the next creative before it goes live, not after.', brief: (p) => `Test the next campaign creative for ${p}: recall, message takeout, and intent, before the media spend commits.` },
     { goal: 'competitor', why: () => 'See how the lift translates into competitive position.', brief: (p, c) => `Measure ${p} vs competitors${c ? ` in ${c}` : ''}: has the campaign moved share of preference and key attributes.` },
     { goal: 'satisfaction', why: () => 'New audiences arrived from the campaign. Check what they experience.', brief: (p) => `Measure satisfaction for ${p} among recent customers: are campaign-acquired customers as satisfied as the base.` },
   ],
