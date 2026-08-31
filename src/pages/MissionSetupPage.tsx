@@ -11,6 +11,7 @@ import {
   fetchAdaptiveClarify,
   generateSurvey,
   type AdaptiveClarifyQuestion,
+  type AdaptiveClarifyResult,
 } from '../services/aiService';
 import {
   MissionAssetUploadError,
@@ -390,6 +391,14 @@ export const MissionSetupPage = () => {
   >({});
   const [revealingClarify, setRevealingClarify] = useState(false);
 
+  // Benchmark category — the normalised key returned by the SAME
+  // /api/ai/clarify call that returns the adaptive questions (no extra
+  // request, no extra wait). Persisted to missions.category so results can
+  // be compared across missions in the same market. null when the backend
+  // could not classify, or when this goal type skips clarify entirely
+  // (Brand Lift); scripts/backfill-mission-category.js closes those gaps.
+  const [aiCategory, setAiCategory] = useState<string | null>(null);
+
   // Guard against double-fire from enter-key repeats / fast double-clicks.
   const inflightRef = useRef(false);
 
@@ -584,6 +593,9 @@ export const MissionSetupPage = () => {
       setShowClarify(false);
       setDynamicClarify(null);
       setDynamicClarifyAnswers({});
+      // The category was classified from the OLD brief — drop it so a stale
+      // key can never be persisted against edited text.
+      setAiCategory(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missionGoal, missionDescription]);
@@ -727,19 +739,26 @@ export const MissionSetupPage = () => {
     // in the button (revealingClarify) covers the wait; the static
     // Market/Stage/Price trio is the fallback if the backend is down.
     const TIMEOUT_FALLBACK_MS = 15_000;
-    const timeoutPromise = new Promise<null>((resolve) =>
-      window.setTimeout(() => resolve(null), TIMEOUT_FALLBACK_MS),
+    const timeoutPromise = new Promise<AdaptiveClarifyResult>((resolve) =>
+      window.setTimeout(
+        () => resolve({ questions: null, category: null }),
+        TIMEOUT_FALLBACK_MS,
+      ),
     );
 
-    let dynamicQs: AdaptiveClarifyQuestion[] | null = null;
+    let clarifyResult: AdaptiveClarifyResult = { questions: null, category: null };
     try {
-      dynamicQs = await Promise.race([
+      clarifyResult = await Promise.race([
         fetchAdaptiveClarify(missionGoal, missionDescription.trim()),
         timeoutPromise,
       ]);
     } catch {
-      dynamicQs = null;
+      clarifyResult = { questions: null, category: null };
     }
+    const dynamicQs = clarifyResult.questions;
+    // Kept even when questions is null: a complete brief legitimately yields
+    // zero clarify questions but is still classifiable.
+    setAiCategory(clarifyResult.category);
 
     if (dynamicQs && dynamicQs.length > 0) {
       // Seed answers with each question's defaultChipId (or first chip)
@@ -1151,6 +1170,12 @@ export const MissionSetupPage = () => {
                 answers: dynamicClarifyAnswers,
               }
             : null,
+        // The user's own words for the category, preserved verbatim now that
+        // missions.category holds the normalised benchmark key. Nothing is
+        // lost — this is where the descriptive text lives.
+        category_raw: (isUniversalShown && universalInputs.category.trim())
+          ? universalInputs.category.trim()
+          : null,
         // Carry forward anything the AI suggested so downstream consumers
         // (the dashboard targeting panel) still have something to render.
         suggestions: aiResult?.targetingSuggestions ?? null,
@@ -1164,10 +1189,17 @@ export const MissionSetupPage = () => {
       // methodology-bound mission. brand_name + category are required;
       // audience_description optional. competitor_brands JSONB column
       // exists from Pass 28 A; we write the same shape (string array).
+      // NOTE: `category` is deliberately NOT written from universalInputs any
+      // more. That box is descriptive free text ("premium subscription
+      // coffee", "Personal finance app, FinTech, B2C SaaS") — production held
+      // 15 such rows across 14 distinct strings, so it could never serve as a
+      // benchmark key. The column now carries the AI's normalised key
+      // (`aiCategory`, appended below) and the user's own words are preserved
+      // verbatim in target_audience.category_raw. The free text still feeds
+      // question generation through universalPromptCtx, unchanged.
       const universalFields: Record<string, unknown> = isUniversalShown
         ? {
             brand_name: universalInputs.brand || null,
-            category: universalInputs.category || null,
             audience_description: universalInputs.audienceDescription || null,
             // Don't clobber Brand Lift's competitor_brands which is set
             // separately via brandLiftFields below.
@@ -1402,6 +1434,12 @@ export const MissionSetupPage = () => {
         ...churnFields,
         ...brandLiftFields,
         ...marketEntryFields,
+        // Benchmark key. Last on purpose: no per-methodology block may
+        // overwrite it, and it is written for EVERY goal type — including the
+        // ones that skip the universal inputs — so missions stay comparable.
+        // null is honest ("not classified"), and the owner-run backfill
+        // script fills those in.
+        category: aiCategory,
       };
 
       const { data: missionData, error } = await supabase

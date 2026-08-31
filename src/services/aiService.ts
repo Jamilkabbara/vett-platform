@@ -286,8 +286,15 @@ export const suggestTargeting = async (
  *
  *   POST /api/ai/clarify
  *     body: { goal: string | null, brief: string }
- *     200:  { questions: AdaptiveClarifyQuestion[] }
+ *     200:  { questions: AdaptiveClarifyQuestion[], category: string | null }
  *     4xx/5xx/absent: treat as "no adaptive, fall back to static"
+ *
+ * `category` is the benchmark key: a normalised value from the backend's
+ * closed taxonomy (services/ai/missionCategory.js), produced by the SAME
+ * Claude call that produces the questions — no second request, no extra
+ * wait. It is null when the backend could not classify at all, and it is
+ * independent of `questions`: a complete brief legitimately returns zero
+ * questions AND a category, so the two must be read separately.
  *
  * The frontend **never** blocks on this call — the static cards are
  * always the default. Callers wait ≤ 800ms for a response and fall
@@ -308,6 +315,27 @@ export interface AdaptiveClarifyQuestion {
   question: string;
   chips: AdaptiveClarifyChip[];
   defaultChipId?: string;
+}
+
+/** What one /api/ai/clarify round trip yields. `questions: null` keeps the
+ *  previous "fall back to the static cards" meaning; `category` is carried
+ *  separately so it survives an empty-questions response. */
+export interface AdaptiveClarifyResult {
+  questions: AdaptiveClarifyQuestion[] | null;
+  category: string | null;
+}
+
+const NO_CLARIFY: AdaptiveClarifyResult = { questions: null, category: null };
+
+/** Shape check only — deliberately NOT a copy of the backend taxonomy.
+ *  Duplicating the key list here would create a second source of truth that
+ *  silently rots the first time the owner edits MISSION_CATEGORIES. The
+ *  backend already guarantees a valid key or null; this just refuses
+ *  anything that isn't a plausible snake_case key. */
+function asCategoryKey(value: unknown): string | null {
+  return typeof value === 'string' && /^[a-z][a-z0-9_]{1,63}$/.test(value)
+    ? value
+    : null;
 }
 
 // Pass 6A: raised from 5000ms → 15000ms.
@@ -339,7 +367,7 @@ function isAdaptiveClarifyQuestion(
 export const fetchAdaptiveClarify = async (
   goal: string | null,
   brief: string,
-): Promise<AdaptiveClarifyQuestion[] | null> => {
+): Promise<AdaptiveClarifyResult> => {
   const controller = new AbortController();
   const timer = window.setTimeout(
     () => controller.abort(),
@@ -364,13 +392,19 @@ export const fetchAdaptiveClarify = async (
       body: JSON.stringify({ goal, brief }),
       signal: controller.signal,
     });
-    if (!res.ok) return null;
-    const resp = (await res.json()) as { questions?: unknown };
-    if (!resp || !Array.isArray(resp.questions)) return null;
+    if (!res.ok) return NO_CLARIFY;
+    const resp = (await res.json()) as {
+      questions?: unknown;
+      category?: unknown;
+    };
+    if (!resp) return NO_CLARIFY;
+    const category = asCategoryKey(resp.category);
+    if (!Array.isArray(resp.questions)) return { questions: null, category };
     const valid = resp.questions.filter(isAdaptiveClarifyQuestion);
     // Require at least one well-formed question; otherwise fall back so
-    // the user always sees usable cards.
-    return valid.length > 0 ? valid : null;
+    // the user always sees usable cards. The category is unaffected — a
+    // complete brief returns no questions but is still classifiable.
+    return { questions: valid.length > 0 ? valid : null, category };
   } catch (err) {
     // Use warn (not error) so it's visible for debugging without alarming
     // users in prod. Gate on DEV so production consoles stay clean.
@@ -380,7 +414,7 @@ export const fetchAdaptiveClarify = async (
         err,
       );
     }
-    return null;
+    return NO_CLARIFY;
   } finally {
     window.clearTimeout(timer);
   }
