@@ -24,11 +24,36 @@
 
 // ── V1 building blocks (preserved exactly so legacy rows still parse) ──────────
 
+/**
+ * Spatial attention hotspot (PR 3). Missions analyzed AFTER the spatial vision
+ * prompt shipped return rectangles instead of prose:
+ *   x, y  top-left corner as a FRACTION of frame width / height (0-1)
+ *   w, h  width / height, also fractions (so x + w <= 1)
+ *   weight  0-100 relative pull against the other hotspots in the frame
+ * Fractions (not pixels) mean the same payload draws correctly over a 320px
+ * thumbnail, a full-bleed web overlay, or a PDF schematic.
+ */
+export interface SpatialHotspot {
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  weight?: number;
+}
+
+/**
+ * Every mission run BEFORE the spatial schema shipped stores hotspots as plain
+ * strings, so both shapes are live in production forever. Narrow with
+ * normalizeHotspots() below, never by hand.
+ */
+export type AttentionHotspot = string | SpatialHotspot;
+
 export interface FrameAnalysis {
   timestamp: number;
   /** v2 expansion: up to 24 keys (Plutchik 8 + 16 nuanced). v1 had 8. */
   emotions: Record<string, number>;
-  attention_hotspots: string[];
+  attention_hotspots: AttentionHotspot[];
   message_clarity: number;
   audience_resonance: number;
   engagement_score: number;
@@ -321,4 +346,72 @@ export function platformLabel(p: PlatformFitItem): string {
 export function platformRationale(p: PlatformFitItem): string {
   if (typeof p === 'string') return '';
   return p?.rationale ?? '';
+}
+
+
+// ── Hotspot narrowing (PR 3) ──────────────────────────────────────────────────
+
+/** Normalized hotspot: one shape for both wire formats. */
+export interface NormalizedHotspot {
+  label: string;
+  /** True only when the entry carries real, clamped geometry. */
+  spatial: boolean;
+  weight: number | null;
+  /** CSS-ready percentages, null for the legacy string shape. */
+  leftPct: number | null;
+  topPct: number | null;
+  widthPct: number | null;
+  heightPct: number | null;
+  rank: number;
+}
+
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+const pct = (n: number) => Math.round(n * 1000) / 10;
+
+/**
+ * Mirrors backend `src/utils/creativeHotspots.js` so web, PDF and PPTX
+ * narrow the two shapes identically. A malformed or geometry-less object
+ * degrades to a label-only entry rather than rendering a NaN box.
+ */
+export function normalizeHotspots(raw: unknown): NormalizedHotspot[] {
+  if (!Array.isArray(raw)) return [];
+  const out: NormalizedHotspot[] = [];
+  for (const h of raw) {
+    if (typeof h === 'string') {
+      const label = h.trim();
+      if (label) {
+        out.push({ label, spatial: false, weight: null, leftPct: null, topPct: null, widthPct: null, heightPct: null, rank: out.length + 1 });
+      }
+      continue;
+    }
+    if (!h || typeof h !== 'object') continue;
+    const o = h as Partial<SpatialHotspot> & { name?: string };
+    const label = String(o.label ?? o.name ?? '').trim();
+    const nums = [o.x, o.y, o.w, o.h].map((v) => (typeof v === 'number' && Number.isFinite(v) ? v : null));
+    const weight = typeof o.weight === 'number' && Number.isFinite(o.weight)
+      ? Math.round(clamp(o.weight, 0, 100)) : null;
+    const hasGeometry = nums.every((v) => v !== null) && (nums[2] as number) > 0 && (nums[3] as number) > 0;
+    if (!hasGeometry) {
+      if (!label) continue;
+      out.push({ label, spatial: false, weight, leftPct: null, topPct: null, widthPct: null, heightPct: null, rank: out.length + 1 });
+      continue;
+    }
+    const x = clamp(nums[0] as number, 0, 0.99);
+    const y = clamp(nums[1] as number, 0, 0.99);
+    const w = clamp(nums[2] as number, 0.01, 1 - x);
+    const hh = clamp(nums[3] as number, 0.01, 1 - y);
+    out.push({
+      label: label || 'Attention hotspot',
+      spatial: true,
+      weight: weight ?? 50,
+      leftPct: pct(x), topPct: pct(y), widthPct: pct(w), heightPct: pct(hh),
+      rank: out.length + 1,
+    });
+  }
+  return out;
+}
+
+/** True when at least one entry in any frame carries geometry. */
+export function hasSpatialHotspots(frames: FrameAnalysis[] | undefined | null): boolean {
+  return (frames ?? []).some((f) => normalizeHotspots(f?.attention_hotspots).some((h) => h.spatial));
 }
