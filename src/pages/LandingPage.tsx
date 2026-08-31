@@ -747,10 +747,9 @@ export function LandingPage() {
               <span className="text-lime">Simulated for your brief.</span>
             </SecH2>
             <SecSub>
-              VETT generates distinct, realistic consumer personas calibrated to
-              your exact target audience. Each responds independently with
-              authentic variance, the same statistical patterns found in real
-              market research.
+              VETT generates distinct, realistic consumer personas built to your
+              exact target audience spec. Each responds independently with its
+              own perspective and reasoning.
             </SecSub>
             {/* mx-auto centers the feature block on mobile; lg:mx-0 removes on desktop */}
             <div className="mt-6 flex flex-col gap-3.5 max-w-fit mx-auto lg:mx-0">

@@ -68,7 +68,7 @@ export const EXPORT_FONTS = {
 export const EXPORT_DISCLOSURES = {
   /** Footer line on every printed page. */
   pageFooter:
-    'vettit.ai · Methodology First · Synthetic respondents calibrated to category baseline.',
+    'vettit.ai · Methodology First · Synthetic respondents, deterministic analysis, directional output.',
 
   /** Per-export methodology paragraph. Single paragraph, no markdown. */
   creativeAttentionMethodology:
