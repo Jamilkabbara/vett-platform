@@ -48,6 +48,25 @@ function sliceStatement(js, header) {
   return js.slice(start, end + 1);
 }
 
+/** Extract `const name = wrapper(( ) => { ... }, deps);` — brace-match the callback
+ *  body first (it contains its own `;`s, so a naive scan-to-semicolon truncates),
+ *  then run on to the statement's terminating `;`. */
+function sliceWrappedStatement(js, header) {
+  const start = js.indexOf(header);
+  if (start === -1) throw new Error(`could not find "${header}" — did the source move?`);
+  const open = js.indexOf('{', start);
+  let depth = 0;
+  let bodyEnd = -1;
+  for (let i = open; i < js.length; i++) {
+    if (js[i] === '{') depth++;
+    else if (js[i] === '}' && --depth === 0) { bodyEnd = i; break; }
+  }
+  if (bodyEnd === -1) throw new Error(`unbalanced braces after "${header}"`);
+  const end = js.indexOf(';', bodyEnd);
+  if (end === -1) throw new Error(`no statement terminator after "${header}"`);
+  return js.slice(start, end + 1);
+}
+
 // ── Load the REAL normaliseQuestions out of DashboardPage.tsx ──────────────
 const dashJs = toJs('src/pages/DashboardPage.tsx', 'tsx');
 const normaliseQuestions = new Function(
@@ -66,9 +85,23 @@ const mapQuestion = new Function(
    return mapQuestion;`,
 )();
 
-// ── emit() from MissionControlQuestions.tsx is a plain spread; mirrored here
-//    only to model the edit step. Its preservation is verified by reading it. ──
-const emit = (list) => list.map((q, i) => ({ ...q, isScreening: i === 0 }));
+// ── Load the REAL emit() out of MissionControlQuestions.tsx ────────────
+// emit() is the EDIT step of the round trip: every mutation handler in mission
+// control funnels through it, and its output is exactly what `flushQuestions`
+// writes back to missions.questions. It is currently a safe `{ ...q }` spread —
+// but if someone rewrites it as a closed literal the strip returns with BOTH of
+// the fixed functions still passing. So extract it from source the same way the
+// other three are extracted, rather than hand-mirroring it, and let this harness
+// fail on that third regression too. `useCallback` is stubbed to identity and
+// `onChange` captures the emitted payload.
+const mcqJs = toJs('src/components/dashboard/MissionControlQuestions.tsx', 'tsx');
+const emit = new Function(
+  `const useCallback = (fn) => fn;
+   let captured = null;
+   const onChange = (v) => { captured = v; };
+   ${sliceWrappedStatement(mcqJs, 'const emit = useCallback')}
+   return (list) => { emit(list); return captured; };`,
+)();
 
 // ── A backend-generated question carrying every documented metadata field ──
 const BACKEND_QUESTION = {
