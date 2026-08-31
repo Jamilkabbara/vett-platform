@@ -66,7 +66,7 @@ const METHODOLOGIES: Methodology[] = [
     name: 'Creative Attention',
     short: 'Frame-by-frame attention prediction + emotion taxonomy on video and static creative.',
     detail: 'Per-frame analysis of 24 emotions (Plutchik 8 + 16 nuanced), attention decay curves, distinctive brand asset score, channel-specific predicted dwell time, platform fit.',
-    framework: 'Attention prediction calibrated to TVision / Lumen industry norms; emotion taxonomy from peer-reviewed Plutchik + research-derived nuanced set.',
+    framework: 'Attention prediction scored against published industry attention norms; emotion taxonomy extending Plutchik\'s peer-reviewed framework.',
     startsAt: '$19',
     // §A0 — Coming-Soon (mirrors comingSoon in missionGoals.ts). Was 'live',
     // which advertised + linked it to a purchasable /setup flow.
@@ -77,7 +77,7 @@ const METHODOLOGIES: Methodology[] = [
     id: 'brand_lift',
     name: 'Brand Lift',
     short: 'Pre/post incrementality across 9 brand-health KPIs.',
-    detail: 'Exposed vs control split with calibrated lift sizes (aided recall +20-40pp, awareness +5-15pp, consideration +3-10pp, intent +2-8pp, NPS +1-4 pts). Industry-standard 9-category framework.',
+    detail: 'Exposed vs control split with modelled lift ranges (aided recall +20-40pp, awareness +5-15pp, consideration +3-10pp, intent +2-8pp, NPS +1-4 pts). Industry-standard 9-category framework.',
     framework: 'Incrementality study with exposed/control simulation — based on Nielsen Brand Effect / Kantar Brand Lift methodology.',
     startsAt: '$99',
     status: 'live',

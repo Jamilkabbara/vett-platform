@@ -36,8 +36,8 @@ export const AboutPage = () => {
                 <p>
                   We don&apos;t sell validation. We sell honest research. We use AI
                   to build methodology-correct surveys and to simulate audience
-                  responses through synthetic respondents calibrated to real
-                  demographic patterns. The AI is the engine, but the methodology
+                  responses through synthetic respondents designed to reflect
+                  realistic demographic patterns. The AI is the engine, but the methodology
                   is what makes the output trustworthy.
                 </p>
 
@@ -74,7 +74,7 @@ export const AboutPage = () => {
               <p className="text-white/60 leading-relaxed">
                 Every survey runs an industry-standard methodology, Van Westendorp
                 pricing, MaxDiff feature prioritization, NPS, brand-health funnel, 
-                with synthetic respondents calibrated to real demographic patterns.
+                with synthetic respondents designed to reflect realistic demographic patterns.
                 The methodology is what makes the output trustworthy, not the panel.
                 See the full{' '}
                 <a href="/methodologies" className="text-primary hover:underline">

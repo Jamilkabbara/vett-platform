@@ -566,10 +566,10 @@ export function AdTestingResultsPage() {
         <section className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6 space-y-2">
           <h3 className="text-sm font-semibold text-[var(--t1)] flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-[var(--lime)]" />
-            Industry benchmarks
+            Reference thresholds
           </h3>
           <ul className="text-xs text-[var(--t2)] space-y-1.5">
-            <li><span className="text-[var(--t1)] font-semibold">Branded recall ≥40%</span> = strong (Kantar Link norm)</li>
+            <li><span className="text-[var(--t1)] font-semibold">Branded recall ≥40%</span> = strong (industry rule of thumb)</li>
             <li><span className="text-[var(--t1)] font-semibold">Top-2 box likeability ≥50%</span> = positive reception</li>
             <li><span className="text-[var(--t1)] font-semibold">Persuasion shift +0.5pt on 7-pt</span> = meaningful behavior change</li>
             <li><span className="text-[var(--t1)] font-semibold">TV stopping power ≥45%</span> / <span className="text-[var(--t1)] font-semibold">Social ≥35%</span> = effective attention</li>
