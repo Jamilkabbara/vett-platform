@@ -173,9 +173,9 @@ const PRICING_TABS: ReadonlyArray<{
       { range: '5 personas',    price: '$9',    label: 'Sniff Test', perResp: '$1.80/resp' },
       { range: '10 personas',   price: '$35',   label: 'Validate',   perResp: '$3.50/resp' },
       { range: '50 personas',   price: '$99',   label: 'Confidence', perResp: '$1.98/resp' },
-      { range: '250 personas',  price: '$299',  label: 'Deep Dive',  perResp: '$1.20/resp' },
-      { range: '1,000 personas', price: '$899',  label: 'Scale',      perResp: '$0.90/resp' },
-      { range: '5,000 personas', price: '$1,990', label: 'Enterprise', perResp: '$0.40/resp' },
+      { range: '250 personas',  price: '$300',  label: 'Deep Dive',  perResp: '$1.20/resp' },
+      { range: '1,000 personas', price: '$900',  label: 'Scale',      perResp: '$0.90/resp' },
+      { range: '5,000 personas', price: '$2,000', label: 'Enterprise', perResp: '$0.40/resp' },
     ],
   },
   {
@@ -184,20 +184,21 @@ const PRICING_TABS: ReadonlyArray<{
     tagline: 'Awareness, recall, sentiment, and intent. Statistical sample sizes only.',
     tiers: [
       { range: '50 personas',   price: '$99',   label: 'Pulse',      perResp: '$1.98/resp' },
-      { range: '200 personas',  price: '$299',  label: 'Tracker',    perResp: '$1.50/resp' },
-      { range: '500 personas',  price: '$599',  label: 'Wave',       perResp: '$1.20/resp' },
-      { range: '2,000 personas', price: '$1,499', label: 'Enterprise', perResp: '$0.75/resp' },
+      { range: '200 personas',  price: '$300',  label: 'Tracker',    perResp: '$1.50/resp' },
+      { range: '500 personas',  price: '$600',  label: 'Wave',       perResp: '$1.20/resp' },
+      { range: '2,000 personas', price: '$1,500', label: 'Enterprise', perResp: '$0.75/resp' },
     ],
   },
   {
     id: 'creative_attention',
     label: 'Creative Attention',
-    tagline: 'Frame-by-frame attention, emotion, and message clarity. Per-asset.',
+    tagline: 'Frame-by-frame attention, emotion, and message clarity. Priced by audience size.',
     tiers: [
-      { range: '1 image',  price: '$19',  label: 'Image' },
-      { range: '1 video',  price: '$39',  label: 'Video' },
-      { range: '5 assets', price: '$79',  label: 'Bundle' },
-      { range: '20 assets', price: '$249', label: 'Series' },
+      { range: '10 personas',     price: '$19',  label: 'Sniff Test'   },
+      { range: '11-25 personas',  price: '$39',  label: 'Validate'     },
+      { range: '26-50 personas',  price: '$69',  label: 'Confidence'   },
+      { range: '51-100 personas', price: '$129', label: 'Deep Dive'    },
+      { range: '101+ personas',   price: '$299', label: 'Deep Dive XL' },
     ],
   },
 ];
@@ -336,7 +337,7 @@ export function LandingPage() {
    *
    * Routes goal-aware:
    *   creative_attention → /creative-attention/new (dedicated upload flow,
-   *                        per-asset pricing, no Mission Setup AI survey-gen)
+   *                        respondent-bracket pricing, no Mission Setup AI survey-gen)
    *   anything else      → /setup?goal=<goalId>  (Mission Setup with
    *                        the goal preselected)
    *
@@ -365,8 +366,8 @@ export function LandingPage() {
       if (goalId) sessionStorage.setItem('vett_landing_goal', goalId);
       else sessionStorage.removeItem('vett_landing_goal');
     } catch { /* private mode, fall through to URL param */ }
-    // Creative Attention has its own dedicated upload flow with per-asset
-    // pricing — must NOT route through /setup (would create an orphan
+    // Creative Attention has its own dedicated upload flow with
+    // respondent-bracket pricing. Must NOT route through /setup (would create an orphan
     // mission with no media_type, blocked by the Bug 23.61 validator).
     if (goalId === 'creative_attention') {
       const dest = '/creative-attention/new';
@@ -975,7 +976,7 @@ export function LandingPage() {
           <SecSub>
             Three flows, three ladders. Validate scales by respondents,
             Brand Lift starts at statistical sample sizes, Creative Attention
-            is flat per-asset.
+            is priced by audience size.
           </SecSub>
         </SectionCenter>
         {/* Pass 23 Bug 23.51 — tabbed pricing (Validate / Brand Lift /
