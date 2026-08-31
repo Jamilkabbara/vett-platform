@@ -45,13 +45,14 @@ const CA_POLL_TIMEOUT_MINUTES = 5;
 // directly. EMOTION_COLORS extended to cover all 24 emotions in v2.
 
 import type { CreativeAnalysis } from '../types/creativeAnalysis';
-import { EMOTION_COLORS_V2 } from '../types/creativeAnalysis';
+import { EMOTION_COLORS_V2, normalizeHotspots } from '../types/creativeAnalysis';
 import { EffectivenessDial } from '../components/creative-attention/EffectivenessDial';
 import { AttentionBlock } from '../components/creative-attention/AttentionBlock';
 import { EmotionRadar } from '../components/creative-attention/EmotionRadar';
 import { CrossChannelBenchmarks } from '../components/creative-attention/CrossChannelBenchmarks';
 import { PlatformFitPanel } from '../components/creative-attention/PlatformFitPanel';
 import { CreativeExportMenu } from '../components/creative-attention/CreativeExportMenu';
+import { HotspotHeatmap } from '../components/creative-attention/HotspotHeatmap';
 
 // Legacy alias kept for in-file references; new code imports the v2 map.
 const EMOTION_COLORS: Record<string, string> = EMOTION_COLORS_V2;
@@ -314,6 +315,23 @@ export function CreativeAttentionResultsPage() {
 
   const title = (mission?.title as string) || 'Creative Analysis';
 
+  // Pass 23 Bug 23.60/23.75 stamped a public URL into missions.media_url at
+  // INSERT time, but rows created before that (and any row whose stamp failed)
+  // carry only brief_attachment.path. vett-creatives is a PUBLIC bucket, so the
+  // path re-resolves to a working URL with no signing round-trip, which is what
+  // lets the hotspot overlay render on older missions at all.
+  const briefAttachment = mission?.brief_attachment as
+    { mimeType?: string; path?: string } | undefined;
+  const storedUrl = (mission?.media_url as string | undefined) || null;
+  const storagePath = briefAttachment?.path || null;
+  const creativeUrl = storedUrl
+    || (storagePath
+      ? supabase.storage.from('vett-creatives').getPublicUrl(storagePath).data.publicUrl || null
+      : null);
+  const creativeMime = (briefAttachment?.mimeType || '').toLowerCase();
+  const creativeIsVideo = creativeMime.startsWith('video/')
+    || (mission?.media_type as string) === 'video';
+
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)]">
       {/* Nav */}
@@ -350,30 +368,35 @@ export function CreativeAttentionResultsPage() {
             had no way to see what the AI was scoring. media_url is the
             signed URL stamped at INSERT time; brief_attachment.path is
             the storage path for re-signing if the URL has expired. */}
-        {(() => {
-          const mediaUrl = (mission?.media_url as string | undefined) || null;
-          const briefAttachment = mission?.brief_attachment as { mimeType?: string } | undefined;
-          const mimeType = (briefAttachment?.mimeType || '').toLowerCase();
-          const isVideo = mimeType.startsWith('video/') || (mission?.media_type as string) === 'video';
-          if (!mediaUrl) return null;
-          return (
-            <section className="rounded-2xl overflow-hidden border border-[var(--b1)] bg-black/40">
-              {isVideo ? (
-                <video
-                  src={mediaUrl}
-                  controls
-                  className="w-full max-h-[480px] object-contain bg-black"
-                />
-              ) : (
-                <img
-                  src={mediaUrl}
-                  alt={`Creative for ${title}`}
-                  className="w-full max-h-[480px] object-contain bg-black"
-                />
-              )}
-            </section>
-          );
-        })()}
+        {creativeUrl && (
+          <section className="rounded-2xl overflow-hidden border border-[var(--b1)] bg-black/40">
+            {creativeIsVideo ? (
+              <video
+                src={creativeUrl}
+                controls
+                className="w-full max-h-[480px] object-contain bg-black"
+              />
+            ) : (
+              <img
+                src={creativeUrl}
+                alt={`Creative for ${title}`}
+                className="w-full max-h-[480px] object-contain bg-black"
+              />
+            )}
+          </section>
+        )}
+
+        {/* PR 3 — attention hotspot heatmap. Draws the vision pass's
+            hotspot rectangles over the creative when the mission carries
+            spatial coordinates, and degrades to the ranked description
+            list (with a note) for every mission analyzed before the
+            spatial schema shipped. */}
+        <HotspotHeatmap
+          frameAnalyses={frame_analyses}
+          mediaUrl={creativeUrl}
+          isVideo={creativeIsVideo}
+          altText={`Creative for ${title} with attention hotspots overlaid`}
+        />
 
         {/* Pass 24 Bug 24.01 F2 — Creative Effectiveness Score dial.
             Renders only when the v2 pipeline returned the composite
@@ -683,8 +706,10 @@ export function CreativeAttentionResultsPage() {
                           ↑ {topEmotion[0]} ({topEmotion[1]})
                         </p>
                       )}
-                      {(f.attention_hotspots || []).slice(0, 1).map((h, j) => (
-                        <p key={j} className="text-[10px] text-[var(--t3)] italic">"{h}"</p>
+                      {normalizeHotspots(f.attention_hotspots).slice(0, 1).map((h, j) => (
+                        <p key={j} className="text-[10px] text-[var(--t3)] italic">
+                          "{h.label}"{h.weight != null ? ` · pull ${h.weight}` : ''}
+                        </p>
                       ))}
                     </div>
                   );
