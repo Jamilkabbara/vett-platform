@@ -33,7 +33,7 @@ export function VsConjointlyPage() {
         },
         {
           dimension: 'Methodology coverage',
-          vett: '12 of 13 live (validate / pricing / roadmap / brand_lift / CSAT / churn / competitor / naming / marketing / compare / audience_profiling / market_entry); creative_attention in progress',
+          vett: 'All 13 research types live (validate / pricing / roadmap / brand_lift / CSAT / churn / competitor / naming / marketing / compare / audience_profiling / market_entry / creative_attention)',
           competitor: 'Conjoint, MaxDiff, BPTO, monadic, claims tests + 10+ specialty designs',
           verdict: 'competitor',
         },
