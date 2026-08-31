@@ -48,7 +48,8 @@ We reserve the right to suspend or terminate accounts that violate these Terms.
 
 VETT generates AI-modeled synthetic personas to deliver market research insights based on your inputs. The Service includes:
 
-- Mission types: Sniff Test, Validate, Confidence, Scale, Premium, Creative Attention
+- Research types: Validate Product, Compare Concepts, Test Marketing/Ads, Customer Satisfaction, Pricing Research, Feature Roadmap, General Research, Competitor Analysis, Audience Profiling, Naming & Messaging, Market Entry, Churn Research, Brand Lift Study, Creative Attention Analysis
+- Mission sizes from 5 to 5,000 respondents, priced as set out in Section 5.1
 - AI-generated synthetic personas across 193 countries
 - AI synthesis: insights, contradictions, cross-segment analysis
 - Multi-format exports: CSV, JSON, PDF, PPTX, XLSX
@@ -254,7 +255,7 @@ The VETT mobile app on iOS and Android is governed by these same Terms. Addition
 - **Push notifications are opt-in:** You explicitly grant permission. Revoke any time via your device's notification settings.
 - **18+ requirement applies:** The mobile app is intended for adult users. The App Store / Play Store rating reflects this exactly.
 - **App Store / Play Store EULA:** Where the platform's standard EULA applies (Apple Media Services Terms, Google Play Terms), those terms govern your relationship with the platform; these VETT Terms govern your relationship with VETT.
-- **Refund policy applies:** All auto-refund and manual refund mechanisms apply equally to mobile payments.
+- **Refund Policy applies:** Our Refund Policy governs mobile payments exactly as it governs web payments.
 
 ---
 
