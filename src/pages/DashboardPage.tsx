@@ -887,6 +887,7 @@ export const DashboardPage = () => {
                   goalId={state.mission.goal_type}
                   context={state.mission.brief ?? undefined}
                   persisting={persisting}
+                  missionId={state.mission.id}
                 />
                 {/* Section divider — orients the user that scrolling
                     past the Question Engine lands them on Audience

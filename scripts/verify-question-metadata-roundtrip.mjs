@@ -103,6 +103,19 @@ const emit = new Function(
    return (list) => { emit(list); return captured; };`,
 )();
 
+// ── Load the REAL mapDraftedQuestion out of aiService.ts ───────────────────
+// This is the AI-drafted-question path (POST /api/ai/draft-question). It is
+// the deliberate INVERSE of mapQuestion: mapQuestion spreads `...q` so every
+// methodology tag survives, while mapDraftedQuestion is a CLOSED LITERAL so
+// no tag can ever attach to an ad-hoc user question. Both properties are
+// load-bearing and both are asserted below.
+const mapDraftedQuestion = new Function(
+  `${sliceStatement(aiJs, 'const VALID_TYPES')}
+   ${sliceStatement(aiJs, 'const USER_DRAFTED_SOURCE')}
+   ${sliceFn(aiJs, 'function mapDraftedQuestion')}
+   return mapDraftedQuestion;`,
+)();
+
 // ── A backend-generated question carrying every documented metadata field ──
 const BACKEND_QUESTION = {
   id: 'q4',
@@ -195,6 +208,63 @@ check('audience_profiling can still match by q.dimension', written.dimension ===
 check('PricingResultsPage can still filter methodology === van_westendorp', written.methodology === 'van_westendorp');
 check('PricingResultsPage can still read vw_band / gg_anchor_index',
   written.vw_band === 'too_expensive' && written.gg_anchor_index === 3);
+
+console.log('\n--- Step 5: AI-drafted question -> create -> load -> edit -> re-persist');
+// The endpoint returns exactly these four keys. A hostile/regressed backend
+// that also returned tags must not get them past the frontend either, so the
+// fixture below carries every tag and asserts they are all dropped.
+const DRAFT_RESPONSE = {
+  text: 'How often do you reorder coffee?',
+  type: 'single',
+  options: ['Weekly', 'Monthly', 'Rarely'],
+  source: 'user_drafted',
+  // Tags the endpoint must never send. Present here so this harness fails if
+  // mapDraftedQuestion is ever "simplified" into a spread like mapQuestion.
+  ...Object.fromEntries(META_KEYS.map((k) => [k, BACKEND_QUESTION[k]])),
+};
+
+const draftMapped = mapDraftedQuestion(DRAFT_RESPONSE);
+check('mapDraftedQuestion keeps the question text', draftMapped.text === DRAFT_RESPONSE.text);
+check('mapDraftedQuestion keeps the type', draftMapped.type === 'single', `got ${draftMapped.type}`);
+check('mapDraftedQuestion keeps the options',
+  JSON.stringify(draftMapped.options) === JSON.stringify(DRAFT_RESPONSE.options));
+check('mapDraftedQuestion sets source=user_drafted', draftMapped.source === 'user_drafted');
+check('mapDraftedQuestion emits ONLY the four allowed keys',
+  JSON.stringify(Object.keys(draftMapped).sort()) === JSON.stringify(['options', 'source', 'text', 'type']),
+  JSON.stringify(Object.keys(draftMapped)));
+for (const k of META_KEYS) {
+  check(`mapDraftedQuestion drops the ${k} tag`, draftMapped[k] === undefined,
+    `got ${JSON.stringify(draftMapped[k])}`);
+}
+
+// Accept -> the question joins the list -> jsonb -> reload -> edit -> re-persist.
+const acceptedInList = [
+  { ...generated, id: 'q1' },
+  { id: 'q2', text: draftMapped.text, type: draftMapped.type, options: draftMapped.options,
+    source: draftMapped.source, aiRefined: true, isScreening: false, hasPIIError: false },
+];
+const draftFromDb = JSON.parse(JSON.stringify(acceptedInList));
+const draftReloaded = normaliseQuestions(draftFromDb);
+const reloadedDraft = draftReloaded.find((q) => q.id === 'q2');
+check('source survives persist -> reload (normaliseQuestions)', reloadedDraft.source === 'user_drafted');
+for (const k of META_KEYS) {
+  check(`reloaded draft still has no ${k} tag`, reloadedDraft[k] === undefined,
+    `got ${JSON.stringify(reloadedDraft[k])}`);
+}
+
+const draftEdited = emit(draftReloaded.map((q) => (q.id === 'q2' ? { ...q, text: 'User rewrote this' } : q)));
+const writtenDraft = JSON.parse(JSON.stringify(draftEdited)).find((q) => q.id === 'q2');
+check('the user edit to the drafted question landed', writtenDraft.text === 'User rewrote this');
+check('source survives the edit -> re-persist round trip', writtenDraft.source === 'user_drafted');
+for (const k of META_KEYS) {
+  check(`re-persisted draft acquired no ${k} tag`, writtenDraft[k] === undefined,
+    `got ${JSON.stringify(writtenDraft[k])}`);
+}
+// Editing must not blur the two kinds of question together.
+const writtenGenerated = JSON.parse(JSON.stringify(draftEdited)).find((q) => q.id === 'q1');
+check('the generated question in the same list KEEPS its tags', writtenGenerated.kind === 'wtp'
+  && writtenGenerated.methodology === 'van_westendorp');
+check('the generated question did NOT acquire a source marker', writtenGenerated.source === undefined);
 
 console.log(`\n${failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);
