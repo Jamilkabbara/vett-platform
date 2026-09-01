@@ -94,6 +94,63 @@ export function getVolumeTier(respondentCount: number): VolumeTier {
   return VOLUME_TIERS.find(t => c <= t.maxCount) ?? VOLUME_TIERS[VOLUME_TIERS.length - 1];
 }
 
+/**
+ * ── V1 tier-boundary price inversion fix (mirrors the backend) ──────────────
+ *
+ * The ladders price as `count × tier.ratePerResp`, and the bracket rate DROPS
+ * at each boundary — so the quoted total used to go DOWN as the respondent
+ * count went UP. With the setup slider at step 5, dragging one notch right of
+ * 1,000 took the quote from $900.00 to $402.00.
+ *
+ * Fix: floor each tier at the maximum price payable in the tier BELOW it, so
+ * price is monotonic non-decreasing. The anchor/preset counts
+ * (5/10/50/250/1,000/5,000) are unchanged — only the "dip" band immediately
+ * after each boundary is lifted back to the boundary price.
+ *
+ * This MUST stay byte-identical to `respondentLadderBase` in the backend's
+ * src/utils/pricingEngine.js, or the quote shown at setup will disagree with
+ * the amount the server charges at checkout.
+ */
+const TIER_PRICE_FLOORS = new WeakMap<object, number[]>();
+
+function getTierPriceFloors(ladder: readonly AnyTier[]): number[] {
+  const cached = TIER_PRICE_FLOORS.get(ladder as unknown as object);
+  if (cached) return cached;
+  const floors: number[] = [];
+  let running = 0;
+  for (const t of ladder) {
+    floors.push(running);
+    // The open-ended top tier has maxCount Infinity and no ceiling to carry.
+    if (Number.isFinite(t.maxCount)) {
+      running = Math.max(running, t.maxCount * t.ratePerResp);
+    }
+  }
+  TIER_PRICE_FLOORS.set(ladder as unknown as object, floors);
+  return floors;
+}
+
+/** The price floor a given tier inherits from the tier below it (0 if unknown). */
+export function tierPriceFloor(ladder: readonly AnyTier[], tier: AnyTier | null | undefined): number {
+  if (!ladder || !tier) return 0;
+  const idx = ladder.indexOf(tier);
+  if (idx < 0) return 0;
+  return getTierPriceFloors(ladder)[idx] || 0;
+}
+
+/**
+ * Monotonic base price for a respondent-count ladder.
+ * base(n) = max(n × tierRate, ceiling price of the tier below)
+ */
+export function respondentLadderBase(
+  ladder: readonly AnyTier[],
+  tier: AnyTier | null | undefined,
+  count: number,
+  rate: number,
+): number {
+  const n = Math.max(0, Number(count) || 0);
+  return Math.round(Math.max(n * rate, tierPriceFloor(ladder, tier)) * 100) / 100;
+}
+
 export const calculatePricing = (
   respondentCount: number,
   questions: Question[],
@@ -105,7 +162,9 @@ export const calculatePricing = (
   // and city-targeting flags below.
   const tier = getVolumeTier(respondentCount);
   const basePerRespondent = tier.ratePerResp;
-  const base = respondentCount * basePerRespondent;
+  // Monotonic: never cheaper than the top of the tier below. See
+  // respondentLadderBase — the V1 tier-boundary inversion fix.
+  const base = respondentLadderBase(VOLUME_TIERS, tier, respondentCount, basePerRespondent);
 
   const additionalQuestions = Math.max(0, questions.length - 5);
   const questionSurcharge = additionalQuestions * 20;
