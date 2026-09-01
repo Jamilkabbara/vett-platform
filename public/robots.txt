@@ -21,6 +21,11 @@ Disallow: /payment-success
 Disallow: /payment-cancel
 Disallow: /__design
 
+# /landing-v2 was the public preview URL for the landing redesign. It now
+# redirects to /landing, so crawling it would only produce a duplicate of
+# the canonical landing. External links to it still resolve for humans.
+Disallow: /landing-v2
+
 # Don't crawl Stripe Checkout or session URLs that may end up in
 # referrer logs.
 Disallow: /*?session_id=

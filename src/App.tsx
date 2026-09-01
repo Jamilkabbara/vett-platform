@@ -6,15 +6,20 @@ import { ScrollToTop } from './components/shared/ScrollToTop';
 import { PageLoader } from './components/shared/PageLoader';
 import { SiteWideAskVett } from './components/chat/SiteWideAskVett';
 import { replayFunnelQueue } from './lib/funnelTrack';
-// Pass 29 A3 — LandingPage imported eagerly. It's the canonical entry
-// point for cold visitors (every other page is gated on auth or a
-// direct link), so the lazy-load round-trip costs an unavoidable
-// extra RTT on the most common LCP path. Importing eagerly merges
-// the LandingPage chunk into the main bundle, dropping one fetch
-// from the cold-load critical path on /landing. Other pages stay
-// lazy — direct visitors to /dashboard / /setup / /vs/* still pay
-// only their own chunk's cost.
-import { LandingPage } from './pages/LandingPage';
+// GO-LIVE — LandingV2Page is now the live landing and inherits the
+// Pass 29 A3 eager import. It's the canonical entry point for cold
+// visitors (every other page is gated on auth or a direct link), so
+// the lazy-load round-trip costs an unavoidable extra RTT on the most
+// common LCP path. Importing eagerly merges the landing chunk into the
+// main bundle, dropping one fetch from the cold-load critical path on
+// /landing. Other pages stay lazy — direct visitors to /dashboard /
+// /setup / /vs/* still pay only their own chunk's cost.
+//
+// Its styles/landing-v2.css therefore merges into the global stylesheet
+// rather than a page chunk. Safe: every selector is `lv2-` prefixed and
+// every keyframe `lv2*`, so nothing there can collide with the rest of
+// the app.
+import { LandingV2Page } from './pages/LandingV2Page';
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded pages — each becomes its own async chunk.
@@ -38,10 +43,6 @@ const ApiPage             = lazy(() => import('./pages/ApiPage').then(m => ({ de
 const HelpPage            = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 // Pass 32 C1 — single canonical list of every research methodology.
 const MethodologiesPage   = lazy(() => import('./pages/MethodologiesPage').then(m => ({ default: m.MethodologiesPage })));
-// HELD PREVIEW — /landing-v2 is an additive redesign preview built from
-// vett-final-mocks/vett-landing.html. It does NOT replace /landing; the live
-// landing route still renders LandingPage unchanged.
-const LandingV2Page       = lazy(() => import('./pages/LandingV2Page').then(m => ({ default: m.LandingV2Page })));
 // Public methodology page — how a VETT number is produced, the statistical
 // gates, and the objections. Distinct from /methodologies (plural), which is
 // the catalogue of methods. Linked from every export footer.
@@ -147,9 +148,15 @@ function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Navigate to="/landing" replace />} />
-              <Route path="/landing" element={<LandingPage />} />
-              {/* HELD PREVIEW — additive only. Does not change / or /landing. */}
-              <Route path="/landing-v2" element={<LandingV2Page />} />
+              <Route path="/landing" element={<LandingV2Page />} />
+              {/* GO-LIVE — /landing-v2 was the public preview URL while the
+                  redesign was under review, so it may be linked externally
+                  (bookmarks, review threads, chat links). It is NOT indexed
+                  (absent from sitemap.xml), and keeping it as a second render
+                  path would create a duplicate-content twin of /landing. It
+                  redirects to the canonical landing instead, so every existing
+                  link still resolves. Do not delete this route. */}
+              <Route path="/landing-v2" element={<Navigate to="/landing" replace />} />
               <Route path="/setup" element={<MissionSetupPage />} />
               <Route path="/mission-control" element={<DashboardLayout><DashboardPage /></DashboardLayout>} />
               <Route path="/missions" element={<MissionsListPage />} />

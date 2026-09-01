@@ -1,15 +1,23 @@
 /**
- * LandingV2Page - additive PREVIEW route at /landing-v2.
+ * LandingV2Page - THE LIVE LANDING. Serves `/landing`, and `/` which
+ * redirects there. `/landing-v2` (the old preview URL) now redirects here
+ * too, so links shared during design review still resolve.
  *
  * A faithful React + Tailwind port of vett-final-mocks/vett-landing.html.
  *
- *   - This file does NOT touch `/` or `/landing`. LandingPage.tsx is
- *     byte-identical to origin/main; the live landing is unaffected.
- *   - Every behaviour the live landing has is preserved: the hero brief
+ *   - Replaced the old LandingPage.tsx, which was deleted in the same
+ *     commit. To roll back, revert that commit (or promote the previous
+ *     deployment); the old page is recoverable from git history.
+ *   - Every behaviour the old landing had is preserved: the hero brief
  *     input with its typewriter placeholder, attachment handoff via
  *     sessionStorage, goal-card routing to /setup?goal=<id> (and
- *     creative_attention to /creative-attention/new), lead capture, and
- *     landing_view funnel tracking.
+ *     creative_attention to /creative-attention/new), lead capture under
+ *     the same `landing_prefooter` page tag, and landing_view funnel
+ *     tracking with the same landingMetadata() payload.
+ *   - Not carried over from the old page, both deliberate: the
+ *     "just vetted" ticker (absent from the approved mock, so the
+ *     GET /api/missions/recent-vetted fetch is gone) and the popstate
+ *     listener that re-synced the hero input from ?q= on back/forward.
  *   - Pricing copy is the corrected LIVE ladder, not the mock's stale one.
  *     See src/components/landing-v2/PricingLadders.tsx.
  *
@@ -279,7 +287,7 @@ export function LandingV2Page() {
           MARK is the shared ui/Logo. */}
       <nav className="sticky top-0 z-50 bg-[rgba(11,12,21,0.72)] backdrop-blur-[18px] backdrop-saturate-[1.4] border-b border-white/[0.07]">
         <div className="max-w-[1200px] mx-auto px-4 min-[600px]:px-7 py-[13px] flex items-center justify-between gap-5">
-          <Link to="/landing-v2" aria-label="VETT home" className="flex items-center gap-[11px]">
+          <Link to="/landing" aria-label="VETT home" className="flex items-center gap-[11px]">
             <Logo size="sm" iconOnly />
             <span className="font-['Manrope',system-ui,sans-serif] font-extrabold tracking-[0.06em] text-[19px]">
               VETT
@@ -796,7 +804,7 @@ export function LandingV2Page() {
               </p>
               <LeadCaptureForm
                 cta="Notify me"
-                page="landing-v2"
+                page="landing_prefooter"
                 placeholder="you@company.com"
                 variant="inline"
                 className="justify-center"
