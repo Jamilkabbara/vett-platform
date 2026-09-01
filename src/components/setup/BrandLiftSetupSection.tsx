@@ -69,13 +69,9 @@ function brandLiftMissingFields(
   if (!state.creative) missing.push('a creative');
   if (state.markets.length < 1) missing.push('1 market');
   if (state.channels.length < 1) missing.push('1 channel');
-  const wavesNeedDates = state.wave.mode !== 'single_wave';
-  const datesValid =
-    !wavesNeedDates ||
-    (state.wave.campaignStart &&
-      state.wave.campaignEnd &&
-      new Date(state.wave.campaignEnd) > new Date(state.wave.campaignStart));
-  if (!datesValid) missing.push('campaign dates');
+  // Wave-selector honesty fix: campaign dates are gone. They were never
+  // forwarded to the generator and never persisted, so gating launch on
+  // them only implied VETT would schedule fieldwork.
   if (state.competitors.length < MIN_COMPETITORS) {
     missing.push(`${MIN_COMPETITORS} competitors`);
   }

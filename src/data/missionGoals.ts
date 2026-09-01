@@ -179,7 +179,7 @@ export const MISSION_GOALS: MissionGoal[] = [
     emoji: '📡',
     hint: 'Brand awareness & recall',
     description:
-      'Measure awareness, recall, sentiment & purchase intent before and after campaigns',
+      'Measure awareness, recall, sentiment & purchase intent among campaign-exposed vs unexposed audiences',
     tags: ['Awareness', 'Ad Recall', 'Purchase Intent', 'NPS'],
     isNew: true,
     variant: 'special',

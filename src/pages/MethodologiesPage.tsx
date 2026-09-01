@@ -76,7 +76,7 @@ const METHODOLOGIES: Methodology[] = [
   {
     id: 'brand_lift',
     name: 'Brand Lift',
-    short: 'Pre/post incrementality across 9 brand-health KPIs.',
+    short: 'Exposed vs control incrementality across 9 brand-health KPIs.',
     detail: 'Exposed vs control split; lift is measured from the two cells by deterministic analysis, not prescribed. Industry-standard 9-category framework.',
     framework: 'Incrementality study with exposed/control simulation — based on Nielsen Brand Effect / Kantar Brand Lift methodology.',
     startsAt: '$99',
