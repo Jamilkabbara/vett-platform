@@ -297,8 +297,9 @@ export const suggestTargeting = async (
  * questions AND a category, so the two must be read separately.
  *
  * The frontend **never** blocks on this call — the static cards are
- * always the default. Callers wait ≤ 800ms for a response and fall
- * back silently if the endpoint isn't deployed or times out.
+ * always the default. Callers wait up to CLARIFY_TIMEOUT_MS (15s since
+ * Pass 6A - the old 800ms note here was stale) and fall back silently if
+ * the endpoint isn't deployed or times out.
  *
  * Contract for AdaptiveClarifyQuestion is kept intentionally loose so
  * the backend can ship incremental improvements without requiring
