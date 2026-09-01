@@ -149,5 +149,19 @@ export default {
       },
     },
   },
-  plugins: [require('@tailwindcss/forms')],
+  plugins: [
+    require('@tailwindcss/forms'),
+    // Pass 49 — BlogPostPage.tsx has applied a dozen `prose-*` utilities since
+    // it was written, with this plugin absent: every one was a no-op, so live
+    // blog bodies rendered with Tailwind preflight having reset heading sizes
+    // and list markers. Adding it activates the styling that file always
+    // intended.
+    //
+    // Safe for the legal pages: LegalPage.tsx uses `prose-vett` (which is not
+    // a plugin class, and in fact is not defined anywhere - its styling comes
+    // entirely from an explicit components={{...}} map) and never applies the
+    // bare `prose` class. Verified: BlogPostPage is the only file in src/ that
+    // does.
+    require('@tailwindcss/typography'),
+  ],
 };

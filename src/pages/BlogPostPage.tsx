@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+// Pass 49 — GFM tables/strikethrough/task lists. Without this, a markdown
+// table renders as literal pipe characters; that already shipped to
+// customers once on the Terms of Service pricing table.
+import remarkGfm from 'remark-gfm';
 import { Calendar, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { OverlayPage } from '../components/layout/OverlayPage';
@@ -138,7 +142,7 @@ export function BlogPostPage() {
               prose-code:bg-bg3 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-lime prose-code:text-[13px]
               prose-blockquote:border-lime/30 prose-blockquote:text-t2
               prose-strong:text-white">
-              <ReactMarkdown>{post.body_markdown}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.body_markdown}</ReactMarkdown>
             </div>
           ) : (
             <div className="flex items-center gap-2 text-white/30 py-8">
