@@ -26,6 +26,21 @@ export interface Question {
    * through persistence into missions.questions. Preserved verbatim; the UI
    * never edits it.
    */
+  /**
+   * Provenance marker. Set to 'user_drafted' by POST /api/ai/draft-question
+   * on ad-hoc questions the user drafted and accepted; ABSENT on every
+   * question the survey generator produced.
+   *
+   * It is the inverse of the tags below: a drafted question carries this
+   * and NO methodology tag, so it is structurally distinguishable from a
+   * generated one in both directions. The deterministic analyses in the
+   * backend's services/analysis/* select strictly by the tags, so an
+   * untagged question is never pulled into a methodology bucket — which
+   * is the whole point, since a mis-bucketed ad-hoc question would
+   * corrupt the numbers (e.g. audienceProfiling matches attitudinal
+   * questions on `kind` + `dimension` with no fallback).
+   */
+  source?: string;
   kind?: string;
   /**
    * Analysis sub-axis emitted alongside `kind` for battery-style questions.

@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown, ArrowUp, CheckCircle2, Circle, Loader2, Pencil, Plus, Sparkles, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, CheckCircle2, Circle, Loader2, Pencil, Plus, RefreshCw, Sparkles, Wand2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import type { Question } from './QuestionEngine';
+import {
+  DraftCapReachedError,
+  draftQuestion,
+  USER_DRAFTED_SOURCE,
+  type DraftedQuestion,
+} from '../../services/aiService';
 import { refineQuestion } from '../../services/aiService';
 import { getQuestionTypeConfig } from '../../data/questionTypes';
 
@@ -79,6 +85,10 @@ interface MissionControlQuestionsProps {
   context?: string;
   /** Set true while the parent is mid-save to disable destructive actions. */
   persisting?: boolean;
+  /** Mission row id. Required by POST /api/ai/draft-question, which counts
+   *  the per-mission draft cap off the STORED row. Absent (mission not yet
+   *  created) simply hides the Draft-with-AI affordance. */
+  missionId?: string | null;
 }
 
 /** Human number ("Q1", "Q2", …) derived from array position, not id,
@@ -99,6 +109,18 @@ export const MAX_OPTIONS = 6;
 /** Types that carry answer options. `rating`/`opinion`/`text` don't. */
 const HAS_OPTIONS = new Set(['single', 'multi']);
 
+/**
+ * How many questions in the list are user drafts.
+ *
+ * Sent to the backend as `pending_drafts` so the cap still holds during
+ * the window where the parent's debounced save has not flushed yet. The
+ * server takes the MAX of this and its own stored count, so this number
+ * can only ever tighten the cap — it cannot buy extra drafts.
+ */
+export function countUserDrafts(questions: Question[]): number {
+  return questions.filter((q) => q.source === USER_DRAFTED_SOURCE).length;
+}
+
 function generateId(existing: Question[]): string {
   // q<N> where N = max existing numeric suffix + 1.  Keeps ids stable
   // across refines but predictable when adding.
@@ -116,6 +138,7 @@ export const MissionControlQuestions = ({
   goalId,
   context,
   persisting = false,
+  missionId = null,
 }: MissionControlQuestionsProps) => {
   // ── Edit state ────────────────────────────────────────────────────
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -129,6 +152,19 @@ export const MissionControlQuestions = ({
 
   // ── Remove confirm state (one at a time) ─────────────────────────
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+
+  // ── AI draft state ────────────────────────────────────────────────
+  // The drafted question is held HERE, in local component state, and is
+  // deliberately NOT pushed into `questions` until the user accepts it.
+  // Nothing is written server-side on draft either — the endpoint is
+  // read-only. So a discarded draft leaves no trace anywhere.
+  const [draftOpen, setDraftOpen] = useState(false);
+  const [draftPrompt, setDraftPrompt] = useState('');
+  const [drafting, setDrafting] = useState(false);
+  const [draftPreview, setDraftPreview] = useState<DraftedQuestion | null>(null);
+  const [draftCap, setDraftCap] = useState<{ cap: number; remaining: number } | null>(null);
+  const draftInflight = useRef(false);
+  const draftInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   // ── Phase 6 — Q1 auto-screening ──────────────────────────────────
   // Invariant: index 0 is ALWAYS the Screening question; everything
@@ -432,6 +468,85 @@ export const MissionControlQuestions = ({
     setEditText('');
   }, [questions, emit]);
 
+  // ── AI draft handlers ─────────────────────────────────────────────
+  const usedDrafts = countUserDrafts(questions);
+  const capReached = draftCap !== null && usedDrafts >= draftCap.cap;
+
+  const closeDraft = useCallback(() => {
+    setDraftOpen(false);
+    setDraftPrompt('');
+    setDraftPreview(null);
+  }, []);
+
+  /** Ask the backend for one question. Returns it for REVIEW only —
+   *  nothing is appended and nothing is persisted until Accept. */
+  const runDraft = useCallback(async () => {
+    if (!missionId) return;
+    if (draftInflight.current) return;
+    const ask = draftPrompt.trim();
+    if (ask.length < 3) {
+      toast('Tell the AI what to ask about first', { icon: '✍️' });
+      return;
+    }
+    draftInflight.current = true;
+    setDrafting(true);
+    try {
+      const result = await draftQuestion(missionId, ask, usedDrafts);
+      setDraftPreview(result.question);
+      setDraftCap({ cap: result.cap, remaining: result.remaining });
+    } catch (err) {
+      if (err instanceof DraftCapReachedError) {
+        setDraftCap({ cap: err.cap, remaining: 0 });
+        setDraftPreview(null);
+        toast(`You can add up to ${err.cap} AI-drafted questions per mission.`, { icon: '🛑' });
+      } else {
+        console.error('[MissionControlQuestions] draft failed', err);
+        toast.error("Couldn't draft that one - try again in a sec.");
+      }
+    } finally {
+      draftInflight.current = false;
+      setDrafting(false);
+    }
+  }, [missionId, draftPrompt, usedDrafts]);
+
+  /**
+   * Accept: the ONLY path by which a drafted question enters the list
+   * (and from there missions.questions, via the parent's debounced
+   * save). Built as a closed literal so nothing beyond the four
+   * reviewed fields can ride along — no methodology tag can reach the
+   * persisted array even if the endpoint regressed.
+   */
+  const handleAcceptDraft = useCallback(() => {
+    if (!draftPreview) return;
+    const id = generateId(questions);
+    const accepted: Question = {
+      id,
+      text: draftPreview.text,
+      type: draftPreview.type,
+      options: draftPreview.options,
+      source: USER_DRAFTED_SOURCE,
+      aiRefined: true,
+      isScreening: false, // emit() owns this by array position
+      qualifyingAnswer: undefined,
+      hasPIIError: false,
+    };
+    emit([...questions, accepted]);
+    setDraftPreview(null);
+    setDraftPrompt('');
+    setDraftCap((c) => (c ? { ...c, remaining: Math.max(0, c.remaining - 1) } : c));
+    toast.success('Question added');
+  }, [draftPreview, questions, emit]);
+
+  const handleDiscardDraft = useCallback(() => {
+    setDraftPreview(null);
+  }, []);
+
+  useEffect(() => {
+    if (!draftOpen || draftPreview) return;
+    const t = window.setTimeout(() => draftInputRef.current?.focus(), 40);
+    return () => window.clearTimeout(t);
+  }, [draftOpen, draftPreview]);
+
   // Phase 8 — reorder by ±1. emit() re-applies Q1 auto-screening so if
   // the user promotes a question to index 0, it inherits the Screening
   // tag immediately; the old index-0 loses it cleanly.
@@ -499,23 +614,215 @@ export const MissionControlQuestions = ({
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={handleAdd}
-          disabled={persisting}
-          className={[
-            'inline-flex items-center gap-1.5 rounded-lg whitespace-nowrap',
-            'border border-lime/30 bg-lime/10 hover:bg-lime/15',
-            'px-2.5 py-1.5',
-            'font-display font-bold text-[11px] text-lime',
-            'disabled:opacity-60 disabled:cursor-not-allowed',
-            'transition-colors',
-          ].join(' ')}
-        >
-          <Plus className="w-3.5 h-3.5" aria-hidden />
-          <span>Add question</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          {missionId && (
+            <button
+              type="button"
+              onClick={() => (draftOpen ? closeDraft() : setDraftOpen(true))}
+              disabled={persisting}
+              aria-expanded={draftOpen}
+              data-testid="mc-draft-toggle"
+              className={[
+                'inline-flex items-center gap-1.5 rounded-lg whitespace-nowrap',
+                draftOpen
+                  ? 'border border-lime bg-lime/20 text-lime'
+                  : 'border border-white/15 bg-white/5 hover:bg-white/10 text-t2',
+                'px-2.5 py-1.5',
+                'font-display font-bold text-[11px]',
+                'disabled:opacity-60 disabled:cursor-not-allowed',
+                'transition-colors',
+              ].join(' ')}
+            >
+              <Wand2 className="w-3.5 h-3.5" aria-hidden />
+              <span>Draft with AI</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={persisting}
+            className={[
+              'inline-flex items-center gap-1.5 rounded-lg whitespace-nowrap',
+              'border border-lime/30 bg-lime/10 hover:bg-lime/15',
+              'px-2.5 py-1.5',
+              'font-display font-bold text-[11px] text-lime',
+              'disabled:opacity-60 disabled:cursor-not-allowed',
+              'transition-colors',
+            ].join(' ')}
+          >
+            <Plus className="w-3.5 h-3.5" aria-hidden />
+            <span>Add question</span>
+          </button>
+        </div>
       </div>
+
+      {/* ── AI draft composer + preview ────────────────────────────────
+          Two states in one panel:
+            1. COMPOSE — the user says what they want to ask about.
+            2. PREVIEW — the drafted question is shown for review with
+               Accept / Redraft / Discard. Only Accept puts it in the
+               list; nothing is written server-side by drafting.
+          Verified at 375px: the action row wraps below the preview. */}
+      <AnimatePresence initial={false}>
+        {draftOpen && (
+          <motion.div
+            key="draft-panel"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+            data-testid="mc-draft-panel"
+          >
+            <div className="mb-4 rounded-lg border border-lime/25 bg-lime/[0.06] px-3.5 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Wand2 className="w-3.5 h-3.5 text-lime" aria-hidden />
+                <span className="font-display font-black text-[11px] text-white uppercase tracking-[0.08em]">
+                  Draft an extra question
+                </span>
+                <span className="ml-auto font-body text-[10px] text-t3 whitespace-nowrap">
+                  {draftCap
+                    ? `${draftCap.remaining} of ${draftCap.cap} left`
+                    : `${usedDrafts} added`}
+                </span>
+              </div>
+
+              {!draftPreview ? (
+                <>
+                  <textarea
+                    ref={draftInputRef}
+                    value={draftPrompt}
+                    onChange={(e) => setDraftPrompt(e.target.value)}
+                    disabled={drafting || capReached}
+                    rows={2}
+                    placeholder="What else do you want to ask? e.g. how often they reorder"
+                    data-testid="mc-draft-prompt"
+                    className={[
+                      'w-full resize-none rounded-md',
+                      'bg-bg3 border border-b1 focus:border-lime/60 focus:outline-none',
+                      'px-3 py-2',
+                      'font-body text-[13px] text-white placeholder:text-t4',
+                      'disabled:opacity-60',
+                    ].join(' ')}
+                  />
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={runDraft}
+                      disabled={drafting || capReached || draftPrompt.trim().length < 3}
+                      data-testid="mc-draft-run"
+                      className={[
+                        'inline-flex items-center gap-1.5 rounded-lg',
+                        'bg-lime text-black px-3 py-1.5',
+                        'font-display font-bold text-[11px]',
+                        'hover:bg-lime/90 transition-colors',
+                        'disabled:opacity-50 disabled:cursor-not-allowed',
+                      ].join(' ')}
+                    >
+                      {drafting ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5" aria-hidden />
+                      )}
+                      <span>{drafting ? 'Drafting' : 'Draft it'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeDraft}
+                      className="font-display font-bold text-[11px] text-t3 hover:text-white px-2 py-1.5 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <span className="ml-auto font-body text-[10px] text-t4">
+                      You review it before it is added
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div data-testid="mc-draft-preview">
+                  <div className="rounded-md border border-b1 bg-bg3 px-3 py-2.5">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="font-display font-black text-[9px] text-t3 uppercase tracking-[0.1em]">
+                        Preview
+                      </span>
+                      <span className="inline-flex items-center rounded-pill border border-white/15 bg-white/5 px-2 py-0.5 font-display font-bold text-[9px] text-t2 uppercase tracking-[0.08em]">
+                        {getQuestionTypeConfig(draftPreview.type).label}
+                      </span>
+                    </div>
+                    <p className="font-body text-[13px] text-white leading-snug">
+                      {draftPreview.text}
+                    </p>
+                    {draftPreview.options.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {draftPreview.options.map((o) => (
+                          <span
+                            key={o}
+                            className="rounded-pill border border-b1 bg-bg2 px-2 py-0.5 font-body text-[11px] text-t2"
+                          >
+                            {o}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleAcceptDraft}
+                      disabled={persisting}
+                      data-testid="mc-draft-accept"
+                      className={[
+                        'inline-flex items-center gap-1.5 rounded-lg',
+                        'bg-lime text-black px-3 py-1.5',
+                        'font-display font-bold text-[11px]',
+                        'hover:bg-lime/90 transition-colors shadow-lime-soft',
+                        'disabled:opacity-50 disabled:cursor-not-allowed',
+                      ].join(' ')}
+                    >
+                      <Check className="w-3.5 h-3.5" aria-hidden />
+                      <span>Add to survey</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={runDraft}
+                      disabled={drafting}
+                      data-testid="mc-draft-redraft"
+                      className={[
+                        'inline-flex items-center gap-1.5 rounded-lg',
+                        'border border-white/15 bg-white/5 hover:bg-white/10',
+                        'px-3 py-1.5 font-display font-bold text-[11px] text-t2',
+                        'disabled:opacity-50 disabled:cursor-not-allowed transition-colors',
+                      ].join(' ')}
+                    >
+                      {drafting ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />
+                      ) : (
+                        <RefreshCw className="w-3.5 h-3.5" aria-hidden />
+                      )}
+                      <span>Try again</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDiscardDraft}
+                      data-testid="mc-draft-discard"
+                      className="font-display font-bold text-[11px] text-t3 hover:text-white px-2 py-1.5 transition-colors"
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {capReached && (
+                <p className="mt-2 font-body text-[11px] text-t3">
+                  You have used all {draftCap?.cap} AI-drafted questions for this
+                  mission. Remove one to draft another.
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* List */}
       {count === 0 ? (

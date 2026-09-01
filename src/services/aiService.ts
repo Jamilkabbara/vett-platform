@@ -1565,3 +1565,116 @@ const extractSubjectName = (subject: string): string => {
 
   return subject;
 };
+
+/* ────────────────────────────────────────────────────────────────────
+ * AI-drafted extra question (POST /api/ai/draft-question)
+ *
+ * Drafts ONE ad-hoc question for review. The backend performs no write
+ * — the question enters missions.questions only when the user accepts
+ * it in Mission Control, through the normal question-persistence path.
+ *
+ * ── Why this does NOT go through mapQuestion ────────────────────────
+ * mapQuestion is a deliberate PASSTHROUGH: it spreads `...q` so every
+ * methodology tag the survey generator emits survives into
+ * missions.questions (PR #79 — the analyses read those tags straight
+ * off the persisted array, and an allowlist there kept silently
+ * dropping new ones).
+ *
+ * A drafted question needs the exact opposite. It is ad-hoc, carries no
+ * methodological role, and must never be selected by the analyses —
+ * services/analysis/audienceProfiling.js:153 finds attitudinal
+ * questions with `q.kind === 'attitudinal' && q.dimension === d`,
+ * pricing.js:117 finds Van Westendorp bands by `methodology` +
+ * `vw_band`, and so on. A tag on this question would drop it into one
+ * of those buckets and corrupt the customer's numbers.
+ *
+ * So this mapper is a CLOSED LITERAL: it names every field it copies
+ * and spreads nothing. The backend already strips tags by the same
+ * construction; doing it again here means a tag cannot reach
+ * missions.questions even if the endpoint regressed or a response were
+ * tampered with in transit. Do not "simplify" this into a spread.
+ */
+export const USER_DRAFTED_SOURCE = 'user_drafted';
+
+export interface DraftedQuestion {
+  text: string;
+  type: Question['type'];
+  options: string[];
+  /** Positive marker — no generated question carries it. */
+  source: typeof USER_DRAFTED_SOURCE;
+}
+
+export interface DraftQuestionResult {
+  question: DraftedQuestion;
+  cap: number;
+  used: number;
+  remaining: number;
+}
+
+/** Thrown so the UI can tell "you are out of drafts" from "it broke". */
+export class DraftCapReachedError extends Error {
+  cap: number;
+  used: number;
+  constructor(cap: number, used: number) {
+    super('draft_cap_reached');
+    this.name = 'DraftCapReachedError';
+    this.cap = cap;
+    this.used = used;
+  }
+}
+
+/** Closed literal. No spread — see the note above. */
+function mapDraftedQuestion(raw: unknown): DraftedQuestion | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const q = raw as Record<string, unknown>;
+  const text = typeof q.text === 'string' ? q.text.trim() : '';
+  if (!text) return null;
+  const rawType = typeof q.type === 'string' ? q.type : 'single';
+  const type = (VALID_TYPES.includes(rawType) ? rawType : 'single') as Question['type'];
+  const options = Array.isArray(q.options)
+    ? q.options.filter((o): o is string => typeof o === 'string' && o.trim().length > 0)
+    : [];
+  return { text, type, options, source: USER_DRAFTED_SOURCE };
+}
+
+export const draftQuestion = async (
+  missionId: string,
+  prompt: string,
+  /** Accepted-but-not-yet-flushed drafts. Can only tighten the cap. */
+  pendingDrafts = 0,
+): Promise<DraftQuestionResult> => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('not_authenticated');
+
+  const res = await fetch(`${API_URL}/api/ai/draft-question`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      mission_id: missionId,
+      prompt,
+      pending_drafts: pendingDrafts,
+    }),
+  });
+
+  const body = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+
+  if (res.status === 409 && body?.error === 'draft_cap_reached') {
+    throw new DraftCapReachedError(Number(body.cap) || 0, Number(body.used) || 0);
+  }
+  if (!res.ok) throw new Error(String(body?.error ?? `draft_failed_${res.status}`));
+
+  const question = mapDraftedQuestion(body?.question);
+  if (!question) throw new Error('draft_unusable');
+
+  return {
+    question,
+    cap: Number(body?.cap) || 0,
+    used: Number(body?.used) || 0,
+    remaining: Number(body?.remaining) || 0,
+  };
+};
