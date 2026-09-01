@@ -442,12 +442,43 @@ export function Centerpiece({ report }: { report: CanonicalReport }) {
   // the lime headline so the point estimate is never read as confident.
   const directional = gate && gate.posture === 'directional' && gate.note;
   if (!directional) return hero;
-  return (
-    <div className={gate?.suppress_headline ? 'cp-block cp-damp' : 'cp-block'}>
-      <div className="cp-gate rv">
-        <span className="cp-gate-tag">Directional</span>
-        <span className="cp-gate-note">{gate!.note}{gate!.n ? ` · n=${gate!.n}` : ''}</span>
+
+  const gateBanner = (
+    <div className="cp-gate rv">
+      <span className="cp-gate-tag">Directional</span>
+      <span className="cp-gate-note">{gate!.note}{gate!.n ? ` · n=${gate!.n}` : ''}</span>
+    </div>
+  );
+
+  // HARD-gated below threshold: the point estimate is WITHHELD, not merely
+  // recoloured. It previously rendered `hero` inside a `cp-damp` wrapper
+  // whose entire effect was `.cp-damp .mv.lime{color:var(--muted)}` - the
+  // number stayed on screen at full size, just grey. That is not a
+  // suppression, and the public methodology page could not honestly claim
+  // one. Withhold the figure and say why; everything below the centerpiece
+  // (distributions, breakdowns, verbatims) is unaffected and still renders.
+  if (gate!.suppress_headline) {
+    return (
+      <div className="cp-block cp-withheld">
+        {gateBanner}
+        <div className="cp-withheld-body">
+          <div className="cp-withheld-head">Headline figure withheld</div>
+          <p className="cp-withheld-copy">
+            {gate!.n > 0
+              ? `This mission has ${gate!.n} qualified ${gate!.n === 1 ? 'respondent' : 'respondents'}. `
+              : ''}
+            A reliable point estimate for this method needs at least {gate!.threshold}.
+            Rather than show a number the sample cannot support, VETT is not showing one.
+            The response data and the breakdowns below are unaffected.
+          </p>
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="cp-block">
+      {gateBanner}
       {hero}
     </div>
   );

@@ -82,7 +82,15 @@
   color:var(--amber); border:1px solid var(--amber); border-radius:5px; padding:3px 7px; margin-top:1px}
 .premium .cp-gate-note{font-size:13px; color:var(--muted); line-height:1.5}
 /* hard-gated (pricing/roadmap below n): damp the confident lime headline so a small-n point estimate never reads as authoritative */
-.premium .cp-damp .mv.lime{color:var(--muted)}
+/* Pass 49 — the headline figure is now WITHHELD when the stat gate says the
+   sample cannot support it, not merely recoloured. `.cp-damp` was the old
+   behaviour: it greyed the number and left it on screen at full size, which
+   is not a suppression. Removed rather than left dead. */
+.premium .cp-withheld-body{padding:22px 20px; border:1px dashed rgba(255,255,255,.16);
+  border-radius:12px; background:rgba(255,255,255,.02)}
+.premium .cp-withheld-head{font-family:var(--mono); font-size:10px; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:10px}
+.premium .cp-withheld-copy{margin:0; font-size:14px; line-height:1.6; color:#D9DAE3; max-width:56ch}
 
 /* synthesis */
 .premium .synth{margin:50px 0 0; padding-left:22px; border-left:2px solid var(--lime)}
