@@ -50,7 +50,7 @@ const FAQS: FAQ[] = [
     category: 'Pricing',
     question: 'How is a mission priced?',
     answer:
-      'Base price scales with respondent count: $99 for 50 respondents up to $999 for 1,000 respondents. Targeting depth (geo, behavioral, professional) adds a surcharge — broader targeting is cheaper, multi-criteria narrow targeting costs more. Extra questions beyond the included 10 are $1.50 each. Promo codes apply at checkout. The full breakdown shows on the launch screen before any payment.',
+      'Base price scales with respondent count: $9 for 5 respondents, $99 for 50, and $900 for 1,000. Targeting depth (geo, behavioral, professional) adds a surcharge — broader targeting is cheaper, multi-criteria narrow targeting costs more. Every mission includes 5 questions; each extra question is $20. Promo codes apply at checkout. The full breakdown shows on the launch screen before any payment.',
   },
   {
     category: 'Pricing',

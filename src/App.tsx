@@ -42,6 +42,10 @@ const MethodologiesPage   = lazy(() => import('./pages/MethodologiesPage').then(
 // vett-final-mocks/vett-landing.html. It does NOT replace /landing; the live
 // landing route still renders LandingPage unchanged.
 const LandingV2Page       = lazy(() => import('./pages/LandingV2Page').then(m => ({ default: m.LandingV2Page })));
+// Public methodology page — how a VETT number is produced, the statistical
+// gates, and the objections. Distinct from /methodologies (plural), which is
+// the catalogue of methods. Linked from every export footer.
+const MethodologyPage     = lazy(() => import('./pages/MethodologyPage').then(m => ({ default: m.MethodologyPage })));
 const MissionSuccessPage  = lazy(() => import('./pages/MissionSuccessPage').then(m => ({ default: m.MissionSuccessPage })));
 // Pass 23 Bug 23.0e v2 — Stripe Checkout success/cancel landing pages.
 const PaymentSuccessPage  = lazy(() => import('./pages/PaymentSuccessPage').then(m => ({ default: m.PaymentSuccessPage })));
@@ -187,6 +191,7 @@ function App() {
               <Route path="/api" element={<ApiPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/methodologies" element={<MethodologiesPage />} />
+              <Route path="/methodology" element={<MethodologyPage />} />
 
               {/* Creative Attention Analysis */}
               <Route path="/creative-attention/new" element={<CreativeAttentionPage />} />
