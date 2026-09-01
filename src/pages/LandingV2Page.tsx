@@ -136,7 +136,7 @@ const PRICING_FEATS = [
 const ATTENTION_FEATS = [
   { ico: '😮', title: 'Emotion timeline',   body: 'Joy, surprise, trust, anticipation, fear, all mapped frame by frame across your video.' },
   { ico: '👁️', title: 'Attention heatmap',  body: 'Visual heatmap shows where attention peaks and drops across your image or video frames.' },
-  { ico: '📈', title: 'Engagement score',   body: 'Overall creative effectiveness score vs category benchmarks. Know if it works before it runs.' },
+  { ico: '📈', title: 'Engagement score',   body: 'Overall creative effectiveness score for the asset you upload. Know how it reads before it runs.' },
 ];
 
 const COMPARISON: Array<[string, string, string, string]> = [
@@ -542,8 +542,8 @@ export function LandingV2Page() {
             </SplitHeading>
             <p className="text-[#8B919C] text-[16px] mt-[18px]">
               VETT generates distinct, realistic consumer personas calibrated to your exact target
-              audience. Each responds independently with authentic variance, the same statistical
-              patterns found in real market research.
+              audience. Each one answers the full instrument independently and records its own
+              reasoning, so you can read why any respondent answered the way it did.
             </p>
             <FeatureList items={PERSONA_FEATS} tone="lime" />
           </Reveal>

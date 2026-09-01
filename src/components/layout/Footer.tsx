@@ -103,6 +103,19 @@ export const Footer = ({ onAboutClick, onContactClick, onTermsClick, onCareersCl
                   Methodologies
                 </Link>
               </li>
+              {/* Pass 49 — /methodology (singular) was linked only from the
+                  hero. It is the page that explains how a VETT number is
+                  produced and is referenced from every export footer, so it
+                  needs a durable home in navigation too. Distinct from
+                  /methodologies (plural), which is the catalogue of methods. */}
+              <li>
+                <Link
+                  to="/methodology"
+                  className="text-white/50 hover:text-white transition-colors text-sm font-medium"
+                >
+                  How VETT works
+                </Link>
+              </li>
               <li>
                 {onBlogClick ? (
                   <button

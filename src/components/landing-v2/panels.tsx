@@ -81,9 +81,9 @@ export function PriceSensitivityPanel() {
       </div>
 
       <div className="text-[13px] text-[#8B919C] border-t border-white/[0.07] pt-3.5 mt-1.5">
-        Optimal price point: <b className="font-['Manrope',system-ui,sans-serif] text-[#BEF264]">AED 32</b>
+        Optimal price point: <b className="font-['Manrope',system-ui,sans-serif] text-[#BEF264]">$9</b>
         <br />
-        Range of acceptable pricing: AED 26 to 40 &middot; n = 80
+        Range of acceptable pricing: $7 to 11 &middot; n = 80
       </div>
     </DemoCard>
   );
@@ -164,7 +164,7 @@ export function CreativeAttentionPanel() {
       <div className="text-[13px] text-[#8B919C] border-t border-white/[0.07] pt-3.5 mt-1.5">
         Engagement score: <b className="font-['Manrope',system-ui,sans-serif] text-[#BEF264]">78/100</b>
         <br />
-        Above category average of 61 &middot; Strong opening, slight drop at 22s
+        Strong opening, slight drop in attention at 22s
       </div>
     </DemoCard>
   );

@@ -34,7 +34,7 @@ const SCENARIOS: Scenario[] = [
     demand: 62,
     rows: [
       { k: 'Purchase intent', v: '85%', lime: true },
-      { k: 'Willingness to pay', v: 'SAR 31-40' },
+      { k: 'Willingness to pay', v: '$8 to 11' },
       { k: 'Top barrier', v: 'Halal certification' },
     ],
   },
@@ -43,9 +43,9 @@ const SCENARIOS: Scenario[] = [
     question: 'What is the right price for our chilled meal kit in the UAE?',
     demand: 58,
     rows: [
-      { k: 'Price sweet spot', v: 'AED 28-34', lime: true },
+      { k: 'Price sweet spot', v: '$8 to 9', lime: true },
       { k: 'Intent at price', v: '71%' },
-      { k: 'Drop-off above', v: 'AED 40' },
+      { k: 'Drop-off above', v: '$11' },
     ],
   },
   {
