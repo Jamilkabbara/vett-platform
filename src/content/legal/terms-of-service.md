@@ -48,7 +48,8 @@ We reserve the right to suspend or terminate accounts that violate these Terms.
 
 VETT generates AI-modeled synthetic personas to deliver market research insights based on your inputs. The Service includes:
 
-- Mission types: Sniff Test, Validate, Confidence, Scale, Premium, Creative Attention
+- Research types: Validate Product, Compare Concepts, Test Marketing/Ads, Customer Satisfaction, Pricing Research, Feature Roadmap, General Research, Competitor Analysis, Audience Profiling, Naming & Messaging, Market Entry, Churn Research, Brand Lift Study, Creative Attention Analysis
+- Mission sizes from 5 to 5,000 respondents, priced as set out in Section 5.1
 - AI-generated synthetic personas across 193 countries
 - AI synthesis: insights, contradictions, cross-segment analysis
 - Multi-format exports: CSV, JSON, PDF, PPTX, XLSX
@@ -77,15 +78,21 @@ Current pricing is published at vettit.ai. Prices are in USD and subject to chan
 
 ### 5.3 Refunds & Delivery
 
-**All VETT missions are final and non-refundable.** Missions are
-delivered on a best-effort basis: we recruit synthetic respondents
-that match the targeting and screener you configure. If your screener
-criteria are too strict for the audience we can reach within the
-margin we budget for your mission, you will receive a partial
-delivery of however many respondents qualified. The synthesized
-insights will be honest about the limited sample size.
+**VETT does not issue cash refunds.** Where something goes wrong on
+our side, our remedy is to re-run your mission or issue a re-run
+credit, at our discretion. This is set out in full in our Refund
+Policy, which governs; this section summarises it.
 
-We do not issue refunds for:
+Missions are delivered on a best-effort basis: we recruit synthetic
+respondents that match the targeting and screener you configure. If
+your screener criteria are too strict for the audience we can reach
+within the margin we budget for your mission, you will receive a
+partial delivery of however many respondents qualified. The
+synthesized insights will be honest about the limited sample size.
+
+The following are not eligible for a cash refund. Where the cause is
+a VETT-side fault, the re-run or credit remedy above may apply
+instead:
 
 - Partial deliveries due to strict screener criteria
 - Missions where the AI synthesis result didn't meet expectations
@@ -95,7 +102,8 @@ We do not issue refunds for:
 
 Before launching a mission, please review your brief, screener, and
 targeting carefully. Once a mission is launched (paid), recruitment
-begins immediately and the charge is final.
+begins immediately and the charge is final, subject to the re-run
+remedy above.
 
 ### 5.4 Taxes
 
@@ -254,7 +262,7 @@ The VETT mobile app on iOS and Android is governed by these same Terms. Addition
 - **Push notifications are opt-in:** You explicitly grant permission. Revoke any time via your device's notification settings.
 - **18+ requirement applies:** The mobile app is intended for adult users. The App Store / Play Store rating reflects this exactly.
 - **App Store / Play Store EULA:** Where the platform's standard EULA applies (Apple Media Services Terms, Google Play Terms), those terms govern your relationship with the platform; these VETT Terms govern your relationship with VETT.
-- **Refund policy applies:** All auto-refund and manual refund mechanisms apply equally to mobile payments.
+- **Refund Policy applies:** Our Refund Policy governs mobile payments exactly as it governs web payments.
 
 ---
 
