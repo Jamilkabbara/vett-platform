@@ -59,6 +59,10 @@ const ResultsPage         = lazy(() => import('./pages/ResultsPage').then(m => (
 // dispatches to the right results page. /results/:id used to mount
 // ResultsPage directly which broke for creative_attention missions.
 const ResultsRouter       = lazy(() => import('./pages/ResultsRouter').then(m => ({ default: m.ResultsRouter })));
+// HELD PREVIEW — /results-v2/:missionId is an additive redesign preview built
+// from vett-final-mocks/vett-results-redesign.html. It does NOT replace
+// /results/:missionId, which still renders ResultsRouter unchanged.
+const ResultsV2Page       = lazy(() => import('./pages/ResultsV2Page').then(m => ({ default: m.ResultsV2Page })));
 const MissionsListPage    = lazy(() => import('./pages/MissionsListPage').then(m => ({ default: m.MissionsListPage })));
 const SignInPage          = lazy(() => import('./pages/SignInPage').then(m => ({ default: m.SignInPage })));
 const ForgotPasswordPage  = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
@@ -164,6 +168,7 @@ function App() {
               <Route path="/payment-cancel" element={<PaymentCancelPage />} />
 
               <Route path="/results/:missionId" element={<ResultsRouter />} />
+              <Route path="/results-v2/:missionId" element={<ResultsV2Page />} />
               <Route path="/results" element={<ResultsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
 
