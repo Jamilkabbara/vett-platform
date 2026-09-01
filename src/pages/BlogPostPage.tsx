@@ -33,21 +33,29 @@ export function BlogPostPage() {
 
   useEffect(() => {
     if (!slug) return;
+    let cancelled = false;
     supabase
       .from('blog_posts')
       .select('*')
       .eq('slug', slug)
+      .eq('published', true)
       .maybeSingle()
-      .then(({ data }) => {
-        if (!data || !data.published) {
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data) setNotFound(true);
+        else setPost(data as BlogPost);
+      })
+      // A thrown error inside then() previously left `loading` true forever.
+      .then(
+        () => { if (!cancelled) setLoading(false); },
+        (err: unknown) => {
+          if (cancelled) return;
+          console.error('BlogPostPage: failed to load post', err);
           setNotFound(true);
-        } else {
-          setPost(data as BlogPost);
-          // Increment view count (fire-and-forget)
-          supabase.rpc('increment_blog_views', { post_id: data.id }).catch(() => {});
-        }
-        setLoading(false);
-      });
+          setLoading(false);
+        },
+      );
+    return () => { cancelled = true; };
   }, [slug]);
 
   useEffect(() => {
@@ -73,7 +81,6 @@ export function BlogPostPage() {
     <>
       {/* Per-post SEO meta — injected via a side effect; in a real SSR setup
           these would be server-rendered. For SPA they update document.title. */}
-      {/* eslint-disable-next-line react-hooks/rules-of-hooks */}
       {typeof document !== 'undefined' && (() => {
         document.title = `${post.title} - VETT`;
         // Update og:image meta if tag exists
