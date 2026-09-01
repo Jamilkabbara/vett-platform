@@ -100,6 +100,34 @@ jobs:
           echo "::error::     node scripts/write-version.js before vite build"
           exit 1
 
+  question-metadata-roundtrip:
+    # PR C follow-up — the question-metadata strip has now regressed TWICE
+    # (mapQuestion, then normaliseQuestions re-stripping what PR #65 fixed),
+    # each time silently, because nothing executed the proof. The repo has no
+    # test runner, so the round-trip harness was a script a human had to
+    # remember to run — i.e. exactly the condition that let the strip come back.
+    # This job runs it on every PR and every push, so a third regression fails
+    # CI instead of quietly deleting customer analysis metadata.
+    #
+    # The harness reads the REAL DashboardPage.normaliseQuestions,
+    # aiService.mapQuestion and MissionControlQuestions.emit off disk and drives
+    # create -> load -> edit -> persist through them, asserting that an unknown
+    # key (`some_future_tag`) survives. It cannot drift from the code it guards.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      # `npm ci` (not `npm install`) so the harness runs against the exact
+      # locked dependency tree — it transpiles with esbuild, which the repo
+      # gets transitively via vite.
+      - run: npm ci
+      - name: question metadata survives create -> load -> edit -> persist
+        run: npm test
+
   require-screenshot-in-pr:
     # Pass 38 A10 — Doctrine #19: every PR description must include a
     # production screenshot link. The screenshot is the user-visible

@@ -91,7 +91,30 @@ const VALID_QUESTION_TYPES = ['single', 'multi', 'rating', 'opinion', 'text'] as
 /** Light normaliser so jsonb blobs from Supabase land in the Question shape
  *  the rest of the app expects.  Keep in sync with aiService.mapQuestion — we
  *  don't import it to avoid pulling the whole AI module into the dashboard
- *  bundle for a 20-line helper. */
+ *  bundle for a 20-line helper.
+ *
+ *  METADATA PASSTHROUGH (PR C). This runs on every dashboard load, and its
+ *  output is what `flushQuestions` writes straight back into missions.questions
+ *  on the first user edit. It used to rebuild each question as a closed 8-key
+ *  object literal, which silently DELETED every per-question analysis tag the
+ *  backend generator emitted — `kind` and `dimension` (undoing PR #65, which
+ *  added them to mapQuestion precisely because computeMarketEntry groups by
+ *  `kind` with no fallback and computeAudienceProfiling matches attitudinal
+ *  questions by `dimension`), plus the whole methodology family the results
+ *  pages read directly off mission.questions: `methodology` + `vw_band` +
+ *  `gg_anchor_index` (PricingResultsPage), `feature_set` / `feature_id` /
+ *  `kano_type` (RoadmapResultsPage), `churn_stage` (ChurnResultsPage),
+ *  `concept_id` / `is_final_choice` (CompareResultsPage), `is_paired_comparison`
+ *  / `is_turf` (NamingResultsPage), `brand_id` (CompetitorAnalysisResultsPage),
+ *  `funnel_stage` / `kpi_category` / `is_lift_question` (brand lift),
+ *  `qualifying_answers` / `screening_continue_on` (screening gate), and so on.
+ *
+ *  The fix is a PASSTHROUGH, not an allowlist: spread the source object first,
+ *  then overlay the normalised fields. Normalisation behaviour is byte-for-byte
+ *  what it was (same defaults, same coercions, same isScreening handling) — the
+ *  only change is that keys this function doesn't know about now survive instead
+ *  of being dropped. An allowlist would have to grow every time a new
+ *  methodology ships; a passthrough is correct for all of them by construction. */
 function normaliseQuestions(raw: unknown): Question[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -103,6 +126,9 @@ function normaliseQuestions(raw: unknown): Question[] {
         ? typeRaw
         : 'rating';
       return {
+        // Carry every unknown/metadata key through untouched…
+        ...q,
+        // …then overlay the normalised fields so behaviour is unchanged.
         id: String(q.id ?? `q${i + 1}`),
         text: String(q.text ?? ''),
         type: type as Question['type'],
@@ -111,7 +137,7 @@ function normaliseQuestions(raw: unknown): Question[] {
         isScreening: Boolean(q.isScreening ?? false),
         qualifyingAnswer: q.qualifyingAnswer ?? undefined,
         hasPIIError: false,
-      };
+      } as Question;
     })
     .filter((q): q is Question => q !== null);
 }

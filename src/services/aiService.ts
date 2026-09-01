@@ -121,6 +121,29 @@ function mapQuestion(q: any, i: number): Question {
   }
 
   return {
+    // Preserve the backend's per-question analysis metadata. PR #65 carried
+    // `kind` + `dimension` through an explicit spread-conditional pair, because
+    // market_entry's per-market demand analysis (computeMarketEntry) groups
+    // questions by `kind` with NO fallback, and audience_profiling's segmentation
+    // (computeAudienceProfiling) matches attitudinal questions by `dimension` —
+    // drop either and those analyses degrade to their null-fallback paths.
+    //
+    // That two-field allowlist was still dropping the ~19 other methodology tags
+    // the generators emit and the results pages read straight off
+    // mission.questions: methodology / vw_band / gg_anchor_index (Van Westendorp
+    // + Gabor-Granger, PricingResultsPage), feature_set / feature_id / kano_type
+    // (RoadmapResultsPage), churn_stage (ChurnResultsPage), concept_id /
+    // is_final_choice (CompareResultsPage), is_paired_comparison / is_turf
+    // (NamingResultsPage), brand_id (CompetitorAnalysisResultsPage),
+    // funnel_stage / kpi_category / is_lift_question (brand lift),
+    // qualifying_answers / screening_continue_on (screening gate), category,
+    // channel_id, and whatever the next methodology adds.
+    //
+    // So this is a PASSTHROUGH rather than a longer allowlist: spread the source
+    // question first, then overlay the mapped fields. Every unknown key survives
+    // by construction, including ones that don't exist yet, while the mapping
+    // below still wins for the fields this function owns.
+    ...q,
     id: q.id || `q${i + 1}`,
     text: q.text || '',
     type: type as any,
@@ -129,18 +152,6 @@ function mapQuestion(q: any, i: number): Question {
     qualifyingAnswer: q.qualifyingAnswer,
     aiRefined: true,
     hasPIIError: false,
-    // Preserve the backend's analysis question-role metadata. market_entry's
-    // per-market demand analysis (computeMarketEntry) groups questions by
-    // `kind` with NO fallback, so dropping it here left every market's
-    // appeal / intent / WTP / barrier metrics null on missions created via
-    // the UI (the un-gate proof script sidesteps this by inserting backend
-    // questions directly). audience_profiling's segmentation (computeAudienceProfiling)
-    // reads BOTH `kind` and `dimension` (attitudinal questions matched by
-    // dimension), so `dimension` must survive too or AP segments come back null
-    // through the same UI path. Carry both through so the persisted questions
-    // the analysis consumes retain their roles.
-    ...(typeof q.kind === 'string' && q.kind ? { kind: q.kind } : {}),
-    ...(typeof q.dimension === 'string' && q.dimension ? { dimension: q.dimension } : {}),
   };
 }
 

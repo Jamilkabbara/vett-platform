@@ -34,6 +34,44 @@ export interface Question {
    * or AP segments come back null on UI-created missions. Preserved verbatim.
    */
   dimension?: string;
+  /**
+   * PR C — the rest of the per-question analysis metadata the backend survey
+   * generators emit. These are declared here for documentation and light
+   * type-safety only; they are NOT the mechanism that keeps them alive.
+   *
+   * The mechanism is a passthrough: `aiService.mapQuestion` and
+   * `DashboardPage.normaliseQuestions` both spread the source object before
+   * overlaying the fields they own, so ANY key survives generation →
+   * persistence → dashboard reload → edit → re-persist, including keys added by
+   * methodologies that don't exist yet. Listing them here would be an
+   * ever-growing allowlist if it were load-bearing — it isn't.
+   *
+   * Types are deliberately loose (string / number / boolean / string[]) because
+   * these arrive as unvalidated jsonb; each results page narrows them itself.
+   * Consumers: PricingResultsPage (methodology, vw_band, gg_anchor_index),
+   * RoadmapResultsPage (feature_set, feature_id, kano_type), ChurnResultsPage
+   * (churn_stage), CompareResultsPage (concept_id, is_final_choice),
+   * NamingResultsPage (is_paired_comparison, is_turf, methodology),
+   * CompetitorAnalysisResultsPage (brand_id), BrandLiftCenterpiece
+   * (funnel_stage, kpi_category, is_lift_question).
+   */
+  methodology?: string;
+  funnel_stage?: string;
+  kpi_category?: string;
+  is_lift_question?: boolean;
+  vw_band?: string;
+  gg_anchor_index?: number;
+  feature_set?: string[];
+  feature_id?: string;
+  kano_type?: string;
+  churn_stage?: string;
+  concept_id?: string;
+  is_final_choice?: boolean;
+  brand_id?: string;
+  is_paired_comparison?: boolean;
+  is_turf?: boolean;
+  category?: string;
+  channel_id?: string;
   hasPIIError?: boolean;
 }
 
