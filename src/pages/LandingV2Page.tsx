@@ -136,7 +136,7 @@ const PRICING_FEATS = [
 const ATTENTION_FEATS = [
   { ico: '😮', title: 'Emotion timeline',   body: 'Joy, surprise, trust, anticipation, fear, all mapped frame by frame across your video.' },
   { ico: '👁️', title: 'Attention heatmap',  body: 'Visual heatmap shows where attention peaks and drops across your image or video frames.' },
-  { ico: '📈', title: 'Engagement score',   body: 'Overall creative effectiveness score vs category benchmarks. Know if it works before it runs.' },
+  { ico: '📈', title: 'Engagement score',   body: 'Overall creative effectiveness score. Know if it works before it runs.' },
 ];
 
 const COMPARISON: Array<[string, string, string, string]> = [
@@ -542,8 +542,8 @@ export function LandingV2Page() {
             </SplitHeading>
             <p className="text-[#8B919C] text-[16px] mt-[18px]">
               VETT generates distinct, realistic consumer personas calibrated to your exact target
-              audience. Each responds independently with authentic variance, the same statistical
-              patterns found in real market research.
+              audience. Each responds independently with its own perspective and reasoning &mdash;
+              authentic variance, not uniform answers.
             </p>
             <FeatureList items={PERSONA_FEATS} tone="lime" />
           </Reveal>
@@ -835,6 +835,7 @@ export function LandingV2Page() {
               <FooterCol
                 title="Resources"
                 links={[
+                  ['Methodology', '/methodology'],
                   ['Blog', '/blog'],
                   ['API', '/api'],
                   ['Help Center', '/help'],
@@ -934,7 +935,10 @@ function SpeedStat({
   suffix: string;
   label: string;
 }) {
-  const { ref, inView } = useInView<HTMLDivElement>(0.6);
+  // Threshold intentionally low: a stat card can be up to 200px tall and never
+  // hit 60% visible on some viewports — that used to leave the counter at 0
+  // (or freeze at ~7 mid-frame if the observer barely triggered).
+  const { ref, inView } = useInView<HTMLDivElement>(0.14);
   const n = useCountUp(value, inView);
   return (
     <div

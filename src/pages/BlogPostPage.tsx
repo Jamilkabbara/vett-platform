@@ -31,23 +31,51 @@ export function BlogPostPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  // Audit fix: mirror the defensive fetch pattern BlogPage.tsx adopted in
+  // Pass 36 A2. The prior `.then(({data}) => ...).catch()`-less chain would
+  // hang on "Loading…" forever if either (a) the promise rejected for any
+  // reason or (b) the fire-and-forget `supabase.rpc('increment_blog_views')`
+  // call threw synchronously — `setLoading(false)` was after both branches
+  // with no try/finally, so any throw skipped it entirely.
   useEffect(() => {
     if (!slug) return;
-    supabase
-      .from('blog_posts')
-      .select('*')
-      .eq('slug', slug)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data || !data.published) {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error: queryErr } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('slug', slug)
+          .maybeSingle();
+        if (cancelled) return;
+        if (queryErr || !data || !data.published) {
+          if (queryErr) {
+            // eslint-disable-next-line no-console
+            console.error('BlogPostPage: supabase query failed', queryErr);
+          }
           setNotFound(true);
         } else {
           setPost(data as BlogPost);
-          // Increment view count (fire-and-forget)
-          supabase.rpc('increment_blog_views', { post_id: data.id }).catch(() => {});
+          // Fire-and-forget view increment; wrap in try/catch so a missing
+          // RPC or transient failure never abort the outer flow.
+          try {
+            void supabase
+              .rpc('increment_blog_views', { post_id: data.id })
+              .then(() => {}, () => {});
+          } catch {
+            /* ignore — cosmetic counter */
+          }
         }
-        setLoading(false);
-      });
+      } catch (e) {
+        if (cancelled) return;
+        // eslint-disable-next-line no-console
+        console.error('BlogPostPage: supabase fetch threw', e);
+        setNotFound(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [slug]);
 
   useEffect(() => {

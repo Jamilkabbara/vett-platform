@@ -10,6 +10,14 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * Ports the mock's reveal-on-scroll observer: flips to `true` the first time
  * the element crosses `threshold` visibility, then stops observing.
+ *
+ * Hardening notes (audit fix for #7/#8):
+ *   - Elements taller than `threshold * viewport` never reach the ratio, so we
+ *     expand the root by a `rootMargin` and treat approaching-viewport as
+ *     in-view. Callers can still pass a strict threshold for chart animations.
+ *   - `prefers-reduced-motion: reduce` short-circuits to `true` on mount so
+ *     the reveal isn't gated by motion at all.
+ *   - No IntersectionObserver (SSR, ancient browsers) also short-circuits.
  */
 export function useInView<T extends HTMLElement>(threshold = 0.14) {
   const ref = useRef<T>(null);
@@ -18,10 +26,17 @@ export function useInView<T extends HTMLElement>(threshold = 0.14) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (typeof IntersectionObserver === 'undefined') {
+
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduced || typeof IntersectionObserver === 'undefined') {
       setInView(true);
       return;
     }
+
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -31,7 +46,7 @@ export function useInView<T extends HTMLElement>(threshold = 0.14) {
           }
         });
       },
-      { threshold },
+      { threshold, rootMargin: '0px 0px -10% 0px' },
     );
     io.observe(el);
     return () => io.disconnect();
