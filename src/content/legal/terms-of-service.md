@@ -78,15 +78,21 @@ Current pricing is published at vettit.ai. Prices are in USD and subject to chan
 
 ### 5.3 Refunds & Delivery
 
-**All VETT missions are final and non-refundable.** Missions are
-delivered on a best-effort basis: we recruit synthetic respondents
-that match the targeting and screener you configure. If your screener
-criteria are too strict for the audience we can reach within the
-margin we budget for your mission, you will receive a partial
-delivery of however many respondents qualified. The synthesized
-insights will be honest about the limited sample size.
+**VETT does not issue cash refunds.** Where something goes wrong on
+our side, our remedy is to re-run your mission or issue a re-run
+credit, at our discretion. This is set out in full in our Refund
+Policy, which governs; this section summarises it.
 
-We do not issue refunds for:
+Missions are delivered on a best-effort basis: we recruit synthetic
+respondents that match the targeting and screener you configure. If
+your screener criteria are too strict for the audience we can reach
+within the margin we budget for your mission, you will receive a
+partial delivery of however many respondents qualified. The
+synthesized insights will be honest about the limited sample size.
+
+The following are not eligible for a cash refund. Where the cause is
+a VETT-side fault, the re-run or credit remedy above may apply
+instead:
 
 - Partial deliveries due to strict screener criteria
 - Missions where the AI synthesis result didn't meet expectations
@@ -96,7 +102,8 @@ We do not issue refunds for:
 
 Before launching a mission, please review your brief, screener, and
 targeting carefully. Once a mission is launched (paid), recruitment
-begins immediately and the charge is final.
+begins immediately and the charge is final, subject to the re-run
+remedy above.
 
 ### 5.4 Taxes
 
