@@ -254,25 +254,34 @@ export function MethodologyPage() {
           The statistics are gated
         </h3>
         <p className="mb-4 text-white/70">
-          VETT refuses to present a headline as authoritative when the sample
-          can't support it. Pricing, feature roadmap, and market entry are hard
-          gated at 30 responses. Segmentation is hard gated at 50. Below its
-          gate, a result is marked directional in the product and in every
-          export, the confident styling is stripped, and the report says in
-          words why. Any mission under 30 responses carries a directional note
-          whatever its method, and in a multi-market study each market below 30
-          is flagged on its own.
+          When the sample cannot support a headline figure, VETT does not show
+          one. Pricing, feature roadmap, and market entry are hard gated at 30
+          responses. Segmentation is hard gated at 50. Below its gate the
+          headline number is withheld outright, on the results page and in the
+          PDF, PowerPoint and Excel exports alike, and the report states the
+          sample size and the threshold it did not reach.
         </p>
         <p className="mb-4 text-white/70">
-          One gate goes further and actually withholds: below 50 responses VETT
-          will not cluster, and you get an aggregate profile with an explicit
-          note instead of segments it can't stand behind.
+          Withheld means the figure, not the evidence. The response
+          distributions, per-question breakdowns, respondent profiles and
+          verbatims are all still there. What is removed is the single
+          confident number a reader would otherwise quote, because that is the
+          part a small sample cannot support. Below 50 responses VETT also will
+          not cluster, and you get an aggregate profile rather than segments it
+          cannot stand behind.
+        </p>
+        <p className="mb-4 text-white/70">
+          Outside those four methods, a mission under 30 responses keeps its
+          numbers and carries a directional note explaining that the read is
+          strong on ranking and consensus but indicative on magnitudes. We say
+          which of the two you are looking at rather than treating every small
+          sample the same way.
         </p>
         <p className="mb-12 text-white/70">
           Most tools will show you a number regardless of whether it means
-          anything, and say nothing. VETT shows you the sample size next to the
-          number and tells you when it is too small to lean on. That constraint
-          is in the product, not in a footnote.
+          anything, and say nothing. VETT will tell you the sample is too small
+          and show you nothing. That constraint is in the product, not in a
+          footnote.
         </p>
 
         <h3 className="mb-4 text-lg font-black text-white">What VETT is</h3>
