@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+// Pass 49 — GFM tables/strikethrough/task lists. Without this, a markdown
+// table renders as literal pipe characters; that already shipped to
+// customers once on the Terms of Service pricing table.
+import remarkGfm from 'remark-gfm';
 import { ArrowLeft } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { Footer } from '../layout/Footer';
@@ -66,7 +70,7 @@ export function LegalPage({ markdown, documentTitle }: LegalPageProps) {
       <main className="flex-1">
         <article className="max-w-3xl mx-auto px-5 md:px-8 py-12 md:py-16">
           <div className="prose-vett">
-            <ReactMarkdown
+            <ReactMarkdown remarkPlugins={[remarkGfm]}
               components={{
                 h1: ({ node: _node, ...props }) => (
                   <h1
