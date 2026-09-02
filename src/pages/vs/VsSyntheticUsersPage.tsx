@@ -16,7 +16,7 @@ export function VsSyntheticUsersPage() {
       rows={[
         {
           dimension: 'Research shape',
-          vett: 'Quantitative — n=5-5000 per mission, per-question distributions, statistical-shape outputs',
+          vett: 'Quantitative - n=5 to 1,250 per mission, per-question distributions, statistical-shape outputs',
           competitor: 'Qualitative — interview-style conversations with synthetic personas, problem discovery, journey mapping',
           verdict: 'tie',
         },
@@ -28,7 +28,7 @@ export function VsSyntheticUsersPage() {
         },
         {
           dimension: 'Pricing',
-          vett: '$9-1990 per mission (one-time)',
+          vett: '$9 to $969 per mission (one-time)',
           competitor: 'Subscription tiers starting ~$249/month',
           verdict: 'vett',
         },

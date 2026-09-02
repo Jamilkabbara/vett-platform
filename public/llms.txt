@@ -68,7 +68,10 @@ churn_research):
 - Confidence    50 personas     $99
 - Deep Dive    250 personas    $300
 - Scale       1000 personas    $900
-- Enterprise  5000 personas  $2,000
+- Enterprise  above 1,250 personas  custom quote (not sold self-serve)
+
+Self-serve studies run up to 1,250 respondents. Above that we scope the
+study with you rather than sell it on the site.
 
 Brand Lift (statistical sample sizes, exposed + control split):
 - Pulse        50 personas      $99

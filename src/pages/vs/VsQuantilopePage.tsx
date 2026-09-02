@@ -10,7 +10,7 @@ export function VsQuantilopePage() {
     <VsPageTemplate
       competitorName="Quantilope"
       competitorTagline="Established consumer-insights platform with real-panel access + automated quantitative methodologies (TURF, MaxDiff, claims test, IRT). Mid-to-enterprise pricing."
-      vettTagline="Synthetic-respondent platform with the same quantitative frameworks (MaxDiff, TURF, NPS, brand-lift) at $9-1990 entry tiers, MENA-rooted, methodology-first."
+      vettTagline="Synthetic-respondent platform with the same quantitative frameworks (MaxDiff, TURF, NPS, brand-lift) at $9 to $969 entry tiers, MENA-rooted, methodology-first."
       slug="/vs/quantilope"
       competitorRefUrl="https://www.quantilope.com/methodology"
       rows={[

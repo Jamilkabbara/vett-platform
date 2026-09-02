@@ -27,9 +27,9 @@ interface ComparisonRow {
 const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Respondent type',                 vett: 'AI personas generated to your screener',                        competitor: 'Real mobile users captured in-app via SDK partner network', vettWins: false },
   { dimension: 'Time to first insight',           vett: 'Minutes',                                                       competitor: 'Hours; sometimes minutes for low-friction screeners',  vettWins: true  },
-  { dimension: 'Cost per respondent',             vett: '$0.40 - $3.50',                                                 competitor: 'CPI model; varies by demographic and survey length (check pollfish.com/pricing)', vettWins: false },
-  { dimension: 'Pricing model',                   vett: 'Per mission ($9-$1,990 flat); no subscription',                 competitor: 'Pay-as-you-go CPI + minimum spend per study',          vettWins: true  },
-  { dimension: 'Sample size per study',           vett: '5-5,000 personas per mission',                                  competitor: 'Hundreds to tens of thousands; depends on demographic supply', vettWins: false },
+  { dimension: 'Cost per respondent',             vett: '$0.78 to $3.50',                                                 competitor: 'CPI model; varies by demographic and survey length (check pollfish.com/pricing)', vettWins: false },
+  { dimension: 'Pricing model',                   vett: 'Per mission ($9 to $969 flat); no subscription',                 competitor: 'Pay-as-you-go CPI + minimum spend per study',          vettWins: true  },
+  { dimension: 'Sample size per study',           vett: '5 to 1,250 personas per mission',                                  competitor: 'Hundreds to tens of thousands; depends on demographic supply', vettWins: false },
   { dimension: 'Screener strictness',             vett: 'Constraint-based generation - personas are generated TO the spec', competitor: 'Filter-based on real-mobile-user attributes; strict screeners cost more or take longer', vettWins: true  },
   { dimension: 'AI insight synthesis',            vett: 'Built-in: executive summary, contradictions, cross-cut',        competitor: 'Reporting dashboard + cross-tabs; AI synthesis layer is not the core deliverable', vettWins: true  },
   { dimension: 'Brand lift framework',            vett: 'Built-in 9-category Happydemics-style framework',               competitor: 'Templates available; methodology is DIY',              vettWins: true  },
@@ -46,7 +46,7 @@ const FAQS = [
   },
   {
     q: 'Can VETT match Pollfish on cost per respondent?',
-    a: "VETT's cost per respondent is $0.40-$3.50 depending on tier (effective rate at $9 for 5 personas is $1.80; at $99 for 50 is $1.98; at $899 for 1,000 is $0.90). Pollfish's CPI varies by demographic targeting and survey length - typically a few dollars per completed interview, sometimes higher for niche demos or strict screeners (check pollfish.com/pricing for current numbers). On unit cost they're often in the same ballpark; the difference is what the unit IS - a synthetic persona response (VETT) vs a real mobile user response (Pollfish).",
+    a: "VETT's cost per respondent is $0.78 to $3.50 depending on tier (effective rate at $9 for 5 personas is $1.80; at $99 for 50 is $1.98; at $969 for 1,250 is $0.78). Pollfish's CPI varies by demographic targeting and survey length - typically a few dollars per completed interview, sometimes higher for niche demos or strict screeners (check pollfish.com/pricing for current numbers). On unit cost they're often in the same ballpark; the difference is what the unit IS - a synthetic persona response (VETT) vs a real mobile user response (Pollfish).",
   },
   {
     q: 'Where is Pollfish stronger geographically?',
@@ -147,7 +147,7 @@ export function VsPollfishPage() {
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Speed:</strong> VETT in minutes; Pollfish in hours-to-minutes depending on demographic supply.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Screener strictness:</strong> VETT generates personas TO your spec - no waiting for real-mobile supply to satisfy a tight filter.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">AI synthesis:</strong> Built into VETT. Pollfish has reporting + cross-tabs but synthesis is mostly DIY.</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Pricing model:</strong> VETT $9-$1,990 flat per mission. Pollfish CPI + minimum spend per study.</span></li>
+            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Pricing model:</strong> VETT $9 to $969 flat per mission. Pollfish CPI + minimum spend per study.</span></li>
             <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Real respondents:</strong> Pollfish wins. Real mobile users captured in-app via SDK partner network.</span></li>
             <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Mobile-native targeting:</strong> Pollfish wins. "This respondent is on iOS right now" is theirs by definition.</span></li>
           </ul>

@@ -55,4 +55,4 @@ Research buyers keep hearing the question framed as a choice: do you trust AI pe
 
 ---
 
-*VETT runs the synthetic phase: 5-persona Sniff Test for $9, scaling to 5,000-persona missions. After the iteration loops are done, take the sharpened brief to a real-panel agency for the launch study. Start at [vettit.ai](https://www.vettit.ai/landing).*
+*VETT runs the synthetic phase: 5-persona Sniff Test for $9, scaling to 1,250-persona missions. After the iteration loops are done, take the sharpened brief to a real-panel agency for the launch study. Start at [vettit.ai](https://www.vettit.ai/landing).*

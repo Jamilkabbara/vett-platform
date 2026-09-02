@@ -428,7 +428,7 @@ export const MissionControlPricing = ({
             </p>
             <p className="font-body text-[11px] text-t3 mt-1 mb-2.5">
               {MAX_RESPONDENTS.toLocaleString()} is the largest study we run self-serve.
-              Bigger samples run as a managed engagement — leave an email and we
+              Bigger samples run as a managed engagement. Leave an email and we
               will scope it with you.
             </p>
             <LeadCaptureForm

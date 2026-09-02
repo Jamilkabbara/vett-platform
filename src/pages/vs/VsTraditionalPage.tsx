@@ -25,9 +25,9 @@ interface ComparisonRow {
 
 const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Time to first insight',           vett: 'Minutes',                                                       competitor: '4-12 weeks per study (brief, sample, field, analysis, report)', vettWins: true  },
-  { dimension: 'Cost per study',                  vett: '$9 (Sniff Test) - $1,990 (Scale)',                              competitor: '$5,000 - $50,000+ depending on scope, sample, polish', vettWins: true  },
+  { dimension: 'Cost per study',                  vett: '$9 (5 personas) to $969 (1,250 personas)',                              competitor: '$5,000 - $50,000+ depending on scope, sample, polish', vettWins: true  },
   { dimension: 'Iteration cost',                  vett: '$9-$99 per validation round',                                   competitor: 'Each round is a new SOW; iteration is rare',           vettWins: true  },
-  { dimension: 'Sample size flexibility',         vett: '5-5,000 personas per mission',                                  competitor: 'Custom - typically 200-2,000 real respondents at panel cost', vettWins: true  },
+  { dimension: 'Sample size flexibility',         vett: '5 to 1,250 personas per mission',                                  competitor: 'Custom - typically 200-2,000 real respondents at panel cost', vettWins: true  },
   { dimension: 'Project management',              vett: 'Self-serve (you set up the mission)',                           competitor: 'Done for you - account team handles brief, fielding, timeline', vettWins: false },
   { dimension: 'Analyst interpretation',          vett: 'AI synthesis (executive summary, tensions, cross-cut)',         competitor: 'Senior researcher interprets, recommends, presents',   vettWins: false },
   { dimension: 'Stakeholder polish',              vett: 'Clean dashboards + PDF / PPTX / CSV exports',                   competitor: 'Custom-branded report decks, board-ready narratives',  vettWins: false },
@@ -145,7 +145,7 @@ export function VsTraditionalPage() {
           </div>
           <ul className="space-y-3 text-white/80 text-base leading-relaxed">
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Time:</strong> VETT in minutes per study. Agencies in 4-12 weeks (brief, sample, field, analysis, report).</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Cost:</strong> VETT $9-$1,990 per mission. Agency studies $5K-$50K+ depending on scope, sample, and polish.</span></li>
+            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Cost:</strong> VETT $9 to $969 per mission. Agency studies $5K-$50K+ depending on scope, sample, and polish.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Iteration:</strong> VETT supports 5-10 cheap loops. Agencies are typically a one-and-done SOW per study.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">AI synthesis:</strong> Built into VETT. A few agencies add it; most don't.</span></li>
             <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Methodology rigour:</strong> Agencies win. Custom-designed methodology, peer-reviewable, regulatory-grade.</span></li>

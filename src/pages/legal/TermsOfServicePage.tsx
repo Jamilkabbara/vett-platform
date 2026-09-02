@@ -32,7 +32,7 @@ const PRICING_TABLE_V1 = [
   '- Confidence, 50 respondents: $99',
   '- Deep Dive, 250 respondents: $300',
   '- Scale, 1,000 respondents: $900',
-  '- Enterprise, 5,000 respondents: $2,000',
+  '- Beyond 1,250 respondents: not sold self-serve; contact us for a custom quote',
   '',
   '**Brand Lift Study missions** use a separate ladder and require a minimum of',
   '50 respondents:',
