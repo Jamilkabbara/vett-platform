@@ -12,6 +12,13 @@ export interface PricingBreakdown {
   screeningSurcharge: number;
   total: number;
   filterCount: number;
+  /**
+   * True when the respondent count is above MAX_SELF_SERVE_RESPONDENTS. The
+   * price is still computed (so the panel can show what the study is worth)
+   * but the mission cannot be bought: the backend fails checkout closed and
+   * the UI routes the buyer to lead capture instead.
+   */
+  customQuote?: boolean;
 }
 
 // Pass 23 Bug 23.PRICING + 23.51 — goal-type-keyed tier ladders.
@@ -151,6 +158,79 @@ export function respondentLadderBase(
   return Math.round(Math.max(n * rate, tierPriceFloor(ladder, tier)) * 100) / 100;
 }
 
+/**
+ * ── The 1,000–2,250 price plateau, and the linear bridge that closes it ─────
+ *
+ * The tier floor above removed a $498 inversion by flooring the Enterprise
+ * bracket at Scale's ceiling of $900. The side effect was a FLAT price:
+ *
+ *   base(n) = max(n × $0.40, $900) = $900   for every n in [1,000 .. 2,250]
+ *
+ * — 1,251 consecutive counts at one price, and at the top of it 2,250
+ * respondents cost $0.40/resp, the same marginal rate as 5,000 respondents for
+ * less than half the money.
+ *
+ * The bridge interpolates between the two PINNED anchors instead:
+ *
+ *   base(n) = existing bracket price          n <= 1,000
+ *           = 900 + (n - 1,000) × 0.275       1,000 < n <= 5,000
+ *           = existing bracket price          n >  5,000
+ *
+ * $0.275 = ($2,000 - $900) / (5,000 - 1,000) is the ONLY marginal rate that
+ * lands on both anchors, so base(1,000) = $900 and base(5,000) = $2,000 are
+ * unchanged and every other anchor (5/$9, 10/$35, 50/$99, 100/$120, 250/$300)
+ * is outside the band entirely.
+ *
+ * This MUST stay byte-identical to `bridgedRespondentBase` in the backend's
+ * src/utils/pricingEngine.js. A backend-only deploy makes this panel quote one
+ * number and Stripe charge another.
+ */
+export const BRIDGE_FROM_COUNT = 1000;   // Scale anchor — $900
+export const BRIDGE_TO_COUNT   = 5000;   // Enterprise anchor — $2,000
+const BRIDGE_FROM_PRICE = 900;
+const BRIDGE_TO_PRICE   = 2000;
+export const BRIDGE_RATE_PER_RESP =
+  (BRIDGE_TO_PRICE - BRIDGE_FROM_PRICE) / (BRIDGE_TO_COUNT - BRIDGE_FROM_COUNT); // 0.275
+
+/**
+ * The largest study the delivery pipeline can honestly run self-serve.
+ *
+ * NOT a price bound — a DELIVERY bound. Derived from the 6h catastrophic
+ * backstop in the backend's mission-recovery cron (JOB1_STUCK_AFTER_HOURS)
+ * against the measured recruit-loop throughput of 11.9 s per delivered
+ * respondent (worst measured 14.2 s/resp → a 1,525 hard ceiling), with margin
+ * for the fact that the largest mission ever DELIVERED in production is 100.
+ * Full derivation lives beside MAX_SELF_SERVE_RESPONDENTS in the backend
+ * pricing engine. Keep the two numbers in lockstep.
+ */
+export const MAX_SELF_SERVE_RESPONDENTS = 1250;
+
+/** Base price inside the bridge band, or null when the count is outside it. */
+export function defaultLadderBridgeBase(count: number): number | null {
+  const n = Math.max(0, Number(count) || 0);
+  if (n <= BRIDGE_FROM_COUNT || n > BRIDGE_TO_COUNT) return null;
+  return Math.round((BRIDGE_FROM_PRICE + (n - BRIDGE_FROM_COUNT) * BRIDGE_RATE_PER_RESP) * 100) / 100;
+}
+
+/** Monotonic base for a ladder, with the default ladder's plateau bridged. */
+export function bridgedRespondentBase(
+  ladder: readonly AnyTier[],
+  tier: AnyTier | null | undefined,
+  count: number,
+  rate: number,
+): number {
+  if (ladder === VOLUME_TIERS) {
+    const bridged = defaultLadderBridgeBase(count);
+    if (bridged != null) return bridged;
+  }
+  return respondentLadderBase(ladder, tier, count, rate);
+}
+
+/** True when a respondent count is beyond what the pipeline can deliver self-serve. */
+export function isAboveSelfServeCap(count: number): boolean {
+  return Math.max(0, Number(count) || 0) > MAX_SELF_SERVE_RESPONDENTS;
+}
+
 export const calculatePricing = (
   respondentCount: number,
   questions: Question[],
@@ -164,7 +244,8 @@ export const calculatePricing = (
   const basePerRespondent = tier.ratePerResp;
   // Monotonic: never cheaper than the top of the tier below. See
   // respondentLadderBase — the V1 tier-boundary inversion fix.
-  const base = respondentLadderBase(VOLUME_TIERS, tier, respondentCount, basePerRespondent);
+  // Monotonic AND plateau-free — see bridgedRespondentBase.
+  const base = bridgedRespondentBase(VOLUME_TIERS, tier, respondentCount, basePerRespondent);
 
   const additionalQuestions = Math.max(0, questions.length - 5);
   const questionSurcharge = additionalQuestions * 20;
@@ -252,13 +333,22 @@ export const calculatePricing = (
   const cityFilterCount = targeting.geography.cities && targeting.geography.cities.length > 0 ? 1 : 0;
   const filterCount = totalPaidFilterCount + cityFilterCount;
 
+  // Round to CENTS, not to whole dollars. The backend rounds every line to two
+  // decimals (round2 in src/utils/pricingEngine.js); rounding to the dollar
+  // here made the panel disagree with the amount Stripe charges by up to
+  // $0.50, which verifyServerQuote() (±$0.02) then surfaced as a drift toast.
+  // Invisible at the anchor counts, where every line is already integral —
+  // but the bridge band prices in cents ($900.28 at n=1,001), so it matters now.
+  const round2 = (v: number) => Math.round(v * 100) / 100;
+
   return {
-    base: Math.round(base),
-    questionSurcharge,
-    targetingSurcharge: Math.round(targetingSurcharge),
-    screeningSurcharge: Math.round(screeningSurcharge),
-    total: Math.round(total),
+    base: round2(base),
+    questionSurcharge: round2(questionSurcharge),
+    targetingSurcharge: round2(targetingSurcharge),
+    screeningSurcharge: round2(screeningSurcharge),
+    total: round2(total),
     filterCount,
+    customQuote: isAboveSelfServeCap(respondentCount),
   };
 };
 
