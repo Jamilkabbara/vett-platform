@@ -888,8 +888,13 @@ export function LandingPage() {
               <div className="font-display font-extrabold text-[12px] text-lime">
                 Engagement score: 78/100
               </div>
+              {/* "Above category average of 61" removed: there is no published
+                  engagement-score norm anywhere in the product, so the demo card
+                  was quoting a category average that does not exist. The
+                  landing-v2 version of this panel already carries only the
+                  qualitative half. */}
               <div className="font-body text-[11px] text-t2 mt-0.5">
-                Above category average of 61 · Strong opening, slight drop at 22s
+                Strong opening, slight drop at 22s
               </div>
             </div>
           </Card>

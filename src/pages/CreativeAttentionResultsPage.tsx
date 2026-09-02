@@ -243,9 +243,10 @@ export function CreativeAttentionResultsPage() {
         <h2 className="text-xl font-bold text-[var(--t1)]">VETT is analyzing your creative</h2>
         <p className="text-[var(--t2)] text-sm max-w-sm">
           Our AI is mapping attention hotspots and emotion peaks across your
-          creative, drawing on millions of ad performance benchmarks. This
-          typically takes 30 seconds for an image or 1–3 minutes for a
-          30-second video; longer videos take proportionally more time.
+          creative, then comparing the result against published channel
+          attention norms. This typically takes 30 seconds for an image or 1 to
+          3 minutes for a 30-second video; longer videos take proportionally
+          more time.
         </p>
         <div className="mt-2 flex items-center gap-2 text-xs text-[var(--t3)]">
           <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
@@ -488,11 +489,19 @@ export function CreativeAttentionResultsPage() {
           </div>
         </section>
 
-        {/* vs Benchmark */}
+        {/* vs Benchmark — model-written prose, explicitly labelled as such.
+            The only benchmark data in the pipeline is the published per-channel
+            attention-seconds norms; any category average this sentence quotes on
+            another scale (engagement, clarity) is the model's own estimate. */}
         {summary.vs_benchmark && (
           <div className="bg-[var(--bg2)] border border-[var(--lime)]/20 rounded-2xl p-5 flex items-start gap-3">
             <TrendIcon value={summary.overall_engagement_score} />
-            <p className="text-sm text-[var(--t1)] leading-relaxed">{summary.vs_benchmark}</p>
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-[var(--t3)] mb-1.5">
+                Model-estimated
+              </div>
+              <p className="text-sm text-[var(--t1)] leading-relaxed">{summary.vs_benchmark}</p>
+            </div>
           </div>
         )}
 

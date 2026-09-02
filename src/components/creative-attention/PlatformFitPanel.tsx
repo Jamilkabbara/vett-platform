@@ -143,7 +143,8 @@ export function PlatformFitPanel({ items }: PlatformFitPanelProps) {
         <div>
           <h2 className="text-lg font-bold text-white">Best Platform Fit</h2>
           <p className="text-white/40 text-xs">
-            Predicted active attention vs platform norm + fit score per platform
+            VETT's estimated active attention against the published platform
+            norm, plus a fit score per platform
           </p>
         </div>
       </header>
@@ -185,7 +186,7 @@ export function PlatformFitPanel({ items }: PlatformFitPanelProps) {
               {norm > 0 ? (
                 <div className="flex items-center gap-2">
                   <span className="w-20 text-[10px] uppercase tracking-widest text-white/40 shrink-0 text-right">
-                    Norm
+                    Published
                   </span>
                   <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
                     <div
@@ -202,7 +203,7 @@ export function PlatformFitPanel({ items }: PlatformFitPanelProps) {
               {predicted != null ? (
                 <div className="flex items-center gap-2">
                   <span className="w-20 text-[10px] uppercase tracking-widest text-white/60 shrink-0 text-right">
-                    Predicted
+                    VETT est.
                   </span>
                   <div
                     className="flex-1 h-2 rounded-full overflow-hidden"
@@ -232,6 +233,13 @@ export function PlatformFitPanel({ items }: PlatformFitPanelProps) {
           );
         })}
       </div>
+
+      <p className="mt-5 pt-4 border-t border-white/[0.07] text-[11px] text-white/40 leading-relaxed">
+        Published figures are channel active-attention norms from DAIVID /
+        Amplified Intelligence attention research. The VETT estimate, the
+        percentage beside it and the fit score are model-estimated for this
+        creative, not measured.
+      </p>
     </section>
   );
 }
