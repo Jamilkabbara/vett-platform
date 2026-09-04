@@ -112,6 +112,7 @@ import {
 // §E — screen-aware Setup Advisor copilot. Mounted here (not via SiteWideAskVett,
 // which now hides on /setup) so it answers about THIS draft, not the portfolio.
 import { ChatWidget } from '../components/chat/ChatWidget';
+import { describeMissionWriteError, isColumnPrivilegeDenied } from '../lib/missionWriteError';
 
 /**
  * Mission Setup — Commit 4 of the redesign (Prompt 3).
@@ -1442,12 +1443,20 @@ export const MissionSetupPage = () => {
         .single();
 
       if (error || !missionData) {
-        console.error('Mission insert failed:', error);
-        toast.error(
-          error?.message?.includes('row-level security')
-            ? 'Sign-in expired - please sign in again.'
-            : 'Could not save mission - try again in a moment.',
-        );
+        // A column-privilege denial is also SQLSTATE 42501 and also says
+        // "permission denied", so matching only the literal string
+        // "row-level security" mislabelled it as an expired sign-in and hid
+        // which column was refused. Pass 50 revokes UPDATE on the money and
+        // lifecycle columns, so that distinction now matters.
+        console.error('Mission insert failed:', {
+          code: error?.code, message: error?.message,
+          details: error?.details, hint: error?.hint, error,
+        });
+        if (!isColumnPrivilegeDenied(error) && error?.message?.includes('row-level security')) {
+          toast.error('Sign-in expired - please sign in again.');
+        } else {
+          toast.error(describeMissionWriteError(error), 8000);
+        }
         inflightRef.current = false;
         setIsSubmitting(false);
         return;

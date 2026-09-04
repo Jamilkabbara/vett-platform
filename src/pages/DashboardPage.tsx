@@ -21,6 +21,7 @@ import {
   SERVER_QUOTE_TOAST_TOLERANCE_USD,
 } from '../utils/pricingEngine';
 import toast from 'react-hot-toast';
+import { reportMissionWriteError } from '../lib/missionWriteError';
 import type { Question } from '../components/dashboard/QuestionEngine';
 import type { TargetingConfig } from '../components/dashboard/TargetingEngine';
 import {
@@ -513,8 +514,9 @@ export const DashboardPage = () => {
         .eq('id', missionId);
       if (error) throw error;
     } catch (err) {
-      console.error('[DashboardPage] failed to save questions', err);
-      // Non-fatal — UI already reflects the change; next edit retries.
+      // Was console-only: a permission denial looked identical to a network
+      // blip and the user was told nothing at all.
+      reportMissionWriteError('Save questions', err);
     } finally {
       setPersisting(false);
     }
@@ -548,7 +550,7 @@ export const DashboardPage = () => {
         .eq('id', id);
       if (error) throw error;
     } catch (err) {
-      console.error('[DashboardPage] failed to save targeting', err);
+      reportMissionWriteError('Save targeting', err);
     } finally {
       setTargetingPersisting(false);
     }
@@ -595,7 +597,7 @@ export const DashboardPage = () => {
         .eq('id', id);
       if (error) throw error;
     } catch (err) {
-      console.error('[DashboardPage] failed to save respondent_count', err);
+      reportMissionWriteError('Save respondent count', err);
     }
   }, []);
 
