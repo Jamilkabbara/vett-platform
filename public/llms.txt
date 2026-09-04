@@ -1,9 +1,9 @@
-# VETT — llms.txt
+# VETT - llms.txt
 
 > Methodology-first synthetic-respondent research platform. AI personas
 > calibrated to your audience answer your survey via Anthropic Claude;
-> 13 supported research frameworks (Van Westendorp, MaxDiff, NPS,
-> brand-health funnel, etc. — each peer-reviewed in the academic
+> 14 supported research frameworks (Van Westendorp, MaxDiff, NPS,
+> brand-health funnel, etc. - each peer-reviewed in the academic
 > literature). VETT outputs are synthetic-respondent simulations of
 > those frameworks. Treat as fast directional signal, not panel-grade
 > truth.
@@ -23,34 +23,38 @@ What we explicitly do NOT do:
 - Claim panel-level statistical validity for the outputs
 
 What you should expect:
-- Mission turnaround: 5-15 minutes typical (scales with respondent count)
+- Mission turnaround: scales with respondent count. Minutes for small
+  missions; larger missions take proportionally longer. The mission page
+  shows live progress throughout.
 - Output: executive summary + per-question aggregates + methodology
   cards + PDF / PPTX / XLSX / CSV / JSON exports
-- Auto-refunds: partial delivery triggers a Stripe partial refund;
-  full failures trigger a full refund within 24 hours
+- Remedy, not refunds: all sales are final and VETT does not issue cash
+  refunds. If a mission fails because of a VETT-side fault, the remedy is
+  a re-run or a re-run credit. Full terms: https://www.vettit.ai/refunds
 
-## Methodologies supported (13)
+## Methodologies supported (14)
 
 Each methodology has a dedicated input collector, simulation prompt,
 synthesis pipeline, and results page.
 
-1. validate — Concept Test (single-concept monadic acceptance)
-2. compare — Sequential Monadic comparison with rotation
-3. marketing — Ad Effectiveness (creative diagnostics + KPIs)
-4. creative_attention — Frame-by-frame attention prediction +
+1. validate - Concept Test (single-concept monadic acceptance)
+2. compare - Sequential Monadic comparison with rotation
+3. marketing - Ad Effectiveness (creative diagnostics + KPIs)
+4. creative_attention - Frame-by-frame attention prediction +
    24-emotion taxonomy + platform fit + channel benchmarks
-5. brand_lift — Incrementality (exposed vs control) across the
+5. brand_lift - Incrementality (exposed vs control) across the
    9-category industry framework (aided/unaided recall, attribution,
    awareness, message association, favorability, purchase intent,
    recommendation intent, ad recall)
-6. pricing — Van Westendorp + Gabor-Granger price elasticity
-7. feature_roadmap — MaxDiff + Kano feature prioritization
-8. customer_satisfaction — NPS + CSAT + CES with touchpoint anchoring
-9. competitor — Brand Health Tracker with attribute battery + funnel
-10. naming_messaging — Monadic + Paired comparison + TURF reach
-11. churn_research — Driver Tree + Win-Back analysis
-12. audience_profiling — K-means segmentation (in progress)
-13. market_entry — Multi-market routing (in progress)
+6. pricing - Van Westendorp + Gabor-Granger price elasticity
+7. feature_roadmap - MaxDiff + Kano feature prioritization
+8. customer_satisfaction - NPS + CSAT + CES with touchpoint anchoring
+9. competitor - Brand Health Tracker with attribute battery + funnel
+10. naming_messaging - Monadic + Paired comparison + TURF reach
+11. churn_research - Driver Tree + Win-Back analysis
+12. audience_profiling - K-means segmentation
+13. market_entry - Multi-market routing
+14. research - Open exploratory research (no fixed framework)
 
 ## Pricing
 
@@ -59,27 +63,28 @@ Three pricing ladders keyed to delivery shape:
 Per-respondent missions (validate, naming_messaging, marketing,
 pricing, feature_roadmap, customer_satisfaction, compare, competitor,
 churn_research):
-- Sniff Test     5 personas   $9
-- Validate      10 personas   $35
-- Confidence    50 personas   $99
-- Deep Dive    250 personas   $299
-- Scale       1000 personas   $899
-- Enterprise  5000 personas  $1990
+- Sniff Test     5 personas      $9
+- Validate      10 personas     $35
+- Confidence    50 personas     $99
+- Deep Dive    250 personas    $300
+- Scale       1000 personas    $900
+- Enterprise  5000 personas  $2,000
 
 Brand Lift (statistical sample sizes, exposed + control split):
-- Pulse        50 personas    $99
-- Tracker     200 personas    $299
-- Wave        500 personas    $599
-- Enterprise 2000 personas  $1499
+- Pulse        50 personas      $99
+- Tracker     200 personas     $300
+- Wave        500 personas     $600
+- Enterprise 2000 personas  $1,500
 
-Creative Attention (flat per-asset, no respondent count):
-- Image        1 image  $19
-- Video        1 video  $39
-- Bundle       5 assets $79
-- Series      20 assets $249
+Creative Attention (per-respondent, minimum 10 respondents):
+- Sniff Test    10 personas   $19
+- Validate      25 personas   $39
+- Confidence    50 personas   $69
+- Deep Dive    100 personas  $129
+- Deep Dive XL 250 personas  $299
 
 Targeting surcharges apply for narrow multi-criteria targeting.
-Extra questions beyond the included 10 are $1.50 each.
+Extra questions beyond the included 5 are $20 each.
 
 ## How a mission runs
 
@@ -95,7 +100,7 @@ Extra questions beyond the included 10 are $1.50 each.
 
 ## Markets
 
-VETT supports research in 160+ countries. Strong coverage in MENA
+VETT supports research in 190+ countries (full ISO 3166-1 list). Strong coverage in MENA
 (UAE, Saudi Arabia, Egypt, Lebanon, Jordan), GCC, Europe (UK,
 Germany, France, Spain), North America (US, Canada), India, Singapore,
 Brazil, and frontier markets.
@@ -106,7 +111,7 @@ Brazil, and frontier markets.
 - Pricing: https://www.vettit.ai/landing#pricing
 - Help: https://www.vettit.ai/help
 - Blog: https://www.vettit.ai/blog
-- API docs: https://www.vettit.ai/api
+- API status (no API today): https://www.vettit.ai/api
 - Contact: https://www.vettit.ai/contact
 - About: https://www.vettit.ai/about
 - Privacy: https://www.vettit.ai/privacy

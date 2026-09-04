@@ -111,7 +111,8 @@ export function CrossChannelBenchmarks({ benchmarks }: CrossChannelBenchmarksPro
       <header className="mb-5">
         <h2 className="text-lg font-bold text-white">Cross-Channel Benchmarks</h2>
         <p className="text-white/40 text-xs mt-1">
-          Predicted attention seconds vs industry norms across 5 channels
+          VETT's estimate for this creative against published channel attention
+          norms, across 5 channels
         </p>
       </header>
 
@@ -142,7 +143,7 @@ export function CrossChannelBenchmarks({ benchmarks }: CrossChannelBenchmarksPro
               {/* Norm bar */}
               <div className="flex items-center gap-2">
                 <span className="w-24 text-[10px] uppercase tracking-widest text-white/40 shrink-0 text-right">
-                  Norm
+                  Published norm
                 </span>
                 <div className="flex-1 h-2.5 rounded-full bg-white/5 overflow-hidden">
                   <div
@@ -159,7 +160,7 @@ export function CrossChannelBenchmarks({ benchmarks }: CrossChannelBenchmarksPro
               {predicted != null ? (
                 <div className="flex items-center gap-2">
                   <span className="w-24 text-[10px] uppercase tracking-widest text-white/60 shrink-0 text-right">
-                    Predicted
+                    VETT estimate
                   </span>
                   <div
                     className="flex-1 h-2.5 rounded-full overflow-hidden"
@@ -183,10 +184,10 @@ export function CrossChannelBenchmarks({ benchmarks }: CrossChannelBenchmarksPro
               ) : (
                 <div className="flex items-center gap-2">
                   <span className="w-24 text-[10px] uppercase tracking-widest text-white/40 shrink-0 text-right">
-                    Predicted
+                    VETT estimate
                   </span>
                   <span className="text-[11px] text-white/40 italic">
-                    Format mismatch — see assessment below
+                    Format mismatch - see assessment below
                   </span>
                 </div>
               )}
@@ -198,6 +199,14 @@ export function CrossChannelBenchmarks({ benchmarks }: CrossChannelBenchmarksPro
           );
         })}
       </div>
+
+      <p className="mt-5 pt-4 border-t border-white/[0.07] text-[11px] text-white/40 leading-relaxed">
+        The published norm is the channel's average active attention from
+        DAIVID / Amplified Intelligence attention research. The VETT estimate
+        and the percentage above it are model-estimated for this creative, not
+        measured, and they have not been validated against your own campaign
+        data. Read them as direction, not as a performance forecast.
+      </p>
     </section>
   );
 }
