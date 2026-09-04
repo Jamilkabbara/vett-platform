@@ -235,12 +235,6 @@ CREATE TABLE missions (
 - AI-powered question refinement
 - Drag-to-reorder functionality
 
-#### TargetingMatrix
-- Geographic targeting (Country, City)
-- Demographics (Age, Gender)
-- Professional filters (Occupation, Employment)
-- Behavioral tags
-
 #### SurveyPreview
 - Mobile-optimized preview
 - Shows respondent's view
