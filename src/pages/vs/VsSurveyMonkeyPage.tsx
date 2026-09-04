@@ -34,7 +34,7 @@ interface ComparisonRow {
 
 const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Time to first insight',          vett: 'Minutes',                              competitor: 'Days to weeks (panel recruit)',     vettWins: true  },
-  { dimension: 'Cost per respondent',             vett: '$0.40 – $3.50',                        competitor: '$1 – $5 (basic) / $10+ (qualified)', vettWins: true  },
+  { dimension: 'Cost per respondent',             vett: '$0.78 to $3.50',                        competitor: '$1 – $5 (basic) / $10+ (qualified)', vettWins: true  },
   { dimension: 'Minimum mission cost',            vett: '$9 (Sniff Test, 5 personas)',          competitor: '~$1+/response, panels min ~$200',   vettWins: true  },
   { dimension: 'Geographic reach',                vett: '193 countries (full ISO list, AI-modelled)', competitor: '~190 countries via Audience panel', vettWins: false },
   { dimension: 'Custom screener',                 vett: 'Constraint-based generation, persona is generated TO the spec', competitor: 'Filter-based on real panelists; longer wait if strict', vettWins: true  },
@@ -54,7 +54,7 @@ const FAQS = [
   },
   {
     q: 'How is this different from just asking ChatGPT?',
-    a: "ChatGPT gives you one perspective per prompt. VETT generates a population of 5-5,000 distinct personas, each with their own background, motivations, and decision style, and simulates a full survey flow with screening + branching + open-text + ratings. The output is statistically structured (cross-tabs, segment breakdowns, confidence intervals) the way a market-research report is - not a conversation. Same underlying AI, completely different deliverable.",
+    a: "ChatGPT gives you one perspective per prompt. VETT generates a population of 5 to 1,250 distinct personas, each with their own background, motivations, and decision style, and simulates a full survey flow with screening + branching + open-text + ratings. The output is statistically structured (cross-tabs, segment breakdowns, confidence intervals) the way a market-research report is - not a conversation. Same underlying AI, completely different deliverable.",
   },
   {
     q: 'How much does VETT cost vs SurveyMonkey?',
@@ -153,7 +153,7 @@ export function VsSurveyMonkeyPage() {
           </div>
           <ul className="space-y-3 text-white/80 text-base leading-relaxed">
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Speed:</strong> VETT runs a 50-respondent study in minutes. SurveyMonkey Audience takes hours to days.</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Cost:</strong> $9 for 5 personas to $1,990 for 5,000. SurveyMonkey panels start ~$200 minimum and scale faster.</span></li>
+            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Cost:</strong> $9 for 5 personas to $969 for 1,250, with larger studies quoted as a managed engagement. SurveyMonkey panels start ~$200 minimum and scale faster.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Screener:</strong> VETT generates personas TO your spec. SurveyMonkey filters real panelists against your spec - strict screeners mean longer waits or attrition.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">AI synthesis:</strong> Built into VETT. SurveyMonkey reports are mostly DIY analysis or paid add-on.</span></li>
             <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Real humans:</strong> SurveyMonkey wins. VETT is synthetic-only - better for iteration, not for legally defensible quotes.</span></li>

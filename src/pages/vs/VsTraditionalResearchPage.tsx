@@ -16,7 +16,7 @@ export function VsTraditionalResearchPage() {
       rows={[
         {
           dimension: 'Cost per study',
-          vett: '$9-1990 per mission, one-time',
+          vett: '$9 to $969 per mission, one-time',
           competitor: 'Focus groups: $5-20k. Panel quant: $5-50k. Agency engagements: $10-200k.',
           verdict: 'vett',
         },
@@ -34,7 +34,7 @@ export function VsTraditionalResearchPage() {
         },
         {
           dimension: 'Sample size',
-          vett: '5-5000 personas per mission',
+          vett: '5 to 1,250 personas per mission',
           competitor: 'Typically 200-2000 panel respondents per quant study',
           verdict: 'tie',
         },

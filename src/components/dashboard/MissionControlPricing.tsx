@@ -4,7 +4,8 @@ import { Lock, Rocket, ShieldCheck, Star } from 'lucide-react';
 
 import type { Question } from './QuestionEngine';
 import type { TargetingConfig } from './TargetingEngine';
-import { calculatePricing, getVolumeTier, VOLUME_TIERS } from '../../utils/pricingEngine';
+import { calculatePricing, getVolumeTier, VOLUME_TIERS, MAX_SELF_SERVE_RESPONDENTS } from '../../utils/pricingEngine';
+import { LeadCaptureForm } from '../marketing/LeadCaptureForm';
 import { COUNTRIES } from '../../data/targetingOptions';
 import { SampleSizeGuidance } from '../setup/SampleSizeGuidance';
 
@@ -91,11 +92,17 @@ function methodologyIdForGoal(goalType: string | null | undefined): string | nul
 
 // Pass 23 Bug 23.PRICING — preset chips snap to the four named tier anchors
 // (Sniff Test 5, Validate 10, Confidence 50, Deep Dive 250). The slider still
-// allows arbitrary values between 5 and 5000; pricing applies the rate of
-// the tier the count falls in (see utils/pricingEngine.ts::getVolumeTier).
+// allows arbitrary values between the min and the cap; pricing applies the rate
+// of the tier the count falls in (see utils/pricingEngine.ts::getVolumeTier),
+// with the 1,000 -> 5,000 plateau bridged linearly.
 const PRESETS = [5, 10, 50, 250] as const;
 const MIN_RESPONDENTS = 5;
-const MAX_RESPONDENTS = 5000;
+// Was a flat 5,000 — a PRICE bound the delivery pipeline could not honour. The
+// ceiling is now a DELIVERY bound: the largest study that finishes inside the
+// backend's 6h mission-recovery backstop at the measured recruit-loop rate.
+// Above it we capture the lead instead of selling (see the block below the
+// slider). Single source of truth lives in utils/pricingEngine.ts.
+const MAX_RESPONDENTS = MAX_SELF_SERVE_RESPONDENTS;
 // Step of 5 lets the slider land on every anchor + interpolate between
 // them. Old step of 10 skipped 5 entirely.
 const RESPONDENT_STEP = 5;
@@ -327,8 +334,8 @@ export const MissionControlPricing = ({
             - "Most popular" badge on Validate (10-anchor)
             - live $/respondent display below slider
             - the slider stays continuous (step=5) so users can pick any
-              count between 5 and 5000; pricing applies the rate of the
-              tier the count falls in (see VOLUME_TIERS) */}
+              count between the min and the self-serve cap; pricing applies
+              the rate of the tier the count falls in (see VOLUME_TIERS) */}
       <div className="px-4 py-4 border-b border-b1">
         <div className="flex items-baseline justify-between mb-1">
           <label
@@ -404,6 +411,34 @@ export const MissionControlPricing = ({
             );
           })}
         </div>
+
+        {/* At the ceiling: capture the lead, do not sell.
+            The slider stops at MAX_RESPONDENTS because that is the largest
+            study the pipeline can actually deliver — but a buyer who drags to
+            the end clearly wants more, and a hard stop with no next step is a
+            dead end. POST /api/crm/lead is public and rate-limited; the
+            requested size travels in `page` so the CRM row says what they
+            wanted. The backend refuses anything above the cap independently
+            (routes/missions.js + the customQuote guard in routes/payments.js),
+            so this is the affordance, not the enforcement. */}
+        {respondentCount >= MAX_RESPONDENTS && (
+          <div className="mt-3 rounded-lg border border-b1 bg-bg3/40 px-3 py-3">
+            <p className="font-display font-bold text-[11px] text-white">
+              Need more than {MAX_RESPONDENTS.toLocaleString()} respondents?
+            </p>
+            <p className="font-body text-[11px] text-t3 mt-1 mb-2.5">
+              {MAX_RESPONDENTS.toLocaleString()} is the largest study we run self-serve.
+              Bigger samples run as a managed engagement. Leave an email and we
+              will scope it with you.
+            </p>
+            <LeadCaptureForm
+              variant="stacked"
+              page={`mission_control_pricing:${respondentCount}_respondents`}
+              cta="Request a quote"
+              placeholder="work@company.com"
+            />
+          </div>
+        )}
 
         {/* Live $/respondent display — Bug 23.14 spec. Reflects the
             volume tier rate applied to the current count, not the

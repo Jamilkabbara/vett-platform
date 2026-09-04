@@ -168,14 +168,14 @@ const PRICING_TABS: ReadonlyArray<{
   {
     id: 'validate',
     label: 'Validate',
-    tagline: 'Product, naming, and message validation. Pay per respondent.',
+    tagline: 'Product, naming, and message validation. Pay per respondent, up to 1,250 per mission.',
     tiers: [
       { range: '5 personas',    price: '$9',    label: 'Sniff Test', perResp: '$1.80/resp' },
       { range: '10 personas',   price: '$35',   label: 'Validate',   perResp: '$3.50/resp' },
       { range: '50 personas',   price: '$99',   label: 'Confidence', perResp: '$1.98/resp' },
       { range: '250 personas',  price: '$300',  label: 'Deep Dive',  perResp: '$1.20/resp' },
       { range: '1,000 personas', price: '$900',  label: 'Scale',      perResp: '$0.90/resp' },
-      { range: '5,000 personas', price: '$2,000', label: 'Enterprise', perResp: '$0.40/resp' },
+      { range: 'Beyond 1,250 personas', price: 'Talk to us', label: 'Enterprise', perResp: 'Custom quote' },
     ],
   },
   {

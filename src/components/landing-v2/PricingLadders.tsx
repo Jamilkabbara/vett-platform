@@ -6,7 +6,7 @@
  * numbers below are the corrected live ladders, mirroring the same constant
  * that the current LandingPage renders:
  *
- *   Validate           $9 / $35 / $99 / $300 / $900 / $2,000  (per respondent)
+ *   Validate           $9 / $35 / $99 / $300 / $900 / custom  (per respondent)
  *   Brand Lift         $99 / $300 / $600 / $1,500             (statistical n)
  *   Creative Attention respondent BRACKETS charged flat per bracket:
  *                      10 -> $19, 11-25 -> $39, 26-50 -> $69,
@@ -33,7 +33,7 @@ const LADDERS: Ladder[] = [
   {
     id: 'validate',
     label: 'VALIDATE',
-    desc: 'Product, naming, and message validation. Pay per respondent.',
+    desc: 'Product, naming, and message validation. Pay per respondent, up to 1,250 per mission.',
     cta: 'START A VALIDATE MISSION',
     tiers: [
       { name: 'Sniff Test',  price: '$9',     meta: '5 personas · $1.80/resp' },
@@ -41,7 +41,7 @@ const LADDERS: Ladder[] = [
       { name: 'Confidence',  price: '$99',    meta: '50 personas · $1.98/resp' },
       { name: 'Deep Dive',   price: '$300',   meta: '250 personas · $1.20/resp' },
       { name: 'Scale',       price: '$900',   meta: '1,000 personas · $0.90/resp' },
-      { name: 'Enterprise',  price: '$2,000', meta: '5,000 personas · $0.40/resp' },
+      { name: 'Enterprise',  price: 'Talk to us', meta: 'Beyond 1,250 personas · custom quote' },
     ],
   },
   {
