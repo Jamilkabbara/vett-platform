@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import { ChevronDown, ChevronRight, MessageCircleQuestion, Mail, BookOpen } from 'lucide-react';
 import { OverlayPage } from '../components/layout/OverlayPage';
 import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 /**
  * Pass 32 X10 — /help page rewrite + Ask VETT mount.
@@ -107,24 +108,6 @@ const FAQS: FAQ[] = [
 
 const CATEGORIES = Array.from(new Set(FAQS.map(f => f.category)));
 
-const GUIDES = [
-  {
-    title: 'Writing better questions',
-    description: 'How to phrase questions to surface honest, decision-grade signal — and which leading-question patterns to avoid.',
-  },
-  {
-    title: 'Choosing a methodology',
-    description: 'Brand Lift vs Concept Test vs Pricing — when each one fits, and how to combine them on the same product.',
-  },
-  {
-    title: 'Reading creative attention scores',
-    description: 'Active vs passive attention, distinctive brand asset score, and how to interpret the per-frame emotion arc.',
-  },
-  {
-    title: 'Targeting depth, explained',
-    description: 'When to use Gen Pop, when to narrow to a niche, and how the targeting surcharge maps to persona accuracy.',
-  },
-];
 
 export const HelpPage = () => {
   const { user } = useAuth();
@@ -150,7 +133,14 @@ export const HelpPage = () => {
 
           {CATEGORIES.map((cat) => (
             <div key={cat} className="mb-8">
-              <h3 className="text-xs font-black text-primary uppercase tracking-widest mb-4">
+              {/* id matches the fragment the footer links already emit
+                  (`#${cat.replace(/\s+/g, '-').toLowerCase()}`). Without it
+                  every one of those links was a no-op. scroll-mt clears the
+                  fixed header so the heading is not hidden under it. */}
+              <h3
+                id={cat.replace(/\s+/g, '-').toLowerCase()}
+                className="text-xs font-black text-primary uppercase tracking-widest mb-4 scroll-mt-24"
+              >
                 {cat}
               </h3>
               <div className="space-y-3">
@@ -187,26 +177,44 @@ export const HelpPage = () => {
           ))}
         </div>
 
-        {/* Guides */}
+        {/* Where to read more — real destinations only.
+            This was four "Guides & Tutorials" cards rendered as plain divs
+            with no href and no onClick, advertising documents that were never
+            written; there is no /guides route in App.tsx. Three of the four
+            had no home at all. Rather than ship four promises we do not keep,
+            this points at the two long-form documents that DO exist and are
+            substantial. */}
         <div className="mb-16">
           <h2 className="text-3xl font-black text-white mb-8 uppercase tracking-tight flex items-center gap-3">
             <BookOpen className="w-7 h-7 text-primary" />
-            Guides &amp; Tutorials
+            Read more
           </h2>
           <div className="grid sm:grid-cols-2 gap-4">
-            {GUIDES.map((guide) => (
-              <div
-                key={guide.title}
-                className="glass-panel p-6 rounded-2xl border border-white/5 hover:border-primary/40 transition-all group"
-              >
-                <h3 className="text-white font-bold group-hover:text-primary transition-colors mb-2">
-                  {guide.title}
-                </h3>
-                <p className="text-white/50 text-sm leading-relaxed">
-                  {guide.description}
-                </p>
-              </div>
-            ))}
+            <Link
+              to="/methodologies"
+              className="glass-panel p-6 rounded-2xl border border-white/5 hover:border-primary/40 transition-all group block"
+            >
+              <h3 className="text-white font-bold group-hover:text-primary transition-colors mb-2">
+                Choosing a methodology
+              </h3>
+              <p className="text-white/50 text-sm leading-relaxed">
+                All 14 research types, what each one measures, and the instrument
+                behind it.
+              </p>
+            </Link>
+            <Link
+              to="/methodology"
+              className="glass-panel p-6 rounded-2xl border border-white/5 hover:border-primary/40 transition-all group block"
+            >
+              <h3 className="text-white font-bold group-hover:text-primary transition-colors mb-2">
+                How a mission is computed
+              </h3>
+              <p className="text-white/50 text-sm leading-relaxed">
+                The long version: where the numbers come from, what the model
+                does and does not touch, and how VETT withholds a figure the
+                sample cannot support.
+              </p>
+            </Link>
           </div>
         </div>
 
