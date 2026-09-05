@@ -11,10 +11,33 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   return headers;
 }
 
+/**
+ * An API failure that still knows its HTTP status.
+ *
+ * `handleResponse` used to throw a bare Error carrying only the server's
+ * message, so callers could not tell "you are signed out" (401) from "that is
+ * not your mission" (404) from a genuine server fault - and the only way to
+ * react was to pattern-match the message text, which then leaks the raw
+ * backend string to the user. /results-v2 rendered
+ * "Missing or invalid authorization header" as its entire signed-out page for
+ * exactly this reason.
+ *
+ * Additive: nothing reads `.status` today, and it stays an Error subclass, so
+ * every existing `catch (e) { e.message }` behaves the same.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
 async function handleResponse(res: Response) {
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || `Request failed: ${res.status}`);
+    throw new ApiError(error.error || `Request failed: ${res.status}`, res.status);
   }
   return res.json();
 }

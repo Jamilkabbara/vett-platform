@@ -46,10 +46,10 @@
  *      stat strip and one rail card, both from the same array.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
-import { api } from '../lib/apiClient';
+import { api, ApiError } from '../lib/apiClient';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/Toast';
 import type {
@@ -396,6 +396,7 @@ export function ResultsV2Page() {
   const toast = useToast();
   const [report, setReport] = useState<CanonicalReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   // DEV ONLY: ?fixture=1 loads a canonical report rebuilt from real production
@@ -423,7 +424,9 @@ export function ResultsV2Page() {
         const res = await api.get(`/api/results/${missionId}/report`);
         if (!cancelled) setReport(res.report || null);
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load report');
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : 'Failed to load report');
+        setErrorStatus(e instanceof ApiError ? e.status : null);
       }
     })();
     return () => {
@@ -462,9 +465,61 @@ export function ResultsV2Page() {
   };
 
   if (error) {
+    // A signed-out visitor used to get the raw backend string
+    // ("Missing or invalid authorization header") as the entire page: no
+    // branding, no explanation, no way forward. Every shared results link
+    // lands here, so it is the first thing a recipient sees.
+    const signedOut = errorStatus === 401;
+    const notYours = errorStatus === 403 || errorStatus === 404;
+    const returnTo = `/results-v2/${missionId ?? ''}`;
     return (
-      <div className="rv2-root grid min-h-[100dvh] place-items-center bg-[#0B0C15] px-6 text-center">
-        <p className="max-w-[60ch] text-[#8B919C]">{error}</p>
+      <div className="rv2-root grid min-h-[100dvh] place-items-center bg-[#0B0C15] px-6">
+        <div className="w-full max-w-[46ch] text-center">
+          <div className="mb-6 font-['Manrope',system-ui,sans-serif] text-2xl font-black tracking-tight text-white">
+            VETT
+          </div>
+          {signedOut ? (
+            <>
+              <h1 className="mb-3 text-xl font-bold text-white">Sign in to view this report</h1>
+              <p className="mb-7 text-[15px] leading-relaxed text-[#8B919C]">
+                Mission results are private to the account that ran them. Sign in
+                and we will bring you straight back to this report.
+              </p>
+              <Link
+                to={`/signin?redirect=${encodeURIComponent(returnTo)}`}
+                className="inline-block rounded-full bg-[#BEF264] px-8 py-3.5 text-sm font-black uppercase tracking-widest text-[#0B0C15] transition-opacity hover:opacity-90"
+              >
+                Sign in
+              </Link>
+            </>
+          ) : notYours ? (
+            <>
+              <h1 className="mb-3 text-xl font-bold text-white">This report is not in your account</h1>
+              <p className="mb-7 text-[15px] leading-relaxed text-[#8B919C]">
+                You are signed in, but this mission belongs to a different
+                account. Ask whoever ran it to share the export, or open your own
+                missions.
+              </p>
+              <Link
+                to="/missions"
+                className="inline-block rounded-full bg-[#BEF264] px-8 py-3.5 text-sm font-black uppercase tracking-widest text-[#0B0C15] transition-opacity hover:opacity-90"
+              >
+                Your missions
+              </Link>
+            </>
+          ) : (
+            <>
+              <h1 className="mb-3 text-xl font-bold text-white">This report could not be loaded</h1>
+              <p className="mb-7 text-[15px] leading-relaxed text-[#8B919C]">{error}</p>
+              <Link
+                to="/missions"
+                className="inline-block rounded-full border border-white/15 px-8 py-3.5 text-sm font-black uppercase tracking-widest text-white transition-colors hover:border-white/30"
+              >
+                Your missions
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     );
   }
