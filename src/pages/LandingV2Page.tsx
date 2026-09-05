@@ -9,8 +9,8 @@
  *     commit. To roll back, revert that commit (or promote the previous
  *     deployment); the old page is recoverable from git history.
  *   - Every behaviour the old landing had is preserved: the hero brief
- *     input with its typewriter placeholder, attachment handoff via
- *     sessionStorage, goal-card routing to /setup?goal=<id> (and
+ *     input with its typewriter placeholder, goal-card routing to
+ *     /setup?goal=<id> (and
  *     creative_attention to /creative-attention/new), lead capture under
  *     the same `landing_prefooter` page tag, and landing_view funnel
  *     tracking with the same landingMetadata() payload.
@@ -34,7 +34,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Paperclip, X } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
 import { trackFunnel, landingMetadata } from '../lib/funnelTrack';
@@ -42,7 +42,6 @@ import { useTypewriterPlaceholder } from '../hooks/useTypewriterPlaceholder';
 import { getGoalById } from '../data/missionGoals';
 import { Logo } from '../components/ui/Logo';
 import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
-import { FileUpload, type UploadedFile } from '../components/shared/FileUpload';
 
 import {
   Eyebrow,
@@ -189,24 +188,12 @@ export function LandingV2Page() {
     paused: heroPaused,
   });
 
-  const [attachment, setAttachment] = useState<UploadedFile | null>(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-
   const launchMission = useCallback(() => {
     const trimmed = idea.trim();
     const qs = trimmed ? `?q=${encodeURIComponent(trimmed)}` : '';
-    try {
-      if (attachment) {
-        sessionStorage.setItem('vett_landing_attachment', JSON.stringify(attachment));
-      } else {
-        sessionStorage.removeItem('vett_landing_attachment');
-      }
-    } catch {
-      /* private mode - the attachment simply does not carry over */
-    }
     if (user) navigate(`/setup${qs}`);
     else navigate(`/signin?redirect=${encodeURIComponent(`/setup${qs}`)}`);
-  }, [idea, attachment, user, navigate]);
+  }, [idea, user, navigate]);
 
   const handleHeroSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -361,19 +348,6 @@ export function LandingV2Page() {
               above keeps the full width instead of being squeezed to ~30px at
               320. From `sm` up they sit inline exactly as before. */}
           <div className="flex items-center gap-3.5 shrink-0 basis-full sm:basis-auto sm:ml-auto justify-end">
-            <button
-              type="button"
-              onClick={() => setShowUploadModal(true)}
-              aria-label="Attach a file to your brief"
-              className={[
-                'w-11 h-11 rounded-[11px] grid place-items-center shrink-0 border transition-colors',
-                attachment
-                  ? 'bg-[rgba(190,242,100,0.13)] border-[rgba(190,242,100,0.22)] text-[#BEF264]'
-                  : 'bg-white/[0.045] border-white/[0.07] text-[#8B919C] hover:text-[#F3F5EF]',
-              ].join(' ')}
-            >
-              <Paperclip className="w-[18px] h-[18px]" />
-            </button>
             <V2Button variant="indigo" type="submit" className="shrink-0">
               VETT IT
               <ArrowRight className="w-[15px] h-[15px]" strokeWidth={2.4} />
@@ -886,50 +860,6 @@ export function LandingV2Page() {
           </div>
         </Wrap>
       </footer>
-
-      {/* ── attachment modal (same flow as the live landing) ─────────── */}
-      {showUploadModal && (
-        <div
-          className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4"
-          onClick={() => setShowUploadModal(false)}
-        >
-          <div
-            className="bg-[#0E1019] border border-white/[0.13] rounded-2xl p-6 max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-['Manrope',system-ui,sans-serif] font-bold text-lg">
-                  Attach a file to your brief
-                </h3>
-                <p className="text-xs text-[#5C6470] mt-0.5">Images, PDFs, and CSVs up to 20 MB</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowUploadModal(false)}
-                className="p-2 rounded-lg hover:bg-white/5 text-[#8B919C] hover:text-[#F3F5EF] transition-colors"
-                aria-label="Close"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <FileUpload
-              bucket="vett-uploads"
-              folder="landing-attachments"
-              accept="image/jpeg,image/png,image/webp,application/pdf,text/csv"
-              maxSizeMB={20}
-              label="Upload image, PDF, or CSV"
-              hint="PNG, JPG, PDF, CSV up to 20 MB"
-              current={attachment}
-              onUpload={(f) => {
-                setAttachment(f);
-                setShowUploadModal(false);
-              }}
-              onRemove={() => setAttachment(null)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

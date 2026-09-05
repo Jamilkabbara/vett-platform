@@ -5,7 +5,7 @@
   "type": "module",
   "vettPass": 49,
   "scripts": {
-    "test": "node scripts/verify-question-metadata-roundtrip.mjs && node scripts/verify-markdown-rendering.mjs",
+    "test": "node scripts/verify-question-metadata-roundtrip.mjs && node scripts/verify-markdown-rendering.mjs && node scripts/verify-no-orphan-session-handoff.mjs",
     "dev": "vite",
     "build": "node scripts/write-version.js && vite build",
     "lint": "eslint .",
