@@ -302,7 +302,11 @@ export function MethodologyPage() {
           {OBJECTIONS.map((o) => (
             <div
               key={o.q}
-              className="rounded-2xl border border-white/10 bg-white/[0.02] p-5"
+              // min-w-0: grid items default to min-width:auto, so at 320 the
+              // nested padding chain (section 24 + card 20 + list pl-3) pushed
+              // min-content to 308px inside a 238px track and overflowed the
+              // page by 29px. Clean at 375 and above, which is why it hid.
+              className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.02] p-5"
             >
               <p className="mb-2 font-black text-white">{o.q}</p>
               <p className="text-sm leading-relaxed text-white/65">{o.a}</p>

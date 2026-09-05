@@ -130,11 +130,16 @@ export function SiteWideAskVett() {
         <button
           type="button"
           onClick={() => setAnonOpen(true)}
-          className="flex items-center gap-2 px-4 py-3 rounded-full bg-[#BEF264] text-black font-black text-xs uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
+          className="flex items-center justify-center gap-2 w-12 h-12 min-[420px]:w-auto min-[420px]:h-auto min-[420px]:px-4 min-[420px]:py-3 rounded-full bg-[#BEF264] text-black font-black text-xs uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
           aria-label="Ask VETT"
         >
           <MessageCircleQuestion className="w-4 h-4" aria-hidden />
-          Have a question?
+          {/* The 188px-wide pill sat over body copy at 320 and 375 - at 320 it
+              covered the last line of the hero paragraph. A fixed launcher
+              always overlays SOMETHING, so below 420 it collapses to a 48px
+              icon button: still a valid touch target, a fifth of the
+              footprint. The accessible name is on aria-label either way. */}
+          <span className="hidden min-[420px]:inline">Have a question?</span>
         </button>
       )}
     </div>

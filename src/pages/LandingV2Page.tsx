@@ -327,7 +327,7 @@ export function LandingV2Page() {
         {/* Mock's `.terminal`, wired to the real brief input. */}
         <form
           onSubmit={handleHeroSubmit}
-          className="lv2-heroup delay-[520ms] relative overflow-hidden mt-9 w-full max-w-[730px] flex items-center gap-3.5 rounded-[18px] border border-white/[0.13] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] pl-5 pr-[13px] py-[13px] shadow-[0_30px_80px_-30px_rgba(99,102,241,0.5)] after:content-[''] after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-[linear-gradient(90deg,transparent,rgba(124,123,245,0.6),transparent)]"
+          className="lv2-heroup delay-[520ms] relative overflow-hidden mt-9 w-full max-w-[730px] flex flex-wrap items-center gap-x-3.5 gap-y-3 rounded-[18px] border border-white/[0.13] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] pl-5 pr-[13px] py-[13px] shadow-[0_30px_80px_-30px_rgba(99,102,241,0.5)] after:content-[''] after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-[linear-gradient(90deg,transparent,rgba(124,123,245,0.6),transparent)]"
         >
           <span className="font-['Manrope',system-ui,sans-serif] font-extrabold text-[18px] text-[#BEF264] shrink-0" aria-hidden>
             &gt;_
@@ -345,7 +345,7 @@ export function LandingV2Page() {
               onBlur={() => setHeroFocused(false)}
               placeholder={heroPaused ? 'Describe your research question' : ''}
               aria-label="Describe your research question"
-              className="w-full bg-transparent border-0 p-0 text-left text-[16px] text-[#F3F5EF] placeholder:text-[#5C6470] focus:outline-none focus:ring-0 min-h-[24px]"
+              className="w-full bg-transparent border-0 p-0 text-left text-[16px] text-[#F3F5EF] placeholder:text-[#5C6470] focus:outline-none focus:ring-0 min-h-[44px]"
             />
             {!heroPaused && (
               <span
@@ -357,23 +357,28 @@ export function LandingV2Page() {
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setShowUploadModal(true)}
-            aria-label="Attach a file to your brief"
-            className={[
-              'w-10 h-10 rounded-[11px] grid place-items-center shrink-0 border transition-colors',
-              attachment
-                ? 'bg-[rgba(190,242,100,0.13)] border-[rgba(190,242,100,0.22)] text-[#BEF264]'
-                : 'bg-white/[0.045] border-white/[0.07] text-[#8B919C] hover:text-[#F3F5EF]',
-            ].join(' ')}
-          >
-            <Paperclip className="w-[18px] h-[18px]" />
-          </button>
-          <V2Button variant="indigo" type="submit" className="shrink-0">
-            VETT IT
-            <ArrowRight className="w-[15px] h-[15px]" strokeWidth={2.4} />
-          </V2Button>
+          {/* Below `sm` these take their own row (basis-full), so the input
+              above keeps the full width instead of being squeezed to ~30px at
+              320. From `sm` up they sit inline exactly as before. */}
+          <div className="flex items-center gap-3.5 shrink-0 basis-full sm:basis-auto sm:ml-auto justify-end">
+            <button
+              type="button"
+              onClick={() => setShowUploadModal(true)}
+              aria-label="Attach a file to your brief"
+              className={[
+                'w-11 h-11 rounded-[11px] grid place-items-center shrink-0 border transition-colors',
+                attachment
+                  ? 'bg-[rgba(190,242,100,0.13)] border-[rgba(190,242,100,0.22)] text-[#BEF264]'
+                  : 'bg-white/[0.045] border-white/[0.07] text-[#8B919C] hover:text-[#F3F5EF]',
+              ].join(' ')}
+            >
+              <Paperclip className="w-[18px] h-[18px]" />
+            </button>
+            <V2Button variant="indigo" type="submit" className="shrink-0">
+              VETT IT
+              <ArrowRight className="w-[15px] h-[15px]" strokeWidth={2.4} />
+            </V2Button>
+          </div>
         </form>
 
         <div className="lv2-heroup delay-[640ms] flex flex-wrap justify-center gap-x-[22px] gap-y-2 mt-[22px] text-[13.5px] text-[#8B919C]">
@@ -865,13 +870,16 @@ export function LandingV2Page() {
           <div className="mt-[42px] pt-6 border-t border-white/[0.07] text-[12.5px] text-[#5C6470] flex justify-between flex-wrap gap-3.5">
             <span>&copy; {new Date().getFullYear()} VETT Inc. All rights reserved.</span>
             <span>
-              <Link to="/privacy" className="ml-[18px] hover:text-[#8B919C] transition-colors">
+              {/* These were 15px tall - under a third of the 44px minimum, at
+                  every width. inline-flex + min-h gives a real touch target
+                  without changing where the text sits on the line. */}
+              <Link to="/privacy" className="ml-[18px] inline-flex items-center min-h-[44px] hover:text-[#8B919C] transition-colors">
                 Privacy Policy
               </Link>
-              <Link to="/terms" className="ml-[18px] hover:text-[#8B919C] transition-colors">
+              <Link to="/terms" className="ml-[18px] inline-flex items-center min-h-[44px] hover:text-[#8B919C] transition-colors">
                 Terms of Service
               </Link>
-              <Link to="/refunds" className="ml-[18px] hover:text-[#8B919C] transition-colors">
+              <Link to="/refunds" className="ml-[18px] inline-flex items-center min-h-[44px] hover:text-[#8B919C] transition-colors">
                 Refunds
               </Link>
             </span>

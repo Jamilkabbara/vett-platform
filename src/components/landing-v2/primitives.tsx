@@ -204,8 +204,10 @@ export function Reveal({
    `@media (max-width:600px)` rule comes last, so the 16px mobile gutter
    does apply. `flush` (the default) reproduces that exactly at >=1200px.
 
-   Deliberate deviation: between 600px and 1200px the mock's cascade leaves
+   Deliberate deviation: between 600px and 1256px the mock's cascade leaves
    NO gutter, so copy runs into the viewport bezel. We keep 28px there.
+   (Originally 1200px, which still left a 1200-1255 band at zero gutter -
+   measured at 1200: section padding 0, content 1200, gutter 0 each side.)
 ════════════════════════════════════════════════════════════════════════ */
 
 export function Wrap({
@@ -225,7 +227,14 @@ export function Wrap({
       className={[
         'max-w-[1200px] mx-auto relative z-[2]',
         'px-4 min-[600px]:px-7',
-        flush ? 'min-[1200px]:px-0' : '',
+        // Was min-[1200px]. At exactly 1200 the 1200px box fills the viewport,
+        // so dropping the padding took the gutter from 28px straight to ZERO
+        // and every section touched both bezels - a maximized window on a
+        // 1280 display lands in that band. 1200 + 2x28 = 1256, so from 1256 up
+        // the natural centring already provides >=28px and removing the
+        // padding is invisible. The mock's flush geometry is preserved
+        // everywhere it is actually distinguishable; the dead band is gone.
+        flush ? 'min-[1256px]:px-0' : '',
         className,
       ]
         .filter(Boolean)
