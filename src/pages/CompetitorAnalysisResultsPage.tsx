@@ -405,7 +405,7 @@ export function CompetitorAnalysisResultsPage() {
         </section>
 
         <p className="text-[11px] text-[var(--t3)] text-center pt-6 max-w-2xl mx-auto">
-          Brand Health Tracker on synthetic respondents. Per-brand cells stabilize at n≥200; for confident competitor comparisons consider 400+.
+          Brand Health Tracker on synthetic respondents. Per-brand cells stabilise at n≥200; run 400+ when you need the competitor gaps to hold.
         </p>
       </div>
 

@@ -76,7 +76,7 @@ export const EXPORT_DISCLOSURES = {
 
   /** Generic disclosure for any methodology export. */
   syntheticRespondents:
-    'VETT outputs are synthetic-respondent simulations of industry-standard research frameworks. The frameworks themselves are peer-reviewed in the academic literature; the simulation pipeline is not. Treat outputs as fast directional signal, not panel-grade truth.',
+    'VETT runs industry-standard research frameworks on synthetic respondents with deterministic analysis. The frameworks are peer-reviewed in the academic literature; the simulation pipeline is VETT\'s own. Read the output as directional signal at the sample size shown.',
 };
 
 // ── Logo lockup ──────────────────────────────────────────────────────

@@ -189,9 +189,9 @@ export const MethodologiesPage = () => {
           Every VETT mission runs an industry-standard research framework.
           The methodologies themselves — Van Westendorp pricing, MaxDiff
           feature prioritization, NPS, brand-health funnel — are
-          peer-reviewed in the academic literature. VETT outputs are
-          synthetic-respondent simulations of those frameworks, not
-          panel-grade truth.
+          peer-reviewed in the academic literature. VETT runs those
+          frameworks on synthetic respondents with deterministic analysis,
+          which is what delivers a directional read in minutes.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 mb-16">

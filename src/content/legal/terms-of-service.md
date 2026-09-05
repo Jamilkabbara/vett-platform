@@ -52,7 +52,7 @@ VETT generates AI-modeled synthetic personas to deliver market research insights
 - Mission sizes from 5 to 1,250 respondents self-serve, priced as set out in Section 5.1. Larger studies are available as a managed engagement on request
 - AI-generated synthetic personas across 193 countries
 - AI synthesis: insights, contradictions, cross-segment analysis
-- Multi-format exports: CSV, JSON, PDF, PPTX, XLSX
+- Multi-format exports: PDF, PPTX, XLSX, JSON (CSV for Creative Attention)
 
 ### 4.2 Important Limitations
 

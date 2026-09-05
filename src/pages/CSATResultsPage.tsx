@@ -433,7 +433,7 @@ export function CSATResultsPage() {
         {report && <FilterableSurvey missionId={missionId} report={report} />}
 
         <p className="text-[11px] text-[var(--t3)] text-center pt-6 max-w-2xl mx-auto">
-          NPS / CSAT / CES on synthetic respondents calibrated to the audience spec. Industry bands shown for orientation; combine with real-customer panel readings for absolute claims.
+          NPS, CSAT and CES on synthetic respondents calibrated to the audience spec, with industry bands for orientation. Use this to track direction and spot movement; anchor absolute scores against your own customer readings.
         </p>
       </div>
 

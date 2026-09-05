@@ -42,26 +42,22 @@
 import { FileText, Users, Braces, Sigma, Target } from 'lucide-react';
 
 // ── Real canonical instrument wording, quoted from the generator prompts ────
-const CANONICAL_WORDING: Array<{ method: string; text: string; source: string }> = [
+const CANONICAL_WORDING: Array<{ method: string; text: string }> = [
   {
     method: 'Van Westendorp',
     text: 'At what price would [product] be SO EXPENSIVE you would not consider buying it?',
-    source: 'claudeAI.js:617',
   },
   {
     method: 'Kano (functional)',
     text: 'How would you feel if [feature] WAS in the product?',
-    source: 'claudeAI.js:765',
   },
   {
     method: 'MaxDiff',
     text: 'Of these 4 features, which is MOST important to you, and which is LEAST important?',
-    source: 'claudeAI.js:762',
   },
   {
     method: 'NPS',
     text: 'How likely are you to recommend [brand] to a friend or colleague?',
-    source: 'claudeAI.js:907',
   },
 ];
 

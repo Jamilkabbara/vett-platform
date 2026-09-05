@@ -584,7 +584,7 @@ export function RoadmapResultsPage() {
         </section>
 
         <p className="text-[11px] text-[var(--t3)] text-center pt-6 max-w-2xl mx-auto">
-          MaxDiff + Kano on synthetic respondents. Use as directional signal for roadmap prioritization; for high-risk launches, validate with real-customer interviews.
+          MaxDiff and Kano on synthetic respondents. Use this to rank and cut the backlog, then pressure-test the top items with customer interviews.
         </p>
       </div>
 
