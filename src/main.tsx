@@ -2,6 +2,12 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+
+// Dev only - folded away in production builds. Makes horizontal overflow
+// loud now that the global `overflow-x: hidden` no longer hides it.
+if (import.meta.env.DEV) {
+  import('./lib/overflowGuard').then((m) => m.installOverflowGuard());
+}
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
 
