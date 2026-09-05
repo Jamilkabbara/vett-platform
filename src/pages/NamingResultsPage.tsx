@@ -452,7 +452,7 @@ export function NamingResultsPage() {
         </section>
 
         <p className="text-[11px] text-[var(--t3)] text-center pt-6 max-w-2xl mx-auto">
-          Naming methodology runs on synthetic respondents calibrated to your audience spec. For high-stakes brand launches, validate with real-customer panels.
+          Naming methodology runs on synthetic respondents calibrated to your audience spec. Use this to narrow to your strongest candidate, then confirm the final choice with fieldwork.
         </p>
       </div>
 

@@ -9,8 +9,9 @@ import { useAuth } from '../contexts/AuthContext';
  * Content rewritten to match Pass 31 Z1 / Z2 honest claims:
  *   - No "verified humans" / "ID-verified via government databases"
  *   - No "100% accuracy"
- *   - VETT is methodology-first, synthetic-respondent research powered
- *     by Claude — explicit about what the tool is and isn't.
+ *   - VETT is methodology-first: synthetic respondents, deterministic
+ *     analysis, directional output. Copy leads with what the tool IS;
+ *     every factual limit is kept, stated as a design choice.
  *
  * Ask VETT chatbot mounts inline at the bottom for authenticated users
  * (uses the existing dashboard-scope copilot, 30 messages / month).
@@ -32,25 +33,25 @@ const FAQS: FAQ[] = [
     category: 'How VETT works',
     question: 'How does VETT generate answers?',
     answer:
-      'Every mission runs through a multi-stage pipeline powered by Anthropic Claude models. We generate a population of synthetic respondents calibrated to your audience, simulate each one answering your questions in their own voice, then synthesize the responses into directional insights. Numeric outputs are model-derived — we treat them as decision-support signals, not as census-grade truth.',
+      'Every mission runs a multi-stage pipeline. VETT generates a population of synthetic respondents calibrated to your audience spec, simulates each one answering your questions in their own voice, then computes the analysis deterministically from those responses using the established instrument for your research type. The figures come from that computation rather than from a model writing numbers, and they describe a simulated population - read them as decision-support signal at the sample size you ran.',
   },
   {
     category: 'How VETT works',
     question: 'Are these answers from real people?',
     answer:
-      'No. VETT delivers synthetic respondents — AI personas that simulate how a defined audience would likely respond. We do not panel real consumers, do not collect PII, and do not claim panel-level statistical validity. The advantage is speed and cost; the trade-off is that you treat the output as a fast directional read, not a substitute for a representative sample on high-stakes decisions.',
+      'They are simulated. VETT builds AI personas to your audience spec and has each one answer your survey in its own voice, then computes the analysis deterministically from those answers. That design is the point: a mission takes minutes and tens of dollars where fieldwork takes weeks and thousands. It also fixes the boundary - because the respondents are simulated, there is no respondent PII to collect and no panel-level statistical validity to claim, and the output is a directional read on how a defined audience would likely respond. Use it to pick a direction fast, and confirm high-stakes decisions with fieldwork.',
   },
   {
     category: 'How VETT works',
     question: 'Which research methodologies do you support?',
     answer:
-      'Brand Lift (incrementality, exposed vs control), Creative Attention (frame-by-frame video / static analysis with attention prediction + emotion taxonomy), Pricing (Van Westendorp + Gabor-Granger), Feature Roadmap (MaxDiff + Kano), Customer Satisfaction (NPS + CSAT + CES), Concept Test, Sequential Monadic Comparison, Ad Effectiveness, Brand Health Tracker, Naming & Messaging (Monadic + Paired + TURF), and Churn (Driver Tree + Win-Back). Each runs an industry-standard research framework — the prompt, simulation, and synthesis layers are tuned per type. The frameworks themselves are peer-reviewed in the academic literature; VETT outputs are synthetic-respondent simulations of those frameworks.',
+      'Brand Lift (incrementality, exposed vs control), Creative Attention (frame-by-frame video / static analysis with attention prediction + emotion taxonomy), Pricing (Van Westendorp + Gabor-Granger), Feature Roadmap (MaxDiff + Kano), Customer Satisfaction (NPS + CSAT + CES), Concept Test, Sequential Monadic Comparison, Ad Effectiveness, Brand Health Tracker, Naming & Messaging (Monadic + Paired + TURF), Churn (Driver Tree + Win-Back), Audience Profiling (segmentation), Market Entry (multi-market routing), and open-ended General Research. Each runs an industry-standard research framework, with the prompt, simulation and synthesis layers tuned per type. The frameworks are peer-reviewed in the academic literature; VETT runs them on synthetic respondents with deterministic analysis.',
   },
   {
     category: 'Pricing',
     question: 'How is a mission priced?',
     answer:
-      'Base price scales with respondent count: $9 for 5 respondents, $99 for 50, and $900 for 1,000. Targeting depth (geo, behavioral, professional) adds a surcharge — broader targeting is cheaper, multi-criteria narrow targeting costs more. Every mission includes 5 questions; each extra question is $20. Promo codes apply at checkout. The full breakdown shows on the launch screen before any payment.',
+      'Most mission types price off the standard ladder: $9 for 5 respondents, $99 for 50, $300 for 250, $900 for 1,000. Two types have their own ladder and their own minimum. Brand Lift splits the sample across exposed and control cells, so it starts at 100 respondents ($150) and runs $300 at 200, $600 at 500. Creative Attention starts at 10 respondents ($19) and runs $69 at 50, $129 at 100. Self-serve studies go up to 1,250 respondents; above that we scope the study with you rather than sell it on the site. Targeting depth adds a per-respondent surcharge, capped per category (professional $1.50, technographic $1.00, financial $1.00, city targeting $1.00) - demographics are free, and screening adds $0.50 per respondent. Every mission includes 5 questions; each extra question is $20. Promo codes apply at checkout. The full breakdown shows on the launch screen before any payment.',
   },
   {
     category: 'Pricing',
@@ -76,13 +77,13 @@ const FAQS: FAQ[] = [
     category: 'Targeting',
     question: 'How accurate is the targeting?',
     answer:
-      'Personas are generated by Claude conditioned on your target spec — the model writes population members that fit the criteria. Targeting fidelity depends on how clearly the criteria are specified and how much real-world signal the model has on that segment. We surface a targeting summary on every mission so you can sanity-check before launch.',
+      'Personas are generated from your target spec - the model writes population members that fit the criteria. Targeting fidelity depends on how clearly the criteria are specified and how much real-world signal the model has on that segment. We surface a targeting summary on every mission so you can sanity-check before launch.',
   },
   {
     category: 'Outputs',
     question: 'What do I get when a mission completes?',
     answer:
-      'A results page with executive summary, per-question aggregations (single/multi/rating distributions, sentiment for free-text), persona profiles, screening funnel, and methodology-specific cards (e.g. price elasticity curves for pricing missions, attention decay curves for creative missions). All exportable as JSON, CSV, PDF, PowerPoint, or Excel.',
+      'A results page with executive summary, per-question aggregations (single/multi/rating distributions, sentiment for free-text), persona profiles, screening funnel, and methodology-specific cards (e.g. price elasticity curves for pricing missions, attention decay curves for creative missions). All exportable as PDF, PowerPoint, Excel, or raw JSON. Creative Attention missions also export CSV.',
   },
   {
     category: 'Outputs',
@@ -94,13 +95,13 @@ const FAQS: FAQ[] = [
     category: 'Data & privacy',
     question: 'What data do you collect?',
     answer:
-      'Account data (email, name, company), mission inputs (briefs, questions, targeting, uploaded creative assets), and usage telemetry. We do not collect PII from any "respondents" because there are no real respondents — every answer is synthetic. Mission data is private to your account by default.',
+      'Account data (email, name, company), mission inputs (briefs, questions, targeting, uploaded creative assets), and usage telemetry. Respondent answers are synthetic, so the only personal data in the system is yours - there is no respondent PII to collect in the first place. Mission data is private to your account by default.',
   },
   {
     category: 'Data & privacy',
     question: 'Can I delete my data?',
     answer:
-      'Yes. From your profile page you can delete individual missions or your entire account. Account deletion removes all associated missions, responses, chat sessions, and notifications within 30 days. Stripe payment records are retained per finance regulations.',
+      'Yes. Individual missions can be deleted from your missions list; your whole account can be deleted from your profile page. Account deletion runs immediately and removes the associated missions, responses, chat sessions and notifications. Stripe payment records are retained per finance regulations.',
   },
 ];
 
@@ -254,7 +255,7 @@ export const HelpPage = () => {
         <div className="text-center glass-panel p-12 rounded-3xl border border-white/5">
           <h3 className="text-2xl font-black text-white mb-4">Still stuck?</h3>
           <p className="text-white/60 mb-6 max-w-md mx-auto">
-            Email support directly. We aim for a response within one business day.
+            Email support directly. We aim for a response within two business days.
           </p>
           <a
             href="mailto:support@vettit.ai"

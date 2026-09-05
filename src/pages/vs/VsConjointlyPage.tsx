@@ -75,7 +75,7 @@ export function VsConjointlyPage() {
         },
         {
           q: 'Why is VETT so much cheaper?',
-          a: 'No panel recruitment cost. Synthetic respondents are AI-generated; the marginal cost is Anthropic API spend ($0.50-1.50 per mission). We pass that to customers as the $9-99 entry tiers. Conjointly\'s real-panel pricing reflects panel acquisition + retention + screening costs that don\'t exist on our side.',
+          a: 'No panel recruitment cost. Synthetic respondents are AI-generated; the marginal cost is inference spend ($0.50-1.50 per mission). We pass that to customers as the $9-99 entry tiers. Conjointly\'s real-panel pricing reflects panel acquisition + retention + screening costs that don\'t exist on our side.',
         },
       ]}
     />
