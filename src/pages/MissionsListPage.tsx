@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
-import { Zap, Plus, BarChart3, Clock, Users, ArrowRight, Trash2, Eye, X, Sparkles } from 'lucide-react';
+import { Zap, Plus, BarChart3, Clock, Users, ArrowRight, Trash2, Eye, X, Sparkles, AlertCircle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/apiClient';
 import { VOLUME_TIERS } from '../utils/pricingEngine';
@@ -35,7 +35,16 @@ interface Mission {
   // Pass 32 X2 — drives the noun in mission-card labels (respondent vs creative).
   delivery_unit?: 'respondent' | 'creative_asset' | null;
   respondent_count: number;
-  /** Actual collected responses (from mission_responses join). */
+  /**
+   * Row count of the `mission_responses` join.
+   *
+   * UNITS WARNING: this is ONE ROW PER PERSONA PER QUESTION, not a
+   * respondent count. Production mission a8f878bc holds 80 rows = 16
+   * personas x 5 questions. Rendering it against `respondent_count`
+   * produced the "80/5 respondents" card. Use
+   * `delivered_respondent_count` / `recruited_persona_count` for
+   * anything labelled "respondents".
+   */
   responses_collected?: number;
   // Pass 21 Bug 5/6: persisted qualification aggregates.
   total_simulated_count?: number | null;
@@ -55,6 +64,10 @@ interface Mission {
   paid_at?: string | null;
   // Pass 37 A2 — delivered count surfaced on completed mission cards.
   delivered_respondent_count?: number | null;
+  // Pass 50 — running respondent counter written by the recruit loop
+  // while the mission is in flight. The correct numerator for live
+  // progress; `responses_collected` is answer ROWS, not respondents.
+  recruited_persona_count?: number | null;
   questions: unknown[];
   // Legacy backend field names — kept optional for graceful fallback.
   context?: string;
@@ -197,30 +210,47 @@ export const MissionsListPage = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch ((status || '').toUpperCase()) {
       case 'ACTIVE':
+      case 'PROCESSING':
+      case 'PAID':
         return 'text-green-400 bg-green-500/10 border-green-500/30';
       case 'COMPLETED':
         return 'text-blue-400 bg-blue-500/10 border-blue-500/30';
       case 'DRAFT':
         return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
-      case 'failed':
+      case 'FAILED':
         return 'text-red-400 bg-red-500/10 border-red-500/30';
+      // Expired = a checkout that was never completed, aged out by the
+      // 14-day sweep in missionRecovery job2. Not a failure and not
+      // in-flight, so it gets its own neutral treatment rather than
+      // falling through to the raw-status default.
+      case 'EXPIRED':
+        return 'text-white/50 bg-white/5 border-white/15';
       default:
         return 'text-gray-400 bg-gray-500/10 border-gray-500/30';
     }
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
+    switch ((status || '').toUpperCase()) {
       case 'ACTIVE':
+      case 'PROCESSING':
+      case 'PAID':
         return 'Live';
       case 'COMPLETED':
         return 'Completed';
       case 'DRAFT':
         return 'Draft';
-      case 'failed':
+      case 'FAILED':
         return 'Failed';
+      case 'EXPIRED':
+        return 'Expired';
+      case 'PENDING_PAYMENT':
+      case 'PENDING':
+        return 'Awaiting payment';
+      case 'ARCHIVED':
+        return 'Archived';
       default:
         return status;
     }
@@ -244,12 +274,45 @@ export const MissionsListPage = () => {
    *   DRAFT          → "{respondent_count} {noun}"   (no slash, no rate)
    *   COMPLETED mixed→ "{total} {noun} · {rate}% qualified"
    *   COMPLETED full → "{total} {noun}"             (rate >= 99.9%)
+   *   FAILED         → "0 of {target} {noun} delivered"   (never a fraction)
+   *   EXPIRED        → "{target} {noun} requested · never launched"
    *   ACTIVE/other   → "{collected}/{target} {noun}" — preserved live-progress UI
+   *
+   * ── The "80/5 respondents" bug (fixed here) ─────────────────────
+   * `responses_collected` is the row count of the `mission_responses`
+   * join, and that table holds ONE ROW PER PERSONA PER QUESTION — it is
+   * not a respondent count. Production mission a8f878bc has 80 rows =
+   * 16 personas x 5 questions against a target of 5, so the card read
+   * "80/5 respondents": a nonsensical 1600% fraction built from two
+   * different units. Two independent faults produced it:
+   *
+   *   1. UNIT. The numerator counts answers, the denominator counts
+   *      people. `delivered_respondent_count` is the respondent truth
+   *      (COUNT DISTINCT persona_id, Pass 36 A0), so we read that and
+   *      never fall back to the row count for a respondent label.
+   *   2. STATUS. FAILED fell through to the in-flight branch, so a
+   *      dead mission rendered live progress. FAILED and EXPIRED now
+   *      have explicit branches and make no progress claim at all.
    */
   const getRespondentProgress = (mission: Mission) => {
     const statusUp = (mission.status || '').toUpperCase();
     const target   = mission.respondent_count || 0;
     const noun     = deliveryNoun(mission as { delivery_unit?: string | null; goal_type?: string | null });
+
+    // A failed mission delivered whatever the pipeline managed to
+    // finish and analyse — which is `delivered_respondent_count`, and
+    // is 0 on every failed mission in production today. Never the
+    // response-row count, and never a fraction that can exceed 1.
+    if (statusUp === 'FAILED') {
+      const delivered = Number(mission.delivered_respondent_count ?? 0) || 0;
+      return `${delivered} of ${target} ${noun} delivered`;
+    }
+
+    // Expired = the checkout was never completed, so the mission never
+    // ran. There is no progress to report and none to imply.
+    if (statusUp === 'EXPIRED') {
+      return `${target} ${noun} requested · never launched`;
+    }
 
     if (statusUp === 'COMPLETED') {
       // Pass 37 A2 — read delivered_respondent_count first (the Pass
@@ -267,12 +330,22 @@ export const MissionsListPage = () => {
         : `${total} ${noun} delivered`;
     }
 
-    if (statusUp === 'DRAFT') {
+    if (statusUp === 'DRAFT' || statusUp === 'PENDING_PAYMENT' || statusUp === 'PENDING') {
       return `${target} ${noun}`;
     }
 
-    // Active or other in-progress states: keep the live progress format.
-    const actual = mission.responses_collected ?? 0;
+    // Active or other in-progress states: keep the live progress format,
+    // but source the numerator from a RESPONDENT counter rather than the
+    // answer-row count (see the unit note above).
+    //   - delivered_respondent_count is written once, at completion.
+    //   - recruited_persona_count is the running counter recruitLoop
+    //     throttle-writes as personas qualify, so it is what makes the
+    //     line move while a mission is actually in flight.
+    // Clamped to the target so the fraction can never exceed 100%.
+    const live =
+      mission.delivered_respondent_count ?? mission.recruited_persona_count ?? 0;
+    const delivered = Number(live) || 0;
+    const actual = target > 0 ? Math.min(delivered, target) : delivered;
     return `${actual}/${target} ${noun}`;
   };
 
@@ -299,6 +372,35 @@ export const MissionsListPage = () => {
     return `$${estimated || 0}`;
   };
 
+  /**
+   * Was this mission actually charged?
+   *
+   * `total_price_usd` is written when the CHECKOUT SESSION is created,
+   * not when money moves — so a mission the user abandoned at the Stripe
+   * page keeps a price on its row forever. The card rendered that number
+   * in 24px bold with nothing qualifying it, which is why a read of the
+   * live dashboard reported two expired missions as "charged $169" and
+   * "charged $430". Neither was: verified against production on
+   * 2026-09-06, all 14 expired missions have paid_at NULL,
+   * latest_payment_intent_id NULL, paid_amount_cents NULL and no
+   * `mission_paid` funnel event, while all 66 completed and all 3 failed
+   * missions have paid_at set.
+   *
+   * `paid_at` is therefore the settlement signal, and the price on an
+   * unpaid mission is labelled as the quote it actually is.
+   */
+  const wasCharged = (mission: Mission): boolean => Boolean(mission.paid_at);
+
+  /** Small caption under the card price. Empty string renders nothing. */
+  const getMissionPriceCaption = (mission: Mission): string => {
+    const statusUp = (mission.status || '').toUpperCase();
+    if (statusUp === 'DRAFT') return 'Estimated';
+    if (wasCharged(mission)) return '';
+    if (statusUp === 'EXPIRED') return 'Quoted - not charged';
+    if (statusUp === 'PENDING_PAYMENT' || statusUp === 'PENDING') return 'Quoted - not yet charged';
+    return 'Quoted';
+  };
+
   const getEstimatedTime = (mission: Mission) => {
     // Pass 32 X8 — case-insensitive status comparison. The DB stores
     // 'completed' lowercase; the legacy uppercase comparison silently
@@ -313,9 +415,27 @@ export const MissionsListPage = () => {
     if (statusUp === 'COMPLETED') return 'Completed';
     if (statusUp === 'FAILED')    return 'Failed';
     if (statusUp === 'DRAFT')     return 'Not launched';
+    if (statusUp === 'ARCHIVED')  return 'Archived';
     if (statusUp === 'PENDING_PAYMENT' || statusUp === 'PENDING') {
       return 'Awaiting payment';
     }
+    // EXPIRED had no branch here, so it fell through to the in-flight
+    // heuristic below — and because that heuristic is purely elapsed
+    // time, every expired mission was older than 15 minutes and every
+    // expired card therefore read "Almost done…", forever, for missions
+    // that never launched and have zero respondents. Fourteen of them
+    // were doing this in production.
+    if (statusUp === 'EXPIRED') return 'Expired - checkout never completed';
+
+    // The elapsed-time heuristic below is now behind an ALLOWLIST rather
+    // than being the fallthrough. As a fallthrough it applied its
+    // optimistic "Almost done…" ceiling to every status nobody had
+    // enumerated yet, which is exactly how `expired` started claiming
+    // progress. A status we do not recognise gets its own name back, not
+    // a promise about it.
+    const IN_FLIGHT = ['ACTIVE', 'PROCESSING', 'PAID', 'IN_PROGRESS'];
+    if (!IN_FLIGHT.includes(statusUp)) return getStatusText(mission.status);
+
     // In-flight: use elapsed-time heuristic per goal_type.
     const paidIso = mission.paid_at ?? mission.created_at;
     if (!paidIso) return 'Processing…';
@@ -349,6 +469,14 @@ export const MissionsListPage = () => {
       // /results/:id and rendered the empty/failed results UI — a
       // user with a payment failure had no path back to retry.
       navigate(`/dashboard/${mission.id}?action=pay`);
+    } else if (statusUp === 'EXPIRED') {
+      // Expired = a checkout that aged out in pending_payment. There are
+      // no results to route to — /results/:id has no `expired` branch, so
+      // these cards used to land on the in-flight progress UI and poll a
+      // mission that will never run. Mission Control is the surface where
+      // the user can review the brief and relaunch it themselves. No
+      // ?action=pay: reopening a mission must not auto-start a checkout.
+      navigate(`/dashboard/${mission.id}`);
     } else {
       navigate(`/results/${mission.id}`);
     }
@@ -630,7 +758,12 @@ export const MissionsListPage = () => {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${getStatusColor(mission.status)}`}>
-                        {mission.status === 'ACTIVE' && (
+                        {/* Case-normalised: the DB stores statuses lowercase,
+                            so the old `=== 'ACTIVE'` test never fired on a
+                            real live mission. */}
+                        {['ACTIVE', 'PROCESSING', 'PAID', 'IN_PROGRESS'].includes(
+                          (mission.status || '').toUpperCase(),
+                        ) && (
                           <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                         )}
                         <span className="text-xs font-bold uppercase tracking-wider">
@@ -694,13 +827,24 @@ export const MissionsListPage = () => {
 
                   <div className="pt-4 border-t border-white/5 mt-auto">
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-black text-white">
-                        {/* Pass 21 Bug 8: prefer total_price_usd (actually
-                            charged) for non-draft missions; price_estimated
-                            is just the pre-checkout quote and may diverge
-                            from the final charge by up to 4× after promos. */}
-                        {getMissionPriceLabel(mission)}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-2xl font-black text-white">
+                          {/* Pass 21 Bug 8: prefer total_price_usd (actually
+                              charged) for non-draft missions; price_estimated
+                              is just the pre-checkout quote and may diverge
+                              from the final charge by up to 4× after promos. */}
+                          {getMissionPriceLabel(mission)}
+                        </span>
+                        {/* Pass 50 — qualify the number when no money moved.
+                            total_price_usd is written at checkout-session
+                            creation, so an abandoned checkout keeps a price
+                            on its row; unqualified, that reads as a charge. */}
+                        {getMissionPriceCaption(mission) && (
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-white/40 mt-0.5">
+                            {getMissionPriceCaption(mission)}
+                          </span>
+                        )}
+                      </div>
                       {/* Pass 37 A4 — status-driven CTA. PENDING_PAYMENT
                           gets a payment-recovery CTA (was silently routing
                           to /results/:id which rendered an empty page). */}
@@ -719,6 +863,30 @@ export const MissionsListPage = () => {
                             <div className="flex items-center gap-2 text-amber-300 group-hover:translate-x-1 transition-transform">
                               <span className="text-sm font-bold">Complete Payment</span>
                               <ArrowRight className="w-4 h-4" />
+                            </div>
+                          );
+                        }
+                        // A failed mission has no results. It used to offer
+                        // "View Results" anyway, which routed to /results/:id
+                        // and rendered MissionFailureCard — an error page
+                        // behind a button promising the opposite. The CTA now
+                        // says what is actually on the other side of it.
+                        if (statusUp === 'FAILED') {
+                          return (
+                            <div className="flex items-center gap-2 text-red-300 group-hover:translate-x-1 transition-transform">
+                              <AlertCircle className="w-4 h-4" />
+                              <span className="text-sm font-bold">See what happened</span>
+                            </div>
+                          );
+                        }
+                        // Expired never ran, so there is nothing to view and
+                        // nothing to pay for at the old quote. Offer the only
+                        // action that helps: reopen it in Mission Control.
+                        if (statusUp === 'EXPIRED') {
+                          return (
+                            <div className="flex items-center gap-2 text-white/60 group-hover:translate-x-1 transition-transform">
+                              <RotateCcw className="w-4 h-4" />
+                              <span className="text-sm font-bold">Reopen</span>
                             </div>
                           );
                         }
