@@ -194,7 +194,12 @@ export function HowItWorksVisual() {
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* min-w-0 on BOTH children: grid items default to min-width:auto, so
+          at 320 the nested padding chain (section 24 + card 20 + inner card 16
+          + li border-l-2 pl-3) pushed min-content to 308px inside a 238px
+          track and overflowed the page by 29px. Clean at 375 and above, which
+          is why it hid. */}
+      <div className="grid gap-4 lg:grid-cols-2 [&>div]:min-w-0">
         {/* LEFT — the instrument */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
           <p className="mb-4 text-[10px] font-black uppercase tracking-[0.18em] text-white/40">
