@@ -8,7 +8,7 @@ import { api } from '../lib/apiClient';
 import { VOLUME_TIERS } from '../utils/pricingEngine';
 import { LeadCaptureForm } from '../components/marketing/LeadCaptureForm';
 import { RecommendedNextMissions } from '../components/results/RecommendedNextMissions';
-import { deliveryNoun } from '../lib/missionDeliveryUnit';
+import { deliveryNounFor } from '../lib/missionDeliveryUnit';
 // Pass 42 G3 — user-friendly error copy. Internal logs keep the
 // technical message; user-visible surfaces show the mapped version.
 import { userFacingError } from '../lib/errorCopy';
@@ -297,7 +297,9 @@ export const MissionsListPage = () => {
   const getRespondentProgress = (mission: Mission) => {
     const statusUp = (mission.status || '').toUpperCase();
     const target   = mission.respondent_count || 0;
-    const noun     = deliveryNoun(mission as { delivery_unit?: string | null; goal_type?: string | null });
+    // The noun agrees with the number it sits beside, which is not the same
+    // number in every branch, so it is resolved per branch rather than once.
+    const unitOf   = mission as { delivery_unit?: string | null; goal_type?: string | null };
 
     // A failed mission delivered whatever the pipeline managed to
     // finish and analyse — which is `delivered_respondent_count`, and
@@ -305,13 +307,13 @@ export const MissionsListPage = () => {
     // response-row count, and never a fraction that can exceed 1.
     if (statusUp === 'FAILED') {
       const delivered = Number(mission.delivered_respondent_count ?? 0) || 0;
-      return `${delivered} of ${target} ${noun} delivered`;
+      return `${delivered} of ${target} ${deliveryNounFor(unitOf, target)} delivered`;
     }
 
     // Expired = the checkout was never completed, so the mission never
     // ran. There is no progress to report and none to imply.
     if (statusUp === 'EXPIRED') {
-      return `${target} ${noun} requested · never launched`;
+      return `${target} ${deliveryNounFor(unitOf, target)} requested · never launched`;
     }
 
     if (statusUp === 'COMPLETED') {
@@ -325,13 +327,14 @@ export const MissionsListPage = () => {
       const total = delivered || Number(mission.total_simulated_count ?? target) || target;
       const rate  = mission.qualification_rate;
       const showRate = rate != null && Number.isFinite(rate) && rate < 0.999;
+      const totalNoun = deliveryNounFor(unitOf, total);
       return showRate
-        ? `${total} ${noun} delivered · ${Math.round(Number(rate) * 100)}% qualified`
-        : `${total} ${noun} delivered`;
+        ? `${total} ${totalNoun} delivered · ${Math.round(Number(rate) * 100)}% qualified`
+        : `${total} ${totalNoun} delivered`;
     }
 
     if (statusUp === 'DRAFT' || statusUp === 'PENDING_PAYMENT' || statusUp === 'PENDING') {
-      return `${target} ${noun}`;
+      return `${target} ${deliveryNounFor(unitOf, target)}`;
     }
 
     // Active or other in-progress states: keep the live progress format,
@@ -346,7 +349,8 @@ export const MissionsListPage = () => {
       mission.delivered_respondent_count ?? mission.recruited_persona_count ?? 0;
     const delivered = Number(live) || 0;
     const actual = target > 0 ? Math.min(delivered, target) : delivered;
-    return `${actual}/${target} ${noun}`;
+    // Agrees with the denominator: "0/1 creative", "3/5 respondents".
+    return `${actual}/${target} ${deliveryNounFor(unitOf, target)}`;
   };
 
   /**

@@ -26,25 +26,16 @@ export function deliveryUnit(mission: {
 }
 
 /**
- * Human-readable count label. Pluralizes correctly, swaps the noun
- * per delivery_unit so Creative Attention reads "1 creative analyzed"
- * instead of "1 respondent".
- */
-export function formatDeliveryCount(
-  count: number,
-  mission: { delivery_unit?: string | null; goal_type?: string | null },
-): string {
-  const unit = deliveryUnit(mission);
-  const n = count.toLocaleString();
-  if (unit === 'creative_asset') {
-    return count === 1 ? `${n} creative analyzed` : `${n} creatives analyzed`;
-  }
-  return count === 1 ? `${n} respondent` : `${n} respondents`;
-}
-
-/**
- * Plural noun only (for cases where the count is rendered separately).
- * "respondents" or "creatives analyzed".
+ * The delivery noun ALONE, for call sites that render the count separately.
+ * "respondents" / "respondent", or "creatives" / "creative".
+ *
+ * Deliberately a bare noun with no participle. It used to return
+ * "creatives analyzed", which collided with every caller that appends its own
+ * verb: the mission cards rendered "0 of 1 creatives analyzed delivered" and
+ * "1 creatives analyzed requested, never launched". The noun supplies the
+ * noun; the template supplies the grammar.
+ *
+ * Prefer deliveryNounFor(mission, count) so the number and the noun agree.
  */
 export function deliveryNoun(
   mission: { delivery_unit?: string | null; goal_type?: string | null },
@@ -52,7 +43,22 @@ export function deliveryNoun(
 ): string {
   const unit = deliveryUnit(mission);
   if (unit === 'creative_asset') {
-    return plural ? 'creatives analyzed' : 'creative analyzed';
+    return plural ? 'creatives' : 'creative';
   }
   return plural ? 'respondents' : 'respondent';
+}
+
+/**
+ * The delivery noun agreed with `count`.
+ *
+ * Every call site formats "{n} {noun}", so the noun has to know n. Calling
+ * deliveryNoun() with its default plural:true is what produced "1 creatives"
+ * and "1 respondents" on every single-unit mission, which is most creative
+ * attention missions.
+ */
+export function deliveryNounFor(
+  mission: { delivery_unit?: string | null; goal_type?: string | null },
+  count: number,
+): string {
+  return deliveryNoun(mission, Math.abs(Number(count)) !== 1);
 }
