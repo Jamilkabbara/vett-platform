@@ -7,17 +7,23 @@
  * targets the buyer), nothing on fetch failure, and nothing when the goal type
  * has no ladder. It can never break its host page.
  *
- * Two render variants for the two design systems it mounts into:
+ * Three render variants for the three design systems it mounts into:
  *  - "premium": section 05 inside PremiumResults (scoped plain-CSS vocab).
  *    No `rv` reveal class on purpose: this section mounts AFTER the report's
  *    IntersectionObserver pass, so `rv` would leave it permanently invisible.
  *  - "cards": Tailwind card row above the MissionsListPage grid.
+ *  - "rv2": a <Card> inside ResultsV2Page, so the section sits in that page's
+ *    vocabulary rather than in a third hand-rolled one. Rows are a single
+ *    <button> each (no interactive element nested inside another), and the
+ *    text column is minmax(0,1fr) so a long `why` shrinks the column instead
+ *    of pushing the row past the card.
  */
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { Card, QHead } from '../results-v2/primitives';
 import {
   buildNextMissions, stageNextMission,
   type MissionContextRow, type NextMission,
@@ -31,7 +37,7 @@ export function RecommendedNextMissions({
   variant,
 }: {
   missionId: string;
-  variant: 'premium' | 'cards';
+  variant: 'premium' | 'cards' | 'rv2';
 }) {
   const navigate = useNavigate();
   const [recs, setRecs] = useState<NextMission[]>([]);
@@ -87,6 +93,42 @@ export function RecommendedNextMissions({
           ))}
         </div>
       </>
+    );
+  }
+
+  if (variant === 'rv2') {
+    return (
+      <Card id="next-missions">
+        <QHead
+          eyebrow="Recommended next steps"
+          title="Where to take this next"
+          meta="Pre-filled from this mission"
+        />
+        <div className="mt-2 flex flex-col">
+          {recs.map((rec, i) => (
+            <button
+              type="button"
+              key={rec.goal}
+              onClick={() => go(rec)}
+              className="group grid w-full grid-cols-[54px_minmax(0,1fr)_auto] items-center gap-2 border-b border-white/[0.07] py-[22px] text-left last:border-b-0 max-[680px]:grid-cols-[38px_minmax(0,1fr)]"
+            >
+              <span className="font-['Manrope',system-ui,sans-serif] text-[34px] font-extrabold leading-none text-[#BEF264] max-[680px]:text-[26px]">
+                {i + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="mb-[6px] block font-['Manrope',system-ui,sans-serif] text-[17px] font-bold text-[#F3F5EF]">
+                  {rec.emoji} {rec.label}
+                </span>
+                <span className="block max-w-[70ch] text-[14px] text-[#8B919C]">{rec.why}</span>
+              </span>
+              <span className="flex flex-none items-center gap-2 text-[13px] font-semibold tracking-[0.04em] text-[#BEF264] max-[680px]:hidden">
+                Set up
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </span>
+            </button>
+          ))}
+        </div>
+      </Card>
     );
   }
 
