@@ -52,6 +52,7 @@ export interface ScalarSlot {
 /**
  * Budget for the numeral slot. Tuned against real rows:
  *   "62/100"        1 word   6 chars  -> scalar
+ *   "$2,400,000.00" 1 word  13 chars  -> scalar (tidied to "$2,400,000")
  *   "SAR 29-38"     2 words  9 chars  -> scalar
  *   "71.7% (n=43)"  2 words 12 chars  -> scalar
  *   "95-235"        1 word   6 chars  -> scalar
@@ -63,11 +64,27 @@ const MAX_SCALAR_WORDS = 2;
 /** Trailing sentence punctuation, or any internal sentence break. */
 const SENTENCE = /[.!?](\s|$)|[,;:]\s/;
 
-/** Trim runaway float precision: 74.4186% -> 74.4%, 82.50 -> 82.5. */
+/**
+ * Trim runaway float precision: 74.4186% -> 74.4%, 82.50 -> 82.5.
+ *
+ * The integer part must be matched WITH its thousands separators. The earlier
+ * pattern was `(-?\d+)\.(\d{2,})`, which on "$2,400,000.00" could only match
+ * the last group, "000.00", and replaced it with the rounded value "0" -
+ * silently rendering "$2,400,0". That is a corrupted figure on a paid
+ * deliverable, which is worse than the overflow this module's callers guard
+ * against. Grouping is preserved on the way back out, and the `(?!\d)` stops
+ * the match halfway through a longer run of digits.
+ */
+const DECIMALS = /(-?\d[\d,]*)\.(\d{2,})(?!\d)/g;
+
 function tidyNumber(s: string): string {
-  return s.replace(/(-?\d+)\.(\d{2,})/g, (_whole, int: string, frac: string) => {
-    const rounded = Number(`${int}.${frac}`).toFixed(1);
-    return rounded.endsWith('.0') ? rounded.slice(0, -2) : rounded;
+  return s.replace(DECIMALS, (_whole, intPart: string, frac: string) => {
+    const grouped = intPart.includes(',');
+    const rounded = Number(`${intPart.replace(/,/g, '')}.${frac}`);
+    if (!Number.isFinite(rounded)) return _whole;
+    const [int, dec] = rounded.toFixed(1).split('.');
+    const head = grouped ? Number(int).toLocaleString('en-US') : int;
+    return dec === '0' ? head : `${head}.${dec}`;
   });
 }
 
