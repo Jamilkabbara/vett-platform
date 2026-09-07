@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ScrollToTop } from './components/shared/ScrollToTop';
@@ -60,10 +60,15 @@ const ResultsPage         = lazy(() => import('./pages/ResultsPage').then(m => (
 // dispatches to the right results page. /results/:id used to mount
 // ResultsPage directly which broke for creative_attention missions.
 const ResultsRouter       = lazy(() => import('./pages/ResultsRouter').then(m => ({ default: m.ResultsRouter })));
-// HELD PREVIEW — /results-v2/:missionId is an additive redesign preview built
-// from vett-final-mocks/vett-results-redesign.html. It does NOT replace
-// /results/:missionId, which still renders ResultsRouter unchanged.
-const ResultsV2Page       = lazy(() => import('./pages/ResultsV2Page').then(m => ({ default: m.ResultsV2Page })));
+// /results-v2/:missionId was an unlinked preview route that shipped to
+// production. Nothing in the app navigated to it, but the route resolved for
+// anyone who had the URL, and the preview is missing features the live results
+// page has. A leaked link therefore showed a customer a WORSE version of a
+// report they had paid for, with no indication it was a preview. It now
+// redirects to the canonical results URL, which is also the end state the
+// cutover needs. Do not delete this route: any link already in the wild has to
+// keep resolving. Review the redesign on the pull request's Vercel preview
+// deployment instead, which is what preview deployments are for.
 const MissionsListPage    = lazy(() => import('./pages/MissionsListPage').then(m => ({ default: m.MissionsListPage })));
 const SignInPage          = lazy(() => import('./pages/SignInPage').then(m => ({ default: m.SignInPage })));
 const ForgotPasswordPage  = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
@@ -88,6 +93,24 @@ const VsSyntheticUsersPage          = lazy(() => import('./pages/vs/VsSyntheticU
 const VsAaruPage                    = lazy(() => import('./pages/vs/VsAaruPage').then(m => ({ default: m.VsAaruPage })));
 const VsQuantilopePage              = lazy(() => import('./pages/vs/VsQuantilopePage').then(m => ({ default: m.VsQuantilopePage })));
 const VsTraditionalResearchPage     = lazy(() => import('./pages/vs/VsTraditionalResearchPage').then(m => ({ default: m.VsTraditionalResearchPage })));
+
+/**
+ * Forward a /results-v2/:missionId link to the canonical /results/:missionId.
+ *
+ * <Navigate to> cannot interpolate a route param declaratively in React
+ * Router v6, so the param is read here. `replace` keeps the dead preview URL
+ * out of the back-stack, so Back from the results page goes where the user
+ * actually came from rather than bouncing through the redirect.
+ */
+function ResultsV2Redirect() {
+  const { missionId } = useParams<{ missionId: string }>();
+  const { search, hash } = useLocation();
+  // Carry the query string and fragment across. A redirect that silently drops
+  // them is a different URL, and this one is reached by links already in the
+  // wild whose params we do not get to choose.
+  const to = missionId ? `/results/${missionId}${search}${hash}` : '/missions';
+  return <Navigate to={to} replace />;
+}
 
 function App() {
   // Pass 22 Bug 22.1 — drain any funnel events that got queued in
@@ -175,7 +198,7 @@ function App() {
               <Route path="/payment-cancel" element={<PaymentCancelPage />} />
 
               <Route path="/results/:missionId" element={<ResultsRouter />} />
-              <Route path="/results-v2/:missionId" element={<ResultsV2Page />} />
+              <Route path="/results-v2/:missionId" element={<ResultsV2Redirect />} />
               <Route path="/results" element={<ResultsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
 
