@@ -717,6 +717,83 @@ const GATED: CanonicalReport = {
   },
 };
 
-export const FIXTURES: Record<string, CanonicalReport> = { ...BASE, gated: GATED };
+/* ── stress · SYNTHETIC · width + segments + personas ─────────────────── */
+
+/**
+ * The one fixture here that is NOT reshaped production data, and it is labelled
+ * so on purpose. It exists to pin the two things the production rows above
+ * cannot exercise:
+ *
+ *  1. WIDTH. Three headline cells that all resolve to a SCALAR, so the strip
+ *     carries three 46px numerals rather than two plus a demoted prose cell.
+ *     That is the shape PR #104 measured on the premium page, where a value
+ *     with no break opportunity forced a ~273px track and three of them needed
+ *     ~845px of viewport. `research` has no adapter in centerpiece.ts, so the
+ *     cells come from `key_findings` through the generic fallback.
+ *  2. The two sections the production fixtures dropped: `segments` and
+ *     `personas`. Without them the segment explorer and the persona grid
+ *     self-hide and cannot be rendered or screenshotted locally.
+ *
+ * Choosing a segment calls the real endpoint and there is no backend in a
+ * fixture run, so the select falls back to the unfiltered report. The control,
+ * the low-n copy and the grid are still exercised.
+ *
+ * Reached at /results-v2/stress?fixture=1.
+ */
+const STRESS: CanonicalReport = {
+  ...BASE[MARKET_ENTRY.id],
+  header: {
+    ...BASE[MARKET_ENTRY.id].header,
+    title: 'Width stress fixture',
+    methodology: 'research',
+    methodology_label: 'Research',
+  },
+  centerpiece: { methodology: 'research', data: {} },
+  key_findings: [
+    { label: 'Year one revenue ceiling', value: '$2,400,000.00' },
+    { label: 'Addressable spend', value: '$2,400,000.00' },
+    { label: 'Break-even revenue', value: '$2,400,000.00' },
+  ],
+  segments: [
+    { key: 'age:25-34', label: 'Age 25 to 34', group: 'age', n: 31 },
+    { key: 'age:35-44', label: 'Age 35 to 44', group: 'age', n: 27 },
+    { key: 'city:riyadh', label: 'Riyadh', group: 'city', n: 22 },
+    { key: 'city:jeddah', label: 'Jeddah', group: 'city', n: 2 },
+  ],
+  personas: [
+    {
+      name: 'Convenience-first professional',
+      role: 'Salaried, 28 to 38, dual income',
+      description:
+        'Buys chilled ready meals on the way home twice a week. Trades up on quality when the label is legible and the certification is explicit.',
+      share: '34% of sample',
+    },
+    {
+      name: 'Cautious health switcher',
+      role: 'Parent, 35 to 45',
+      description:
+        'Interested in plant-based but wants an ingredient list they recognise. Halal certification is a hard gate, not a preference.',
+      share: '29% of sample',
+    },
+    {
+      name: 'Price-led experimenter',
+      role: 'Student or early career, 21 to 27',
+      description: 'Will try anything once at the right price. Repeat purchase tracks promotion, not brand.',
+      share: '22% of sample',
+    },
+    {
+      name: 'Habitual meat buyer',
+      role: 'Household shopper, 40 plus',
+      description: 'Unmoved by the category so far. The barrier is taste expectation rather than price.',
+      share: '15% of sample',
+    },
+  ],
+};
+
+export const FIXTURES: Record<string, CanonicalReport> = {
+  ...BASE,
+  gated: GATED,
+  stress: STRESS,
+};
 
 export const FIXTURE_IDS = Object.keys(FIXTURES);
