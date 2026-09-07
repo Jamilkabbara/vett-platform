@@ -67,7 +67,7 @@ import {
   QHead,
   RailStat,
   RailTitle,
-  StatCell,
+  StatStrip,
   VettRead,
 } from '../components/results-v2/primitives';
 import {
@@ -596,7 +596,7 @@ export function ResultsV2Page() {
       <div className="relative z-[1] mx-auto grid max-w-[1340px] items-start gap-[34px] px-7 pb-[90px] pt-[42px] max-[1080px]:grid-cols-1 max-[680px]:px-4 min-[1081px]:grid-cols-[minmax(0,1fr)_320px]">
         <main className="flex min-w-0 flex-col gap-[26px]">
           {/* HERO */}
-          <section className="grid items-stretch gap-[30px] max-[1080px]:grid-cols-1 min-[1081px]:grid-cols-[1.45fr_1fr]">
+          <section className="grid items-stretch gap-[30px] max-[1080px]:grid-cols-1 min-[1081px]:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
             <div className="py-[30px] pr-[30px] max-[1080px]:px-0 max-[1080px]:py-[6px]">
               <Eyebrow>
                 {h.methodology_label}
@@ -688,13 +688,7 @@ export function ResultsV2Page() {
               {cp.directionalNote && (
                 <p className="mt-3 text-[12.5px] text-[#F2B24A]">{cp.directionalNote}</p>
               )}
-              {cells.length > 0 && (
-                <div className="mt-[18px] grid overflow-hidden rounded-[16px] border border-white/[0.07] max-[680px]:grid-cols-1 min-[681px]:grid-cols-[1fr_1fr_1.5fr]">
-                  {cells.map((c) => (
-                    <StatCell key={c.label} label={c.label} value={c.value} tone={c.tone} />
-                  ))}
-                </div>
-              )}
+              <StatStrip cells={cells} />
               {cp.view.rowsMeta && (
                 <div className="mt-5 text-[12.5px] tracking-[0.04em] text-[#5C6470]">
                   {cp.view.rowsMeta}

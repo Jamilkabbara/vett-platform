@@ -18,7 +18,7 @@
  *   .nav                 -> <JumpNav>
  *   #lens                -> <Lens>
  */
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useLensState } from './hooks';
 import type { ScalarSlot } from './valueSlot';
 
@@ -158,14 +158,31 @@ export interface StatCellProps {
   tone?: 'lime' | 'amber' | 'rose' | 'plain';
 }
 
-/** .md-hero .cell - a numeral over a caption, or prose over a caption. */
+/**
+ * .md-hero .cell - a numeral over a caption, or prose over a caption.
+ *
+ * WIDTH GUARDS (the defect PR #104 fixed in premium-results.css, which this
+ * component carried too):
+ *  - `min-w-0`. A grid item's default `min-width:auto` refuses to shrink below
+ *    its min-content, so the 46px numeral, not the track, decides the column
+ *    width. With the parent's `minmax(0,1fr)` tracks this is belt-and-braces,
+ *    but it is the half that survives someone reintroducing a bare `1fr`.
+ *  - `overflow-wrap:anywhere` on the numeral. "$2,400,000.00" has no break
+ *    opportunity, so without this it cannot wrap and can only overflow. The
+ *    backstop is what turns a clipped number into a wrapped one.
+ *
+ * The stacking breakpoint is 861px, not 681px: three tiles carrying a
+ * 273px-wide value need ~845px before they fit, so 681 collapsed far too late
+ * and 681-860px rendered three squeezed tiles.
+ */
 export function StatCell({ label, value, tone = 'plain' }: StatCellProps) {
   return (
-    <div className="border-b border-white/[0.07] px-[26px] py-6 last:border-b-0 min-[681px]:border-b-0 min-[681px]:border-r min-[681px]:border-white/[0.07] min-[681px]:last:border-r-0">
+    <div className="min-w-0 border-b border-white/[0.07] px-[26px] py-6 last:border-b-0 min-[861px]:border-b-0 min-[861px]:border-r min-[861px]:border-white/[0.07] min-[861px]:last:border-r-0">
       {value.scalar !== null ? (
         <div
           className={[
             "font-['Manrope',system-ui,sans-serif] text-[46px] font-extrabold leading-none tabular-nums",
+            '[overflow-wrap:anywhere]',
             NUMERAL_TONE[tone],
           ].join(' ')}
         >
@@ -189,6 +206,44 @@ export function StatCell({ label, value, tone = 'plain' }: StatCellProps) {
   );
 }
 
+/**
+ * The headline strip that holds the StatCells.
+ *
+ * The column count is ALWAYS the cell count, so the grid can never have an
+ * empty cell (the second defect #104 hit: 3 tiles in a 2-column auto-fit grid
+ * left one cell painting the container's background as a grey block). Tracks
+ * are `minmax(0,...)`, never a bare `1fr`, so a long value shrinks the text
+ * rather than the track refusing to shrink and pushing the strip past the
+ * viewport. Below 861px the strip stacks to one full-width column, where a
+ * long number has the whole card and never wraps.
+ *
+ * There is no `overflow-hidden` here on purpose. The old strip had one, which
+ * meant an overflowing value was CLIPPED with no scrollbar: not scrolled away,
+ * gone. Per PR #103 overflow is left real so the dev overflow guard can shout
+ * about it. Nothing here needs clipping: the cells have borders but no
+ * background of their own, so the 16px radius reads correctly without it.
+ */
+export function StatStrip({ cells }: { cells: StatCellProps[] }) {
+  if (cells.length === 0) return null;
+  // N-1 equal tracks plus a wider last one (the mock's 1fr 1fr 1.5fr), built
+  // for the actual cell count. Set as a custom property because Tailwind's
+  // JIT cannot see a template string assembled at runtime.
+  const cols =
+    cells.length === 1
+      ? 'minmax(0,1fr)'
+      : `${'minmax(0,1fr) '.repeat(cells.length - 1)}minmax(0,1.5fr)`;
+  return (
+    <div
+      className="rv2-statstrip mt-[18px] rounded-[16px] border border-white/[0.07]"
+      style={{ '--rv2-strip-cols': cols } as CSSProperties}
+    >
+      {cells.map((c) => (
+        <StatCell key={c.label} label={c.label} value={c.value} tone={c.tone} />
+      ))}
+    </div>
+  );
+}
+
 /** .kstat - the sticky rail's key-metric row. Same guard, smaller numeral. */
 export function RailStat({ label, value, tone = 'lime' }: StatCellProps) {
   return (
@@ -196,7 +251,8 @@ export function RailStat({ label, value, tone = 'lime' }: StatCellProps) {
       {value.scalar !== null ? (
         <span
           className={[
-            "flex-none font-['Manrope',system-ui,sans-serif] text-[30px] font-extrabold leading-none tabular-nums",
+            "min-w-0 font-['Manrope',system-ui,sans-serif] text-[30px] font-extrabold leading-none tabular-nums",
+            '[overflow-wrap:anywhere]',
             NUMERAL_TONE[tone],
           ].join(' ')}
         >
