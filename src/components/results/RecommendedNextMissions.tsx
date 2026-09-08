@@ -7,10 +7,7 @@
  * targets the buyer), nothing on fetch failure, and nothing when the goal type
  * has no ladder. It can never break its host page.
  *
- * Three render variants for the three design systems it mounts into:
- *  - "premium": section 05 inside PremiumResults (scoped plain-CSS vocab).
- *    No `rv` reveal class on purpose: this section mounts AFTER the report's
- *    IntersectionObserver pass, so `rv` would leave it permanently invisible.
+ * Two render variants for the two design systems it mounts into:
  *  - "cards": Tailwind card row above the MissionsListPage grid.
  *  - "rv2": a <Card> inside ResultsV2Page, so the section sits in that page's
  *    vocabulary rather than in a third hand-rolled one. Rows are a single
@@ -37,7 +34,7 @@ export function RecommendedNextMissions({
   variant,
 }: {
   missionId: string;
-  variant: 'premium' | 'cards' | 'rv2';
+  variant: 'cards' | 'rv2';
 }) {
   const navigate = useNavigate();
   const [recs, setRecs] = useState<NextMission[]>([]);
@@ -61,40 +58,6 @@ export function RecommendedNextMissions({
   if (recs.length === 0) return null;
 
   const go = (rec: NextMission) => navigate(stageNextMission(rec));
-
-  if (variant === 'premium') {
-    return (
-      <>
-        <div className="sec-h">
-          <span className="n serif">05</span>
-          <h2>Recommended next steps</h2>
-          <span className="meta mono">pre-filled from this mission</span>
-        </div>
-        <div className="recs">
-          {recs.map((rec, i) => (
-            <div
-              className="rec"
-              key={rec.goal}
-              role="button"
-              tabIndex={0}
-              onClick={() => go(rec)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(rec); } }}
-              style={{ cursor: 'pointer' }}
-            >
-              <span className="ix serif">{i + 1}</span>
-              <div style={{ flex: 1 }}>
-                <h4>{rec.emoji} {rec.label}</h4>
-                <p>{rec.why}</p>
-              </div>
-              <button type="button" className="btn" onClick={(e) => { e.stopPropagation(); go(rec); }}>
-                Set up
-              </button>
-            </div>
-          ))}
-        </div>
-      </>
-    );
-  }
 
   if (variant === 'rv2') {
     return (
