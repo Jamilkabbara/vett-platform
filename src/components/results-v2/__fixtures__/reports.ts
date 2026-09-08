@@ -23,6 +23,7 @@
  */
 import type { CanonicalReport, CanonicalSurveyQuestion } from '../../results/report/useCanonicalReport';
 import { SATISFACTION } from './production/satisfaction';
+import { CHURN_RESEARCH } from './production/churn_research';
 
 type Slim = {
   id: string;
@@ -813,6 +814,7 @@ const STRESS: CanonicalReport = {
  */
 const PRODUCTION: Record<string, CanonicalReport> = {
   satisfaction: SATISFACTION,
+  churn_research: CHURN_RESEARCH,
 };
 
 /** Same reports, also addressable by their real production mission id. */
