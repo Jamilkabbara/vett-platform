@@ -17,6 +17,7 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { OverlayPage } from '../../components/layout/OverlayPage';
 import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
+import { useRouteSeo } from '../../seo/useRouteSeo';
 
 interface ComparisonRow {
   dimension: string;
@@ -75,30 +76,17 @@ const OTHER_COMPARISONS = [
 ];
 
 export function VsTypeformPage() {
+  // Title, description and canonical come from the SEO manifest, which is
+  // also what scripts/prerender.mjs bakes into this route's static HTML. This
+  // page used to write its own, in a different spelling from the shared
+  // VsPageTemplate and from the prerendered head.
+  useRouteSeo('/vs/typeform');
+
+  // The FAQPage JSON-LD stays here: it is per-page structured data, not a
+  // head tag the manifest owns.
   useEffect(() => {
-    const prevTitle = document.title;
-    document.title = 'VETT vs Typeform: Which Is Right for You?';
 
-    const setMeta = (name: string, content: string) => {
-      let el = document.querySelector(`meta[name="${name}"]`);
-      if (!el) {
-        el = document.createElement('meta');
-        el.setAttribute('name', name);
-        document.head.appendChild(el);
-      }
-      el.setAttribute('content', content);
-    };
-    const prevDesc = document.querySelector('meta[name="description"]')?.getAttribute('content') ?? '';
-    setMeta('description', "VETT vs Typeform side-by-side. Form UX vs synthetic-respondent research, pricing, AI synthesis, integrations, templates. Honest comparison from $9.");
 
-    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (!canonical) {
-      canonical = document.createElement('link');
-      canonical.setAttribute('rel', 'canonical');
-      document.head.appendChild(canonical);
-    }
-    const prevCanonical = canonical.getAttribute('href') ?? '';
-    canonical.setAttribute('href', 'https://www.vettit.ai/vs/typeform');
 
     const ld = document.createElement('script');
     ld.type = 'application/ld+json';
@@ -115,9 +103,6 @@ export function VsTypeformPage() {
     document.head.appendChild(ld);
 
     return () => {
-      document.title = prevTitle;
-      setMeta('description', prevDesc);
-      canonical?.setAttribute('href', prevCanonical);
       document.getElementById('vs-typeform-faq-schema')?.remove();
     };
   }, []);
