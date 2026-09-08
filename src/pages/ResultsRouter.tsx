@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { fetchMissionRow } from '../lib/missionAccess';
 import { CreativeAttentionResultsPage } from './CreativeAttentionResultsPage';
+import { ResultsV2Page } from './ResultsV2Page';
 // WO — the universal premium results shell. Reads the ONE canonical report and
 // leads with the methodology's signature hero (Centerpiece). Every survey
 // methodology routes here; the per-type bespoke pages it replaces (CSAT,
@@ -23,11 +24,20 @@ import { PremiumResults } from '../components/results/premium/PremiumResults';
  */
 export function ResultsRouter() {
   const { missionId } = useParams<{ missionId: string }>();
+  const [params] = useSearchParams();
   const [goalType, setGoalType] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [probing, setProbing] = useState(true);
 
+  // DEV ONLY: ?fixture=1 renders ResultsV2Page against a checked-in canonical
+  // report so the page can be reviewed with no Supabase session. The fixture
+  // ids are synthetic, so the goal_type probe below would 404 on them and
+  // render "Mission not found" instead. `import.meta.env.DEV` folds to false
+  // in a production build, so Rollup drops this branch entirely.
+  const fixturePreview = import.meta.env.DEV && params.get('fixture') != null;
+
   useEffect(() => {
+    if (fixturePreview) return;
     if (!missionId) {
       setError('No mission ID provided.');
       setProbing(false);
@@ -45,7 +55,11 @@ export function ResultsRouter() {
       setProbing(false);
     })();
     return () => { cancelled = true; };
-  }, [missionId]);
+  }, [missionId, fixturePreview]);
+
+  if (fixturePreview) {
+    return <ResultsV2Page />;
+  }
 
   if (probing) {
     return (
