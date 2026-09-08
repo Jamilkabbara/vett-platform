@@ -190,8 +190,7 @@ export function VsPageTemplate({
         <div className="text-center glass-panel p-12 rounded-3xl border border-white/5 mb-8">
           <h3 className="text-2xl font-black text-white mb-3">Try VETT for $9</h3>
           <p className="text-white/60 mb-6 max-w-md mx-auto">
-            Sniff Test tier — 5 personas, ~10 minutes, full results page. Promo
-            code <span className="font-mono text-lime">VETT100</span> at checkout.
+            Sniff Test tier, 5 personas, about 10 minutes, full results page.
           </p>
           <Link
             to="/setup"
