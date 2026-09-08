@@ -23,6 +23,7 @@
  */
 import type { CanonicalReport, CanonicalSurveyQuestion } from '../../results/report/useCanonicalReport';
 import { SATISFACTION } from './production/satisfaction';
+import { NAMING_MESSAGING } from './production/naming_messaging';
 import { COMPARE } from './production/compare';
 import { VALIDATE } from './production/validate';
 import { CHURN_RESEARCH } from './production/churn_research';
@@ -816,6 +817,7 @@ const STRESS: CanonicalReport = {
  */
 const PRODUCTION: Record<string, CanonicalReport> = {
   satisfaction: SATISFACTION,
+  naming_messaging: NAMING_MESSAGING,
   compare: COMPARE,
   validate: VALIDATE,
   churn_research: CHURN_RESEARCH,
