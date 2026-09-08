@@ -500,7 +500,18 @@ function SignalRows({ rows }: { rows: SignalRow[] }) {
         <div key={r.key}>
           <div className="grid grid-cols-[minmax(64px,auto)_1fr_auto] items-center gap-[18px] px-1 pb-[6px] pt-5 max-[680px]:grid-cols-1 max-[680px]:gap-2">
             <div className="flex items-center gap-[9px] font-['Manrope',system-ui,sans-serif] text-[17px] font-bold">
-              <span className="truncate">{r.label}</span>
+              {/* max-w on the label, not just `truncate`. The first track is
+                  minmax(64px,auto), so its base size is this item's min-content
+                  width, and `truncate` sets white-space:nowrap, which makes
+                  min-content the WHOLE string. A long label (these are backend
+                  strings: segment names, concept labels, funnel stage text) then
+                  took the entire row - measured 710px of 816 at 1280 - and the
+                  1fr bar track collapsed to 0px. The chart disappeared and the
+                  page still measured zero overflow, because the label was being
+                  clipped inside its own box rather than pushed past anything.
+                  Capping the label caps the track, so the bar keeps its share
+                  and the label truncates with an ellipsis as intended. */}
+              <span className="truncate min-[681px]:max-w-[26ch]">{r.label}</span>
               {r.signal && (
                 <span
                   className={[
@@ -972,7 +983,14 @@ export function ResultsV2Page() {
         </main>
 
         {/* ── STICKY RAIL: what turns the dead right third into purpose ── */}
-        <aside className="flex flex-col gap-4 max-[1080px]:flex-row max-[1080px]:flex-wrap min-[1081px]:sticky min-[1081px]:top-[90px]">
+        {/* max-[1080px]:items-start: below 1081 the rail unstacks into a row,
+            and a flex row stretches its children to the tallest of them by
+            default. "Key metrics" is six lines tall and the one-line hint card
+            next to it was being stretched to match, painting a 620px column of
+            empty card at 768. Nothing overflows and nothing is clipped, so it
+            only shows up in a screenshot. Let each rail card be its own
+            height. */}
+        <aside className="flex flex-col gap-4 max-[1080px]:flex-row max-[1080px]:flex-wrap max-[1080px]:items-start min-[1081px]:sticky min-[1081px]:top-[90px]">
           {rail.length > 0 && (
             <Card pad="p-5" className="max-[1080px]:min-w-[220px] max-[1080px]:flex-1">
               <RailTitle>Key metrics</RailTitle>

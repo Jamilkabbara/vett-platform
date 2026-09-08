@@ -258,7 +258,10 @@ export function HowItWorksVisual() {
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">
               Out: the computed panel
             </p>
-            <span className="rounded-md border border-white/10 px-2 py-0.5 font-mono text-[10px] text-white/50">
+            {/* shrink-0 + nowrap: this is a count, not prose. At 320 the
+                header row squeezed it and it broke after the equals sign,
+                printing "n =" over "60". */}
+            <span className="shrink-0 whitespace-nowrap rounded-md border border-white/10 px-2 py-0.5 font-mono text-[10px] text-white/50">
               n = {REFERENCE_OUTPUT.n}
             </span>
           </div>
@@ -307,7 +310,14 @@ export function HowItWorksVisual() {
                       key={d.label}
                       className="flex items-center justify-between gap-3"
                     >
-                      <span className="truncate text-[12px] text-white/65">
+                      {/* Wrap, do not truncate. At 320 the row left the label
+                          about 110px and all three read "Status orie...",
+                          "Novelty-se...", "Price sensi...", so the panel
+                          showed three numbers against three dimensions the
+                          reader could no longer name. Two lines costs nothing
+                          here; an unreadable label costs the point of the
+                          block. Above ~420px they still fit on one line. */}
+                      <span className="min-w-0 text-[12px] text-white/65">
                         {d.label}
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
