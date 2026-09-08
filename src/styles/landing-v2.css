@@ -40,15 +40,6 @@
 }
 .lv2-heroup { animation: lv2HeroUp 0.85s both; }
 
-@keyframes lv2DrawLine {
-  from { transform: scaleX(0); opacity: 0.3; }
-  to   { transform: scaleX(1); opacity: 1; }
-}
-.lv2-uline {
-  transform: scaleX(0);
-  transform-origin: center;
-  animation: lv2DrawLine 1.1s 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
 
 @keyframes lv2Blink { 50% { opacity: 0; } }
 .lv2-cursor { animation: lv2Blink 1s steps(2) infinite; }
@@ -135,7 +126,6 @@
   }
   .lv2-root .lv2-reveal,
   .lv2-root .lv2-prow { opacity: 1; transform: none; }
-  .lv2-root .lv2-uline { transform: scaleX(1); opacity: 1; }
   .lv2-root .lv2-psm-line,
   .lv2-root .lv2-radar-poly { stroke-dashoffset: 0; }
   .lv2-root .lv2-psm-band,
