@@ -272,7 +272,10 @@ export function RailStat({ label, value, tone = 'lime' }: StatCellProps) {
       {value.scalar !== null ? (
         <span
           className={[
-            "rv2-fit-num min-w-0 font-['Manrope',system-ui,sans-serif] text-[30px] font-extrabold leading-none tabular-nums",
+            // flex-none, so the figure keeps the width its font size was just
+            // sized to give it. Left shrinkable it was squeezed to 135px of
+            // the 168px it had been sized for and wrapped anyway.
+            "rv2-fit-num flex-none font-['Manrope',system-ui,sans-serif] text-[30px] font-extrabold leading-none tabular-nums",
             '[overflow-wrap:anywhere]',
             NUMERAL_TONE[tone],
           ].join(' ')}
@@ -295,7 +298,7 @@ export function RailStat({ label, value, tone = 'lime' }: StatCellProps) {
           &mdash;
         </span>
       )}
-      <span className="text-[12.5px] text-[#8B919C]">{label}</span>
+      <span className="min-w-0 text-[12.5px] text-[#8B919C]">{label}</span>
     </div>
   );
 }
