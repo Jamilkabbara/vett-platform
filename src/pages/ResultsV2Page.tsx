@@ -67,7 +67,7 @@ import {
   QHead,
   RailStat,
   RailTitle,
-  StatCell,
+  StatStrip,
   VettRead,
 } from '../components/results-v2/primitives';
 import {
@@ -78,6 +78,8 @@ import {
   ScreenerBase,
   Themes,
 } from '../components/results-v2/charts';
+import { EMPTY_SLOT } from '../components/results-v2/valueSlot';
+import { RecommendedNextMissions } from '../components/results/RecommendedNextMissions';
 import { useDrawIn, lensHandlers } from '../components/results-v2/hooks';
 import { buildCenterpiece, railMetrics } from '../components/results-v2/centerpiece';
 import type { SignalRow } from '../components/results-v2/centerpiece';
@@ -295,6 +297,182 @@ function QuestionCard({
           n = {n}. Directional. Read the ranking and the consensus, not the point magnitudes.
         </p>
       )}
+    </Card>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Segment explorer - recomputes live, web only
+════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Ported from PremiumResults.tsx (SegmentExplorer, around line 228).
+ *
+ * The FETCH transfers verbatim: GET /api/results/:id/report?segment=<key>
+ * returns a canonical report the SERVER recomputed over that slice. Nothing
+ * here re-derives a figure client side, so a segment read cannot disagree with
+ * the full-sample read for the same reason the rest of the page cannot.
+ *
+ * "Web only" is not a caveat about quality - it is a fact about scope. The
+ * PDF/PPTX/XLSX exports are rendered from the unfiltered report, so this
+ * section appears in no export and the page says so.
+ *
+ * Low-n gate, same threshold the premium version uses: under 3 responses the
+ * slice is still named and counted, but its figures are withheld rather than
+ * printed as if they meant something.
+ */
+const SEGMENT_MIN_N = 3;
+
+function SegmentExplorer({
+  missionId,
+  baseReport,
+}: {
+  missionId: string;
+  baseReport: CanonicalReport;
+}) {
+  const segments = baseReport.segments || [];
+  const [seg, setSeg] = useState('all');
+  const [active, setActive] = useState<CanonicalReport | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const shown = active || baseReport;
+  const view = useMemo(() => buildCenterpiece(shown).view, [shown]);
+
+  if (!segments.length) return null;
+
+  const onChange = async (key: string) => {
+    setSeg(key);
+    if (key === 'all') {
+      setActive(null);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.get(`/api/results/${missionId}/report?segment=${encodeURIComponent(key)}`);
+      setActive(res.report || null);
+    } catch {
+      setActive(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const baseN = baseReport.header.sample.n ?? 0;
+  const n = active?.active_segment?.n ?? baseN;
+  const lowN = seg !== 'all' && n < SEGMENT_MIN_N;
+  // Withheld, not greyed: the label and the caption stay so the reader can see
+  // WHAT is missing, and the numeral slot renders its placeholder.
+  const cells = (view?.cells ?? []).map((c) => (lowN ? { ...c, value: EMPTY_SLOT } : c));
+
+  return (
+    <Card id="segments">
+      <QHead
+        eyebrow="Explore by segment"
+        title="Recompute every figure for one slice"
+        meta="Recomputes live from the responses"
+        chip="Web only"
+      />
+      <div className="mt-[18px] flex flex-wrap items-center gap-x-4 gap-y-3">
+        <label
+          htmlFor="rv2-segment"
+          className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#5C6470]"
+        >
+          Segment
+        </label>
+        <select
+          id="rv2-segment"
+          value={seg}
+          onChange={(e) => onChange(e.target.value)}
+          className="min-w-0 max-w-full cursor-pointer rounded-[10px] border border-white/[0.12] bg-[#0E1019] px-[14px] py-[9px] text-[14px] font-medium text-[#F3F5EF] focus:border-[#6366F1] focus:outline-none"
+        >
+          <option value="all">All respondents &middot; n = {baseN}</option>
+          {segments.map((sg) => (
+            <option key={sg.key} value={sg.key}>
+              {sg.label} &middot; n = {sg.n}
+            </option>
+          ))}
+        </select>
+        <span className="ml-auto flex items-baseline gap-2 text-[12.5px] text-[#8B919C]">
+          {loading ? (
+            'Recomputing...'
+          ) : (
+            <>
+              n
+              <b className="font-['Manrope',system-ui,sans-serif] text-[15px] font-bold text-[#BEF264]">
+                {n}
+              </b>
+            </>
+          )}
+        </span>
+      </div>
+      {lowN && (
+        <p className="mt-3 text-[12.5px] text-[#F2B24A]">
+          n = {n}. This slice is too small to report on. The figures are withheld rather than
+          shown as a number the sample cannot support.
+        </p>
+      )}
+      <VettRead>
+        Pick a segment and every figure is recomputed from the responses that slice actually
+        gave. When a slice gets too small to trust, VETT flags it rather than faking a number.
+        This section is web only, so the exports always carry the full sample.
+      </VettRead>
+      <StatStrip cells={cells} />
+    </Card>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Personas - who the sample was
+════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Ported from PremiumResults.tsx (report.personas, around line 413).
+ *
+ * The grid is `repeat(auto-fit, minmax(min(100%,240px), 1fr))` in
+ * results-v2.css, never a bare 1fr and never a bare minmax(240px,1fr) - see
+ * that rule for why the min() matters.
+ */
+function Personas({ personas }: { personas: NonNullable<CanonicalReport['personas']> }) {
+  if (!personas.length) return null;
+  return (
+    <Card id="personas">
+      <QHead
+        eyebrow="Who responded"
+        title="The people behind the numbers"
+        meta={`${personas.length} ${personas.length === 1 ? 'persona' : 'personas'} from the screened sample`}
+        chip="n-gated"
+      />
+      <div className="rv2-persona-grid mt-[18px]">
+        {personas.map((p, i) => (
+          <div
+            key={`${p.name}-${i}`}
+            className="min-w-0 rounded-[16px] border border-white/[0.07] bg-white/[0.025] p-5"
+          >
+            <div
+              className="mb-[15px] h-[34px] w-[34px] rounded-[9px] bg-[linear-gradient(135deg,#6366F1,#A6E03F)]"
+              aria-hidden
+            />
+            <h3 className="font-['Manrope',system-ui,sans-serif] text-[15px] font-bold tracking-[-0.01em] [overflow-wrap:anywhere]">
+              {p.name}
+            </h3>
+            {p.role && (
+              <div className="mt-1 text-[12.5px] text-[#8B919C] [overflow-wrap:anywhere]">
+                {p.role}
+              </div>
+            )}
+            {p.description && (
+              <p className="mt-[10px] text-[13.5px] leading-[1.55] text-[#8B919C]">
+                {p.description}
+              </p>
+            )}
+            {p.share != null && (
+              <div className="mt-[14px] font-['Manrope',system-ui,sans-serif] text-[13px] font-bold tracking-[0.04em] text-[#BEF264]">
+                {p.share}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </Card>
   );
 }
@@ -538,12 +716,16 @@ export function ResultsV2Page() {
   const cells = cp.view?.cells ?? [];
   const rail = railMetrics(cp.view);
   const recs = report.recommendations || [];
+  const personas = report.personas || [];
+  const hasSegments = (report.segments || []).length > 0;
   const synthesis = report.synthesis || report.exec_summary || '';
 
   const jump = [
     cp.view || cp.withheld ? { href: '#centerpiece', label: cp.view?.eyebrow ?? 'Headline read' } : null,
     synthesis ? { href: '#synthesis', label: 'The read' } : null,
     ...report.survey.map((q) => ({ href: `#q-${q.id}`, label: `Q${q.number} · ${TAG_FOR(q)}` })),
+    hasSegments ? { href: '#segments', label: 'By segment' } : null,
+    personas.length ? { href: '#personas', label: 'Who responded' } : null,
     recs.length ? { href: '#recs', label: 'Recommendations' } : null,
   ].filter(Boolean) as Array<{ href: string; label: string }>;
 
@@ -596,7 +778,7 @@ export function ResultsV2Page() {
       <div className="relative z-[1] mx-auto grid max-w-[1340px] items-start gap-[34px] px-7 pb-[90px] pt-[42px] max-[1080px]:grid-cols-1 max-[680px]:px-4 min-[1081px]:grid-cols-[minmax(0,1fr)_320px]">
         <main className="flex min-w-0 flex-col gap-[26px]">
           {/* HERO */}
-          <section className="grid items-stretch gap-[30px] max-[1080px]:grid-cols-1 min-[1081px]:grid-cols-[1.45fr_1fr]">
+          <section className="grid items-stretch gap-[30px] max-[1080px]:grid-cols-1 min-[1081px]:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
             <div className="py-[30px] pr-[30px] max-[1080px]:px-0 max-[1080px]:py-[6px]">
               <Eyebrow>
                 {h.methodology_label}
@@ -688,13 +870,7 @@ export function ResultsV2Page() {
               {cp.directionalNote && (
                 <p className="mt-3 text-[12.5px] text-[#F2B24A]">{cp.directionalNote}</p>
               )}
-              {cells.length > 0 && (
-                <div className="mt-[18px] grid overflow-hidden rounded-[16px] border border-white/[0.07] max-[680px]:grid-cols-1 min-[681px]:grid-cols-[1fr_1fr_1.5fr]">
-                  {cells.map((c) => (
-                    <StatCell key={c.label} label={c.label} value={c.value} tone={c.tone} />
-                  ))}
-                </div>
-              )}
+              <StatStrip cells={cells} />
               {cp.view.rowsMeta && (
                 <div className="mt-5 text-[12.5px] tracking-[0.04em] text-[#5C6470]">
                   {cp.view.rowsMeta}
@@ -725,6 +901,12 @@ export function ResultsV2Page() {
             <QuestionCard key={q.id} q={q} report={report} index={i} />
           ))}
 
+          {/* SEGMENTS - self-hides when the report carries no segment options */}
+          {missionId && <SegmentExplorer missionId={missionId} baseReport={report} />}
+
+          {/* PERSONAS - self-hides when the report carries none */}
+          <Personas personas={personas} />
+
           {/* RECOMMENDATIONS */}
           {recs.length > 0 && (
             <Card id="recs">
@@ -753,6 +935,9 @@ export function ResultsV2Page() {
               </div>
             </Card>
           )}
+
+          {/* NEXT MISSIONS - self-hides for non-owners and gated goal types */}
+          {missionId && <RecommendedNextMissions missionId={missionId} variant="rv2" />}
 
           {/* METHODOLOGY */}
           <Card>

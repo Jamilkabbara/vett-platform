@@ -62,3 +62,40 @@
     animation: none !important;
   }
 }
+
+/* ---- the headline stat strip (see <StatStrip> in primitives.tsx) -------
+   Tailwind's JIT cannot see a grid-template assembled at runtime, so the
+   track list is handed over as a custom property. The column count always
+   equals the cell count, so the grid can never leave an empty cell.
+
+   861px, not 681px: three tiles carrying a value as wide as "$2,400,000.00"
+   need roughly 845px before they genuinely fit (PR #104 measured this on the
+   premium stylesheet). Below that the strip is one full-width column, where
+   the number has the whole card and never wraps.                           */
+
+.rv2-statstrip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 861px) {
+  .rv2-statstrip {
+    grid-template-columns: var(--rv2-strip-cols, minmax(0, 1fr));
+  }
+}
+
+/* ---- persona grid (see <Personas> in ResultsV2Page.tsx) ---------------
+   `min(100%, 240px)` is the whole point: a bare minmax(240px,1fr) sets a hard
+   240px floor, so below ~270px of available width the track is wider than its
+   container and the card overflows. With min() the floor collapses to 100% at
+   narrow widths and the grid falls to a single full-width column instead.
+
+   auto-fit (not auto-fill) collapses unused tracks to 0, so a row that is not
+   full leaves no empty cell to paint. Cards carry their own background and
+   border, so there is no container colour showing through either.            */
+
+.rv2-persona-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
