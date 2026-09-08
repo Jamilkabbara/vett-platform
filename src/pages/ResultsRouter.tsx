@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { fetchMissionRow } from '../lib/missionAccess';
 import { CreativeAttentionResultsPage } from './CreativeAttentionResultsPage';
+// The universal results page. Reads the ONE canonical report and leads with the
+// methodology's signature hero (Centerpiece). Every survey methodology routes
+// here; the per-type bespoke pages it replaces (CSAT, Pricing, Roadmap,
+// Compare, AdTesting, Competitor, Naming, Churn, BrandLift, Validate, Research,
+// generic) are superseded by shell + Centerpiece + the insight-led question
+// body, so web and the exports can't drift. It takes no props: it reads
+// missionId from the route itself via useParams.
 import { ResultsV2Page } from './ResultsV2Page';
-// WO — the universal premium results shell. Reads the ONE canonical report and
-// leads with the methodology's signature hero (Centerpiece). Every survey
-// methodology routes here; the per-type bespoke pages it replaces (CSAT,
-// Pricing, Roadmap, Compare, AdTesting, Competitor, Naming, Churn, BrandLift,
-// Validate, Research, generic) are superseded by shell + Centerpiece + the
-// insight-led question body, so web and the exports can't drift.
-import { PremiumResults } from '../components/results/premium/PremiumResults';
 
 /**
  * Central router for /results/:missionId.
@@ -20,7 +19,7 @@ import { PremiumResults } from '../components/results/premium/PremiumResults';
  *   - creative_attention → its bespoke page (different data model —
  *     creative_analysis frames/emotion, not the survey canonical report;
  *     resurrection track owns its showcase rebuild).
- *   - everything else    → the universal PremiumResults shell.
+ *   - everything else    → the universal ResultsV2Page shell.
  */
 export function ResultsRouter() {
   const { missionId } = useParams<{ missionId: string }>();
@@ -81,7 +80,7 @@ export function ResultsRouter() {
   if (goalType === 'creative_attention') {
     return <CreativeAttentionResultsPage />;
   }
-  return <PremiumResults missionId={missionId!} />;
+  return <ResultsV2Page />;
 }
 
 export default ResultsRouter;

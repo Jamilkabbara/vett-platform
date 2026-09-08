@@ -1,17 +1,19 @@
 /**
- * ResultsV2Page - additive PREVIEW route at /results-v2/:missionId.
+ * ResultsV2Page - the live results page, mounted by ResultsRouter at
+ * /results/:missionId for every survey methodology.
  *
  * A React + Tailwind port of vett-final-mocks/vett-results-redesign.html,
  * built to the same house rules as the /landing-v2 port: real JSX components,
  * one small namespaced CSS file for the things Tailwind cannot express, no new
  * dependencies, tokens extracted from the mock rather than guessed.
  *
- *   - This file does NOT touch /results/:missionId. ResultsRouter.tsx,
- *     PremiumResults.tsx, Centerpiece.tsx and premium-results.css are
- *     byte-identical to origin/main; the live results page is unaffected.
- *   - It reads the SAME canonical report the live page reads
+ *   - It takes no props. missionId comes from the route via useParams, which
+ *     is why ResultsRouter can render it with no arguments.
+ *   - It reads the SAME canonical report the exports read
  *     (GET /api/results/:id/report), so nothing here can drift from the
  *     exports or from Ask VETT.
+ *   - /results-v2/:missionId still resolves, but only as a redirect to
+ *     /results/:missionId for links already in the wild (see App.tsx).
  *
  * Design tokens extracted from the mock:
  *   bg #0B0C15 · bg-2 #0E1019
@@ -660,7 +662,7 @@ export function ResultsV2Page() {
     // lands here, so it is the first thing a recipient sees.
     const signedOut = errorStatus === 401;
     const notYours = errorStatus === 403 || errorStatus === 404;
-    const returnTo = `/results-v2/${missionId ?? ''}`;
+    const returnTo = `/results/${missionId ?? ''}`;
     return (
       <div className="rv2-root grid min-h-[100dvh] place-items-center bg-[#0B0C15] px-6">
         <div className="w-full max-w-[46ch] text-center">
