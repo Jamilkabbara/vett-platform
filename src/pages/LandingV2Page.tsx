@@ -300,9 +300,8 @@ export function LandingV2Page() {
         <h1 className="font-['Manrope',system-ui,sans-serif] font-extrabold tracking-[-0.028em] leading-[1.04] text-[clamp(46px,7.6vw,100px)] mt-[22px] text-balance">
           <span className="lv2-heroup delay-[120ms] inline-block">Stop guessing.</span>
           <br />
-          <span className="lv2-heroup delay-[260ms] relative inline-block text-[#BEF264] [text-shadow:0_10px_40px_rgba(190,242,100,0.26)]">
+          <span className="lv2-heroup delay-[260ms] inline-block text-[#BEF264]">
             VETT it.
-            <i className="lv2-uline absolute left-[1%] right-[1%] bottom-1.5 h-[5px] rounded-[5px] bg-[linear-gradient(90deg,transparent,#BEF264_18%,#E6FFA8_50%,#BEF264_82%,transparent)] shadow-[0_6px_22px_rgba(190,242,100,0.45)]" />
           </span>
         </h1>
 
