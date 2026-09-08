@@ -82,7 +82,12 @@ export function Eyebrow({
 
 export function Chip({ children }: { children: ReactNode }) {
   return (
-    <span className="flex-none self-center whitespace-nowrap rounded-full border border-white/[0.12] px-3 py-[6px] text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8B919C]">
+    // `self-center` centres the chip on the cross axis, which is what the
+    // 681px-and-up row wants. Under 680px QHead becomes a column, the cross
+    // axis is horizontal, and the same declaration parked the chip in the
+    // middle of the card while every other line was flush left. Reset it to
+    // the start where the head stacks.
+    <span className="flex-none self-center whitespace-nowrap rounded-full border border-white/[0.12] px-3 py-[6px] text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8B919C] max-[680px]:self-start">
       {children}
     </span>
   );
@@ -170,6 +175,11 @@ export interface StatCellProps {
  *  - `overflow-wrap:anywhere` on the numeral. "$2,400,000.00" has no break
  *    opportunity, so without this it cannot wrap and can only overflow. The
  *    backstop is what turns a clipped number into a wrapped one.
+ *  - `rv2-fit` / `rv2-fit-num`, which stop the backstop from ever firing. A
+ *    wrapped figure measures clean on both overflow metrics and still reads
+ *    as broken: at 1440 the strip gave a cell 197px for a numeral that needs
+ *    259px and printed "$2,400," over "000". The numeral now sizes itself to
+ *    the cell instead. See results-v2.css for the formula.
  *
  * The stacking breakpoint is 861px, not 681px: three tiles carrying a
  * 273px-wide value need ~845px before they fit, so 681 collapsed far too late
@@ -177,14 +187,20 @@ export interface StatCellProps {
  */
 export function StatCell({ label, value, tone = 'plain' }: StatCellProps) {
   return (
-    <div className="min-w-0 border-b border-white/[0.07] px-[26px] py-6 last:border-b-0 min-[861px]:border-b-0 min-[861px]:border-r min-[861px]:border-white/[0.07] min-[861px]:last:border-r-0">
+    <div className="rv2-fit min-w-0 border-b border-white/[0.07] px-[26px] py-6 last:border-b-0 min-[861px]:border-b-0 min-[861px]:border-r min-[861px]:border-white/[0.07] min-[861px]:last:border-r-0">
       {value.scalar !== null ? (
         <div
           className={[
-            "font-['Manrope',system-ui,sans-serif] text-[46px] font-extrabold leading-none tabular-nums",
+            "rv2-fit-num font-['Manrope',system-ui,sans-serif] text-[46px] font-extrabold leading-none tabular-nums",
             '[overflow-wrap:anywhere]',
             NUMERAL_TONE[tone],
           ].join(' ')}
+          style={
+            {
+              '--rv2-num-max': '46px',
+              '--rv2-num-len': value.scalar.length,
+            } as CSSProperties
+          }
         >
           {value.scalar}
         </div>
@@ -247,14 +263,26 @@ export function StatStrip({ cells }: { cells: StatCellProps[] }) {
 /** .kstat - the sticky rail's key-metric row. Same guard, smaller numeral. */
 export function RailStat({ label, value, tone = 'lime' }: StatCellProps) {
   return (
-    <div className="flex items-baseline gap-[11px] border-b border-white/[0.07] py-[11px] last:border-b-0 last:pb-0">
+    // The row is the query container, not the numeral: the numeral's own width
+    // is decided by the flex algorithm, so it cannot size itself against
+    // itself. `--rv2-num-share: 60` is the slice of the row the figure may
+    // claim, leaving the label at least 40% to wrap into. Prose wraps; a
+    // figure must not.
+    <div className="rv2-fit flex items-baseline gap-[11px] border-b border-white/[0.07] py-[11px] last:border-b-0 last:pb-0">
       {value.scalar !== null ? (
         <span
           className={[
-            "min-w-0 font-['Manrope',system-ui,sans-serif] text-[30px] font-extrabold leading-none tabular-nums",
+            "rv2-fit-num min-w-0 font-['Manrope',system-ui,sans-serif] text-[30px] font-extrabold leading-none tabular-nums",
             '[overflow-wrap:anywhere]',
             NUMERAL_TONE[tone],
           ].join(' ')}
+          style={
+            {
+              '--rv2-num-max': '30px',
+              '--rv2-num-share': 60,
+              '--rv2-num-len': value.scalar.length,
+            } as CSSProperties
+          }
         >
           {value.scalar}
         </span>

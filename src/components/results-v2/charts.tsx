@@ -136,11 +136,17 @@ export function DonutLegend({ entries }: { entries: Array<[string, number]> }) {
           <div className="font-['Manrope',system-ui,sans-serif] text-[46px] font-extrabold leading-none tabular-nums">
             {pct(shown.count, total)}%
           </div>
-          {/* The hole is 150px wide. Option labels can be a full price band, so
-              clamp the echo to three lines: the full string is right there in
-              the legend, so nothing is lost by not spilling it over the ring. */}
+          {/* The ring is stroked at r=45 with a 30-unit stroke in a 120-unit
+              viewBox, so the hole is always half the rendered donut, whatever
+              that is. 148px was half of the 300px maximum and stopped being
+              half the moment the card was narrower: at 320 the donut renders
+              at 236px, the hole is 118px, and the echo ran out over the ring
+              on both sides. A percentage tracks the hole at every width.
+
+              Still clamped to three lines: option labels can be a full price
+              band, and the full string is right there in the legend. */}
           <div
-            className="mt-1 max-w-[148px] overflow-hidden text-[12px] leading-[1.3] text-[#8B919C]"
+            className="mt-1 max-w-[46%] overflow-hidden text-[12px] leading-[1.3] text-[#8B919C]"
             style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}
           >
             {shown.label}
@@ -300,19 +306,26 @@ export function Themes({
               quote: t.quotes?.[0],
             }))}
           >
-            <div className="mb-[10px] flex items-center gap-[11px]">
-              <span className="font-['Manrope',system-ui,sans-serif] text-[15.5px] font-semibold">
+            {/* Three items on one line only work while there is a line to
+                share. At 320 the theme name took three lines, the sentiment
+                chip squeezed, and "27 / 30" came apart into "27", "/", "30"
+                stacked vertically - a fraction read as three numbers. The
+                chip and the count are atomic and say so; the name is prose
+                and is the only thing here allowed to wrap or to move to a
+                line of its own. */}
+            <div className="mb-[10px] flex flex-wrap items-center gap-x-[11px] gap-y-2">
+              <span className="min-w-0 font-['Manrope',system-ui,sans-serif] text-[15.5px] font-semibold">
                 {t.label}
               </span>
               <span
                 className={[
-                  'rounded-[6px] border px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.1em]',
+                  'shrink-0 rounded-[6px] border px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.1em]',
                   SENT_CHIP[s],
                 ].join(' ')}
               >
                 {s}
               </span>
-              <span className="ml-auto font-['Manrope',system-ui,sans-serif] text-[14px] font-bold tabular-nums text-[#8B919C]">
+              <span className="ml-auto shrink-0 whitespace-nowrap font-['Manrope',system-ui,sans-serif] text-[14px] font-bold tabular-nums text-[#8B919C]">
                 {t.count} / {n}
               </span>
             </div>

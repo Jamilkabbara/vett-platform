@@ -99,3 +99,35 @@
   gap: 14px;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
 }
+
+/* ---- numerals size themselves to the space they have ------------------
+   A figure is one token. "$2,400,000" has no break opportunity a reader
+   would accept, so the `overflow-wrap:anywhere` backstop that stops it
+   overflowing breaks it after an arbitrary digit instead, and at 1440 the
+   rail printed "$2,400,00" over "0" - a single orphaned zero on its own
+   line. Both metrics score that as clean: nothing leaves the viewport and
+   nothing is clipped, because the wrap IS the escape valve.
+
+   So stop needing the escape valve. The cell is a query container, 100cqw
+   is its content width, --rv2-num-len is the figure's character count
+   (set inline by the component) and 0.63 is the widest advance a numeric
+   glyph takes in Manrope 800 tabular (measured: digit 0.620em, "$" 0.653em
+   but never repeated, comma and period far narrower). --rv2-num-share is
+   the percentage of the container the numeral may claim, for the rail
+   rows where a label shares the line.
+
+   `min()` keeps the mock's size whenever the figure already fits, so short
+   values are untouched. A browser without container queries gets no valid
+   length for the second argument, the whole declaration is dropped, and the
+   numeral falls back to its utility class and to today's behaviour.        */
+
+.rv2-fit {
+  container-type: inline-size;
+}
+
+.rv2-fit-num {
+  font-size: min(
+    var(--rv2-num-max, 46px),
+    calc(var(--rv2-num-share, 100) * 1cqw / (var(--rv2-num-len, 1) * 0.63))
+  );
+}
