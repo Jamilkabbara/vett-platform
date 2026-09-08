@@ -23,6 +23,7 @@
  */
 import type { CanonicalReport, CanonicalSurveyQuestion } from '../../results/report/useCanonicalReport';
 import { SATISFACTION } from './production/satisfaction';
+import { ROADMAP } from './production/roadmap';
 import { MARKETING } from './production/marketing';
 import { COMPETITOR } from './production/competitor';
 import { NAMING_MESSAGING } from './production/naming_messaging';
@@ -819,6 +820,7 @@ const STRESS: CanonicalReport = {
  */
 const PRODUCTION: Record<string, CanonicalReport> = {
   satisfaction: SATISFACTION,
+  roadmap: ROADMAP,
   marketing: MARKETING,
   competitor: COMPETITOR,
   naming_messaging: NAMING_MESSAGING,
