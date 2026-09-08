@@ -32,6 +32,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { PromoCodeField, type PromoQuote } from '../components/payment/PromoCodeField';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/ui/Logo';
@@ -85,6 +86,7 @@ export function CreativeAttentionPage() {
 
   // Step 3 — Payment (Pass 23 Bug 23.0e v2: redirect to Stripe Checkout)
   const [creating,        setCreating]         = useState(false);
+  const [promo, setPromo] = useState<PromoQuote | null>(null);
 
   // step 1 = upload, 2 = context form, 3 = checkout in flight (creating
   // is true once the user hits the CTA; we never come back from Stripe
@@ -238,7 +240,23 @@ export function CreativeAttentionPage() {
       // routes the user to /creative-results/:missionId after payment.
       const result = (await api.post('/api/payments/create-checkout-session', {
         missionId: mission.id,
-      })) as { url?: string };
+        promoCode: promo?.code || undefined,
+      })) as { url?: string; free?: boolean };
+
+      // A 100%-off code never touches Stripe: the backend answers
+      // { free: true } and the mission completes through /free-launch. Before
+      // this, Creative Attention sent no promo code at all and had no branch
+      // for a free result, so a customer holding a valid free code hit
+      // "Server did not return a checkout URL" and the mission stranded as a
+      // draft they had already paid nothing for.
+      if (result?.free === true) {
+        await api.post('/api/payments/free-launch', {
+          missionId: mission.id,
+          promoCode: promo?.code,
+        });
+        window.location.href = `/processing/${mission.id}`;
+        return;
+      }
 
       if (!result?.url) {
         throw new Error('Server did not return a checkout URL');
@@ -557,7 +575,14 @@ export function CreativeAttentionPage() {
                   <div>
                     <p className="text-sm text-[var(--t2)]">{isVideo ? 'Video' : 'Image'} creative · {caTier.name}</p>
                     <p className="text-2xl font-bold text-[var(--t1)]">
-                      ${tierPrice}
+                      {promo ? (
+                        <>
+                          <span className="line-through text-[var(--t3)] font-normal mr-2">${tierPrice}</span>
+                          {promo.free ? 'Free' : `$${promo.total}`}
+                        </>
+                      ) : (
+                        <>${tierPrice}</>
+                      )}
                       <span className="text-sm font-normal text-[var(--t3)] ml-1.5">{respondentCount} respondents</span>
                     </p>
                   </div>
@@ -568,6 +593,16 @@ export function CreativeAttentionPage() {
                     <li>✓ Platform fit suggestions</li>
                   </ul>
                 </div>
+
+                {/* Promo entry lives HERE, beside the price it changes, not on
+                    Stripe's page after the customer has already committed. The
+                    quote is resolved server-side so this figure is the one that
+                    will be charged. */}
+                <PromoCodeField
+                  className="mb-4"
+                  quoteBody={{ goalType: 'creative_attention', respondentCount, mediaType: isVideo ? 'video' : 'image' }}
+                  onApplied={setPromo}
+                />
 
                 <Button
                   variant="gradient"
