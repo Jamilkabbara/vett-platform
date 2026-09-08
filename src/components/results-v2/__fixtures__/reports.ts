@@ -23,6 +23,7 @@
  */
 import type { CanonicalReport, CanonicalSurveyQuestion } from '../../results/report/useCanonicalReport';
 import { SATISFACTION } from './production/satisfaction';
+import { VALIDATE } from './production/validate';
 import { CHURN_RESEARCH } from './production/churn_research';
 
 type Slim = {
@@ -814,6 +815,7 @@ const STRESS: CanonicalReport = {
  */
 const PRODUCTION: Record<string, CanonicalReport> = {
   satisfaction: SATISFACTION,
+  validate: VALIDATE,
   churn_research: CHURN_RESEARCH,
 };
 
