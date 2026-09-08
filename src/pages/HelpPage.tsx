@@ -66,13 +66,13 @@ const FAQS: FAQ[] = [
     // full refunds, contradicting the NO REFUNDS policy / Terms §5.3).
     question: 'What if a mission fails to deliver?',
     answer:
-      'VETT missions are final and non-refundable. If your screener criteria are too strict for the audience we can reach, you receive a partial delivery of however many respondents qualified, and the synthesized insights are honest about the smaller sample. If the analysis pipeline errors out entirely, contact support and we will prioritize a re-run of your mission at no extra cost.',
+      'VETT missions are final and we do not issue cash refunds. The only exceptions are duplicate charges and confirmed unauthorized charges, which we reverse because card-network rules require it. If your screener criteria are too strict for the audience we can reach, you receive a partial delivery of however many respondents qualified, and the synthesized insights are honest about the smaller sample; a partial delivery still counts as delivered. If a mission fails to complete because of a fault on our side, email support@vettit.ai with your Mission ID and we will re-run it or issue an equivalent re-run credit at no extra cost. We aim to reply within two business days. The Refund Policy has the full terms.',
   },
   {
     category: 'Targeting',
     question: 'Can I target by country, age, or job title?',
     answer:
-      'Yes — geography (160+ countries), age ranges, gender, education, marital + parental status, employment, industry, seniority, company size, and behavioral attributes. The targeting picker lets you stack any number of criteria. Narrow combinations (e.g. CMOs at SaaS companies in Germany) cost more because the persona generator has to honor every constraint when synthesizing the population.',
+      'Yes. Geography (160+ countries) plus city-level targeting in major markets, age ranges, gender, education, marital and parental status, employment, industry, seniority, company size, income band, device preference, and behavioral attributes. The targeting picker lets you stack any number of criteria. Narrow combinations (e.g. CMOs at SaaS companies in Germany) cost more because the persona generator has to honor every constraint when synthesizing the population.',
   },
   {
     category: 'Targeting',
@@ -84,13 +84,13 @@ const FAQS: FAQ[] = [
     category: 'Outputs',
     question: 'What do I get when a mission completes?',
     answer:
-      'A results page with executive summary, per-question aggregations (single/multi/rating distributions, sentiment for free-text), persona profiles, screening funnel, and methodology-specific cards (e.g. price elasticity curves for pricing missions, attention decay curves for creative missions). All exportable as PDF, PowerPoint, Excel, or raw JSON. Creative Attention missions also export CSV.',
+      'A results page with executive summary, per-question aggregations (single/multi/rating distributions, sentiment for free-text), persona profiles, screening funnel, and methodology-specific cards (e.g. a Van Westendorp price-sensitivity band for pricing missions, an attention decay curve for video creative). All exportable as PDF, PowerPoint, Excel, raw JSON, or CSV; Creative Attention results carry the same five formats in their own export menu.',
   },
   {
     category: 'Outputs',
     question: 'Can I share results with my team?',
     answer:
-      'You can export the results to PDF / PowerPoint / Excel and share those files directly. We do not currently offer multi-user workspace sharing — each account owns its missions. If you need team access, contact us and we will work out a workspace setup for your team.',
+      'You can export the results to PDF / PowerPoint / Excel and share those files directly. We do not currently offer multi-user workspace sharing; each account owns its missions. If you need team access, contact us and we will work out a workspace setup for your team.',
   },
   {
     category: 'Data & privacy',
@@ -122,7 +122,7 @@ export const HelpPage = () => {
         </h1>
         <p className="text-white/60 text-xl mb-16 max-w-2xl">
           What VETT is, how missions work, and what the outputs actually mean.
-          Methodology-first, synthetic respondents — read the FAQ before launching.
+          Methodology-first, synthetic respondents. Read the FAQ before launching.
         </p>
 
         {/* FAQ */}
@@ -198,8 +198,8 @@ export const HelpPage = () => {
                 Choosing a methodology
               </h3>
               <p className="text-white/50 text-sm leading-relaxed">
-                All 14 research types, what each one measures, and the instrument
-                behind it.
+                The 13 instrumented research types, what each one measures, and the
+                instrument behind it.
               </p>
             </Link>
             <Link
