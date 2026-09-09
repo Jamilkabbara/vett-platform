@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/apiClient';
+import { parseQuoteResponse } from './parseQuoteResponse.mjs';
 
 /**
  * Promo code entry, in the app, before checkout.
@@ -23,6 +24,24 @@ export interface PromoQuote {
   /** True for a 100%-off code, which skips Stripe entirely. */
   free: boolean;
   code: string;
+}
+
+/**
+ * The shape POST /api/pricing/quote answers with. `total` is top-level;
+ * `base`, `subtotal` and `discount` live under `details`. Typed explicitly
+ * because reading the wrong level of this object is what made the field
+ * reject every code.
+ */
+interface QuoteResponse {
+  total?: number;
+  base?: number;
+  discount?: number;
+  details?: {
+    base?: number;
+    subtotal?: number;
+    discount?: number;
+    total?: number;
+  };
 }
 
 interface Props {
@@ -62,24 +81,25 @@ export function PromoCodeField({ quoteBody, onApplied, className = '' }: Props) 
         const res = (await api.post('/api/pricing/quote', {
           ...quoteBody,
           promoCode: trimmed,
-        })) as { total?: number; base?: number; discount?: number; promoApplied?: boolean };
+        })) as QuoteResponse;
 
         if (mine !== seq.current) return; // a newer code superseded this one
 
-        const discount = Number(res?.discount ?? 0);
-        if (!res || discount <= 0) {
+        // Parsing lives in parseQuoteResponse.mjs so a Node guard can execute
+        // the real function; see the note there for what it got wrong.
+        const parsed = parseQuoteResponse(res);
+        if (!parsed.ok) {
           setState({ kind: 'invalid', reason: 'That code is not valid for this mission.' });
           onApplied(null);
           return;
         }
 
-        const total = Number(res.total ?? 0);
         const quote: PromoQuote = {
-          base: Number(res.base ?? total + discount),
-          total,
-          discount,
-          free: total <= 0,
-          code: trimmed,
+          base:     parsed.base,
+          total:    parsed.total,
+          discount: parsed.discount,
+          free:     parsed.free,
+          code:     trimmed,
         };
         setState({ kind: 'valid', quote });
         onApplied(quote);
