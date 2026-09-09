@@ -44,20 +44,57 @@ export interface PricingBreakdown {
 //   Deep Dive XL 250 $299 $1.20/resp
 export const CA_MIN_RESPONDENTS = 10;
 
+/**
+ * Brand Lift's respondent floor. Mirrors BRAND_LIFT_MIN_RESPONDENTS in the
+ * backend engine, and src/lib/sampleSizeMinimums.ts.
+ *
+ * This ladder's brackets carried `minRespondents: 50` until 2026-09, while the
+ * backend and sampleSizeMinimums both said 100 — so the setup panel would let a
+ * customer configure a 50-respondent Brand Lift study and price it, and
+ * checkout would then refuse the mission. One number now.
+ */
+export const BRAND_LIFT_MIN_RESPONDENTS = 100;
+
+/**
+ * Default volume ladder. MUST stay in lockstep with VOLUME_TIERS in the
+ * backend's src/utils/pricingEngine.js — a one-sided deploy makes this panel
+ * quote one number and Stripe charge another.
+ *
+ * ── The 2026-09 reprice: round prices first, rates derived ──────────────────
+ *
+ * The old ladder was built rate-first and the anchor prices fell out of the
+ * multiplication, which produced a rate curve that was not monotone:
+ *
+ *     n=5  $1.80/resp     n=10  $3.50/resp     n=50  $1.98/resp
+ *
+ * $3.50 was not a decision about what ten respondents are worth; it was the
+ * number that made 10 x rate land on $35. Dragging the slider one notch right
+ * nearly doubled the customer's unit price.
+ *
+ * Each price below is chosen first, as a number a customer can read, and
+ * ratePerResp is DERIVED as price / anchorCount. The rate is now monotone
+ * decreasing across the whole ladder. packagePrice documents the anchor that
+ * generated the rate; nothing reads it as a price.
+ *
+ * The top bracket anchors at MAX_SELF_SERVE_RESPONDENTS (1,250) and is
+ * open-ended, so the last sellable count has a round price and the ladder
+ * cannot form the flat plateau the retired linear bridge existed to close.
+ */
 export const VOLUME_TIERS = [
-  { id: 'sniff_test', name: 'Sniff Test', anchorCount: 5,    maxCount: 5,    ratePerResp: 1.80, packagePrice: 9    },
-  { id: 'validate',   name: 'Validate',   anchorCount: 10,   maxCount: 10,   ratePerResp: 3.50, packagePrice: 35   },
-  { id: 'confidence', name: 'Confidence', anchorCount: 50,   maxCount: 50,   ratePerResp: 1.98, packagePrice: 99   },
-  { id: 'deep_dive',  name: 'Deep Dive',  anchorCount: 250,  maxCount: 250,  ratePerResp: 1.20, packagePrice: 300  },
-  { id: 'scale',      name: 'Scale',      anchorCount: 1000, maxCount: 1000, ratePerResp: 0.90, packagePrice: 900  },
-  { id: 'enterprise', name: 'Enterprise', anchorCount: 5000, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 0.40, packagePrice: 2000 },
+  { id: 'sniff_test', name: 'Sniff Test', anchorCount: 5,    maxCount: 5,    ratePerResp: 9    / 5,    packagePrice: 9    },
+  { id: 'validate',   name: 'Validate',   anchorCount: 25,   maxCount: 25,   ratePerResp: 39   / 25,   packagePrice: 39   },
+  { id: 'confidence', name: 'Confidence', anchorCount: 100,  maxCount: 100,  ratePerResp: 149  / 100,  packagePrice: 149  },
+  { id: 'deep_dive',  name: 'Deep Dive',  anchorCount: 250,  maxCount: 250,  ratePerResp: 299  / 250,  packagePrice: 299  },
+  { id: 'scale',      name: 'Scale',      anchorCount: 500,  maxCount: 500,  ratePerResp: 499  / 500,  packagePrice: 499  },
+  { id: 'growth',     name: 'Growth',     anchorCount: 1000, maxCount: 1000, ratePerResp: 899  / 1000, packagePrice: 899  },
+  { id: 'enterprise', name: 'Enterprise', anchorCount: 1250, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 1099 / 1250, packagePrice: 1099 },
 ] as const;
 
 export const BRAND_LIFT_TIERS = [
-  { id: 'pulse',      name: 'Pulse',      anchorCount: 50,   maxCount: 50,   ratePerResp: 1.98, packagePrice: 99,   minRespondents: 50 },
-  { id: 'tracker',    name: 'Tracker',    anchorCount: 200,  maxCount: 200,  ratePerResp: 1.50, packagePrice: 300,  minRespondents: 50 },
-  { id: 'wave',       name: 'Wave',       anchorCount: 500,  maxCount: 500,  ratePerResp: 1.20, packagePrice: 600,  minRespondents: 50 },
-  { id: 'enterprise', name: 'Enterprise', anchorCount: 2000, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 0.75, packagePrice: 1500, minRespondents: 50 },
+  { id: 'pulse',      name: 'Pulse',      anchorCount: 50,   maxCount: 50,   ratePerResp: 1.98, packagePrice: 99,   minRespondents: 100 },
+  { id: 'tracker',    name: 'Tracker',    anchorCount: 200,  maxCount: 200,  ratePerResp: 1.50, packagePrice: 300,  minRespondents: 100 },
+  { id: 'wave',       name: 'Wave',       anchorCount: 500,  maxCount: 500,  ratePerResp: 1.20, packagePrice: 600,  minRespondents: 100 },
+  { id: 'enterprise', name: 'Enterprise', anchorCount: 2000, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 0.75, packagePrice: 1500, minRespondents: 100 },
 ] as const;
 
 // Pass 25 Phase 0.3 — Creative Attention now mirrors the volume ladder
@@ -159,38 +196,17 @@ export function respondentLadderBase(
 }
 
 /**
- * ── The 1,000–2,250 price plateau, and the linear bridge that closes it ─────
+ * ── The plateau bridge was retired by the 2026-09 reprice ──────────────────
  *
- * The tier floor above removed a $498 inversion by flooring the Enterprise
- * bracket at Scale's ceiling of $900. The side effect was a FLAT price:
+ * The bridge closed a flat $900 band 1,251 counts wide that the tier-price
+ * floor created on the old ladder, where the rate more than HALVED at the
+ * 1,000 boundary ($0.90 -> $0.40). The repriced ladder's steps are small and
+ * its top bracket is open-ended, so the widest flat band below the self-serve
+ * cap is 56 counts and there is nothing left to bridge. Its far anchor (5,000
+ * at $2,000) was a count no customer can buy.
  *
- *   base(n) = max(n × $0.40, $900) = $900   for every n in [1,000 .. 2,250]
- *
- * — 1,251 consecutive counts at one price, and at the top of it 2,250
- * respondents cost $0.40/resp, the same marginal rate as 5,000 respondents for
- * less than half the money.
- *
- * The bridge interpolates between the two PINNED anchors instead:
- *
- *   base(n) = existing bracket price          n <= 1,000
- *           = 900 + (n - 1,000) × 0.275       1,000 < n <= 5,000
- *           = existing bracket price          n >  5,000
- *
- * $0.275 = ($2,000 - $900) / (5,000 - 1,000) is the ONLY marginal rate that
- * lands on both anchors, so base(1,000) = $900 and base(5,000) = $2,000 are
- * unchanged and every other anchor (5/$9, 10/$35, 50/$99, 100/$120, 250/$300)
- * is outside the band entirely.
- *
- * This MUST stay byte-identical to `bridgedRespondentBase` in the backend's
- * src/utils/pricingEngine.js. A backend-only deploy makes this panel quote one
- * number and Stripe charge another.
+ * respondentLadderBase is called directly again. Mirrors the backend.
  */
-export const BRIDGE_FROM_COUNT = 1000;   // Scale anchor — $900
-export const BRIDGE_TO_COUNT   = 5000;   // Enterprise anchor — $2,000
-const BRIDGE_FROM_PRICE = 900;
-const BRIDGE_TO_PRICE   = 2000;
-export const BRIDGE_RATE_PER_RESP =
-  (BRIDGE_TO_PRICE - BRIDGE_FROM_PRICE) / (BRIDGE_TO_COUNT - BRIDGE_FROM_COUNT); // 0.275
 
 /**
  * The largest study the delivery pipeline can honestly run self-serve.
@@ -205,25 +221,21 @@ export const BRIDGE_RATE_PER_RESP =
  */
 export const MAX_SELF_SERVE_RESPONDENTS = 1250;
 
-/** Base price inside the bridge band, or null when the count is outside it. */
-export function defaultLadderBridgeBase(count: number): number | null {
-  const n = Math.max(0, Number(count) || 0);
-  if (n <= BRIDGE_FROM_COUNT || n > BRIDGE_TO_COUNT) return null;
-  return Math.round((BRIDGE_FROM_PRICE + (n - BRIDGE_FROM_COUNT) * BRIDGE_RATE_PER_RESP) * 100) / 100;
-}
+/** Extra-question surcharge. Mirrors the backend engine. */
+export const EXTRA_QUESTION_PRICE = 5;
+export const FREE_QUESTIONS = 10;
 
-/** Monotonic base for a ladder, with the default ladder's plateau bridged. */
-export function bridgedRespondentBase(
-  ladder: readonly AnyTier[],
-  tier: AnyTier | null | undefined,
-  count: number,
-  rate: number,
-): number {
-  if (ladder === VOLUME_TIERS) {
-    const bridged = defaultLadderBridgeBase(count);
-    if (bridged != null) return bridged;
-  }
-  return respondentLadderBase(ladder, tier, count, rate);
+/**
+ * Render a per-respondent rate so `count x rate` visibly reconciles with the
+ * base it produced. The reprice derives rates from round anchors, so four of
+ * the seven are not two-decimal numbers (499/500 = 0.998). toFixed(2) would
+ * render "$1.00 / respondent" beside a $499 charge for 500 people. Mirrors
+ * formatRatePerResp in the backend engine.
+ */
+export function formatRatePerResp(rate: number): string | null {
+  const r = Number(rate);
+  if (!Number.isFinite(r)) return null;
+  return r.toFixed(4).replace(/(\.\d{2}\d*?)0+$/, '$1');
 }
 
 /** True when a respondent count is beyond what the pipeline can deliver self-serve. */
@@ -243,12 +255,17 @@ export const calculatePricing = (
   const tier = getVolumeTier(respondentCount);
   const basePerRespondent = tier.ratePerResp;
   // Monotonic: never cheaper than the top of the tier below. See
-  // respondentLadderBase — the V1 tier-boundary inversion fix.
-  // Monotonic AND plateau-free — see bridgedRespondentBase.
-  const base = bridgedRespondentBase(VOLUME_TIERS, tier, respondentCount, basePerRespondent);
+  // respondentLadderBase — the tier-boundary inversion fix.
+  const base = respondentLadderBase(VOLUME_TIERS, tier, respondentCount, basePerRespondent);
 
-  const additionalQuestions = Math.max(0, questions.length - 5);
-  const questionSurcharge = additionalQuestions * 20;
+  // $5 per question beyond 10, since the 2026-09 reprice (was $20 beyond 5).
+  // Question counts are set by the methodology, not the customer — a user can
+  // hand-add at most three — so the old rule collected nothing on the generic
+  // 5-question instruments and $360 on a 23-question Feature Roadmap the
+  // customer could not shorten. Mirrors EXTRA_QUESTION_PRICE / FREE_QUESTIONS
+  // in the backend engine.
+  const additionalQuestions = Math.max(0, questions.length - FREE_QUESTIONS);
+  const questionSurcharge = additionalQuestions * EXTRA_QUESTION_PRICE;
 
   // FREE DEMOGRAPHICS (covered by base price, no additional cost)
   const freeDemographicsCount =

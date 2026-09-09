@@ -4,7 +4,7 @@ import { Lock, Rocket, ShieldCheck, Star } from 'lucide-react';
 
 import type { Question } from './QuestionEngine';
 import type { TargetingConfig } from './TargetingEngine';
-import { calculatePricing, getVolumeTier, VOLUME_TIERS, MAX_SELF_SERVE_RESPONDENTS } from '../../utils/pricingEngine';
+import { calculatePricing, getVolumeTier, VOLUME_TIERS, MAX_SELF_SERVE_RESPONDENTS, FREE_QUESTIONS, EXTRA_QUESTION_PRICE, formatRatePerResp } from '../../utils/pricingEngine';
 import { LeadCaptureForm } from '../marketing/LeadCaptureForm';
 import { COUNTRIES } from '../../data/targetingOptions';
 import { SampleSizeGuidance } from '../setup/SampleSizeGuidance';
@@ -90,12 +90,13 @@ function methodologyIdForGoal(goalType: string | null | undefined): string | nul
 // promo input handles validation on the hosted page.
 // ────────────────────────────────────────────────────────────────────
 
-// Pass 23 Bug 23.PRICING — preset chips snap to the four named tier anchors
-// (Sniff Test 5, Validate 10, Confidence 50, Deep Dive 250). The slider still
-// allows arbitrary values between the min and the cap; pricing applies the rate
-// of the tier the count falls in (see utils/pricingEngine.ts::getVolumeTier),
-// with the 1,000 -> 5,000 plateau bridged linearly.
-const PRESETS = [5, 10, 50, 250] as const;
+// Preset chips snap to the first four tier anchors. DERIVED from the ladder,
+// not written out again: this list used to be a hardcoded [5, 10, 50, 250] and
+// the 2026-09 reprice moved two of those anchors, which would have left the
+// chips pointing at counts that are no longer the top of any bracket. The
+// slider still allows arbitrary values between the min and the cap; pricing
+// applies the rate of the bracket the count falls in.
+const PRESETS = VOLUME_TIERS.slice(0, 4).map((t) => t.anchorCount);
 const MIN_RESPONDENTS = 5;
 // Was a flat 5,000 — a PRICE bound the delivery pipeline could not honour. The
 // ceiling is now a DELIVERY bound: the largest study that finishes inside the
@@ -201,8 +202,13 @@ const fmt$ = (n: number) => `$${Math.round(n).toLocaleString()}`;
  * $1.90/resp rate displayed as "$2" and the breakdown read "100 × $2 = $190"
  * which made the math look wrong. This keeps the breakdown arithmetic
  * honest: 100 × $1.90 = $190.
+ *
+ * Two decimals is not enough since the 2026-09 reprice, which derives rates
+ * from round anchor prices: 499/500 = $0.998, and toFixed(2) would render
+ * "500 × $1.00 = $499". formatRatePerResp shows up to four decimals and trims
+ * the trailing zeros, so the product on screen always reconciles.
  */
-const fmtRate = (n: number) => `$${n.toFixed(2)}`;
+const fmtRate = (n: number) => `$${formatRatePerResp(n) ?? n.toFixed(2)}`;
 
 // ────────────────────────────────────────────────────────────────────
 // Main card
@@ -568,7 +574,7 @@ export const MissionControlPricing = ({
             value={fmt$(pricing.base)}
           />
           <Row
-            label={`${questions.length} questions ${questions.length <= 5 ? '(included)' : '(+$20 each over 5)'}`}
+            label={`${questions.length} questions ${questions.length <= FREE_QUESTIONS ? '(included)' : `(+$${EXTRA_QUESTION_PRICE} each over ${FREE_QUESTIONS})`}`}
             value={
               pricing.questionSurcharge > 0
                 ? fmt$(pricing.questionSurcharge)
