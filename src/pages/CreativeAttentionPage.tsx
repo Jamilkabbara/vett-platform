@@ -613,8 +613,14 @@ export function CreativeAttentionPage() {
                 >
                   {creating ? (
                     <><Loader2 className="w-4 h-4 animate-spin mr-2" />Creating mission…</>
+                  ) : promo?.free ? (
+                    /* The price above already reads "Free"; a button still
+                       saying "Pay $19" beside it is the kind of contradiction
+                       that makes someone abandon the checkout they were about
+                       to complete. */
+                    `Launch free · ${respondentCount} respondents`
                   ) : (
-                    `Pay $${tierPrice} & Analyse · ${respondentCount} respondents`
+                    `Pay $${promo ? promo.total : tierPrice} & Analyse · ${respondentCount} respondents`
                   )}
                 </Button>
                 {!canProceed && (

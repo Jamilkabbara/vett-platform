@@ -10,7 +10,17 @@ export const DashboardNavbar = () => {
   const { profile } = useUserProfile();
   const isAdmin = profile?.is_admin === true;
 
-  const isResultsPage = location.pathname === '/results' || location.pathname.startsWith('/dashboard/');
+  // `/results` only. The old `|| startsWith('/dashboard/')` clause was dead:
+  // the only route under that prefix is `/dashboard/:missionId`, which renders
+  // DashboardPage, and DashboardPage is the one results-adjacent page that does
+  // NOT wrap itself in DashboardLayout, so this navbar never mounts there.
+  //
+  // The rest of this check is NOT dead, contrary to how it looks. DashboardNavbar
+  // reaches `/results` and `/mission-success` because ResultsPage and
+  // MissionSuccessPage each wrap themselves in DashboardLayout directly, rather
+  // than through App.tsx. App.tsx uses DashboardLayout for `/mission-control`
+  // alone, which is why this reads as unreachable from the route table.
+  const isResultsPage = location.pathname === '/results';
   const isMissionSuccessPage = location.pathname === '/mission-success';
   const isMissionControlPage = location.pathname === '/mission-control' || location.pathname === '/setup';
 
