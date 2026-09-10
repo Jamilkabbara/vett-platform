@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { fetchMissionRow } from '../lib/missionAccess';
 import { CreativeAttentionResultsPage } from './CreativeAttentionResultsPage';
-// WO — the universal premium results shell. Reads the ONE canonical report and
-// leads with the methodology's signature hero (Centerpiece). Every survey
-// methodology routes here; the per-type bespoke pages it replaces (CSAT,
-// Pricing, Roadmap, Compare, AdTesting, Competitor, Naming, Churn, BrandLift,
-// Validate, Research, generic) are superseded by shell + Centerpiece + the
-// insight-led question body, so web and the exports can't drift.
-import { PremiumResults } from '../components/results/premium/PremiumResults';
+// The universal results page. Reads the ONE canonical report and leads with the
+// methodology's signature hero (Centerpiece). Every survey methodology routes
+// here; the per-type bespoke pages it replaces (CSAT, Pricing, Roadmap,
+// Compare, AdTesting, Competitor, Naming, Churn, BrandLift, Validate, Research,
+// generic) are superseded by shell + Centerpiece + the insight-led question
+// body, so web and the exports can't drift. It takes no props: it reads
+// missionId from the route itself via useParams.
+import { ResultsV2Page } from './ResultsV2Page';
 
 /**
  * Central router for /results/:missionId.
@@ -19,15 +19,24 @@ import { PremiumResults } from '../components/results/premium/PremiumResults';
  *   - creative_attention → its bespoke page (different data model —
  *     creative_analysis frames/emotion, not the survey canonical report;
  *     resurrection track owns its showcase rebuild).
- *   - everything else    → the universal PremiumResults shell.
+ *   - everything else    → the universal ResultsV2Page shell.
  */
 export function ResultsRouter() {
   const { missionId } = useParams<{ missionId: string }>();
+  const [params] = useSearchParams();
   const [goalType, setGoalType] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [probing, setProbing] = useState(true);
 
+  // DEV ONLY: ?fixture=1 renders ResultsV2Page against a checked-in canonical
+  // report so the page can be reviewed with no Supabase session. The fixture
+  // ids are synthetic, so the goal_type probe below would 404 on them and
+  // render "Mission not found" instead. `import.meta.env.DEV` folds to false
+  // in a production build, so Rollup drops this branch entirely.
+  const fixturePreview = import.meta.env.DEV && params.get('fixture') != null;
+
   useEffect(() => {
+    if (fixturePreview) return;
     if (!missionId) {
       setError('No mission ID provided.');
       setProbing(false);
@@ -45,7 +54,11 @@ export function ResultsRouter() {
       setProbing(false);
     })();
     return () => { cancelled = true; };
-  }, [missionId]);
+  }, [missionId, fixturePreview]);
+
+  if (fixturePreview) {
+    return <ResultsV2Page />;
+  }
 
   if (probing) {
     return (
@@ -67,7 +80,7 @@ export function ResultsRouter() {
   if (goalType === 'creative_attention') {
     return <CreativeAttentionResultsPage />;
   }
-  return <PremiumResults missionId={missionId!} />;
+  return <ResultsV2Page />;
 }
 
 export default ResultsRouter;
