@@ -629,6 +629,34 @@ function generic(findings: Array<Record<string, unknown>>): CenterpieceView {
   };
 }
 
+/**
+ * True when an adapter resolved to nothing a reader can use: every headline
+ * cell blank and no signal rows.
+ *
+ * This happens when the adapter's field paths are RIGHT but the analysis object
+ * is empty underneath them. The marketing adapter is the case that forced this:
+ * `computeMarketing` keys off `question.funnel_stage` metadata, and a mission
+ * whose questions were never tagged gets `funnel: {likeability: null,
+ * persuasion: null, stopping_power: null, ...}` - every stage null. The adapter
+ * reads the correct paths, finds null in all of them, and renders three
+ * em-dashes with no rows, while the SAME mission's key_findings carries six
+ * populated metrics that the outgoing results page renders today.
+ *
+ * Deliberately general rather than a marketing special case. Eleven other
+ * adapters read a deterministic analysis object the same way and would blank
+ * the same way if their upstream ever came back empty; a centerpiece that
+ * cannot fill itself should fall back, whichever methodology it is.
+ */
+function isEmptyView(view: CenterpieceView): boolean {
+  // A Cell's `value` is a ScalarSlot OBJECT, never null - toScalarSlot always
+  // returns one. So `c.value == null` is always false and testing it is a
+  // no-op. A cell is blank when the slot carries neither a numeral nor a note,
+  // which is exactly the condition primitives.tsx renders as an em-dash.
+  const noCells = view.cells.every((c) => c.value.scalar == null && c.value.note == null);
+  const noRows = !view.rows || view.rows.length === 0;
+  return noCells && noRows;
+}
+
 /* ── entry point ─────────────────────────────────────────────────────── */
 
 const ADAPTERS: Record<string, (a: Any) => CenterpieceView> = {
@@ -675,11 +703,25 @@ export function buildCenterpiece(report: CanonicalReport): Centerpiece {
   const data = report.centerpiece?.data;
   const adapter = ADAPTERS[method];
 
+  const findings = report.key_findings || [];
+
   if (adapter && data && typeof data === 'object') {
-    return { view: adapter(data as Any), withheld: null, directionalNote };
+    const view = adapter(data as Any);
+    // An adapter that resolved to nothing must not beat key_findings. See
+    // isEmptyView: correct field paths over an empty analysis object render a
+    // blank hero, and blanking a page that currently shows six metrics is the
+    // worst outcome of the cutover, not a neutral one.
+    if (!isEmptyView(view)) {
+      return { view, withheld: null, directionalNote };
+    }
+    if (findings.length) {
+      return { view: generic(findings), withheld: null, directionalNote };
+    }
+    // Nothing anywhere. Return the empty view rather than null so the page
+    // still renders its frame and eyebrow instead of vanishing.
+    return { view, withheld: null, directionalNote };
   }
 
-  const findings = report.key_findings || [];
   if (!findings.length) return { view: null, withheld: null, directionalNote };
   return { view: generic(findings), withheld: null, directionalNote };
 }
