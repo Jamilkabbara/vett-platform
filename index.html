@@ -2,6 +2,23 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
+
+    <!--
+      Google Search Console site verification.
+
+      Lives in index.html rather than being set from React, because Search
+      Console reads the RAW response and does not execute JavaScript - a tag
+      added at runtime is invisible to it.
+
+      scripts/prerender.mjs copies this file for all 24 public routes and only
+      rewrites the title, description, canonical, Open Graph and Twitter tags
+      plus the #root div, so this survives the prerender untouched and appears
+      on every prerendered page. Search Console only needs it on the homepage;
+      having it everywhere is harmless and removes a way to lose it.
+
+      Do not remove without disconnecting the property in Search Console first.
+    -->
+    <meta name="google-site-verification" content="g75-pKiznDd8END7QWiiIndmX7FkSNn2VAAkumkYi-8" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
