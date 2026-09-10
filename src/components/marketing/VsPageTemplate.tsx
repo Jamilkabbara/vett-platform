@@ -15,10 +15,11 @@
  *     page (we do not link directly to sales pages of competitors)
  */
 
-import { useEffect } from 'react';
+
 import { Link } from 'react-router-dom';
 import { OverlayPage } from '../layout/OverlayPage';
 import { Check, X, Minus, ArrowRight, Sparkles } from 'lucide-react';
+import { useRouteSeo } from '../../seo/useRouteSeo';
 
 export type Verdict = 'vett' | 'competitor' | 'tie';
 
@@ -62,34 +63,11 @@ export function VsPageTemplate({
   whenToUseCompetitor,
   faqs = [],
 }: VsPageProps) {
-  useEffect(() => {
-    const prevTitle = document.title;
-    document.title = `VETT vs ${competitorName}: honest comparison`;
-    const setMeta = (name: string, content: string) => {
-      let el = document.querySelector(`meta[name="${name}"]`);
-      if (!el) {
-        el = document.createElement('meta');
-        el.setAttribute('name', name);
-        document.head.appendChild(el);
-      }
-      el.setAttribute('content', content);
-    };
-    const prevDesc = document.querySelector('meta[name="description"]')?.getAttribute('content') ?? '';
-    setMeta('description', `VETT vs ${competitorName} — honest side-by-side. Synthetic respondents vs ${competitorTagline.toLowerCase()}. Pricing, methodology, geographic reach, when to choose each.`);
-    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (!canonical) {
-      canonical = document.createElement('link');
-      canonical.setAttribute('rel', 'canonical');
-      document.head.appendChild(canonical);
-    }
-    const prevCanonical = canonical.getAttribute('href') ?? '';
-    canonical.setAttribute('href', `https://www.vettit.ai${slug}`);
-    return () => {
-      document.title = prevTitle;
-      setMeta('description', prevDesc);
-      if (canonical) canonical.setAttribute('href', prevCanonical);
-    };
-  }, [competitorName, competitorTagline, slug]);
+  // Title, description and canonical all come from the SEO manifest, which is
+  // also what scripts/prerender.mjs bakes into the static HTML for this route.
+  // This used to be a hand-rolled effect writing its own title string and its
+  // own description, so the tab and the prerendered head said different things.
+  useRouteSeo(slug);
 
   return (
     <OverlayPage>
