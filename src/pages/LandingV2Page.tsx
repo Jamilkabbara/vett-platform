@@ -58,6 +58,12 @@ import {
   NpsPanel,
   PriceSensitivityPanel,
 } from '../components/landing-v2/panels';
+import {
+  getPricingForGoalType,
+  respondentLadderBase,
+  BRAND_LIFT_MIN_RESPONDENTS,
+  CA_MIN_RESPONDENTS,
+} from '../utils/pricingEngine';
 import { PricingLadders } from '../components/landing-v2/PricingLadders';
 
 import '../styles/landing-v2.css';
@@ -89,28 +95,51 @@ const SPEED_STATS = [
  * "COMING SOON" that are live today, and tags Pricing Research at $99
  * without naming Creative Attention's $19 floor.
  */
+/**
+ * The "FROM $x" chip on each research-type card, DERIVED from the goal's own
+ * ladder rather than hand-typed.
+ *
+ * Seven of these twelve cards published "FROM $99" for goals whose real floor
+ * is $9 at five respondents, and Brand Lift published "FROM $99" for a study
+ * its own 100-respondent floor makes unbuyable ($150 is the cheapest). Three of
+ * the wrong ones contradicted /methodologies for the same goalId. Nothing
+ * imported these strings into a price path, so no customer was overcharged, but
+ * a price on a landing card is a promise about the price on the next screen.
+ */
+function startsAtLabel(goalId: string): string {
+  const ladder = getPricingForGoalType(goalId);
+  const floor =
+    goalId === 'brand_lift' ? BRAND_LIFT_MIN_RESPONDENTS
+    : goalId === 'creative_attention' ? CA_MIN_RESPONDENTS
+    : ladder[0].anchorCount;
+  const tier = ladder.find((t) => floor <= t.maxCount) ?? ladder[ladder.length - 1];
+  const base = goalId === 'creative_attention'
+    ? tier.packagePrice
+    : respondentLadderBase(ladder, tier, floor, tier.ratePerResp);
+  return `FROM $${base.toLocaleString('en-US')}`;
+}
+
 const RESEARCH_TYPES: Array<{
   emoji: string;
   title: string;
   desc: string;
-  tag: string;
   /** Indigo tag treatment. The mock uses it for its 'COMING SOON' cards;
    *  here it marks the newest flow, which is live and priced. */
   accent?: boolean;
   goalId: string;
 }> = [
-  { emoji: '🚀', title: 'Product Validation',          desc: 'Test if your idea has real demand before building. Find your PMF signal fast.',                    tag: 'FROM $9',  goalId: 'validate' },
-  { emoji: '💰', title: 'Pricing Research',            desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.',                tag: 'FROM $99', goalId: 'pricing' },
-  { emoji: '📣', title: 'Creative & Ad Testing',       desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                         tag: 'FROM $9',  goalId: 'marketing' },
-  { emoji: '⭐', title: 'Customer Satisfaction',       desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                      tag: 'FROM $99', goalId: 'satisfaction' },
-  { emoji: '🗺️', title: 'Feature Roadmap',             desc: 'Let your users tell you what to build next. Kano model prioritisation.',                          tag: 'FROM $99', goalId: 'roadmap' },
-  { emoji: '🌍', title: 'Market Entry',                desc: 'Validate demand in new geographies before expanding. Test any country, any city.',                 tag: 'FROM $9',  goalId: 'market_entry' },
-  { emoji: '📡', title: 'Brand Lift Study',            desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',        tag: 'FROM $99', goalId: 'brand_lift' },
-  { emoji: '🎬', title: 'Creative Attention Analysis', desc: 'Measure emotional response, attention, and engagement on your video or image creatives with research-grade emotion mapping.', tag: 'FROM $19', accent: true, goalId: 'creative_attention' },
-  { emoji: '🔄', title: 'Churn Research',              desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',      tag: 'FROM $99', goalId: 'churn_research' },
-  { emoji: '🔍', title: 'Competitor Analysis',         desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',            tag: 'FROM $99', goalId: 'competitor' },
-  { emoji: '🎯', title: 'Audience Profiling',          desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',               tag: 'FROM $9',  goalId: 'audience_profiling' },
-  { emoji: '✍️', title: 'Naming & Messaging',          desc: 'Test product names, taglines, and positioning across your target audience.',                       tag: 'FROM $9',  goalId: 'naming_messaging' },
+  { emoji: '🚀', title: 'Product Validation',          desc: 'Test if your idea has real demand before building. Find your PMF signal fast.',                    goalId: 'validate' },
+  { emoji: '💰', title: 'Pricing Research',            desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.',                goalId: 'pricing' },
+  { emoji: '📣', title: 'Creative & Ad Testing',       desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                         goalId: 'marketing' },
+  { emoji: '⭐', title: 'Customer Satisfaction',       desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                      goalId: 'satisfaction' },
+  { emoji: '🗺️', title: 'Feature Roadmap',             desc: 'Let your users tell you what to build next. Kano model prioritisation.',                          goalId: 'roadmap' },
+  { emoji: '🌍', title: 'Market Entry',                desc: 'Validate demand in new geographies before expanding. Test any country, any city.',                 goalId: 'market_entry' },
+  { emoji: '📡', title: 'Brand Lift Study',            desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',        goalId: 'brand_lift' },
+  { emoji: '🎬', title: 'Creative Attention Analysis', desc: 'Measure emotional response, attention, and engagement on your video or image creatives with research-grade emotion mapping.', accent: true, goalId: 'creative_attention' },
+  { emoji: '🔄', title: 'Churn Research',              desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',      goalId: 'churn_research' },
+  { emoji: '🔍', title: 'Competitor Analysis',         desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',            goalId: 'competitor' },
+  { emoji: '🎯', title: 'Audience Profiling',          desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',               goalId: 'audience_profiling' },
+  { emoji: '✍️', title: 'Naming & Messaging',          desc: 'Test product names, taglines, and positioning across your target audience.',                       goalId: 'naming_messaging' },
 ];
 
 const LOOP_STEPS = [
@@ -468,7 +497,7 @@ export function LandingV2Page() {
                       : 'bg-[rgba(190,242,100,0.13)] text-[#BEF264] border-[rgba(190,242,100,0.22)]',
                   ].join(' ')}
                 >
-                  {r.tag}
+                  {startsAtLabel(r.goalId)}
                 </span>
               </button>
             </Reveal>

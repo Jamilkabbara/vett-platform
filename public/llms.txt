@@ -64,11 +64,13 @@ Per-respondent missions (validate, naming_messaging, marketing,
 pricing, feature_roadmap, customer_satisfaction, compare, competitor,
 churn_research):
 - Sniff Test     5 personas      $9
-- Validate      10 personas     $35
-- Confidence    50 personas     $99
-- Deep Dive    250 personas    $300
-- Scale       1000 personas    $900
-- Enterprise  above 1,250 personas  custom quote (not sold self-serve)
+- Validate      25 personas     $39
+- Confidence   100 personas    $149
+- Deep Dive    250 personas    $299
+- Scale        500 personas    $499
+- Growth      1000 personas    $899
+- Enterprise  1250 personas  $1,099
+- Managed     above 1,250 personas  custom quote (not sold self-serve)
 
 Self-serve studies run up to 1,250 respondents. Above that we scope the
 study with you rather than sell it on the site.
@@ -76,7 +78,7 @@ study with you rather than sell it on the site.
 Brand Lift (exposed + control split, minimum 100 respondents):
 - Tracker     200 personas     $300
 - Wave        500 personas     $600
-- Enterprise 2000 personas  $1,500
+- Managed     above 1,250 personas  custom quote (not sold self-serve)
 
 Brand Lift splits the sample across an exposed and a control cell, so the
 smallest study is 100 respondents ($150). At 100 the minimum detectable
@@ -91,7 +93,7 @@ Creative Attention (per-respondent, minimum 10 respondents):
 - Deep Dive XL 250 personas  $299
 
 Targeting surcharges apply for narrow multi-criteria targeting.
-Extra questions beyond the included 5 are $20 each.
+Extra questions beyond the included 10 are $5 each.
 
 ## How a mission runs
 

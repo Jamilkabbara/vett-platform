@@ -2,6 +2,12 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, Beaker, Sparkles } from 'lucide-react';
 import { OverlayPage } from '../components/layout/OverlayPage';
 import { getGoalById } from '../data/missionGoals';
+import {
+  getPricingForGoalType,
+  respondentLadderBase,
+  BRAND_LIFT_MIN_RESPONDENTS,
+  CA_MIN_RESPONDENTS,
+} from '../utils/pricingEngine';
 
 /**
  * Pass 32 C1 — /methodologies marketing page.
@@ -22,12 +28,39 @@ interface Methodology {
   short: string;
   detail: string;
   framework: string;
-  startsAt: string;
   /** @deprecated — the live/coming-soon split now derives from comingSoon
    *  (missionGoals.ts, mirror of backend src/config/comingSoon.js). Retained
    *  only so existing entries type-check; not read for gating. */
   status?: 'live' | 'in_progress';
   goalId?: string;
+}
+
+/**
+ * The "starts at" chip, DERIVED from the goal's own ladder.
+ *
+ * It used to be a hand-typed `startsAt` string on each card, and nine of the
+ * thirteen were wrong: ten cards published $35 or $99 as their floor when every
+ * one of them is a default-ladder goal whose real floor is $9 at five
+ * respondents, and three of those directly contradicted the landing page, which
+ * tags the same goalId "FROM $9". Brand Lift was wrong in the other direction:
+ * it published $99, a study its own 100-respondent floor makes unbuyable, when
+ * the cheapest Brand Lift is $150.
+ *
+ * Nothing ever imported these strings into a price path, so nobody was charged
+ * the wrong amount — but the number a customer reads before clicking is the
+ * number they expect to pay. Deriving it means a reprice moves it.
+ */
+function startsAtLabel(goalId: string | undefined): string {
+  const ladder = getPricingForGoalType(goalId);
+  const floor =
+    goalId === 'brand_lift' ? BRAND_LIFT_MIN_RESPONDENTS
+    : goalId === 'creative_attention' ? CA_MIN_RESPONDENTS
+    : ladder[0].anchorCount;
+  const tier = ladder.find((t) => floor <= t.maxCount) ?? ladder[ladder.length - 1];
+  const base = goalId === 'creative_attention'
+    ? tier.packagePrice
+    : respondentLadderBase(ladder, tier, floor, tier.ratePerResp);
+  return `$${base.toLocaleString('en-US')}`;
 }
 
 const METHODOLOGIES: Methodology[] = [
@@ -37,7 +70,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'Single-concept monadic acceptance for product ideas before you build.',
     detail: 'Each persona evaluates the concept on uniqueness, relevance, believability, and purchase intent. Output: composite acceptance score, persona-level objections, demographic cuts.',
     framework: 'Monadic concept acceptance — borrowed from BASES / ASSESSOR with synthetic-respondent simulation.',
-    startsAt: '$9',
     status: 'live',
     goalId: 'validate',
   },
@@ -45,9 +77,8 @@ const METHODOLOGIES: Methodology[] = [
     id: 'compare',
     name: 'Sequential Monadic Comparison',
     short: 'Compare 2–5 concepts head-to-head with rotation balancing.',
-    detail: 'Each persona evaluates one concept at a time in randomized order. Output: per-concept scores, head-to-head winner, demographic-segmented preference, rotation-bias diagnostic.',
-    framework: 'Sequential monadic with Latin-square rotation — standard concept-comparison protocol.',
-    startsAt: '$35',
+    detail: 'Each persona evaluates one concept at a time in randomized order. Output: per-concept scores, head-to-head winner, demographic-segmented preference.',
+    framework: 'Sequential monadic with per-respondent randomized concept order - standard concept-comparison protocol.',
     status: 'live',
     goalId: 'compare',
   },
@@ -57,7 +88,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'Test ad copy, visuals, and messaging before you spend on media.',
     detail: 'Per-ad scoring on attention, relevance, intended message, brand fit, and call-to-action clarity. Output: KPI panel, channel/format fit, message-association strength.',
     framework: 'Ad effectiveness diagnostics — Millward Brown LinkPlus / System1-style framework adapted for synthetic personas.',
-    startsAt: '$35',
     status: 'live',
     goalId: 'marketing',
   },
@@ -67,7 +97,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'Frame-by-frame attention prediction + emotion taxonomy on video and static creative.',
     detail: 'Per-frame analysis of 24 emotions (Plutchik 8 + 16 nuanced), attention decay curves, distinctive brand asset score, channel-specific predicted dwell time, platform fit.',
     framework: 'Attention prediction scored against published industry attention norms; emotion taxonomy extending Plutchik\'s peer-reviewed framework.',
-    startsAt: '$19',
     // §A0 — Coming-Soon (mirrors comingSoon in missionGoals.ts). Was 'live',
     // which advertised + linked it to a purchasable /setup flow.
     status: 'in_progress',
@@ -79,7 +108,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'Exposed vs control incrementality across 9 brand-health KPIs.',
     detail: 'Exposed vs control split; lift is measured from the two cells by deterministic analysis, not prescribed. Industry-standard 9-category framework.',
     framework: 'Incrementality study with exposed/control simulation — based on Nielsen Brand Effect / Kantar Brand Lift methodology.',
-    startsAt: '$99',
     status: 'live',
     goalId: 'brand_lift',
   },
@@ -89,7 +117,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'Find the price point that maximizes revenue.',
     detail: 'Van Westendorp Price Sensitivity Meter (PSM) for acceptable price range + Gabor-Granger for direct willingness-to-pay distribution. Output: optimum price point, indifference price, marginal cheap/expensive thresholds.',
     framework: 'Van Westendorp (1976) + Gabor-Granger (1965) — peer-reviewed pricing-research methodologies.',
-    startsAt: '$99',
     status: 'live',
     goalId: 'pricing_research',
   },
@@ -99,7 +126,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'Let your audience tell you what to build next.',
     detail: 'MaxDiff (best-worst scaling) for feature prioritization + Kano model for must-have / performance / delighter classification. Output: ranked feature list, Kano quadrant chart, must-have threshold.',
     framework: 'MaxDiff (Sawtooth) + Kano model (1984) — gold-standard feature-prioritization frameworks.',
-    startsAt: '$99',
     status: 'live',
     goalId: 'feature_roadmap',
   },
@@ -109,7 +135,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'NPS + CSAT + CES across any touchpoint.',
     detail: 'Net Promoter Score (Reichheld), Customer Satisfaction Score, Customer Effort Score — all three on a single mission with touchpoint anchoring + recency window control.',
     framework: 'Reichheld NPS (2003) + CSAT + CES — industry-standard satisfaction trio.',
-    startsAt: '$99',
     status: 'live',
     goalId: 'customer_satisfaction',
   },
@@ -119,7 +144,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'Benchmark against competitors across attribute dimensions.',
     detail: 'Per-brand awareness funnel (aware → consider → prefer → recommend), attribute battery scoring across 6-12 attributes, competitive heatmap, share-of-voice estimate.',
     framework: 'Brand health tracking — Kantar BrandZ / Millward Brown attribute-equity framework.',
-    startsAt: '$99',
     status: 'live',
     goalId: 'competitor_analysis',
   },
@@ -129,7 +153,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'Test names, taglines, and positioning across audience.',
     detail: 'Three test types: monadic (single name), paired comparison (head-to-head), or TURF reach (which combination of names captures the most audience). Output: per-name memorability, fit, and reach scores.',
     framework: 'Monadic + paired comparison + TURF (Total Unduplicated Reach and Frequency) — established naming-research toolkit.',
-    startsAt: '$35',
     status: 'live',
     goalId: 'naming_messaging',
   },
@@ -139,7 +162,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'Why customers leave and what would bring them back.',
     detail: 'Driver tree: surfaces the top reasons for churn ranked by mention rate + impact. Win-back: per-segment offer testing (discount, feature, service tier) to identify what would re-engage churned users.',
     framework: 'Churn driver-tree analysis + win-back offer testing — combined retention-research framework.',
-    startsAt: '$99',
     status: 'live',
     goalId: 'churn_research',
   },
@@ -149,7 +171,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'K-means segmentation across psychographic + behavioral attributes.',
     detail: 'Generate a population, run K-means clustering on the response matrix, surface 3-5 segments with prototype personas, decision drivers, and addressable size.',
     framework: 'K-means clustering segmentation — McKinsey-style psychographic profiling.',
-    startsAt: '$99',
     status: 'in_progress',
     goalId: 'audience_profiling',
   },
@@ -159,7 +180,6 @@ const METHODOLOGIES: Methodology[] = [
     short: 'Validate demand before expanding to a new geography.',
     detail: 'Multi-market routing: per-country persona generation, parallel simulation, cross-market deltas on awareness, intent, willingness-to-pay, and category fit.',
     framework: 'Combined market-entry framework with country-specific persona conditioning.',
-    startsAt: '$99',
     status: 'in_progress',
     goalId: 'market_entry',
   },
@@ -206,7 +226,7 @@ export const MethodologiesPage = () => {
                   {m.name}
                 </h3>
                 <span className="shrink-0 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-black uppercase tracking-widest">
-                  {m.startsAt}
+                  {startsAtLabel(m.goalId)}
                 </span>
               </div>
               <p className="text-white/70 text-sm leading-relaxed mb-4">

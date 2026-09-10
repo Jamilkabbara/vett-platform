@@ -1,19 +1,38 @@
 /**
  * PricingLadders - ports the mock's `.ptabs` / `.pladder` / `.pcta` block.
  *
- * PRICING COPY IS **NOT** TAKEN FROM THE MOCK. The mock's ladders are stale
- * on all three tabs (see the PR body's "Mock vs live pricing" table); the
- * numbers below are the corrected live ladders, mirroring the same constant
- * that the current LandingPage renders:
+ * PRICING COPY IS DERIVED, NOT WRITTEN. Every tier below is computed from the
+ * ladders in utils/pricingEngine.ts, which mirror the backend engine that
+ * Stripe charges from.
  *
- *   Validate           $9 / $35 / $99 / $300 / $900 / custom  (per respondent)
- *   Brand Lift         $99 / $300 / $600 / $1,500             (statistical n)
- *   Creative Attention respondent BRACKETS charged flat per bracket:
- *                      10 -> $19, 11-25 -> $39, 26-50 -> $69,
- *                      51-100 -> $129, 101+ -> $299
+ * It used to be a hand-typed table, and it was the fourth copy of the ladder
+ * in the codebase. The 2026-09 reprice moved five of the six default-ladder
+ * anchors; a hand-typed table would have kept publishing "$35 / 10 personas ·
+ * $3.50/resp" on the landing page while checkout charged $15.60. That is the
+ * same class of defect as the $299-published-vs-$300-charged drift the tiers
+ * endpoint had, and the fix is the same: one expression, not two copies.
+ *
+ * Two ladder-specific rules are applied here rather than in the engine, because
+ * they are presentation:
+ *
+ *   - Brackets below a goal's methodology floor are dropped. Brand Lift's Pulse
+ *     bracket anchors at 50 respondents and the floor is 100, so Pulse is
+ *     unbuyable and publishing "$99" for it advertises a study checkout
+ *     refuses. The published Brand Lift entry price is Tracker.
+ *   - The default ladder's top bracket is open-ended, so anything beyond the
+ *     self-serve cap renders as "Talk to us" rather than a number.
  */
 import { useState } from 'react';
 import { V2Button } from './primitives';
+import {
+  VOLUME_TIERS,
+  BRAND_LIFT_TIERS,
+  CREATIVE_ATTENTION_TIERS,
+  MAX_SELF_SERVE_RESPONDENTS,
+  formatRatePerResp,
+  respondentLadderBase,
+  type AnyTier,
+} from '../../utils/pricingEngine';
 
 interface Tier {
   name: string;
@@ -29,47 +48,70 @@ interface Ladder {
   tiers: Tier[];
 }
 
+const usd = (n: number) => `$${n.toLocaleString('en-US')}`;
+
+/**
+ * A respondent-ladder bracket rendered as "price" + "N personas · $rate/resp".
+ *
+ * Brackets outside the SELLABLE range are dropped at both ends, because
+ * publishing a price checkout refuses is the same defect as publishing a stale
+ * one. Below: a bracket under the goal's methodology floor (Brand Lift's Pulse
+ * anchors at 50, the floor is 100). Above: a bracket anchored past the
+ * self-serve cap (Brand Lift's Enterprise anchors at 2,000, the cap is 1,250).
+ * Everything past the cap becomes the one "Talk to us" row.
+ */
+function respondentTiers(ladder: readonly AnyTier[], minRespondents = 0): Tier[] {
+  return [
+    ...ladder
+      .filter((t) => t.anchorCount >= minRespondents && t.anchorCount <= MAX_SELF_SERVE_RESPONDENTS)
+      .map((t) => ({
+        name: t.name,
+        price: usd(respondentLadderBase(ladder, t, t.anchorCount, t.ratePerResp)),
+        meta: `${t.anchorCount.toLocaleString()} personas · $${formatRatePerResp(t.ratePerResp)}/resp`,
+      })),
+    {
+      name: 'Managed',
+      price: 'Talk to us',
+      meta: `Beyond ${MAX_SELF_SERVE_RESPONDENTS.toLocaleString()} personas · custom quote`,
+    },
+  ];
+}
+
+/** Creative Attention charges a flat package per bracket, so no rate is shown. */
+function flatTiers(ladder: readonly AnyTier[]): Tier[] {
+  return ladder.map((t, i) => {
+    const from = i === 0 ? t.anchorCount : ladder[i - 1].anchorCount + 1;
+    const to = Number.isFinite(t.maxCount) ? `${from}-${t.anchorCount}` : `${from}+`;
+    return {
+      name: t.name,
+      price: usd(t.packagePrice),
+      meta: `${i === 0 ? `${t.anchorCount}` : to} personas`,
+    };
+  });
+}
+
 const LADDERS: Ladder[] = [
   {
     id: 'validate',
     label: 'VALIDATE',
-    desc: 'Product, naming, and message validation. Pay per respondent, up to 1,250 per mission.',
+    desc: `Product, naming, and message validation. Pay per respondent, up to ${MAX_SELF_SERVE_RESPONDENTS.toLocaleString()} per mission.`,
     cta: 'START A VALIDATE MISSION',
-    tiers: [
-      { name: 'Sniff Test',  price: '$9',     meta: '5 personas · $1.80/resp' },
-      { name: 'Validate',    price: '$35',    meta: '10 personas · $3.50/resp' },
-      { name: 'Confidence',  price: '$99',    meta: '50 personas · $1.98/resp' },
-      { name: 'Deep Dive',   price: '$300',   meta: '250 personas · $1.20/resp' },
-      { name: 'Scale',       price: '$900',   meta: '1,000 personas · $0.90/resp' },
-      { name: 'Enterprise',  price: 'Talk to us', meta: 'Beyond 1,250 personas · custom quote' },
-    ],
+    tiers: respondentTiers(VOLUME_TIERS),
   },
   {
     id: 'brand_lift',
     label: 'BRAND LIFT',
-    desc: 'Awareness, recall, sentiment, and intent. Statistical sample sizes only.',
-    cta: 'START A BRAND LIFT STUDY',
-    tiers: [
-      { name: 'Pulse',      price: '$99',    meta: '50 personas · $1.98/resp' },
-      { name: 'Tracker',    price: '$300',   meta: '200 personas · $1.50/resp' },
-      { name: 'Wave',       price: '$600',   meta: '500 personas · $1.20/resp' },
-      { name: 'Enterprise', price: '$1,500', meta: '2,000 personas · $0.75/resp' },
-    ],
+    desc: 'Exposed and control cells measured side by side. Starts at 100 respondents, the point the split can carry a comparison.',
+    cta: 'START A BRAND LIFT MISSION',
+    // Pulse (anchor 50) is below the 100 floor and cannot be bought.
+    tiers: respondentTiers(BRAND_LIFT_TIERS, 100),
   },
   {
     id: 'creative_attention',
     label: 'CREATIVE ATTENTION',
-    // The mock says "Per-asset" here. It is not: Creative Attention is a
-    // respondent-bracket ladder charged flat per bracket.
-    desc: 'Frame-by-frame attention, emotion, and message clarity. Charged flat per respondent bracket.',
-    cta: 'START A CREATIVE ATTENTION ANALYSIS',
-    tiers: [
-      { name: 'Sniff Test',   price: '$19',  meta: '10 personas' },
-      { name: 'Validate',     price: '$39',  meta: '11-25 personas' },
-      { name: 'Confidence',   price: '$69',  meta: '26-50 personas' },
-      { name: 'Deep Dive',    price: '$129', meta: '51-100 personas' },
-      { name: 'Deep Dive XL', price: '$299', meta: '101+ personas' },
-    ],
+    desc: 'Frame-by-frame attention analysis on your creative. Charged per bracket, not per respondent.',
+    cta: 'START A CREATIVE ATTENTION MISSION',
+    tiers: flatTiers(CREATIVE_ATTENTION_TIERS),
   },
 ];
 

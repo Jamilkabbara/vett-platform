@@ -22,6 +22,15 @@
  * Reached at /results-v2/<missionId>?fixture=1 in a dev server.
  */
 import type { CanonicalReport, CanonicalSurveyQuestion } from '../../results/report/useCanonicalReport';
+import { SATISFACTION } from './production/satisfaction';
+import { BRAND_LIFT } from './production/brand_lift';
+import { ROADMAP } from './production/roadmap';
+import { MARKETING } from './production/marketing';
+import { COMPETITOR } from './production/competitor';
+import { NAMING_MESSAGING } from './production/naming_messaging';
+import { COMPARE } from './production/compare';
+import { VALIDATE } from './production/validate';
+import { CHURN_RESEARCH } from './production/churn_research';
 
 type Slim = {
   id: string;
@@ -790,8 +799,47 @@ const STRESS: CanonicalReport = {
   ],
 };
 
+/**
+ * ── the nine unproven adapters ────────────────────────────────────────────
+ *
+ * `buildCenterpiece()` dispatches on methodology to one of twelve adapter
+ * functions, each reading METHODOLOGY-SPECIFIC field paths out of
+ * `centerpiece.data`. Only three of those adapters - market_entry, pricing
+ * and audience_profiling, the three fixtures above - had ever run against
+ * real data. The rest were unexercised, and because every helper in
+ * centerpiece.ts is null-safe (`g()` returns undefined, `arr()` returns [],
+ * `num()` returns null) a WRONG FIELD PATH DOES NOT THROW. It resolves to
+ * EMPTY_SLOT and renders a blank headline cell on a report a customer paid
+ * for - silent, and harder to notice than a white screen.
+ *
+ * So each module under `./production/` is one completed production mission of
+ * that goal type, put through the backend's real `buildCanonicalReport`, with
+ * `centerpiece.data` left exactly as the mission's stored `analysis` column.
+ * If an adapter's field paths are wrong, these render blank and say so.
+ *
+ * Reached at /results-v2/<methodology>?fixture=1 (or by the real mission id).
+ */
+const PRODUCTION: Record<string, CanonicalReport> = {
+  satisfaction: SATISFACTION,
+  brand_lift: BRAND_LIFT,
+  roadmap: ROADMAP,
+  marketing: MARKETING,
+  competitor: COMPETITOR,
+  naming_messaging: NAMING_MESSAGING,
+  compare: COMPARE,
+  validate: VALIDATE,
+  churn_research: CHURN_RESEARCH,
+};
+
+/** Same reports, also addressable by their real production mission id. */
+const PRODUCTION_BY_ID: Record<string, CanonicalReport> = Object.fromEntries(
+  Object.values(PRODUCTION).map((r) => [r.header.sample.mission_id, r]),
+);
+
 export const FIXTURES: Record<string, CanonicalReport> = {
   ...BASE,
+  ...PRODUCTION,
+  ...PRODUCTION_BY_ID,
   gated: GATED,
   stress: STRESS,
 };
