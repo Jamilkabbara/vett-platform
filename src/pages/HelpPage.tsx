@@ -84,7 +84,7 @@ const FAQS: FAQ[] = [
     category: 'Outputs',
     question: 'What do I get when a mission completes?',
     answer:
-      'A results page with executive summary, per-question aggregations (single/multi/rating distributions, sentiment for free-text), persona profiles, screening funnel, and methodology-specific cards (e.g. a Van Westendorp price-sensitivity band for pricing missions, an attention decay curve for video creative). All exportable as PDF, PowerPoint, Excel, raw JSON, or CSV; Creative Attention results carry the same five formats in their own export menu.',
+      'A results page with executive summary, per-question aggregations (single/multi/rating distributions, sentiment for free-text), persona profiles, screening funnel, and methodology-specific cards (e.g. a Van Westendorp price-sensitivity band for pricing missions, an attention decay curve for video creative). Exportable as PDF, PowerPoint and Excel. Creative Attention results add CSV and JSON in their own export menu.',
   },
   {
     category: 'Outputs',

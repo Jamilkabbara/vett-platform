@@ -31,7 +31,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Sample size flexibility',         vett: '5 to 1,250 personas per mission',                                  competitor: 'Custom - typically 200-2,000 real respondents at panel cost', vettWins: true  },
   { dimension: 'Project management',              vett: 'Self-serve (you set up the mission)',                           competitor: 'Done for you - account team handles brief, fielding, timeline', vettWins: false },
   { dimension: 'Analyst interpretation',          vett: 'AI synthesis (executive summary, tensions, cross-cut)',         competitor: 'Senior researcher interprets, recommends, presents',   vettWins: false },
-  { dimension: 'Stakeholder polish',              vett: 'Clean dashboards + PDF / PPTX / CSV exports',                   competitor: 'Custom-branded report decks, board-ready narratives',  vettWins: false },
+  { dimension: 'Stakeholder polish',              vett: 'Clean dashboards + PDF / PPTX / XLSX exports',                   competitor: 'Custom-branded report decks, board-ready narratives',  vettWins: false },
   { dimension: 'Methodology rigour',              vett: 'Templated frameworks (Brand Lift 9-category, Creative Attention)', competitor: 'Custom-designed methodology, peer-reviewable, defensible to a regulator', vettWins: false },
   { dimension: 'Real-respondent supply',          vett: 'No - synthetic personas with realistic distributions',           competitor: 'Yes - verified panel + custom recruit',                vettWins: false },
   { dimension: 'Geographic reach',                vett: '193 countries (full ISO list, AI-modelled)',                    competitor: 'Global, agency-specific (Kantar / Ipsos / Nielsen / regional boutiques)', vettWins: false },

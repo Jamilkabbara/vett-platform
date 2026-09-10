@@ -36,7 +36,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Brand lift framework',            vett: 'Built-in 9-category Happydemics-style framework',               competitor: 'DIY in form builder',                                  vettWins: true  },
   { dimension: 'Creative attention analysis',     vett: 'Frame-by-frame emotion, attention, message clarity for $19/asset', competitor: 'Not in core product',                              vettWins: true  },
   { dimension: 'Conditional logic / branching',   vett: 'Per-question screening + per-segment branching',                competitor: 'Mature logic jumps + conditional fields',              vettWins: false },
-  { dimension: 'Integrations marketplace',        vett: 'CSV / PDF export today; API on roadmap',                        competitor: 'Mature marketplace (Zapier, Salesforce, HubSpot, Slack, Notion)', vettWins: false },
+  { dimension: 'Integrations marketplace',        vett: 'PDF / PPTX / XLSX export today; API on roadmap',                        competitor: 'Mature marketplace (Zapier, Salesforce, HubSpot, Slack, Notion)', vettWins: false },
   { dimension: 'Templates library',               vett: '14 goal-type missions (Sniff Test, Validate, Brand Lift, Creative Attention, ...)', competitor: '800+ form templates across categories', vettWins: false },
   { dimension: 'Best for...',                     vett: 'Pre-launch validation, no existing audience, MENA/emerging markets', competitor: 'Engagement-first surveys with your existing list, lead-gen, embedded customer feedback', vettWins: false },
 ];
@@ -64,7 +64,7 @@ const FAQS = [
   },
   {
     q: 'Where does VETT lose to Typeform?',
-    a: 'Three real things: (1) Form UX - Typeform\'s conversational one-question-at-a-time format converts dramatically better than VETT\'s research-style form, and that\'s by design (we\'re showing personas, not converting visitors). (2) Integrations - Zapier / Salesforce / HubSpot / Slack / Notion all hook into Typeform; VETT has CSV / PDF export and an API on the roadmap. (3) Templates marketplace - 800+ form templates vs our 14 mission types. We tell users: use Typeform for any survey where the audience is yours and the conversation matters; use VETT when you need synthetic respondents and AI synthesis at the back end.',
+    a: 'Three real things: (1) Form UX - Typeform\'s conversational one-question-at-a-time format converts dramatically better than VETT\'s research-style form, and that\'s by design (we\'re showing personas, not converting visitors). (2) Integrations - Zapier / Salesforce / HubSpot / Slack / Notion all hook into Typeform; VETT has PDF / PowerPoint / Excel export and an API on the roadmap. (3) Templates marketplace - 800+ form templates vs our 14 mission types. We tell users: use Typeform for any survey where the audience is yours and the conversation matters; use VETT when you need synthetic respondents and AI synthesis at the back end.',
   },
 ];
 

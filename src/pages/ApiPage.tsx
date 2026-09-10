@@ -46,8 +46,8 @@ export const ApiPage = () => {
             There is currently no VETT API. No endpoints are live, there is no
             beta programme, and we are not publishing a timeline. Everything
             VETT does today runs through the web product, where you can set up
-            a mission, watch it run, and export the results as PDF, PPTX, XLSX,
-            CSV or JSON.
+            a mission, watch it run, and export the results as PDF, PPTX or XLSX
+            (Creative Attention adds CSV and JSON).
           </p>
 
           <p className="text-white/60 text-base leading-relaxed mb-8">

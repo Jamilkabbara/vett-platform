@@ -27,7 +27,7 @@ What you should expect:
   missions; larger missions take proportionally longer. The mission page
   shows live progress throughout.
 - Output: executive summary + per-question aggregates + methodology
-  cards + PDF / PPTX / XLSX / CSV / JSON exports
+  cards + PDF / PPTX / XLSX exports (CSV / JSON for Creative Attention)
 - Remedy, not refunds: all sales are final and VETT does not issue cash
   refunds. If a mission fails because of a VETT-side fault, the remedy is
   a re-run or a re-run credit. Full terms: https://www.vettit.ai/refunds
