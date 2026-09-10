@@ -47,7 +47,6 @@ const MethodologiesPage   = lazy(() => import('./pages/MethodologiesPage').then(
 // gates, and the objections. Distinct from /methodologies (plural), which is
 // the catalogue of methods. Linked from every export footer.
 const MethodologyPage     = lazy(() => import('./pages/MethodologyPage').then(m => ({ default: m.MethodologyPage })));
-const MissionSuccessPage  = lazy(() => import('./pages/MissionSuccessPage').then(m => ({ default: m.MissionSuccessPage })));
 // Pass 23 Bug 23.0e v2 — Stripe Checkout success/cancel landing pages.
 const PaymentSuccessPage  = lazy(() => import('./pages/PaymentSuccessPage').then(m => ({ default: m.PaymentSuccessPage })));
 const PaymentCancelPage   = lazy(() => import('./pages/PaymentCancelPage').then(m => ({ default: m.PaymentCancelPage })));
@@ -55,10 +54,9 @@ const PaymentCancelPage   = lazy(() => import('./pages/PaymentCancelPage').then(
 // now points here; polls mission status and auto-redirects to
 // /results/{id} on completion.
 const ProcessingPage      = lazy(() => import('./pages/ProcessingPage').then(m => ({ default: m.ProcessingPage })));
-const ResultsPage         = lazy(() => import('./pages/ResultsPage').then(m => ({ default: m.ResultsPage })));
-// Pass 25 Phase 0.2 — central router that probes mission.goal_type and
-// dispatches to the right results page. /results/:id used to mount
-// ResultsPage directly which broke for creative_attention missions.
+// Central router that probes mission.goal_type and dispatches: everything
+// except creative_attention renders ResultsV2Page. It reads missionId from
+// the route, so the route element passes no props.
 const ResultsRouter       = lazy(() => import('./pages/ResultsRouter').then(m => ({ default: m.ResultsRouter })));
 // /results-v2/:missionId was an unlinked preview route that shipped to
 // production. Nothing in the app navigated to it, but the route resolved for
@@ -189,7 +187,6 @@ function App() {
               <Route path="/dashboard/:missionId" element={<DashboardPage />} />
               <Route path="/mission/:missionId" element={<ActiveMissionPage />} />
               <Route path="/mission/:missionId/live" element={<ActiveMissionPage />} />
-              <Route path="/mission-success" element={<MissionSuccessPage />} />
 
               {/* Pass 23 Bug 23.0e v2 — Stripe Checkout redirect landing pages. */}
               <Route path="/payment-success" element={<PaymentSuccessPage />} />
@@ -199,7 +196,6 @@ function App() {
 
               <Route path="/results/:missionId" element={<ResultsRouter />} />
               <Route path="/results-v2/:missionId" element={<ResultsV2Redirect />} />
-              <Route path="/results" element={<ResultsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
 
               {/* Auth — full-page replacements for the old AuthModal. */}
