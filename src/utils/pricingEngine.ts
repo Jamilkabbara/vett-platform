@@ -97,17 +97,46 @@ export const BRAND_LIFT_TIERS = [
   { id: 'enterprise', name: 'Enterprise', anchorCount: 2000, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 0.75, packagePrice: 1500, minRespondents: 100 },
 ] as const;
 
-// Pass 25 Phase 0.3 — Creative Attention now mirrors the volume ladder
-// shape (anchorCount + maxCount + ratePerResp + packagePrice). Old per-
-// asset table is replaced; min respondent count enforced by setup flow
-// + backend validation.
+/**
+ * Creative Attention is priced per CREATIVE, not per respondent.
+ * MUST stay in lockstep with CREATIVE_ATTENTION_TIERS in the backend engine.
+ *
+ * The retired ladder charged 10/$19, 25/$39, 50/$69, 100/$129, 250+/$299. It
+ * priced by a quantity the product does not have: the analysis never reads
+ * respondent_count and the results page never mentions respondents. A mission
+ * downloads one creative, samples frames and scores them, so $299 for "250
+ * respondents" bought byte-identical work to $19 for "10".
+ *
+ * Cost drives per creative and is bounded: an image is 3 vision calls
+ * ($0.03-$0.06), a video is 30 frames plus synthesis ($0.48). The frame
+ * extractor samples once a second and stops at 30, so a 35-second and a
+ * ten-minute video cost the same.
+ *
+ * $19 keeps the advertised entry price. $49 says the harder analysis costs
+ * more without tracking the 11x cost ratio, which would put a video at $209.
+ */
 export const CREATIVE_ATTENTION_TIERS = [
-  { id: 'sniff_test',   name: 'Sniff Test',   anchorCount: 10,  maxCount: 10,  ratePerResp: 1.90, packagePrice: 19  },
-  { id: 'validate',     name: 'Validate',     anchorCount: 25,  maxCount: 25,  ratePerResp: 1.56, packagePrice: 39  },
-  { id: 'confidence',   name: 'Confidence',   anchorCount: 50,  maxCount: 50,  ratePerResp: 1.38, packagePrice: 69  },
-  { id: 'deep_dive',    name: 'Deep Dive',    anchorCount: 100, maxCount: 100, ratePerResp: 1.29, packagePrice: 129 },
-  { id: 'deep_dive_xl', name: 'Deep Dive XL', anchorCount: 250, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 1.20, packagePrice: 299 },
+  { id: 'image', name: 'Image', anchorCount: CA_MIN_RESPONDENTS, maxCount: Number.POSITIVE_INFINITY, ratePerResp: null, packagePrice: 19 },
+  { id: 'video', name: 'Video', anchorCount: CA_MIN_RESPONDENTS, maxCount: Number.POSITIVE_INFINITY, ratePerResp: null, packagePrice: 49 },
 ] as const;
+
+/** The flat price for a creative of this media type. Mirrors the backend. */
+export function creativeAttentionPrice(mediaType: string | null | undefined): number {
+  return String(mediaType || '').toLowerCase() === 'video'
+    ? CREATIVE_ATTENTION_TIERS[1].packagePrice
+    : CREATIVE_ATTENTION_TIERS[0].packagePrice;
+}
+
+/**
+ * The respondent count written on a Creative Attention mission.
+ *
+ * Not a customer input any more - the form does not ask and nothing downstream
+ * reads it. It survives only because a NOT VALID CHECK constraint on missions
+ * requires >= 10 for this goal type, and Postgres re-checks a NOT VALID
+ * constraint on ANY later update to the row, including updates touching
+ * unrelated columns. A row written below the floor becomes unwritable.
+ */
+export const CA_FIXED_RESPONDENT_COUNT = CA_MIN_RESPONDENTS;
 
 export type VolumeTier = (typeof VOLUME_TIERS)[number];
 export type BrandLiftTier = (typeof BRAND_LIFT_TIERS)[number];
@@ -165,7 +194,10 @@ function getTierPriceFloors(ladder: readonly AnyTier[]): number[] {
   for (const t of ladder) {
     floors.push(running);
     // The open-ended top tier has maxCount Infinity and no ceiling to carry.
-    if (Number.isFinite(t.maxCount)) {
+    // ratePerResp is null on the Creative Attention ladder, which is priced
+    // per creative rather than per respondent - there is no rate to multiply,
+    // so there is no floor to carry either.
+    if (Number.isFinite(t.maxCount) && typeof t.ratePerResp === 'number') {
       running = Math.max(running, t.maxCount * t.ratePerResp);
     }
   }

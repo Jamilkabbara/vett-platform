@@ -113,7 +113,11 @@ function startsAtLabel(goalId: string): string {
     : goalId === 'creative_attention' ? CA_MIN_RESPONDENTS
     : ladder[0].anchorCount;
   const tier = ladder.find((t) => floor <= t.maxCount) ?? ladder[ladder.length - 1];
-  const base = goalId === 'creative_attention'
+  // ratePerResp is null on the Creative Attention ladder, which is priced per
+  // creative. That branch returns packagePrice above and never reaches the
+  // respondent maths, so a null rate here means a ladder that should have had
+  // one - fall back to the package price rather than multiplying by nothing.
+  const base = goalId === 'creative_attention' || tier.ratePerResp == null
     ? tier.packagePrice
     : respondentLadderBase(ladder, tier, floor, tier.ratePerResp);
   return `FROM $${base.toLocaleString('en-US')}`;

@@ -62,12 +62,18 @@ const usd = (n: number) => `$${n.toLocaleString('en-US')}`;
  */
 function respondentTiers(ladder: readonly AnyTier[], minRespondents = 0): Tier[] {
   return [
+    // A null ratePerResp means the ladder is not respondent-priced at all -
+    // Creative Attention is per creative and goes through flatTiers below, so
+    // it never reaches here. Filtering rather than asserting keeps this honest
+    // if another flat ladder is ever passed in by mistake.
     ...ladder
-      .filter((t) => t.anchorCount >= minRespondents && t.anchorCount <= MAX_SELF_SERVE_RESPONDENTS)
+      .filter((t) => t.anchorCount >= minRespondents
+                  && t.anchorCount <= MAX_SELF_SERVE_RESPONDENTS
+                  && typeof t.ratePerResp === 'number')
       .map((t) => ({
         name: t.name,
-        price: usd(respondentLadderBase(ladder, t, t.anchorCount, t.ratePerResp)),
-        meta: `${t.anchorCount.toLocaleString()} personas · $${formatRatePerResp(t.ratePerResp)}/resp`,
+        price: usd(respondentLadderBase(ladder, t, t.anchorCount, t.ratePerResp as number)),
+        meta: `${t.anchorCount.toLocaleString()} personas · $${formatRatePerResp(t.ratePerResp as number)}/resp`,
       })),
     {
       name: 'Managed',
