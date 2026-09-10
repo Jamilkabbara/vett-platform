@@ -10,7 +10,10 @@ export interface PricingBreakdown {
   questionSurcharge: number;
   targetingSurcharge: number;
   screeningSurcharge: number;
+  /** What the card is charged: a whole dollar. See roundChargeToWholeDollar. */
   total: number;
+  /** The ladder arithmetic behind `total`, before the whole-dollar rounding. */
+  exactTotal: number;
   filterCount: number;
   /**
    * True when the respondent count is above MAX_SELF_SERVE_RESPONDENTS. The
@@ -275,6 +278,27 @@ export function isAboveSelfServeCap(count: number): boolean {
   return Math.max(0, Number(count) || 0) > MAX_SELF_SERVE_RESPONDENTS;
 }
 
+/**
+ * The amount a customer is actually charged, in whole dollars.
+ * MUST match roundChargeToWholeDollar in the backend engine exactly - the panel
+ * reconciles against the server quote within $0.02, so any difference here
+ * surfaces to the customer as a price that moves between panel and checkout.
+ *
+ * The ladder picks round numbers at its ANCHORS and derives a per-respondent
+ * rate from each, so an anchor count lands round - but the slider steps by 5,
+ * so most customers land BETWEEN anchors and got the raw multiplication:
+ * 10 respondents at $1.56 is $15.60, 50 at $1.49 is $74.50.
+ *
+ * A positive charge never rounds to zero: a 95%-off promo on a $9 mission is
+ * $0.45, and rounding that to $0 would turn a paid mission into a free one.
+ * Genuinely free missions reach 0 through a free-type promo, before this runs.
+ */
+export function roundChargeToWholeDollar(exactTotal: number): number {
+  const t = Number(exactTotal);
+  if (!Number.isFinite(t) || t <= 0) return 0;
+  return Math.max(1, Math.round(t));
+}
+
 export const calculatePricing = (
   respondentCount: number,
   questions: Question[],
@@ -383,11 +407,16 @@ export const calculatePricing = (
   const filterCount = totalPaidFilterCount + cityFilterCount;
 
   // Round to CENTS, not to whole dollars. The backend rounds every line to two
-  // decimals (round2 in src/utils/pricingEngine.js); rounding to the dollar
-  // here made the panel disagree with the amount Stripe charges by up to
-  // $0.50, which verifyServerQuote() (±$0.02) then surfaced as a drift toast.
-  // Invisible at the anchor counts, where every line is already integral —
-  // but the bridge band prices in cents ($900.28 at n=1,001), so it matters now.
+  // decimals (round2 in src/utils/pricingEngine.js), so the line items stay in
+  // cents. The TOTAL is then rounded to a whole dollar - see
+  // roundChargeToWholeDollar, which mirrors the backend exactly.
+  //
+  // This comment used to say the opposite: that rounding to the dollar here
+  // made the panel disagree with Stripe by up to $0.50, which
+  // verifyServerQuote (+/-$0.02) surfaced as a drift toast. That was true while
+  // only the CLIENT rounded. The server now rounds the same way at the same
+  // point, so rounding here is what keeps the two in agreement, and NOT
+  // rounding would reintroduce the drift it warned about.
   const round2 = (v: number) => Math.round(v * 100) / 100;
 
   return {
@@ -395,7 +424,8 @@ export const calculatePricing = (
     questionSurcharge: round2(questionSurcharge),
     targetingSurcharge: round2(targetingSurcharge),
     screeningSurcharge: round2(screeningSurcharge),
-    total: round2(total),
+    total: roundChargeToWholeDollar(round2(total)),
+    exactTotal: round2(total),
     filterCount,
     customQuote: isAboveSelfServeCap(respondentCount),
   };
