@@ -40,8 +40,7 @@ import { Button } from '../components/ui/Button';
 import { FileUpload, type UploadedFile } from '../components/shared/FileUpload';
 import { api } from '../lib/apiClient';
 import { logPaymentError } from '../lib/paymentErrorLogger';
-import { CREATIVE_ATTENTION_TIERS } from '../utils/pricingEngine';
-import { CreativeAttentionTierSlider } from '../components/creative-attention/CreativeAttentionTierSlider';
+import { creativeAttentionPrice, CA_FIXED_RESPONDENT_COUNT, CREATIVE_ATTENTION_TIERS } from '../utils/pricingEngine';
 import { getGoalById } from '../data/missionGoals';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -75,7 +74,11 @@ export function CreativeAttentionPage() {
   // Step 1 — Upload
   const [creative, setCreative] = useState<UploadedFile | null>(null);
   // Pass 25 Phase 0.3 — respondent ladder. Default to Sniff Test floor.
-  const [respondentCount, setRespondentCount] = useState(10);
+  // Creative Attention is priced per creative. The respondent count is not a
+  // customer input: the analysis never reads it and the results page never
+  // mentions it. It is written as a fixed value only to satisfy the database
+  // CHECK constraint - see CA_FIXED_RESPONDENT_COUNT.
+  const respondentCount = CA_FIXED_RESPONDENT_COUNT;
 
   // Step 2 — Context form
   const [brandName,       setBrandName]       = useState('');
@@ -186,7 +189,7 @@ export function CreativeAttentionPage() {
       // image vs video for the analysis pipeline.
       const isVideo = (creative.mimeType || '').toLowerCase().startsWith('video/');
       const mediaType: 'image' | 'video' = isVideo ? 'video' : 'image';
-      const caTier = CREATIVE_ATTENTION_TIERS.find(t => respondentCount <= t.maxCount)
+      const caTier = CREATIVE_ATTENTION_TIERS.find(t => t.id === mediaType)
                   || CREATIVE_ATTENTION_TIERS[CREATIVE_ATTENTION_TIERS.length - 1];
 
       const { data: mission, error } = await supabase
@@ -556,24 +559,20 @@ export function CreativeAttentionPage() {
             </section>
           )}
 
-          {/* Pass 25 Phase 0.3 — respondent slider replaces the flat
-              image/video price card. Sample size drives the tier. */}
+          {/* The respondent slider is gone. Creative Attention is priced per
+              creative: the analysis never reads a respondent count and the
+              results page never shows one, so asking for it invited a customer
+              to pay more for identical work. The media type is the price. */}
           {creative && (() => {
             const isVideo = (creative.mimeType || '').toLowerCase().startsWith('video/');
-            const caTier = CREATIVE_ATTENTION_TIERS.find(t => respondentCount <= t.maxCount)
-                        || CREATIVE_ATTENTION_TIERS[CREATIVE_ATTENTION_TIERS.length - 1];
-            const tierPrice = caTier.packagePrice;
+            const mediaType = isVideo ? 'video' : 'image';
+            const tierPrice = creativeAttentionPrice(mediaType);
             return (
             <section className="space-y-4">
-              <CreativeAttentionTierSlider
-                respondentCount={respondentCount}
-                onChange={setRespondentCount}
-              />
-
               <div className="bg-[var(--bg2)] border border-[var(--b1)] rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="text-sm text-[var(--t2)]">{isVideo ? 'Video' : 'Image'} creative · {caTier.name}</p>
+                    <p className="text-sm text-[var(--t2)]">{isVideo ? 'Video' : 'Image'} creative</p>
                     <p className="text-2xl font-bold text-[var(--t1)]">
                       {promo ? (
                         <>
@@ -583,7 +582,7 @@ export function CreativeAttentionPage() {
                       ) : (
                         <>${tierPrice}</>
                       )}
-                      <span className="text-sm font-normal text-[var(--t3)] ml-1.5">{respondentCount} respondents</span>
+                      <span className="text-sm font-normal text-[var(--t3)] ml-1.5">one {mediaType}</span>
                     </p>
                   </div>
                   <ul className="text-xs text-[var(--t3)] space-y-1 text-right">
@@ -600,7 +599,7 @@ export function CreativeAttentionPage() {
                     will be charged. */}
                 <PromoCodeField
                   className="mb-4"
-                  quoteBody={{ goalType: 'creative_attention', respondentCount, mediaType: isVideo ? 'video' : 'image' }}
+                  quoteBody={{ goalType: 'creative_attention', respondentCount, mediaType }}
                   onApplied={setPromo}
                 />
 
@@ -618,9 +617,9 @@ export function CreativeAttentionPage() {
                        saying "Pay $19" beside it is the kind of contradiction
                        that makes someone abandon the checkout they were about
                        to complete. */
-                    `Launch free · ${respondentCount} respondents`
+                    `Launch free · one ${mediaType}`
                   ) : (
-                    `Pay $${promo ? promo.total : tierPrice} & Analyse · ${respondentCount} respondents`
+                    `Pay $${promo ? promo.total : tierPrice} & Analyse · one ${mediaType}`
                   )}
                 </Button>
                 {!canProceed && (
