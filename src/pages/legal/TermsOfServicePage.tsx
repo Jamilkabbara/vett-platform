@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { LegalPage } from '../../components/legal/LegalPage';
 import termsMarkdown from '../../content/legal/terms-of-service.md?raw';
 import { usePricingTiers, type PricingTiersData } from '../../hooks/usePricingTiers';
+import { CREATIVE_ATTENTION_TIERS } from '../../utils/pricingEngine';
 
 /**
  * /terms route.
@@ -40,6 +41,21 @@ const PRICING_TABLE_HEAD = [
   '',
 ].join('\n');
 
+/**
+ * The non-default ladders, appended after the derived respondent table.
+ *
+ * The Creative Attention rows are PROJECTED from CREATIVE_ATTENTION_TIERS, the
+ * same constant the pay panel prices from, because the hand-typed version of
+ * them drifted: this page published a respondent bracket table (10/$19, 25/$39,
+ * 50/$69, 100/$129, 250+/$299) for months after the 2026-09 reprice made
+ * Creative Attention a flat charge per creative of $19 image and $49 video. The
+ * legal terms quoted a $39 video that checkout billed $49 for, and quoted a
+ * respondent bracket the product had stopped asking the customer for.
+ *
+ * The Brand Lift rows below are still hand-typed, because GET
+ * /api/pricing/tiers projects only the default ladder. Check them against
+ * BRAND_LIFT_TIERS in the backend engine before editing anything here.
+ */
 const PRICING_TABLE_TAIL = [
   '',
   '- Beyond 1,250 respondents: not sold self-serve; contact us for a custom quote',
@@ -52,14 +68,11 @@ const PRICING_TABLE_TAIL = [
   '- Wave, 500 respondents: $600',
   '- Beyond 1,250 respondents: not sold self-serve; contact us for a custom quote',
   '',
-  '**Creative Attention Analysis missions** are charged a flat price for the',
-  'respondent bracket the mission falls into:',
+  '**Creative Attention Analysis missions** are charged a flat price per',
+  'creative, by media type. One creative per mission; respondent count is not',
+  'an input and does not change the price:',
   '',
-  '- Up to 10 respondents: $19',
-  '- 11 to 25 respondents: $39',
-  '- 26 to 50 respondents: $69',
-  '- 51 to 100 respondents: $129',
-  '- 101 or more respondents: $299',
+  ...CREATIVE_ATTENTION_TIERS.map((t) => `- ${t.name}: $${t.packagePrice}`),
   '',
   'Respondent counts other than the ones listed above are priced from the same',
   'ladders. Optional add-ons are charged on top of the mission price: each',
