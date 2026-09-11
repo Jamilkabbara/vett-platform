@@ -4,7 +4,7 @@
  * Steps:
  *   1. Upload video or image to vett-creatives bucket
  *   2. Fill in brand context form
- *   3. Pay (Image $19 / Video $39) — mission created + Stripe Checkout redirect
+ *   3. Pay (Image $19 / Video $49) - mission created + Stripe Checkout redirect
  *   4. Stripe Checkout returns to /payment-success which polls and then
  *      navigates the user to /creative-results/:missionId once paid.
  *
@@ -15,11 +15,20 @@
  *
  * Pass 23 Bug 23.61 — INSERT now stamps `tier` + `media_type` derived
  * from the uploaded asset's mimeType so the backend's pricing engine
- * routes to the Creative Attention ladder ($19 / $39 / $79 / $249) and
- * not the default Volume ladder Sniff Test rate ($1.80). The forensic:
- * mission a24d3776 paid $1.80 instead of $19 because the INSERT was
- * leaving tier+media_type NULL and the backend was reading
- * respondent_count=1 against the default ladder.
+ * routes to the Creative Attention prices and not the default Volume
+ * ladder Sniff Test rate ($1.80). The forensic: mission a24d3776 paid
+ * $1.80 instead of $19 because the INSERT was leaving tier+media_type
+ * NULL and the backend was reading respondent_count=1 against the
+ * default ladder.
+ *
+ * PRICES, AS OF THE 2026-09 REPRICE: flat per creative, $19 image and
+ * $49 video. There is no respondent ladder for Creative Attention any
+ * more - respondent_count is pinned at 10 to satisfy a CHECK constraint
+ * and is not a customer input, so the $19 / $39 / $79 / $249 ladder this
+ * comment used to cite is retired and bills nothing. The canonical
+ * numbers are CREATIVE_ATTENTION_PRICES in the backend pricingEngine.js;
+ * the price rendered below is fetched, not hard-coded, so read the
+ * backend rather than this file before quoting a figure.
  */
 
 import { useEffect, useState } from 'react';
