@@ -199,6 +199,13 @@ function satisfaction(a: Any): CenterpieceView {
     const s = seg[k] as Any | undefined;
     if (!s) return null;
     const p = r0(s.pct) ?? 0;
+    // The head count on an NPS band is `count`. The analysis object the
+    // backend stores writes each band as { pct, count }; it carries `n` at the
+    // nps level and on the top-level blocks, never inside a band. Reading
+    // `s.n` here therefore always missed and the band read "Respondents -".
+    // `s.n` is kept as a fallback so an older analysis row that happened to
+    // carry one still resolves.
+    const n = s.count ?? s.n;
     return {
       key: k,
       label,
@@ -207,9 +214,9 @@ function satisfaction(a: Any): CenterpieceView {
       value: `${p}%`,
       lens: [
         { k: 'Share', v: `${p}%`, tone: tone === 'amber' ? 'amber' : 'lime' },
-        { k: 'Respondents', v: String(s.n ?? '—') },
+        { k: 'Respondents', v: String(n ?? '—') },
       ],
-      sub: [{ k: 'Respondents', v: String(s.n ?? '—') }],
+      sub: [{ k: 'Respondents', v: String(n ?? '—') }],
     };
   };
   return {
