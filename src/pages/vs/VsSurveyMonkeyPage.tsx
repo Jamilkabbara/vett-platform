@@ -44,7 +44,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'AI insight synthesis',            vett: 'Built-in: executive summary, contradictions, cross-cut',        competitor: 'Manual analysis or third-party add-on', vettWins: true  },
   { dimension: 'Creative attention analysis',     vett: 'Frame-by-frame emotion, attention, message clarity for $19/asset',   competitor: 'Not in core product',           vettWins: true  },
   { dimension: 'Brand lift framework',            vett: 'Built-in 9-category Happydemics-style framework',               competitor: 'DIY in Survey Builder',         vettWins: true  },
-  { dimension: 'Integrations (Salesforce, etc.)', vett: 'CSV / PDF export today; API on roadmap',                        competitor: 'Mature integrations marketplace',vettWins: false },
+  { dimension: 'Integrations (Salesforce, etc.)', vett: 'PDF / PPTX / XLSX export today; API on roadmap',                        competitor: 'Mature integrations marketplace',vettWins: false },
   { dimension: 'Best for…',                       vett: 'Early validation, pre-launch sanity, MENA/emerging markets',    competitor: 'Established research programs with budget for real panels', vettWins: false },
 ];
 
@@ -71,7 +71,7 @@ const FAQS = [
   },
   {
     q: 'Where does VETT lose to SurveyMonkey?',
-    a: 'Three real things: (1) integrations - SurveyMonkey has a mature marketplace (Salesforce, Marketo, HubSpot); we have CSV / PDF export and an API on the roadmap. (2) Brand recognition - if you need to convince a board or a regulator, "validated by SurveyMonkey panel" carries 20 years of trust. (3) Verified-human quotes - for legal / compliance / press use cases, real respondents are the only acceptable answer. We tell users: use VETT for the iteration loop, then a real-panel study for the launch announcement.',
+    a: 'Three real things: (1) integrations - SurveyMonkey has a mature marketplace (Salesforce, Marketo, HubSpot); we have PDF / PowerPoint / Excel export and an API on the roadmap. (2) Brand recognition - if you need to convince a board or a regulator, "validated by SurveyMonkey panel" carries 20 years of trust. (3) Verified-human quotes - for legal / compliance / press use cases, real respondents are the only acceptable answer. We tell users: use VETT for the iteration loop, then a real-panel study for the launch announcement.',
   },
 ];
 
@@ -142,7 +142,7 @@ export function VsSurveyMonkeyPage() {
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Screener:</strong> VETT generates personas TO your spec. SurveyMonkey filters real panelists against your spec - strict screeners mean longer waits or attrition.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">AI synthesis:</strong> Built into VETT. SurveyMonkey reports are mostly DIY analysis or paid add-on.</span></li>
             <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Real humans:</strong> SurveyMonkey wins. VETT is synthetic-only - better for iteration, not for legally defensible quotes.</span></li>
-            <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Integrations:</strong> SurveyMonkey wins. Mature Salesforce/HubSpot/Marketo connectors. VETT has CSV + PDF + an API on the roadmap.</span></li>
+            <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Integrations:</strong> SurveyMonkey wins. Mature Salesforce/HubSpot/Marketo connectors. VETT has PDF + PowerPoint + Excel + an API on the roadmap.</span></li>
           </ul>
         </section>
 

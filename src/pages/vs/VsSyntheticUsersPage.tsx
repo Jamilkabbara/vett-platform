@@ -40,7 +40,7 @@ export function VsSyntheticUsersPage() {
         },
         {
           dimension: 'Output deliverable',
-          vett: 'Branded PDF + PPTX + XLSX + JSON + CSV exports with VETT brand tokens',
+          vett: 'Branded PDF + PPTX + XLSX exports with VETT brand tokens (CSV + JSON for Creative Attention)',
           competitor: 'Conversation transcripts + thematic synthesis',
           verdict: 'tie',
         },

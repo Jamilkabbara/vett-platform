@@ -753,21 +753,36 @@ export function ResultsV2Page() {
             <button
               type="button"
               onClick={() => navigate('/dashboard')}
-              className="mr-1 flex items-center gap-[7px] border-r border-white/[0.07] pr-[14px] text-[13px] text-[#8B919C] transition-colors hover:text-[#F3F5EF]"
+              className="mr-1 flex items-center gap-[7px] border-r border-white/[0.07] pr-[14px] text-[13px] text-[#8B919C] transition-colors hover:text-[#F3F5EF] max-[680px]:mr-0 max-[680px]:pr-[10px]"
+              aria-label="Back to dashboard"
             >
-              <ArrowLeft className="h-4 w-4" /> Dashboard
+              {/* The arrow alone carries the affordance on a phone. The word is
+                  what makes the three export buttons overflow the viewport. */}
+              <ArrowLeft className="h-4 w-4" />{' '}
+              <span className="max-[680px]:hidden">Dashboard</span>
             </button>
             <span className="grid h-[34px] w-[34px] place-items-center rounded-[9px] bg-[linear-gradient(150deg,#C9F875,#A6E03F)] shadow-[0_6px_18px_rgba(190,242,100,0.28)]">
               <svg viewBox="0 0 24 24" fill="none" className="h-[18px] w-[18px]" aria-hidden>
                 <path d="M13 2 4.5 13.5H11l-1 8.5L19.5 10H13l0-8Z" fill="#0B0C15" />
               </svg>
             </span>
-            <span className="font-['Manrope',system-ui,sans-serif] text-[18px] font-extrabold tracking-[0.04em]">
+            {/* The lightning mark above is the logo; the wordmark is a repeat
+                of it, and it is the second-cheapest thing to drop for width. */}
+            <span className="font-['Manrope',system-ui,sans-serif] text-[18px] font-extrabold tracking-[0.04em] max-[680px]:hidden">
               VETT
             </span>
           </div>
-          <div className="flex gap-2">
-            {(['pdf', 'pptx', 'xlsx'] as const).map((f, i) => (
+          {/*
+            All three formats stay reachable on a phone.
+            PPTX and XLSX used to carry `max-[680px]:hidden`, so below 680px a
+            customer saw only the PDF button and had no way to reach the deck or
+            the workbook from the device they were most likely reading on. The
+            files were always there; the buttons were not. Narrower padding and
+            a shrunken gap fit all three on a 320px screen instead of dropping
+            two of them.
+          */}
+          <div className="flex gap-2 max-[680px]:gap-1.5">
+            {(['pdf', 'pptx', 'xlsx'] as const).map((f) => (
               <button
                 key={f}
                 type="button"
@@ -775,9 +790,9 @@ export function ResultsV2Page() {
                 onClick={() => downloadExport(f)}
                 className={[
                   'rounded-[9px] border border-white/[0.07] bg-white/[0.025] px-[14px] py-2',
+                  'max-[680px]:px-[9px] max-[680px]:text-[11.5px]',
                   'text-[12.5px] font-semibold tracking-[0.04em] text-[#8B919C] transition-all duration-150',
                   'hover:border-white/[0.12] hover:bg-white/[0.045] hover:text-[#F3F5EF] disabled:opacity-50',
-                  i > 0 ? 'max-[680px]:hidden' : '',
                 ].join(' ')}
               >
                 {f.toUpperCase()}
