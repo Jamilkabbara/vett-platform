@@ -425,7 +425,8 @@ npm run preview  # Preview production build
 - Responsive-first approach
 
 ### Database Changes
-1. Create migration file in `supabase/migrations/`
+1. Create the migration file in the BACKEND repo under `migrations/pass-NN/`,
+   not in this repo's `supabase/migrations/` (deliberately empty - see its README)
 2. Use descriptive filenames with timestamp
 3. Include RLS policies
 4. Test locally before deploying

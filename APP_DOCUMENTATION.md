@@ -1250,7 +1250,13 @@ missions
 
 ### Migrations
 
-**Location**: `supabase/migrations/`
+**Location**: `vettit-backend/migrations/pass-NN/` in the BACKEND repo.
+
+NOT `supabase/migrations/` in this repo. That directory is deliberately empty:
+its eight January files were never recorded in the remote migration history, so
+`supabase db push` would have applied all of them to production, adding permissive
+RLS policies that override the hardened ones. See `supabase/migrations/README.md`.
+The Supabase CLI is not used on this project.
 
 **Migration Files**:
 1. `20260117091124_create_missions_table.sql`
