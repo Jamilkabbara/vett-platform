@@ -15,10 +15,11 @@
  * Two ladder-specific rules are applied here rather than in the engine, because
  * they are presentation:
  *
- *   - Brackets below a goal's methodology floor are dropped. Brand Lift's Pulse
- *     bracket anchors at 50 respondents and the floor is 100, so Pulse is
- *     unbuyable and publishing "$99" for it advertises a study checkout
- *     refuses. The published Brand Lift entry price is Tracker.
+ *   - Brackets below a goal's methodology floor are dropped, because publishing
+ *     a price checkout refuses advertises a study nobody can buy. Brand Lift's
+ *     Pulse bracket used to anchor at 50 against a floor of 100 and was dropped
+ *     here for exactly that reason; it now anchors AT the floor, so it passes
+ *     the filter and Brand Lift's published entry price is Pulse at $150.
  *   - The default ladder's top bracket is open-ended, so anything beyond the
  *     self-serve cap renders as "Talk to us" rather than a number.
  */
@@ -55,10 +56,12 @@ const usd = (n: number) => `$${n.toLocaleString('en-US')}`;
  *
  * Brackets outside the SELLABLE range are dropped at both ends, because
  * publishing a price checkout refuses is the same defect as publishing a stale
- * one. Below: a bracket under the goal's methodology floor (Brand Lift's Pulse
- * anchors at 50, the floor is 100). Above: a bracket anchored past the
- * self-serve cap (Brand Lift's Enterprise anchors at 2,000, the cap is 1,250).
- * Everything past the cap becomes the one "Talk to us" row.
+ * one. Below: a bracket anchored under the goal's methodology floor. Above: a
+ * bracket anchored past the self-serve cap (Brand Lift's Enterprise anchors at
+ * 2,000, the cap is 1,250). Everything past the cap becomes the one "Talk to
+ * us" row. Nothing on the Brand Lift ladder is dropped at the bottom today -
+ * Pulse anchors at the floor itself - and the filter stays because a future
+ * bracket could sit under it again.
  */
 function respondentTiers(ladder: readonly AnyTier[], minRespondents = 0): Tier[] {
   return [
