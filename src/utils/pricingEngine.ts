@@ -28,12 +28,10 @@ export interface PricingBreakdown {
 // Mirrors backend pricingEngine.js exactly.
 //
 // Default ladder (validate / naming_messaging / marketing):
-//   Sniff Test  5    $9    $1.80/resp   Validate   10   $35   $3.50/resp
-//   Confidence  50   $99   $1.98/resp   Deep Dive  250  $299  $1.20/resp
-//   Scale       1000 $899  $0.90/resp   Enterprise 5000 $1990 $0.40/resp
-//
-// Brand Lift (statistical-sample sizes only — no Sniff/Validate):
-//   Pulse 50 $99 · Tracker 200 $299 · Wave 500 $599 · Enterprise 2000 $1499
+// DO NOT QUOTE PRICES FROM THIS HEADER. The ladders below are the only
+// numbers that bill, and this summary carried the pre-2026-09 figures long
+// after the reprice replaced them. Read VOLUME_TIERS, BRAND_LIFT_TIERS and
+// CREATIVE_ATTENTION_TIERS directly.
 //
 // Pass 25 Phase 0.3 — Creative Attention is now a respondent ladder
 // (was flat per-asset). 1-respondent missions have no statistical signal.
@@ -93,8 +91,39 @@ export const VOLUME_TIERS = [
   { id: 'enterprise', name: 'Enterprise', anchorCount: 1250, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 1099 / 1250, packagePrice: 1099 },
 ] as const;
 
+/**
+ * Brand Lift ladder. MUST stay numerically identical to BRAND_LIFT_TIERS in the
+ * backend's src/utils/pricingEngine.js.
+ *
+ * ── Pulse moved from 50 to 100, 2026-09-13 ─────────────────────────────────
+ *
+ * Pulse anchored at 50 with maxCount 50, which put the WHOLE tier below the
+ * 100-respondent floor (BRAND_LIFT_MIN_RESPONDENTS, and a CHECK constraint on
+ * missions). No count could ever resolve to it, so it was a tier that could
+ * not be bought - and it did three visible kinds of damage from here:
+ *
+ *   - BRAND_LIFT_DEFAULT_STATE seeded a new study with
+ *     BRAND_LIFT_TIERS[0].anchorCount, i.e. 50, a count the backend and the
+ *     database both reject. The setup panel opened in an unlaunchable state.
+ *   - MissionSetupPage prices a brand-lift draft off tier.packagePrice. At
+ *     n=100 the lookup fell through to Tracker and estimated $300 for a study
+ *     the backend charges $150 for.
+ *   - STARTING_PRICE_BRAND_LIFT_USD reads BRAND_LIFT_TIERS[0].packagePrice,
+ *     so any "from" copy built on it advertised $99 for a study whose real
+ *     cheapest price has been $150 since the floor moved.
+ *
+ * Owner decision: move the anchor to 100 so the tier is buyable. maxCount 100
+ * makes Pulse the entry study and leaves Tracker (100, 200] with no gap and no
+ * overlap. The rate is 1.50, the same as Tracker: it cannot be lower without
+ * making the per-respondent rate RISE with volume, and raising it to keep 1.98
+ * would push a 100-respondent study from $150 to $198. packagePrice 150 is
+ * 100 x 1.50, the same anchor-times-rate relationship every other tier holds.
+ *
+ * NO PRICE MOVES. 100 / 150 / 199 cost $150.00 / $225.00 / $298.50 before and
+ * after. What changes is that the tier resolves.
+ */
 export const BRAND_LIFT_TIERS = [
-  { id: 'pulse',      name: 'Pulse',      anchorCount: 50,   maxCount: 50,   ratePerResp: 1.98, packagePrice: 99,   minRespondents: 100 },
+  { id: 'pulse',      name: 'Pulse',      anchorCount: 100,  maxCount: 100,  ratePerResp: 1.50, packagePrice: 150,  minRespondents: 100 },
   { id: 'tracker',    name: 'Tracker',    anchorCount: 200,  maxCount: 200,  ratePerResp: 1.50, packagePrice: 300,  minRespondents: 100 },
   { id: 'wave',       name: 'Wave',       anchorCount: 500,  maxCount: 500,  ratePerResp: 1.20, packagePrice: 600,  minRespondents: 100 },
   { id: 'enterprise', name: 'Enterprise', anchorCount: 2000, maxCount: Number.POSITIVE_INFINITY, ratePerResp: 0.75, packagePrice: 1500, minRespondents: 100 },
@@ -153,7 +182,7 @@ export type BrandLiftTier = (typeof BRAND_LIFT_TIERS)[number];
 // themselves so the landing copy can never drift again.
 export const STARTING_PRICE_USD            = VOLUME_TIERS[0].packagePrice;            // 9
 export const STARTING_PRICE_CREATIVE_USD   = CREATIVE_ATTENTION_TIERS[0].packagePrice; // 19
-export const STARTING_PRICE_BRAND_LIFT_USD = BRAND_LIFT_TIERS[0].packagePrice;        // 99
+export const STARTING_PRICE_BRAND_LIFT_USD = BRAND_LIFT_TIERS[0].packagePrice;        // 150
 export type CreativeAttentionTier = (typeof CREATIVE_ATTENTION_TIERS)[number];
 export type AnyTier = VolumeTier | BrandLiftTier | CreativeAttentionTier;
 
