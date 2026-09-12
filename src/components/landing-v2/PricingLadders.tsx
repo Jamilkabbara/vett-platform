@@ -109,7 +109,9 @@ const LADDERS: Ladder[] = [
     label: 'BRAND LIFT',
     desc: 'Exposed and control cells measured side by side. Starts at 100 respondents, the point the split can carry a comparison.',
     cta: 'START A BRAND LIFT MISSION',
-    // Pulse (anchor 50) is below the 100 floor and cannot be bought.
+    // Filtered at the floor: a tier anchored below 100 cannot be bought, so
+    // publishing it would advertise something checkout refuses. Pulse now
+    // anchors AT 100 and passes the filter, which is the point of moving it.
     tiers: respondentTiers(BRAND_LIFT_TIERS, 100),
   },
   {
