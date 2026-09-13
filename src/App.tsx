@@ -91,6 +91,10 @@ const VsSyntheticUsersPage          = lazy(() => import('./pages/vs/VsSyntheticU
 const VsAaruPage                    = lazy(() => import('./pages/vs/VsAaruPage').then(m => ({ default: m.VsAaruPage })));
 const VsQuantilopePage              = lazy(() => import('./pages/vs/VsQuantilopePage').then(m => ({ default: m.VsQuantilopePage })));
 const VsTraditionalResearchPage     = lazy(() => import('./pages/vs/VsTraditionalResearchPage').then(m => ({ default: m.VsTraditionalResearchPage })));
+// Case studies. One thin page per study (the /vs precedent), each route in
+// scripts/seo-routes.mjs so it is prerendered with its own head and sitemap row.
+const CaseStudiesIndexPage          = lazy(() => import('./pages/case-studies/CaseStudiesIndexPage').then(m => ({ default: m.CaseStudiesIndexPage })));
+const PlaceholderPricingCaseStudyPage = lazy(() => import('./pages/case-studies/PlaceholderPricingCaseStudyPage').then(m => ({ default: m.PlaceholderPricingCaseStudyPage })));
 
 /**
  * Forward a /results-v2/:missionId link to the canonical /results/:missionId.
@@ -241,6 +245,10 @@ function App() {
               <Route path="/vs/quantilope" element={<VsQuantilopePage />} />
               <Route path="/vs/traditional-research" element={<VsTraditionalResearchPage />} />
               <Route path="/vs/traditional" element={<VsTraditionalPage />} />
+
+              {/* Case studies. The index plus one page per study. */}
+              <Route path="/case-studies" element={<CaseStudiesIndexPage />} />
+              <Route path="/case-studies/placeholder-pricing-example" element={<PlaceholderPricingCaseStudyPage />} />
 
               {/* Internal design-system preview — not linked from the app. */}
               <Route path="/__design" element={<DesignSystemPreview />} />
