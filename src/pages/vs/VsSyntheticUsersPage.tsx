@@ -1,4 +1,5 @@
 import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
+import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
 
 /**
  * Pass 35 C3 — VETT vs Synthetic Users.
@@ -28,7 +29,7 @@ export function VsSyntheticUsersPage() {
         },
         {
           dimension: 'Pricing',
-          vett: '$9 to $969 per mission (one-time)',
+          vett: `${SELF_SERVE_RANGE} per mission (one-time)`,
           competitor: 'Subscription tiers starting ~$249/month',
           verdict: 'vett',
         },

@@ -1,4 +1,5 @@
 import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
+import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
 
 /**
  * Pass 35 C4 — VETT vs traditional research.
@@ -16,7 +17,7 @@ export function VsTraditionalResearchPage() {
       rows={[
         {
           dimension: 'Cost per study',
-          vett: '$9 to $969 per mission, one-time',
+          vett: `${SELF_SERVE_RANGE} per mission, one-time`,
           competitor: 'Focus groups: $5-20k. Panel quant: $5-50k. Agency engagements: $10-200k.',
           verdict: 'vett',
         },

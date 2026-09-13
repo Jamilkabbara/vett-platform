@@ -76,21 +76,23 @@ Self-serve studies run up to 1,250 respondents. Above that we scope the
 study with you rather than sell it on the site.
 
 Brand Lift (exposed + control split, minimum 100 respondents):
+- Pulse       100 personas     $150
 - Tracker     200 personas     $300
 - Wave        500 personas     $600
-- Managed     above 1,250 personas  custom quote (not sold self-serve)
+- Enterprise 2000 personas   $1,500
 
 Brand Lift splits the sample across an exposed and a control cell, so the
 smallest study is 100 respondents ($150). At 100 the minimum detectable
 lift is about 28 percentage points; at the 1,250 self-serve ceiling it is
 about 8. Size the study against the lift you expect to see.
 
-Creative Attention (per-respondent, minimum 10 respondents):
-- Sniff Test    10 personas   $19
-- Validate      25 personas   $39
-- Confidence    50 personas   $69
-- Deep Dive    100 personas  $129
-- Deep Dive XL 250 personas  $299
+Creative Attention (priced per creative, not per respondent):
+- Image                        $19
+- Video                        $49
+
+Creative Attention bills per creative asset analysed. The respondent
+count is fixed at 10 and is not a pricing lever, so there is no
+respondent ladder for this goal.
 
 Targeting surcharges apply for narrow multi-criteria targeting.
 Extra questions beyond the included 10 are $5 each.

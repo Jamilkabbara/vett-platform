@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { OverlayPage } from '../../components/layout/OverlayPage';
 import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
 import { useRouteSeo } from '../../seo/useRouteSeo';
+import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
 
 interface ComparisonRow {
   dimension: string;
@@ -27,7 +28,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Respondent type',                 vett: 'AI personas generated to your screener',                        competitor: 'Real human testers from a managed panel',               vettWins: false },
   { dimension: 'Time to first insight',           vett: 'Minutes (synthetic responses)',                                 competitor: 'Hours to a day (testers schedule + record + transcript)', vettWins: true  },
   { dimension: 'Cost per respondent',             vett: '$0.78 to $3.50',                                                 competitor: 'Public per-session cost not disclosed; enterprise contracts typical', vettWins: true  },
-  { dimension: 'Pricing model',                   vett: 'Per mission ($9 to $969 flat); no subscription',                 competitor: 'Enterprise sales: Advanced / Ultimate / Ultimate+ tiers; contact sales for quote', vettWins: true  },
+  { dimension: 'Pricing model',                   vett: `Per mission (${SELF_SERVE_RANGE} flat); no subscription`,                 competitor: 'Enterprise sales: Advanced / Ultimate / Ultimate+ tiers; contact sales for quote', vettWins: true  },
   { dimension: 'Sample size per study',           vett: '5 to 1,250 personas per mission',                                  competitor: '5-30 testers per study is typical (video review takes time)', vettWins: true  },
   { dimension: 'Video usability testing',         vett: 'Not in product',                                                competitor: 'Core capability - this is what they do',                vettWins: false },
   { dimension: 'Mobile-app walk-through testing', vett: 'Not in product',                                                competitor: 'Native iOS / Android session recording',                vettWins: false },
@@ -128,7 +129,7 @@ export function VsUserTestingPage() {
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Output format:</strong> VETT delivers structured survey responses + AI synthesis. UserTesting delivers video recordings of real testers narrating their experience. Different deliverables.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Sample size:</strong> VETT runs 5 to 1,250 personas per mission, and larger studies as a managed engagement. UserTesting studies typically use 5-30 testers (video review takes time).</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Time to insight:</strong> VETT in minutes. UserTesting in hours-to-a-day per round (testers schedule + record + transcript).</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Pricing:</strong> VETT $9 to $969 per mission, no subscription. UserTesting is enterprise-sales; per-session pricing not publicly listed.</span></li>
+            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Pricing:</strong> VETT {SELF_SERVE_RANGE} per mission, no subscription. UserTesting is enterprise-sales; per-session pricing not publicly listed.</span></li>
             <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Real humans:</strong> UserTesting wins. Watching an actual tester use your product is irreplaceable for usability work.</span></li>
             <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Mobile-app walkthroughs:</strong> UserTesting wins. Native iOS / Android session recording isn't in VETT.</span></li>
           </ul>
