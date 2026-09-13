@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { AuthedTopNav } from '../components/layout/AuthedTopNav';
 import { supabase } from '../lib/supabase';
+import { fetchAllRows, type RangeableQuery } from '../lib/fetchAllRows';
 import { useAuth } from '../contexts/AuthContext';
 
 // Backend generator endpoint. Belt-and-suspenders trigger: the Stripe
@@ -100,6 +101,13 @@ type State =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'ready'; mission: MissionRow; events: LiveEvent[] };
+
+type ResponseRow = {
+  persona_id: string;
+  persona_profile: unknown;
+  answered_at: string | null;
+  screened_out: boolean | null;
+};
 
 const POLL_INTERVAL_MS = 3000;
 const STUCK_THRESHOLD_MS = 30_000;
@@ -225,11 +233,27 @@ export const ActiveMissionPage = () => {
     // Bug 6 fix: include screened_out so the live ticker only counts
     // qualified respondents (matching what respondent_count targets).
     // Without this, screened-out personas inflate the progress bar.
-    const { data: rows, error: rErr } = await supabase
-      .from('mission_responses')
-      .select('persona_id, persona_profile, answered_at, screened_out')
-      .eq('mission_id', mission.id)
-      .order('answered_at', { ascending: true });
+    // Paged, not unbounded. PostgREST caps an unbounded SELECT at 1000 rows
+    // and says nothing about it, so this read used to stop mid-study: a
+    // completed 240-respondent mission holds 4,320 rows at 18 questions each,
+    // the first 1,000 of them cover 56 personas, and the page rendered
+    // "56 of 240 - 23%" for a study that had fully delivered. Ordering
+    // ascending is what made it look real - the truncation keeps the EARLIEST
+    // rows, so the number always looked like plausible early progress.
+    const { rows, truncated, error: rErr } = await fetchAllRows<ResponseRow>(() =>
+      supabase
+        .from('mission_responses')
+        .select('persona_id, persona_profile, answered_at, screened_out')
+        .eq('mission_id', mission.id)
+        .order('answered_at', { ascending: true }) as unknown as RangeableQuery<ResponseRow>,
+    );
+    if (truncated) {
+      // The runaway guard fired. Say so rather than quietly showing a short
+      // count, which is the exact failure this rewrite removes.
+      console.warn(
+        `[ActiveMissionPage] response read hit the runaway guard for mission ${mission.id}; progress may be understated`,
+      );
+    }
 
     if (cancelledRef.current) return;
 
@@ -240,13 +264,7 @@ export const ActiveMissionPage = () => {
     });
 
     if (!rErr && rows) {
-      type Row = {
-        persona_id: string;
-        persona_profile: unknown;
-        answered_at: string | null;
-        screened_out: boolean | null;
-      };
-      for (const r of rows as Row[]) {
+      for (const r of rows) {
         if (!r.persona_id) continue;
         if (r.screened_out === true) continue; // don't credit screened-outs toward target
         const name = personaNameFrom(r.persona_id, r.persona_profile);
