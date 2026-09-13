@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, X, Check, ChevronDown, ChevronUp, Sparkles, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { fetchAllRows, type RangeableQuery } from '../../lib/fetchAllRows';
 import { channelsForMarkets, MAPPED_MARKET_CODES } from '../../data/marketPlatforms';
 
 export interface ChannelMaster {
@@ -86,12 +87,30 @@ export function ChannelPicker({ selected, onChange, aiSuggestedIds = [], selecte
       return;
     }
     (async () => {
-      // Pass 27 — filter by markets[] && selected OR is_global = TRUE.
-      const { data } = await supabase
-        .from('channels_master')
-        .select('id, display_name, category, is_mena_specific, display_order, markets, is_global')
-        .or(`markets.ov.{${unmappedCodes.join(',')}},is_global.eq.true`)
-        .order('display_order');
+      // Pass 27 - filter by markets[] && selected OR is_global = TRUE.
+      //
+      // PAGED. channels_master holds 572 rows today, so this is under
+      // PostgREST's 1000-row cap - but the cap does not error when it is hit,
+      // it just returns the first 1000 rows and a 200. At 1,000 channels this
+      // picker would start silently omitting options with nothing to show for
+      // it, and nobody would connect a missing channel to a row count.
+      //
+      // The secondary .order('id') is not decoration. Paging needs a TOTAL
+      // order: display_order has ties, and Postgres makes no stability
+      // guarantee across separate LIMIT/OFFSET queries, so tied rows can
+      // repeat on one page and be skipped on the next. The unique column
+      // breaks every tie.
+      const { rows: data, truncated } = await fetchAllRows<ChannelMaster>(() =>
+        supabase
+          .from('channels_master')
+          .select('id, display_name, category, is_mena_specific, display_order, markets, is_global')
+          .or(`markets.ov.{${unmappedCodes.join(',')}},is_global.eq.true`)
+          .order('display_order')
+          .order('id') as unknown as RangeableQuery<ChannelMaster>,
+      );
+      if (truncated) {
+        console.warn('[ChannelPicker] channel list hit the runaway guard; some channels are not shown');
+      }
       const seen = new Set(mapped.map((c) => c.display_name.toLowerCase()));
       const extra = (data || []).filter((c) => !seen.has(String(c.display_name).toLowerCase()));
       setChannels([...mapped, ...(extra as ChannelMaster[])]);
