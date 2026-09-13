@@ -122,6 +122,67 @@ if (tplH1 !== 'VETT vs {competitorName}') {
   fail.push(`VsPageTemplate h1 is now "${tplH1}"; the manifest assumes "VETT vs {competitorName}" for the six pages that use it`);
 }
 
+// ── 7. Case study h1s, without letting the check go vacuous ───────────────
+// The /vs checks above compare the LITERAL text inside a page's <h1>. That
+// works there because the text is either a literal or one known template
+// expression. It does not work for the case study template, whose h1 is
+// `{study.finding}` and nothing else: reading that literal back and comparing
+// it to a manifest h1 would fail every time, and "fixing" it by putting
+// "{study.finding}" in the manifest would produce a check that passes against
+// any finding at all. That is a vacuous check wearing a real one's clothes.
+//
+// So resolve the expression instead, in two steps:
+//   a. assert the template's h1 IS exactly `{study.finding}`, so we know the
+//      heading comes from that one prop and from nothing else;
+//   b. read the `finding` literal out of each study's own data module and
+//      compare THAT to the manifest.
+// If the template's h1 ever stops being that expression, step (a) fails and
+// says so, rather than step (b) quietly checking the wrong string.
+const CASE_STUDY_TEMPLATE = 'src/components/marketing/CaseStudyPageTemplate.tsx';
+const CASE_STUDY_INDEX = 'src/pages/case-studies/CaseStudiesIndexPage.tsx';
+
+/** Route path -> the data module whose `finding` the page renders as its h1. */
+const CASE_STUDY_SOURCES = {
+  '/case-studies/placeholder-pricing-example': 'src/data/caseStudies/PLACEHOLDER_exampleStudy.ts',
+};
+
+const caseTplH1 = renderedH1(CASE_STUDY_TEMPLATE);
+if (caseTplH1 !== '{study.finding}') {
+  fail.push(`CaseStudyPageTemplate h1 is now "${caseTplH1}"; the case study check below resolves "{study.finding}" and would go vacuous against anything else`);
+}
+
+// The index page's h1 is an ordinary literal, so it is checked the ordinary way.
+const indexRoute = PUBLIC_ROUTES.find((r) => r.path === '/case-studies');
+const indexH1 = renderedH1(CASE_STUDY_INDEX);
+if (!indexRoute) fail.push('/case-studies is missing from the manifest');
+else if (indexH1 !== indexRoute.h1) {
+  fail.push(`/case-studies: manifest h1 is "${indexRoute.h1}" but ${CASE_STUDY_INDEX} renders "${indexH1}"`);
+}
+
+// `finding` must stay a single-line, single-quoted literal with no escapes.
+// The CaseStudy type says so too; this is the check that enforces it.
+const FINDING = /^\s*finding:\s*'([^'\\\n]+)'\s*,\s*$/m;
+let caseChecked = 0;
+for (const [path, file] of Object.entries(CASE_STUDY_SOURCES)) {
+  const route = PUBLIC_ROUTES.find((r) => r.path === path);
+  if (!route) { fail.push(`${path} is missing from the manifest`); continue; }
+  const m = readFileSync(join(ROOT, file), 'utf8').match(FINDING);
+  if (!m) {
+    fail.push(`could not read a single-line 'finding' literal out of ${file} - keep it on one line in single quotes so this check can resolve the h1`);
+    continue;
+  }
+  caseChecked += 1;
+  if (m[1] !== route.h1) {
+    fail.push(`${path}: manifest h1 is "${route.h1}" but ${file} sets finding to "${m[1]}" - a crawler would be shown text no visitor sees`);
+  }
+}
+// Every study route in the manifest must have a source here, or a new study
+// could be added to the manifest and never have its h1 checked at all.
+const studyRoutes = PUBLIC_ROUTES.filter((r) => r.path.startsWith('/case-studies/'));
+if (caseChecked !== studyRoutes.length) {
+  fail.push(`checked ${caseChecked} case study h1s but the manifest has ${studyRoutes.length} study routes - add the new one to CASE_STUDY_SOURCES`);
+}
+
 if (fail.length) {
   console.error('verify-seo-routes: FAILED');
   for (const f of fail) console.error('  - ' + f);

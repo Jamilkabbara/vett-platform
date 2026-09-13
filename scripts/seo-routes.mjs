@@ -111,6 +111,26 @@ export const PUBLIC_ROUTES = [
     changefreq: 'weekly', priority: '0.6',
   },
   {
+    path: '/case-studies',
+    title: 'Case studies - VETT',
+    description: 'Worked examples of VETT missions: the decision that needed making, the study that was run, the numbers it returned, and the sample those numbers rest on.',
+    h1: 'Case studies',
+    intro: 'Worked examples of VETT missions: the decision that needed making, the study that was run, the numbers it returned, and the sample those numbers rest on.',
+    changefreq: 'monthly', priority: '0.7',
+  },
+  {
+    // PLACEHOLDER study. Its h1 is the study's `finding` field, verbatim, and
+    // verify-seo-routes.mjs reads that field out of
+    // src/data/caseStudies/PLACEHOLDER_exampleStudy.ts to prove the two agree.
+    // Delete this entry when the file goes.
+    path: '/case-studies/placeholder-pricing-example',
+    title: 'Pricing case study, placeholder example - VETT',
+    description: 'A placeholder worked example showing the shape of a VETT pricing case study: the decision, the demand ladder, what respondents said, who answered, and the statistical gate the headline sits above.',
+    h1: 'Placeholder Coffee Co. can charge 20 percent more without losing demand',
+    intro: 'A placeholder worked example showing the shape of a VETT pricing case study. Every name and figure on it is invented.',
+    changefreq: 'monthly', priority: '0.8',
+  },
+  {
     path: '/api',
     title: 'VETT API',
     description: 'There is no public VETT API today. What exists, what is planned, and how to reach us if you need programmatic access.',
