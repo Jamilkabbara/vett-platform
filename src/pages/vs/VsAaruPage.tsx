@@ -1,4 +1,5 @@
 import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
+import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
 
 /**
  * Pass 35 C3 — VETT vs Aaru.
@@ -11,7 +12,7 @@ export function VsAaruPage() {
     <VsPageTemplate
       competitorName="Aaru"
       competitorTagline="Academic-provenance synthetic-respondent platform focused on policy modeling, election forecasting, public-opinion simulation. Different target use case than commercial market research."
-      vettTagline="Commercial market-research synthetic-respondent platform — pricing, feature priority, brand-lift, creative attention. Methodology-first, $9 to $969 per mission."
+      vettTagline={`Commercial market-research synthetic-respondent platform - pricing, feature priority, brand-lift, creative attention. Methodology-first, ${SELF_SERVE_RANGE} per mission.`}
       slug="/vs/aaru"
       competitorRefUrl="https://www.aaru.com/"
       rows={[
@@ -29,7 +30,7 @@ export function VsAaruPage() {
         },
         {
           dimension: 'Pricing transparency',
-          vett: '$9 to $969 published tiers; one-time per mission',
+          vett: `${SELF_SERVE_RANGE} published tiers; one-time per mission`,
           competitor: 'Enterprise / academic licensing; not transparently published',
           verdict: 'vett',
         },

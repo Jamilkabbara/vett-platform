@@ -25,6 +25,7 @@ import { Link } from 'react-router-dom';
 import { OverlayPage } from '../../components/layout/OverlayPage';
 import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
 import { useRouteSeo } from '../../seo/useRouteSeo';
+import { SELF_SERVE_RANGE_FOR_COUNTS } from '../../utils/priceCopy';
 
 interface ComparisonRow {
   dimension: string;
@@ -138,7 +139,7 @@ export function VsSurveyMonkeyPage() {
           </div>
           <ul className="space-y-3 text-white/80 text-base leading-relaxed">
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Speed:</strong> VETT runs a 50-respondent study in minutes. SurveyMonkey Audience takes hours to days.</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Cost:</strong> $9 for 5 personas to $969 for 1,250, with larger studies quoted as a managed engagement. SurveyMonkey panels start ~$200 minimum and scale faster.</span></li>
+            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Cost:</strong> {SELF_SERVE_RANGE_FOR_COUNTS}, with larger studies quoted as a managed engagement. SurveyMonkey panels start ~$200 minimum and scale faster.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Screener:</strong> VETT generates personas TO your spec. SurveyMonkey filters real panelists against your spec - strict screeners mean longer waits or attrition.</span></li>
             <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">AI synthesis:</strong> Built into VETT. SurveyMonkey reports are mostly DIY analysis or paid add-on.</span></li>
             <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Real humans:</strong> SurveyMonkey wins. VETT is synthetic-only - better for iteration, not for legally defensible quotes.</span></li>
