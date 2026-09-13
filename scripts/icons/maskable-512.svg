@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Source art for public/icon-maskable-512.png.
+
+  This is NOT a scale-up of public/logo.svg. logo.svg is a 120x120 rounded
+  rect with the bolt drawn at translate(27,27) scale(2.75), so the glyph
+  fills most of the canvas. Android's adaptive-icon mask crops a maskable
+  icon to a shape inscribed in the middle 80% of the image, which would
+  cut the top and bottom off that bolt.
+
+  Geometry here, all in the 512x512 output space:
+    - background is full bleed, no rounded corners. The launcher applies
+      its own mask shape, so baking corners in would show as a double
+      rounding on circular masks.
+    - the bolt path is the same 24x24 artwork as logo.svg. With its 1.5
+      stroke it actually draws x 2.25 to 21.75 and y 1.25 to 22.75, so
+      19.5 x 21.5 units centred on (12, 12).
+    - scale 12.82 makes it 250 x 276 px, and translate 102.15 centres it
+      on (256, 256). Its furthest corner is then 186px from centre, inside
+      the 204.8px safe radius, so nothing is clipped on any mask shape.
+      That is roughly 20% padding on the short axis.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#BEF264"/>
+  <g transform="translate(102.15,102.15) scale(12.82)">
+    <path d="M13 2 L3 14 H12 L11 22 L21 10 H12 L13 2 Z"
+          fill="#0B0C15"
+          stroke="#0B0C15"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+  </g>
+</svg>

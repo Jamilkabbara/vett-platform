@@ -1,0 +1,33 @@
+{
+  "id": "/",
+  "name": "VETT - AI Market Research in Minutes",
+  "short_name": "VETT",
+  "description": "Run real market research in minutes. VETT generates synthetic respondents to your audience spec, simulates the survey, and delivers insights.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#0B0C15",
+  "background_color": "#0B0C15",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
