@@ -53,7 +53,7 @@ export function CaPlacementMarketFields({
             <option value="">{options.status === 'ready' ? 'Choose a placement' : 'Loading placements...'}</option>
             {offeredPlacements.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.label} (norm {Number(p.norm_active_seconds).toFixed(1)}s)
+                {p.label} · norm {Number(p.norm_active_seconds).toFixed(1)}s
               </option>
             ))}
           </select>
