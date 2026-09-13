@@ -8,6 +8,7 @@ import './index.css';
 if (import.meta.env.DEV) {
   import('./lib/overflowGuard').then((m) => m.installOverflowGuard());
 }
+import { registerServiceWorker } from './lib/registerServiceWorker';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
 
@@ -26,6 +27,11 @@ if (typeof window !== 'undefined') {
     window.location.replace(target);
   }
 }
+
+// Installability only. public/sw.js caches nothing and intercepts nothing -
+// it exists so Chromium will offer "Install app" and fire beforeinstallprompt.
+// Guarded to production, skipped on preview hosts, and deferred to window load.
+registerServiceWorker();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

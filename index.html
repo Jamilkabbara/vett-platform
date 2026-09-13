@@ -26,6 +26,47 @@
     <meta name="theme-color" content="#0B0C15" />
 
     <!--
+      Pass 49 - installable to a phone home screen. INSTALLABLE ONLY, not
+      offline: public/sw.js caches nothing and intercepts nothing. See the
+      comment at the top of that file for why caching is out of scope here.
+
+      These tags are inside the shell, so scripts/prerender.mjs copies them
+      onto all 24 public routes.
+
+      READ THIS BEFORE EDITING ANYTHING IN THIS HEAD, COMMENTS INCLUDED.
+      prerender.mjs finds the title element, the description meta, the
+      canonical link, the og and twitter metas and the root div by plain
+      regex over this file. Those regexes do not know what a comment is. An
+      earlier draft of this very comment spelled the title element out in
+      prose, and the title regex matched the mention, then ran all the way
+      to the real closing tag and deleted every tag in between - the
+      manifest link included - from all 24 built pages. The build did not
+      complain, because it found a match.
+
+      So: never write one of those tag openings literally anywhere in this
+      file except as the tag itself. Describe them in words, as above. The
+      check that catches it is scripts/verify-sw-passthrough.mjs, which
+      reads the built pages in dist/ after a real build.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!--
+      iOS has no web app manifest support for install: Safari reads these
+      meta tags instead, and there is no programmatic install prompt at all.
+      A visitor has to use Share > Add to Home Screen by hand.
+
+      black-translucent matches the dark shell - the status bar area shows
+      the page background rather than a white or black band. The existing
+      180x180 apple-touch-icon above is what iOS uses for the home screen
+      icon; it does not read the manifest icons.
+    -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="VETT" />
+    <!-- The standards-track spelling of the Apple tag above; Chrome warns without it. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!--
       Pass 27 J — perf wins. Preconnect to the two origins every
       authenticated page hits within the first 50ms (Supabase auth
       + backend API). Establishes TLS handshake before the JS
