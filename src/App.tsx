@@ -114,16 +114,16 @@ function ResultsV2Redirect() {
   return <Navigate to={to} replace />;
 }
 
-function App() {
-  // Pass 22 Bug 22.1 — drain any funnel events that got queued in
-  // localStorage during a prior session (offline / network blip / browser
-  // crash mid-emit). Best-effort; never blocks render.
-  useEffect(() => {
-    replayFunnelQueue().catch(() => {});
-  }, []);
-
+/**
+ * Everything inside the router. Split out of App so the build-time prerender
+ * (src/entry-prerender.tsx) can render the SAME tree inside a StaticRouter
+ * that the browser renders inside BrowserRouter. The two trees must be
+ * identical for the browser to hydrate the prerendered HTML instead of
+ * discarding it, so nothing may be added to one and not the other.
+ */
+export function AppShell() {
   return (
-    <BrowserRouter>
+    <>
       <Toaster
         position="top-center"
         containerStyle={{
@@ -264,6 +264,21 @@ function App() {
           <SiteWideAskVett />
         </div>
       </div>
+    </>
+  );
+}
+
+function App() {
+  // Pass 22 Bug 22.1 — drain any funnel events that got queued in
+  // localStorage during a prior session (offline / network blip / browser
+  // crash mid-emit). Best-effort; never blocks render.
+  useEffect(() => {
+    replayFunnelQueue().catch(() => {});
+  }, []);
+
+  return (
+    <BrowserRouter>
+      <AppShell />
     </BrowserRouter>
   );
 }

@@ -2,42 +2,67 @@
  * Post-build prerender for the public marketing routes.
  *
  * Vite emits ONE dist/index.html and vercel.json rewrites every extensionless
- * path to it, so all 24 public URLs served identical head tags. This script
- * runs after `vite build` and writes dist/<route>/index.html for each route in
- * the manifest, with that route's own title, description, canonical, Open
- * Graph and Twitter tags, plus its h1 and intro inside #root.
+ * path to a shell, so without this every public URL would serve identical head
+ * tags and an empty body. This script runs after BOTH builds - the browser build
+ * (vite build) and the prerender's server bundle (vite build --ssr
+ * src/entry-prerender.tsx, output in dist-prerender/) - and writes
+ * dist/<route>/index.html for each route in scripts/seo-routes.mjs with:
  *
- * Vercel checks the filesystem BEFORE applying rewrites, so dist/about/index.html
- * is served for /about and the catch-all rewrite still handles every app route.
+ *   - that route's own title, description, canonical, Open Graph and Twitter
+ *     tags, rewritten in the head exactly as before; and
+ *   - the WHOLE page, rendered from the real React components, inside #root.
  *
- * ON THE BODY CONTENT, because prerendering can shade into cloaking. What is
- * injected into #root is the page's OWN h1 and its own opening sentence, not
- * keyword copy written for crawlers. React 18's createRoot().render() replaces
- * the container's children on mount, so a visitor with JavaScript sees the
- * identical text for a frame and then the real page. If the two ever diverge,
- * that is a bug in the manifest, not a feature - scripts/verify-seo-routes.mjs
- * is what keeps the h1 honest.
+ * WHY THE WHOLE PAGE. The previous version put only the page's h1 and one
+ * sentence inside #root. Google renders JavaScript and saw the full page; most
+ * AI crawlers and many other bots do not, and saw one heading and one sentence
+ * per URL. The comparison tables, FAQ answers and methodology descriptions -
+ * everything quotable - were absent from the raw HTML.
  *
- * WHAT IT DOES NOT DO. This is not server-side rendering. The body is a title
- * and one paragraph, not the whole page, so a crawler that does not execute JS
- * gets correct metadata and a correct h1 rather than the full article. That is
- * the difference between being indexed under the right title and not being
- * indexed at all; rendering whole pages would need SSR and a real React
- * server build.
+ * WHY THIS IS NOT CLOAKING. The HTML is rendered by the same components, from
+ * the same props, that the browser renders. A crawler and a visitor get the
+ * same page; the crawler just does not have to run JavaScript to read it.
+ *
+ * HYDRATE OR REPLACE. #root carries data-prerender:
+ *   "hydrate"  the browser attaches to the prerendered page and keeps it on
+ *              screen (src/main.tsx calls hydrateRoot). Used wherever the
+ *              browser's first render is the same tree, which is every route
+ *              whose path renders its own page.
+ *   "replace"  the browser renders fresh (createRoot). Used for "/", whose
+ *              router entry is a redirect to /landing: the redirect renders
+ *              nothing, so the tree cannot match. The landing page is in the
+ *              main bundle, so the swap is immediate, with no loading state.
+ *
+ * THE APP SHELL. vercel.json sends every extensionless path WITHOUT its own file
+ * to dist/app-shell.html - the untouched shell with an empty #root - not to
+ * dist/index.html. dist/index.html now holds the full landing page, and serving
+ * that for /dashboard would flash the marketing page at a signed-in customer
+ * before their dashboard loaded.
+ *
+ * Tags are rewritten by regex over the shell. Read the comment at the top of
+ * index.html before editing its head: those regexes cannot tell a tag from a
+ * prose mention of one.
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PUBLIC_ROUTES, canonicalFor, ORIGIN } from './seo-routes.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist');
 const SHELL = join(DIST, 'index.html');
+const SERVER_BUNDLE = join(ROOT, 'dist-prerender', 'entry-prerender.js');
+const RENDER_TIMEOUT_MS = 20_000;
 
 if (!existsSync(SHELL)) {
   console.error('prerender: dist/index.html not found. Run `vite build` first.');
   process.exit(1);
 }
+if (!existsSync(SERVER_BUNDLE)) {
+  console.error('prerender: dist-prerender/entry-prerender.js not found. Run `vite build --ssr src/entry-prerender.tsx --outDir dist-prerender` first.');
+  process.exit(1);
+}
+
+const { renderRoute } = await import(pathToFileURL(SERVER_BUNDLE).href);
 
 const esc = (s) => String(s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -45,15 +70,28 @@ const esc = (s) => String(s)
 
 const shell = readFileSync(SHELL, 'utf8');
 
-/** Replace the content of a meta/title/link tag, or fail loudly if it is missing. */
+/**
+ * Replace a tag, or fail loudly if it is missing. The replacement is passed as
+ * a FUNCTION so String.replace does not interpret "$" sequences in it: the
+ * rendered pages contain prices like "$9 to $1,099", and a string replacement
+ * would read "$1" as a capture-group reference.
+ */
 function swap(html, label, pattern, replacement) {
   if (!pattern.test(html)) {
     throw new Error(`prerender: ${label} not found in dist/index.html - the shell changed shape, fix this script rather than shipping a page with the wrong tag`);
   }
-  return html.replace(pattern, replacement);
+  return html.replace(pattern, () => replacement);
 }
 
-function pageFor(route) {
+function withTimeout(promise, label) {
+  let t;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => { t = setTimeout(() => reject(new Error(`prerender: rendering ${label} did not finish in ${RENDER_TIMEOUT_MS / 1000}s`)), RENDER_TIMEOUT_MS); }),
+  ]).finally(() => clearTimeout(t));
+}
+
+async function pageFor(route) {
   const canonical = canonicalFor(route);
   const title = esc(route.title);
   const desc = esc(route.description);
@@ -75,12 +113,20 @@ function pageFor(route) {
   html = swap(html, 'twitter:description',
     /<meta name="twitter:description"[^>]*\/>/, `<meta name="twitter:description" content="${desc}" />`);
 
-  // The h1 and intro go INSIDE #root. React clears the container on mount.
-  const body = `<div id="root"><main><h1>${esc(route.h1)}</h1><p>${esc(route.intro)}</p></main></div>`;
-  html = swap(html, '<div id="root">', /<div id="root">\s*<\/div>/, body);
+  // renderAs: a path whose router entry redirects is rendered as its target
+  // and replaced, not hydrated, on load. See the header.
+  const renderPath = route.renderAs || route.path;
+  const mode = route.renderAs ? 'replace' : 'hydrate';
+  const body = await withTimeout(renderRoute(renderPath), route.path);
+  html = swap(html, '<div id="root">', /<div id="root">\s*<\/div>/,
+    `<div id="root" data-prerender="${mode}" data-prerender-path="${esc(route.path)}">${body}</div>`);
 
   return html;
 }
+
+// The app shell for every path without its own file. Written from the shell
+// BEFORE dist/index.html is overwritten with the homepage.
+writeFileSync(join(DIST, 'app-shell.html'), shell, 'utf8');
 
 let written = 0;
 for (const route of PUBLIC_ROUTES) {
@@ -88,8 +134,9 @@ for (const route of PUBLIC_ROUTES) {
     ? join(DIST, 'index.html')
     : join(DIST, route.path.replace(/^\//, ''), 'index.html');
   mkdirSync(dirname(out), { recursive: true });
-  writeFileSync(out, pageFor(route), 'utf8');
+  writeFileSync(out, await pageFor(route), 'utf8');
   written += 1;
 }
 
-console.log(`prerender: wrote ${written} public routes into dist/ (canonical base ${ORIGIN})`);
+console.log(`prerender: rendered ${written} public routes into dist/ from the React components, plus dist/app-shell.html (canonical base ${ORIGIN})`);
+process.exit(0);

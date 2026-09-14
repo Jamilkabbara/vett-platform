@@ -212,7 +212,12 @@ if (existsSync(DIST) && existsSync(join(DIST, 'index.html'))) {
     const wantTitle = r.title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     if (title !== wantTitle) fail.push(`dist${r.path} title is "${title}", manifest says "${wantTitle}"`);
     if (canonical !== canonicalFor(r)) fail.push(`dist${r.path} canonical is "${canonical}", manifest says "${canonicalFor(r)}"`);
-    if (!/<h1>[^<]/.test(html)) fail.push(`dist${r.path} has no prerendered h1`);
+    // An h1 with real text inside it. The prerender used to write a bare
+    // h1 followed by text; it now renders the real components, whose h1s
+    // carry classes and nested spans, so match the element, not one spelling
+    // of it. verify-prerendered-pages.mjs checks the text against the manifest.
+    const h1 = html.match(/<h1(?:\s[^>]*)?>([\s\S]*?)<\/h1>/);
+    if (!h1 || !h1[1].replace(/<[^>]+>/g, '').trim()) fail.push(`dist${r.path} has no prerendered h1`);
 
     if (!html.includes('<link rel="manifest" href="/manifest.webmanifest"')) {
       fail.push(`dist${r.path} lost the manifest link between index.html and the build`);

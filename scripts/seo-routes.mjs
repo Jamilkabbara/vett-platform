@@ -29,7 +29,7 @@
 
 export const ORIGIN = 'https://www.vettit.ai';
 
-/** @typedef {{path:string,title:string,description:string,h1:string,intro:string,changefreq:string,priority:string,canonical?:string,sitemap?:boolean}} SeoRoute */
+/** @typedef {{path:string,title:string,description:string,h1:string,intro:string,changefreq:string,priority:string,canonical?:string,sitemap?:boolean,renderAs?:string}} SeoRoute */
 
 /** @type {SeoRoute[]} */
 export const PUBLIC_ROUTES = [
@@ -39,6 +39,10 @@ export const PUBLIC_ROUTES = [
     description: 'Run real market research in minutes. VETT generates synthetic respondents to your audience spec, simulates the survey, and delivers insights. No panel, no waiting.',
     h1: 'Stop guessing. VETT it.',
     intro: 'Describe your research question in plain language. VETT builds the survey, simulates your exact audience, and delivers insights in minutes, not weeks.',
+    // "/" is a redirect to /landing in the router, so it has no page of its
+    // own to render. Its prerendered HTML is the landing page, and the browser
+    // replaces rather than hydrates it (see scripts/prerender.mjs).
+    renderAs: '/landing',
     changefreq: 'weekly', priority: '1.0',
   },
   {
@@ -106,7 +110,9 @@ export const PUBLIC_ROUTES = [
     path: '/blog',
     title: 'Insights and Research - VETT',
     description: 'Writing on synthetic respondent research: what it is good for, where it fails, and how it compares to panel work.',
-    h1: 'Insights and Research',
+    // The page renders an ampersand. The title can say "and"; the h1 is the
+    // rendered text, checked by scripts/verify-prerendered-pages.mjs.
+    h1: 'Insights & Research',
     intro: 'Writing on synthetic respondent research: what it is good for, where it fails, and how it compares to panel work.',
     changefreq: 'weekly', priority: '0.6',
   },
