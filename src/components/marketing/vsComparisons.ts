@@ -8,7 +8,6 @@ export const VS_COMPARISONS: ReadonlyArray<{ slug: string; name: string }> = [
   { slug: 'surveymonkey', name: 'SurveyMonkey' },
   { slug: 'typeform', name: 'Typeform' },
   { slug: 'usertesting', name: 'UserTesting' },
-  { slug: 'pollfish', name: 'Pollfish' },
   { slug: 'traditional', name: 'Traditional research' },
   { slug: 'qualtrics', name: 'Qualtrics' },
   { slug: 'attest', name: 'Attest' },

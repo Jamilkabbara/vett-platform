@@ -76,12 +76,12 @@ const DesignSystemPreview           = lazy(() => import('./pages/DesignSystemPre
 const CreativeAttentionPage         = lazy(() => import('./pages/CreativeAttentionPage').then(m => ({ default: m.CreativeAttentionPage })));
 const CreativeAttentionResultsPage  = lazy(() => import('./pages/CreativeAttentionResultsPage').then(m => ({ default: m.CreativeAttentionResultsPage })));
 // Pass 23 B2 — comparison pages. SurveyMonkey is the template;
-// expansion pages (typeform / usertesting / pollfish / traditional)
+// expansion pages (typeform / usertesting / traditional)
 // ship via Pass 23 Agent 3 fan-out after voice/tone sign-off.
 const VsSurveyMonkeyPage            = lazy(() => import('./pages/vs/VsSurveyMonkeyPage').then(m => ({ default: m.VsSurveyMonkeyPage })));
 const VsTypeformPage                = lazy(() => import('./pages/vs/VsTypeformPage').then(m => ({ default: m.VsTypeformPage })));
 const VsUserTestingPage             = lazy(() => import('./pages/vs/VsUserTestingPage').then(m => ({ default: m.VsUserTestingPage })));
-const VsPollfishPage                = lazy(() => import('./pages/vs/VsPollfishPage').then(m => ({ default: m.VsPollfishPage })));
+const VsIndexPage                   = lazy(() => import('./pages/vs/VsIndexPage').then(m => ({ default: m.VsIndexPage })));
 const VsTraditionalPage             = lazy(() => import('./pages/vs/VsTraditionalPage').then(m => ({ default: m.VsTraditionalPage })));
 // Pass 35 C3+C4 — competitive pages on the shared template (yabble,
 // synthetic-users, conjointly, aaru, quantilope). traditional-research was
@@ -238,7 +238,10 @@ export function AppShell() {
               <Route path="/vs/surveymonkey" element={<VsSurveyMonkeyPage />} />
               <Route path="/vs/typeform" element={<VsTypeformPage />} />
               <Route path="/vs/usertesting" element={<VsUserTestingPage />} />
-              <Route path="/vs/pollfish" element={<VsPollfishPage />} />
+              <Route path="/vs" element={<VsIndexPage />} />
+              {/* Taken down 2026-09-14: pollfish.com could not be read, so no claim on the page
+                  could be sourced. vercel.json 301s this path to /vs; this covers in-app navigation. */}
+              <Route path="/vs/pollfish" element={<Navigate to="/vs" replace />} />
               {/* Pass 35 C3+C4 routes */}
               <Route path="/vs/conjointly" element={<VsConjointlyPage />} />
               <Route path="/vs/yabble" element={<VsYabblePage />} />

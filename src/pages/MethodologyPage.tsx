@@ -322,8 +322,8 @@ export function MethodologyPage() {
         {/* ── The close ───────────────────────────────────────────────── */}
         <SectionHeading>The close</SectionHeading>
         <p className="mb-4 text-white/70">
-          VETT gives you research-grade instruments and analyst-grade math, run
-          in minutes instead of weeks.
+          VETT gives you established research frameworks, and the statistics that
+          go with them, run in minutes instead of weeks.
         </p>
         <p className="mb-12 text-white/70">
           That's a different product from a human panel. For most of the

@@ -153,7 +153,7 @@ const RESEARCH_TYPES: Array<{
   { emoji: '🗺️', title: 'Feature Roadmap',             desc: 'Let your users tell you what to build next. Kano model prioritisation.',                          goalId: 'roadmap' },
   { emoji: '🌍', title: 'Market Entry',                desc: 'Validate demand in a new country before you expand into it.',                 goalId: 'market_entry' },
   { emoji: '📡', title: 'Brand Lift Study',            desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',        goalId: 'brand_lift' },
-  { emoji: '🎬', title: 'Creative Attention Analysis', desc: 'Measure emotional response, attention, and engagement on your video or image creatives with research-grade emotion mapping.', accent: true, goalId: 'creative_attention' },
+  { emoji: '🎬', title: 'Creative Attention Analysis', desc: 'Score emotional response, attention and message clarity on your video or image creatives, across 24 emotions.', accent: true, goalId: 'creative_attention' },
   { emoji: '🔄', title: 'Churn Research',              desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',      goalId: 'churn_research' },
   { emoji: '🔍', title: 'Competitor Analysis',         desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',            goalId: 'competitor' },
   { emoji: '🎯', title: 'Audience Profiling',          desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',               goalId: 'audience_profiling' },

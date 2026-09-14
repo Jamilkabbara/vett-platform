@@ -9,6 +9,16 @@
       "source": "/vs/traditional-research/",
       "destination": "/vs/traditional",
       "statusCode": 301
+    },
+    {
+      "source": "/vs/pollfish",
+      "destination": "/vs",
+      "statusCode": 301
+    },
+    {
+      "source": "/vs/pollfish/",
+      "destination": "/vs",
+      "statusCode": 301
     }
   ],
   "rewrites": [
