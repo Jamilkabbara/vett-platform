@@ -128,13 +128,15 @@ export const PUBLIC_ROUTES = [
     // PLACEHOLDER study. Its h1 is the study's `finding` field, verbatim, and
     // verify-seo-routes.mjs reads that field out of
     // src/data/caseStudies/PLACEHOLDER_exampleStudy.ts to prove the two agree.
-    // Delete this entry when the file goes.
+    // Delete this entry when the file goes. Kept out of the sitemap: every
+    // name and figure on it is invented, so it is not a page to submit to a
+    // search engine. It is still prerendered, for anyone holding the link.
     path: '/case-studies/placeholder-pricing-example',
     title: 'Pricing case study, placeholder example - VETT',
     description: 'A placeholder worked example showing the shape of a VETT pricing case study: the decision, the demand ladder, what respondents said, who answered, and the statistical gate the headline sits above.',
     h1: 'Placeholder Coffee Co. can charge 20 percent more without losing demand',
     intro: 'A placeholder worked example showing the shape of a VETT pricing case study. Every name and figure on it is invented.',
-    changefreq: 'monthly', priority: '0.8',
+    changefreq: 'monthly', priority: '0.1', sitemap: false,
   },
   {
     path: '/api',
