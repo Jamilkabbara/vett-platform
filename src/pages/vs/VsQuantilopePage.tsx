@@ -68,6 +68,26 @@ export function VsQuantilopePage() {
           q: 'Quantilope offers conjoint and implicit association tests. Does VETT?',
           a: 'No. VETT supports simpler frameworks: Van Westendorp price sensitivity, MaxDiff, NPS and a brand-lift funnel. For choice-based conjoint, segmentation or implicit association tests, use Quantilope or a conjoint specialist.',
         },
+        {
+          q: 'How much does each cost?',
+          a: `Quantilope plans start at $2,000/month for the Business plan with three users; Pro and Enterprise are priced on request. VETT charges per mission, ${SELF_SERVE_RANGE}, with no subscription.`,
+        },
+        {
+          q: 'Are VETT respondents real people?',
+          a: 'No. VETT simulates respondents with AI, so its results are a directional read, not a panel study. Quantilope reaches real consumers through its panel network, which it puts at 300M+ worldwide.',
+        },
+        {
+          q: 'Which methods do both cover?',
+          a: 'MaxDiff, TURF, price sensitivity and NPS. Quantilope also offers choice-based conjoint, key driver analysis, segmentation, implicit association tests and A/B tests. VETT adds a brand-lift funnel and concept tests on simulated respondents.',
+        },
+        {
+          q: 'How fast is VETT?',
+          a: "Minutes, because there is no panel fieldwork. Quantilope's site does not state a turnaround, so we do not quote one here.",
+        },
+        {
+          q: 'Where does VETT lose to Quantilope?',
+          a: 'Real consumers and method depth. Quantilope measures real people and offers conjoint, segmentation and implicit association tests. VETT simulates respondents and offers none of those three.',
+        },
       ]}
     />
   );

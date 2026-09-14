@@ -1,5 +1,5 @@
 import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
-import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
+import { MAX_SELF_SERVE_RESPONDENTS, SELF_SERVE_MIN_RESPONDENTS, SELF_SERVE_RANGE } from '../../utils/priceCopy';
 
 /**
  * VETT vs Synthetic Users.
@@ -73,6 +73,26 @@ export function VsSyntheticUsersPage() {
         {
           q: 'Both are synthetic-respondent platforms. Different jobs?',
           a: 'Yes - same broad category, different research shape. Synthetic Users runs interview-style studies (problem exploration, concept testing, custom scripts). VETT runs quantitative, framework-bound studies (per-question distributions, Van Westendorp, MaxDiff, NPS). Many teams could use both: Synthetic Users to explore the problem, VETT to measure willingness to pay or feature priority.',
+        },
+        {
+          q: 'How is the pricing different?',
+          a: `Synthetic Users plans start at $12,500 a year. The plan is one pool of research tokens, drawn down at $2 to $60 per interview; a standard-depth interview uses about 10,000 tokens. VETT charges per mission, ${SELF_SERVE_RANGE}, paid once, with no annual plan.`,
+        },
+        {
+          q: 'Can VETT run interviews?',
+          a: 'No. VETT runs survey-style studies and reports per-question distributions and framework results. For interview-style depth, such as problem exploration or a custom interview script, Synthetic Users is built for that.',
+        },
+        {
+          q: 'How large can a study be?',
+          a: `Synthetic Users says its interviews can scale to hundreds in the same study. A self-serve VETT mission runs from ${SELF_SERVE_MIN_RESPONDENTS} to ${MAX_SELF_SERVE_RESPONDENTS.toLocaleString('en-US')} respondents.`,
+        },
+        {
+          q: 'Has either published evidence that synthetic results match real ones?',
+          a: 'Synthetic Users cites 85-92% synthetic-organic parity in independent comparison studies. VETT has not published a validation study yet, so treat a VETT result as a directional read.',
+        },
+        {
+          q: 'Where does VETT lose to Synthetic Users?',
+          a: 'Qualitative depth and published proof. Synthetic Users runs interview-style studies, shows named enterprise clients including TikTok, J.P. Morgan and Samsung, and cites a parity figure. VETT runs survey-style studies and publishes neither a client list nor a validation study yet.',
         },
       ]}
     />

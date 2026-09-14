@@ -68,6 +68,26 @@ export function VsYabblePage() {
           q: 'Both use AI personas. What is different?',
           a: 'VETT is methodology-first: each mission binds to a named framework (Van Westendorp, MaxDiff, NPS, brand-health funnel) with framework-specific question generators and results pages, bought one mission at a time. Yabble is an annual subscription that pairs AI personas with an AI research agent and analysis of the open-text data you already hold.',
         },
+        {
+          q: 'How is the pricing different?',
+          a: `Yabble's cheapest plan is US$8,900, billed annually, which Yabble describes as less than US$800 a month; there is no monthly billing option. VETT charges per mission, ${SELF_SERVE_RANGE}, with no subscription.`,
+        },
+        {
+          q: 'Can VETT analyse survey data I already have?',
+          a: "No. VETT analyses only the studies it runs. Yabble's Count themes and scores sentiment across open-text and survey responses you already hold, so for that job Yabble is the right tool.",
+        },
+        {
+          q: 'Who is behind Yabble?',
+          a: 'Yabble is backed by YouGov, with offices in New York (care of YouGov) and Auckland.',
+        },
+        {
+          q: 'Has VETT been validated against real research?',
+          a: 'Not yet. VETT has not published a validation study comparing its results with real-world outcomes, so treat a VETT result as a directional read rather than a measured one.',
+        },
+        {
+          q: 'Where does VETT lose to Yabble?',
+          a: 'Analysing data you already have. Yabble themes and scores sentiment across your existing open-text and survey responses. VETT cannot import that data; it only analyses the studies it runs.',
+        },
       ]}
     />
   );

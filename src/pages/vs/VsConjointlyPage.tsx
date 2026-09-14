@@ -95,6 +95,18 @@ export function VsConjointlyPage() {
           q: 'How do the costs compare?',
           a: `They are shaped differently. VETT charges per mission, ${SELF_SERVE_RANGE}, with no subscription and no per-respondent fees. Conjointly has a free Basic plan and paid plans from $2,895 per team per year, and panel responses are bought on top, from a $0.55 minimum bid each. Which costs less depends on the study; only Conjointly's side gives you real respondents.`,
         },
+        {
+          q: 'Which is faster?',
+          a: 'VETT returns a directional read in minutes, because there is no fieldwork: the respondents are simulated. Conjointly quotes insights "within days" on its predefined panels, because real people have to answer.',
+        },
+        {
+          q: 'Which is better for pricing research?',
+          a: 'It depends how the price will be used. VETT runs Van Westendorp price sensitivity on simulated respondents, which is useful for finding a rough price band quickly. Conjointly runs Van Westendorp, Gabor-Granger and conjoint on real respondents. VETT does not offer conjoint or Gabor-Granger. For a price point that has to survive scrutiny, use Conjointly.',
+        },
+        {
+          q: 'Where does VETT lose to Conjointly?',
+          a: 'Evidence and method depth. Conjointly results come from real people, and it offers conjoint analysis, which VETT does not. VETT results are simulated, so for any decision that must rest on measured human responses, Conjointly is the right tool.',
+        },
       ]}
     />
   );

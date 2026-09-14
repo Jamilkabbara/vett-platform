@@ -65,7 +65,7 @@ const FAQS = [
   },
   {
     q: 'Can I run the same study on VETT and Pollfish to compare?',
-    a: "Yes - many teams do this on a small Sniff Test ($9, 5 personas) before committing to a full Pollfish run. The directional signal from a 5-persona VETT mission usually matches the eventual Pollfish result on the dominant question (which option wins, which segment cares most). Where they diverge: open-text emotional nuance and brand-recall depth on niche products. We recommend the cheap VETT pass first as a sanity check, then a Pollfish study at scale if the concept survives.",
+    a: "Yes. A small Sniff Test ($9, 5 personas) before a Pollfish run is a cheap way to narrow the question. VETT has not published a comparison of its results against Pollfish results, so we cannot tell you how often the two agree; compare them on your own study. A sensible order is the cheap VETT pass first, then a Pollfish study at scale if the concept survives.",
   },
   {
     q: 'Does VETT do mobile-only audience targeting?',

@@ -33,6 +33,7 @@ const GSC = '<meta name="google-site-verification" content="g75-pKiznDd8END7QWii
 // was under 250 on every route, so 500 cleanly separates a rendered page from
 // a stub. Two routes are genuinely short and say why.
 const MIN_TEXT = 500;
+const MIN_VS_FAQS = 6;
 const SHORT_ROUTES = {
   '/blog': 60,     // the post list loads client-side from Supabase; the shell and heading are what exist at build time
   '/contact': 150, // a heading, one line and a form
@@ -106,7 +107,8 @@ for (const route of PUBLIC_ROUTES) {
       fail(route.path, `expected 1 FAQPage JSON-LD block in the prerendered page, found ${blocks.length}`);
     } else {
       const questions = (blocks[0].mainEntity || []).map((q) => q.name);
-      if (!questions.length) fail(route.path, 'FAQPage JSON-LD has no questions');
+      // The site-fixes brief sets a floor of six questions per comparison page.
+      if (questions.length < MIN_VS_FAQS) fail(route.path, `FAQPage JSON-LD has ${questions.length} questions; comparison pages need at least ${MIN_VS_FAQS}`);
       const norm = (t) => t.replace(/\s+/g, ' ').trim();
       for (const q of questions) {
         if (!norm(text).includes(norm(q))) fail(route.path, `FAQPage JSON-LD question not visible on the page: "${q.slice(0, 60)}"`);

@@ -1,5 +1,5 @@
 import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
-import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
+import { BRAND_LIFT_RANGE, SELF_SERVE_MIN_RESPONDENTS, SELF_SERVE_MIN_USD, SELF_SERVE_RANGE } from '../../utils/priceCopy';
 import { COUNTRY_COVERAGE, RESEARCH_TYPES_LABEL } from '../../utils/siteFacts';
 
 /**
@@ -80,6 +80,26 @@ export function VsAaruPage() {
         {
           q: 'Aaru and VETT both simulate people. Are they competitors?',
           a: `Yes. Aaru describes its platform as a way to simulate what people will do before you decide, and to test a product, price, message or strategy on the populations that matter to your business. That is the same job VETT does. The differences are in how you buy it and what evidence is published. VETT is self-serve, with published prices from ${SELF_SERVE_RANGE.split(' to ')[0]} per mission and a named research framework behind most studies. Aaru works through a contact form, does not publish pricing, and publishes case studies, including one in which EY reports a 0.90 median correlation against six months of wealth research.`,
+        },
+        {
+          q: 'How much does Aaru cost compared with VETT?',
+          a: `Aaru does not publish pricing on aaru.com; you reach it through a contact form. VETT publishes its prices and takes payment at checkout: ${SELF_SERVE_RANGE} per mission, with no subscription. Brand Lift missions are ${BRAND_LIFT_RANGE}, and Creative Attention is billed per creative asset.`,
+        },
+        {
+          q: "Has VETT been validated against real research, the way Aaru's EY study was?",
+          a: "Not yet. VETT has not published a validation study comparing its results with real-world outcomes, so treat a VETT result as a directional read. Aaru publishes an EY case study that recreated six months of global wealth research in one day and reports a 0.90 median correlation. If published evidence of that kind is what your stakeholders need, that is a point for Aaru.",
+        },
+        {
+          q: 'What research frameworks does VETT use?',
+          a: `VETT offers ${RESEARCH_TYPES_LABEL}. Most are built on a named framework, such as Van Westendorp for pricing, MaxDiff for feature priority, NPS, and a brand-lift funnel, and each has its own results page. Aaru's site does not describe a framework per study.`,
+        },
+        {
+          q: 'Which industries has Aaru published work in?',
+          a: 'On aaru.com: wealth research (the EY case study), capital markets (Breakwater, a quarterly tracker of 71 judgments across 40,000 simulated investors) and home goods. VETT has not published case studies yet.',
+        },
+        {
+          q: 'Can I try VETT on a small study first?',
+          a: `Yes. The smallest VETT mission is ${SELF_SERVE_MIN_RESPONDENTS} respondents for $${SELF_SERVE_MIN_USD}, and it returns in minutes. You set it up yourself; there is no sales call.`,
         },
       ]}
     />
