@@ -11,12 +11,18 @@
  * matters. Bridge framing - "use VETT for the upstream, agencies for
  * the launch deliverable."
  */
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { OverlayPage } from '../../components/layout/OverlayPage';
 import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
 import { useRouteSeo } from '../../seo/useRouteSeo';
-import { SELF_SERVE_RANGE, SELF_SERVE_RANGE_WITH_COUNTS } from '../../utils/priceCopy';
+import {
+  SELF_SERVE_FROM,
+  SELF_SERVE_MIN_USD,
+  SELF_SERVE_RANGE,
+  SELF_SERVE_RANGE_WITH_COUNTS,
+} from '../../utils/priceCopy';
+import { COUNTRY_COVERAGE } from '../../utils/siteFacts';
+import { FaqJsonLd } from '../../components/marketing/FaqJsonLd';
 
 interface ComparisonRow {
   dimension: string;
@@ -28,14 +34,14 @@ interface ComparisonRow {
 const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Time to first insight',           vett: 'Minutes',                                                       competitor: '4-12 weeks per study (brief, sample, field, analysis, report)', vettWins: true  },
   { dimension: 'Cost per study',                  vett: SELF_SERVE_RANGE_WITH_COUNTS,                              competitor: '$5,000 - $50,000+ depending on scope, sample, polish', vettWins: true  },
-  { dimension: 'Iteration cost',                  vett: '$9-$99 per validation round',                                   competitor: 'Each round is a new SOW; iteration is rare',           vettWins: true  },
+  { dimension: 'Iteration cost',                  vett: `From $${SELF_SERVE_MIN_USD} per validation round`,                                   competitor: 'Each round is a new SOW; iteration is rare',           vettWins: true  },
   { dimension: 'Sample size flexibility',         vett: '5 to 1,250 personas per mission',                                  competitor: 'Custom - typically 200-2,000 real respondents at panel cost', vettWins: true  },
   { dimension: 'Project management',              vett: 'Self-serve (you set up the mission)',                           competitor: 'Done for you - account team handles brief, fielding, timeline', vettWins: false },
   { dimension: 'Analyst interpretation',          vett: 'AI synthesis (executive summary, tensions, cross-cut)',         competitor: 'Senior researcher interprets, recommends, presents',   vettWins: false },
   { dimension: 'Stakeholder polish',              vett: 'Clean dashboards + PDF / PPTX / XLSX exports',                   competitor: 'Custom-branded report decks, board-ready narratives',  vettWins: false },
   { dimension: 'Methodology rigour',              vett: 'Templated frameworks (Brand Lift 9-category, Creative Attention)', competitor: 'Custom-designed methodology, peer-reviewable, defensible to a regulator', vettWins: false },
   { dimension: 'Real-respondent supply',          vett: 'No - synthetic personas with realistic distributions',           competitor: 'Yes - verified panel + custom recruit',                vettWins: false },
-  { dimension: 'Geographic reach',                vett: '193 countries (full ISO list, AI-modelled)',                    competitor: 'Global, agency-specific (Kantar / Ipsos / Nielsen / regional boutiques)', vettWins: false },
+  { dimension: 'Geographic reach',                vett: `${COUNTRY_COVERAGE} (AI-modelled)`,                    competitor: 'Global, agency-specific (Kantar / Ipsos / Nielsen / regional boutiques)', vettWins: false },
   { dimension: 'AI insight synthesis',            vett: 'Built-in',                                                      competitor: 'Some agencies offer it as an add-on; not core',         vettWins: true  },
   { dimension: 'Best for...',                     vett: 'Pre-launch validation, iteration loops, MENA/emerging markets, cheap signal', competitor: 'Launch-grade studies, regulatory or board deliverables, custom methodology', vettWins: false },
 ];
@@ -43,7 +49,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
 const FAQS = [
   {
     q: 'Can VETT replace my research agency?',
-    a: "Depends what you're using them for. Agencies do four things VETT cannot: (1) custom methodology design that's defensible to a board or regulator, (2) sample procurement for hard-to-reach niches that AI can't model well, (3) analyst interpretation - a senior researcher who walks the C-suite through what the data means, (4) stakeholder polish - custom-branded decks, narrative arcs, board-ready storytelling. VETT compresses the part that happens BEFORE all that: the cheap fast iteration loops where you're still figuring out what to ask. Most teams use both, in sequence: VETT for the first 5-10 cycles ($9-$99 each), agency for the launch-grade study.",
+    a: `Depends what you're using them for. Agencies do four things VETT cannot: (1) custom methodology design that's defensible to a board or regulator, (2) sample procurement for hard-to-reach niches that AI can't model well, (3) analyst interpretation - a senior researcher who walks the C-suite through what the data means, (4) stakeholder polish - custom-branded decks, narrative arcs, board-ready storytelling. VETT compresses the part that happens BEFORE all that: the cheap fast iteration loops where you're still figuring out what to ask. Most teams use both, in sequence: VETT for the first 5-10 cycles (${SELF_SERVE_FROM} each), agency for the launch-grade study.`,
   },
   {
     q: 'What about analyst interpretation? An AI summary is not the same as a senior researcher.',
@@ -55,7 +61,7 @@ const FAQS = [
   },
   {
     q: 'Where does traditional research win?',
-    a: 'Five real things: (1) Defensible methodology - peer-reviewable rigour for regulatory or M&A use cases. (2) Verified-human respondents for legal, compliance, or PR claims. (3) Senior analyst interpretation, including reading the room in a stakeholder context. (4) Hard-to-reach niches where AI training data is thin (specific medical conditions, security-cleared roles, B2B procurement leaders at named accounts). (5) Brand recognition - "validated by Kantar / Ipsos / Nielsen" carries decades of trust with skeptical stakeholders. Where VETT wins: speed, cost, iteration loops, AI synthesis, and the ability to ask 50 questions you weren\'t sure mattered for $9-$99 a round.',
+    a: `Five real things: (1) Defensible methodology - peer-reviewable rigour for regulatory or M&A use cases. (2) Verified-human respondents for legal, compliance, or PR claims. (3) Senior analyst interpretation, including reading the room in a stakeholder context. (4) Hard-to-reach niches where AI training data is thin (specific medical conditions, security-cleared roles, B2B procurement leaders at named accounts). (5) Brand recognition - "validated by Kantar / Ipsos / Nielsen" carries decades of trust with skeptical stakeholders. Where VETT wins: speed, cost, iteration loops, AI synthesis, and the ability to ask 50 questions you weren't sure mattered ${SELF_SERVE_FROM} a round.`,
   },
   {
     q: 'When do agencies recommend AI tools alongside their own work?',
@@ -81,33 +87,9 @@ export function VsTraditionalPage() {
   // VsPageTemplate and from the prerendered head.
   useRouteSeo('/vs/traditional');
 
-  // The FAQPage JSON-LD stays here: it is per-page structured data, not a
-  // head tag the manifest owns.
-  useEffect(() => {
-
-
-
-    const ld = document.createElement('script');
-    ld.type = 'application/ld+json';
-    ld.id = 'vs-traditional-faq-schema';
-    ld.text = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'FAQPage',
-      mainEntity: FAQS.map((f) => ({
-        '@type': 'Question',
-        name: f.q,
-        acceptedAnswer: { '@type': 'Answer', text: f.a },
-      })),
-    });
-    document.head.appendChild(ld);
-
-    return () => {
-      document.getElementById('vs-traditional-faq-schema')?.remove();
-    };
-  }, []);
-
   return (
     <OverlayPage>
+      <FaqJsonLd faqs={FAQS} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <header className="mb-10">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white/60 mb-5">

@@ -83,14 +83,16 @@ const VsTypeformPage                = lazy(() => import('./pages/vs/VsTypeformPa
 const VsUserTestingPage             = lazy(() => import('./pages/vs/VsUserTestingPage').then(m => ({ default: m.VsUserTestingPage })));
 const VsPollfishPage                = lazy(() => import('./pages/vs/VsPollfishPage').then(m => ({ default: m.VsPollfishPage })));
 const VsTraditionalPage             = lazy(() => import('./pages/vs/VsTraditionalPage').then(m => ({ default: m.VsTraditionalPage })));
-// Pass 35 C3+C4 — 6 new competitive pages (yabble, synthetic-users,
-// conjointly, aaru, quantilope, traditional-research category page).
+// Pass 35 C3+C4 — competitive pages on the shared template (yabble,
+// synthetic-users, conjointly, aaru, quantilope). traditional-research was
+// merged into /vs/traditional on 2026-09-14.
 const VsConjointlyPage              = lazy(() => import('./pages/vs/VsConjointlyPage').then(m => ({ default: m.VsConjointlyPage })));
 const VsYabblePage                  = lazy(() => import('./pages/vs/VsYabblePage').then(m => ({ default: m.VsYabblePage })));
 const VsSyntheticUsersPage          = lazy(() => import('./pages/vs/VsSyntheticUsersPage').then(m => ({ default: m.VsSyntheticUsersPage })));
 const VsAaruPage                    = lazy(() => import('./pages/vs/VsAaruPage').then(m => ({ default: m.VsAaruPage })));
 const VsQuantilopePage              = lazy(() => import('./pages/vs/VsQuantilopePage').then(m => ({ default: m.VsQuantilopePage })));
-const VsTraditionalResearchPage     = lazy(() => import('./pages/vs/VsTraditionalResearchPage').then(m => ({ default: m.VsTraditionalResearchPage })));
+const VsAttestPage                  = lazy(() => import('./pages/vs/VsAttestPage').then(m => ({ default: m.VsAttestPage })));
+const VsQualtricsPage               = lazy(() => import('./pages/vs/VsQualtricsPage').then(m => ({ default: m.VsQualtricsPage })));
 // Case studies. One thin page per study (the /vs precedent), each route in
 // scripts/seo-routes.mjs so it is prerendered with its own head and sitemap row.
 const CaseStudiesIndexPage          = lazy(() => import('./pages/case-studies/CaseStudiesIndexPage').then(m => ({ default: m.CaseStudiesIndexPage })));
@@ -114,16 +116,16 @@ function ResultsV2Redirect() {
   return <Navigate to={to} replace />;
 }
 
-function App() {
-  // Pass 22 Bug 22.1 — drain any funnel events that got queued in
-  // localStorage during a prior session (offline / network blip / browser
-  // crash mid-emit). Best-effort; never blocks render.
-  useEffect(() => {
-    replayFunnelQueue().catch(() => {});
-  }, []);
-
+/**
+ * Everything inside the router. Split out of App so the build-time prerender
+ * (src/entry-prerender.tsx) can render the SAME tree inside a StaticRouter
+ * that the browser renders inside BrowserRouter. The two trees must be
+ * identical for the browser to hydrate the prerendered HTML instead of
+ * discarding it, so nothing may be added to one and not the other.
+ */
+export function AppShell() {
   return (
-    <BrowserRouter>
+    <>
       <Toaster
         position="top-center"
         containerStyle={{
@@ -243,7 +245,11 @@ function App() {
               <Route path="/vs/synthetic-users" element={<VsSyntheticUsersPage />} />
               <Route path="/vs/aaru" element={<VsAaruPage />} />
               <Route path="/vs/quantilope" element={<VsQuantilopePage />} />
-              <Route path="/vs/traditional-research" element={<VsTraditionalResearchPage />} />
+              <Route path="/vs/attest" element={<VsAttestPage />} />
+              <Route path="/vs/qualtrics" element={<VsQualtricsPage />} />
+              {/* Merged into /vs/traditional: the two pages targeted the same query.
+                  vercel.json 301s this path on the server; this covers in-app navigation. */}
+              <Route path="/vs/traditional-research" element={<Navigate to="/vs/traditional" replace />} />
               <Route path="/vs/traditional" element={<VsTraditionalPage />} />
 
               {/* Case studies. The index plus one page per study. */}
@@ -264,6 +270,21 @@ function App() {
           <SiteWideAskVett />
         </div>
       </div>
+    </>
+  );
+}
+
+function App() {
+  // Pass 22 Bug 22.1 — drain any funnel events that got queued in
+  // localStorage during a prior session (offline / network blip / browser
+  // crash mid-emit). Best-effort; never blocks render.
+  useEffect(() => {
+    replayFunnelQueue().catch(() => {});
+  }, []);
+
+  return (
+    <BrowserRouter>
+      <AppShell />
     </BrowserRouter>
   );
 }

@@ -76,8 +76,13 @@ check('index.html', 'offer description, Creative Attention range',
       `Creative Attention (per creative, $${expected.caLow} to $${expected.caHigh})`, html);
 
 // House style: no em or en dashes in customer-facing copy.
-const jsonLd = html.slice(html.indexOf('"offers"'), html.indexOf('"offers"') + 900);
-if (/[–—]/.test(jsonLd)) failures.push('index.html: JSON-LD offer block contains an em or en dash; use "to" or a hyphen');
+// The whole JSON-LD block, not just the offer: search engines can show any of
+// its descriptions as a snippet.
+const ldStart = html.indexOf('<script type="application/ld+json">');
+const jsonLd = html.slice(ldStart, html.indexOf('</script>', ldStart));
+if (ldStart < 0) failures.push('index.html: JSON-LD block not found');
+if (/[–—]/.test(jsonLd)) failures.push('index.html: JSON-LD block contains an em or en dash; use "to" or a hyphen');
+check('index.html', 'offer description, one-time payment', 'Paid once per mission; no subscription.', html);
 
 // ── public/llms.txt ────────────────────────────────────────────────────────
 const llms = readFileSync(new URL('../public/llms.txt', import.meta.url), 'utf8');

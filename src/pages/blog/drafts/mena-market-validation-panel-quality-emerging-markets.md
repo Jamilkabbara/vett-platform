@@ -22,8 +22,8 @@ Founders in the MENA region trying to validate a product idea hit a problem glob
 ## Why AI-modelled coverage helps in patchy markets
 
 - AI personas are generated to the screener, not filtered against a thin pool - so a strict screener doesn't reduce sample availability
-- Coverage is consistent across all 193 countries in the VETT geographic engine; tier-1 markets and frontier markets get the same screener treatment
-- Iteration cost is uniform: $9-$899 per mission regardless of market, vs panel CPI premiums that scale with market difficulty
+- Coverage is consistent across all 190+ countries in the VETT geographic engine; tier-1 markets and frontier markets get the same screener treatment
+- Iteration cost is uniform: $9 to $1,099 per mission regardless of market, vs panel CPI premiums that scale with market difficulty
 - Speed is uniform: minutes, not weeks - which matters more in markets where agency turnaround is the bottleneck
 
 ## What AI-modelled doesn't replace in MENA
@@ -56,4 +56,4 @@ The questions filter agencies that are doing 2026 work from agencies that are do
 
 ---
 
-*VETT covers all 193 countries in its geographic engine and runs missions in minutes regardless of market. For MENA founders specifically: the iteration loop costs $9-$899 per round, no regional CPI premium. Start at [vettit.ai](https://www.vettit.ai/landing).*
+*VETT covers 190+ countries in its geographic engine and runs missions in minutes regardless of market. For MENA founders specifically: the iteration loop starts from $9 a round, with no regional CPI premium. Start at [vettit.ai](https://www.vettit.ai/landing).*

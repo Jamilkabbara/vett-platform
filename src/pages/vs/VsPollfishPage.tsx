@@ -12,19 +12,21 @@
  * was returning a TLS error on WebFetch at the time of writing - readers
  * are pointed to the live pricing page for current numbers.
  */
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { OverlayPage } from '../../components/layout/OverlayPage';
 import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
 import { useRouteSeo } from '../../seo/useRouteSeo';
 import {
   MAX_SELF_SERVE_RESPONDENTS,
+  SELF_SERVE_FROM,
   SELF_SERVE_MIN_RESPONDENTS,
   SELF_SERVE_RANGE,
   SELF_SERVE_RATE_HIGH_USD,
   SELF_SERVE_RATE_LOW_USD,
   SELF_SERVE_RATE_RANGE,
 } from '../../utils/priceCopy';
+import { COUNTRY_COVERAGE } from '../../utils/siteFacts';
+import { FaqJsonLd } from '../../components/marketing/FaqJsonLd';
 
 interface ComparisonRow {
   dimension: string;
@@ -43,7 +45,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'AI insight synthesis',            vett: 'Built-in: executive summary, contradictions, cross-cut',        competitor: 'Reporting dashboard + cross-tabs; AI synthesis layer is not the core deliverable', vettWins: true  },
   { dimension: 'Brand lift framework',            vett: 'Built-in 9-category Happydemics-style framework',               competitor: 'Templates available; methodology is DIY',              vettWins: true  },
   { dimension: 'Creative attention analysis',     vett: 'Frame-by-frame emotion, attention, message clarity for $19/asset', competitor: 'Concept-test templates; not frame-by-frame',          vettWins: true  },
-  { dimension: 'Geographic reach',                vett: '193 countries (full ISO list, AI-modelled)',                    competitor: 'Strong supply in EU + emerging markets via mobile partners; coverage varies by country', vettWins: false },
+  { dimension: 'Geographic reach',                vett: `${COUNTRY_COVERAGE} (AI-modelled)`,                    competitor: 'Strong supply in EU + emerging markets via mobile partners; coverage varies by country', vettWins: false },
   { dimension: 'Mobile-only audience',            vett: 'Targetable via screener (any device)',                          competitor: 'Native to product - all respondents are mobile users by definition', vettWins: false },
   { dimension: 'Best for...',                     vett: 'Pre-launch validation, brand-lift baselines, creative attention, screener-strict niches', competitor: 'Fast quantitative surveys to mobile users where real-respondent supply matters', vettWins: false },
 ];
@@ -51,7 +53,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
 const FAQS = [
   {
     q: 'Pollfish has real mobile users. Why use VETT?',
-    a: "If real-respondent supply matters to you - because the deliverable is going to a stakeholder who needs to see \"verified humans\" or because you're testing creative reaction in a market where AI training data is thin - Pollfish is the right tool. VETT shines when you'd rather have AI-synthesised insight, screener-strict niches that real-panel supply struggles with, brand-lift framework or creative-attention output, or pre-launch validation where you don't have an audience or panel budget yet. Many teams use both: VETT for the cheap fast iteration loops ($9-$99 per round), Pollfish for the pre-launch real-respondent confirmation.",
+    a: `If real-respondent supply matters to you - because the deliverable is going to a stakeholder who needs to see "verified humans" or because you're testing creative reaction in a market where AI training data is thin - Pollfish is the right tool. VETT shines when you'd rather have AI-synthesised insight, screener-strict niches that real-panel supply struggles with, brand-lift framework or creative-attention output, or pre-launch validation where you don't have an audience or panel budget yet. Many teams use both: VETT for the cheap fast iteration loops (${SELF_SERVE_FROM} a round), Pollfish for the pre-launch real-respondent confirmation.`,
   },
   {
     q: 'Can VETT match Pollfish on cost per respondent?',
@@ -59,11 +61,11 @@ const FAQS = [
   },
   {
     q: 'Where is Pollfish stronger geographically?',
-    a: "Pollfish's supply is strongest in markets with deep mobile SDK integration: EU, parts of SEA, and tier-1 emerging markets where their app-publisher partner network has scale. They publish their country-coverage list - check it before committing to a study. VETT's coverage is AI-modelled across 193 countries (full ISO list, src/data/targetingOptions.ts), which means usable signal even in markets where Pollfish's real-supply is patchy. The trade-off: real respondents in Pollfish-strong countries vs synthetic personas everywhere.",
+    a: `Pollfish's supply is strongest in markets with deep mobile SDK integration: EU, parts of SEA, and tier-1 emerging markets where their app-publisher partner network has scale. They publish their country-coverage list - check it before committing to a study. VETT's coverage is AI-modelled across ${COUNTRY_COVERAGE}, which means usable signal even in markets where Pollfish's real-supply is patchy. The trade-off: real respondents in Pollfish-strong countries vs synthetic personas everywhere.`,
   },
   {
     q: 'Can I run the same study on VETT and Pollfish to compare?',
-    a: "Yes - many teams do this on a small Sniff Test ($9, 5 personas) before committing to a full Pollfish run. The directional signal from a 5-persona VETT mission usually matches the eventual Pollfish result on the dominant question (which option wins, which segment cares most). Where they diverge: open-text emotional nuance and brand-recall depth on niche products. We recommend the cheap VETT pass first as a sanity check, then a Pollfish study at scale if the concept survives.",
+    a: "Yes. A small Sniff Test ($9, 5 personas) before a Pollfish run is a cheap way to narrow the question. VETT has not published a comparison of its results against Pollfish results, so we cannot tell you how often the two agree; compare them on your own study. A sensible order is the cheap VETT pass first, then a Pollfish study at scale if the concept survives.",
   },
   {
     q: 'Does VETT do mobile-only audience targeting?',
@@ -89,33 +91,9 @@ export function VsPollfishPage() {
   // VsPageTemplate and from the prerendered head.
   useRouteSeo('/vs/pollfish');
 
-  // The FAQPage JSON-LD stays here: it is per-page structured data, not a
-  // head tag the manifest owns.
-  useEffect(() => {
-
-
-
-    const ld = document.createElement('script');
-    ld.type = 'application/ld+json';
-    ld.id = 'vs-pollfish-faq-schema';
-    ld.text = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'FAQPage',
-      mainEntity: FAQS.map((f) => ({
-        '@type': 'Question',
-        name: f.q,
-        acceptedAnswer: { '@type': 'Answer', text: f.a },
-      })),
-    });
-    document.head.appendChild(ld);
-
-    return () => {
-      document.getElementById('vs-pollfish-faq-schema')?.remove();
-    };
-  }, []);
-
   return (
     <OverlayPage>
+      <FaqJsonLd faqs={FAQS} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <header className="mb-10">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white/60 mb-5">

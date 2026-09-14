@@ -2,13 +2,19 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ isSsrBuild }) => ({
   plugins: [react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
   build: {
-    rollupOptions: {
+    // The server bundle has no use for public/ assets.
+    copyPublicDir: !isSsrBuild,
+    // The prerender's server bundle (vite build --ssr src/entry-prerender.tsx)
+    // runs in Node at build time and is never shipped. It leaves node_modules
+    // external, which manualChunks cannot split, so the vendor chunking below
+    // applies to the browser build only - where it is unchanged.
+    rollupOptions: isSsrBuild ? {} : {
       output: {
         manualChunks: {
           // Heavy visualization library — only loaded on Results page
@@ -29,4 +35,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

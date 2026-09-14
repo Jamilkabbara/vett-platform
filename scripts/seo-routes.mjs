@@ -29,7 +29,7 @@
 
 export const ORIGIN = 'https://www.vettit.ai';
 
-/** @typedef {{path:string,title:string,description:string,h1:string,intro:string,changefreq:string,priority:string,canonical?:string,sitemap?:boolean}} SeoRoute */
+/** @typedef {{path:string,title:string,description:string,h1:string,intro:string,changefreq:string,priority:string,canonical?:string,sitemap?:boolean,renderAs?:string}} SeoRoute */
 
 /** @type {SeoRoute[]} */
 export const PUBLIC_ROUTES = [
@@ -39,6 +39,10 @@ export const PUBLIC_ROUTES = [
     description: 'Run real market research in minutes. VETT generates synthetic respondents to your audience spec, simulates the survey, and delivers insights. No panel, no waiting.',
     h1: 'Stop guessing. VETT it.',
     intro: 'Describe your research question in plain language. VETT builds the survey, simulates your exact audience, and delivers insights in minutes, not weeks.',
+    // "/" is a redirect to /landing in the router, so it has no page of its
+    // own to render. Its prerendered HTML is the landing page, and the browser
+    // replaces rather than hydrates it (see scripts/prerender.mjs).
+    renderAs: '/landing',
     changefreq: 'weekly', priority: '1.0',
   },
   {
@@ -106,7 +110,9 @@ export const PUBLIC_ROUTES = [
     path: '/blog',
     title: 'Insights and Research - VETT',
     description: 'Writing on synthetic respondent research: what it is good for, where it fails, and how it compares to panel work.',
-    h1: 'Insights and Research',
+    // The page renders an ampersand. The title can say "and"; the h1 is the
+    // rendered text, checked by scripts/verify-prerendered-pages.mjs.
+    h1: 'Insights & Research',
     intro: 'Writing on synthetic respondent research: what it is good for, where it fails, and how it compares to panel work.',
     changefreq: 'weekly', priority: '0.6',
   },
@@ -122,13 +128,15 @@ export const PUBLIC_ROUTES = [
     // PLACEHOLDER study. Its h1 is the study's `finding` field, verbatim, and
     // verify-seo-routes.mjs reads that field out of
     // src/data/caseStudies/PLACEHOLDER_exampleStudy.ts to prove the two agree.
-    // Delete this entry when the file goes.
+    // Delete this entry when the file goes. Kept out of the sitemap: every
+    // name and figure on it is invented, so it is not a page to submit to a
+    // search engine. It is still prerendered, for anyone holding the link.
     path: '/case-studies/placeholder-pricing-example',
     title: 'Pricing case study, placeholder example - VETT',
     description: 'A placeholder worked example showing the shape of a VETT pricing case study: the decision, the demand ladder, what respondents said, who answered, and the statistical gate the headline sits above.',
     h1: 'Placeholder Coffee Co. can charge 20 percent more without losing demand',
     intro: 'A placeholder worked example showing the shape of a VETT pricing case study. Every name and figure on it is invented.',
-    changefreq: 'monthly', priority: '0.8',
+    changefreq: 'monthly', priority: '0.1', sitemap: false,
   },
   {
     path: '/api',
@@ -175,9 +183,10 @@ export const PUBLIC_ROUTES = [
  * tidier one would put text in front of a crawler that no visitor ever sees.
  * scripts/verify-seo-routes.mjs checks each one against its source file.
  *
- * NOTE for the owner: /vs/traditional and /vs/traditional-research are two
- * separate live pages about the same comparison, both in the sitemap. They
- * will compete with each other. Worth merging one into the other.
+ * /vs/traditional-research used to be listed here as well: a second page on
+ * the same comparison, competing with /vs/traditional for the same query. It
+ * was merged on 2026-09-14 - vercel.json 301s it to /vs/traditional - so it is
+ * no longer prerendered or in the sitemap.
  */
 const VS = [
   // slug, competitor as it appears in copy, what they are, the page's real h1
@@ -189,14 +198,10 @@ const VS = [
   ['conjointly',           'Conjointly',         'conjoint and pricing research on a real panel',   'VETT vs Conjointly'],
   ['yabble',               'Yabble',             'AI-generated respondents and insight synthesis',  'VETT vs Yabble'],
   ['synthetic-users',      'Synthetic Users',    'AI-generated qualitative interviews',             'VETT vs Synthetic Users'],
-  ['aaru',                 'Aaru',               'agent-based population simulation',               'VETT vs Aaru'],
+  ['aaru',                 'Aaru',               'population simulation for testing business decisions', 'VETT vs Aaru'],
   ['quantilope',           'Quantilope',         'an automated research platform on a real panel',  'VETT vs Quantilope'],
-  // Its own nav label and its sibling page both call this one "agencies";
-  // only the competitorName prop it passes to the template says "traditional
-  // research", which is why its rendered h1 reads the way it does. The title
-  // uses the agency framing so this page and /vs/traditional are telling a
-  // crawler two different things, which is the truth: they are two pages.
-  ['traditional-research', 'traditional research agencies', 'full-service custom research', 'VETT vs traditional research'],
+  ['attest',               'Attest',             'consumer surveys on a real panel across 59 countries', 'VETT vs Attest'],
+  ['qualtrics',            'Qualtrics',          'an enterprise research platform with human and synthetic panels', 'VETT vs Qualtrics'],
 ];
 
 for (const [slug, name, what, h1] of VS) {

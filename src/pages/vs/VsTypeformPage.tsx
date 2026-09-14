@@ -13,12 +13,13 @@
  * creative attention; concede on form UX, conversion rates, integrations,
  * templates marketplace.
  */
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { OverlayPage } from '../../components/layout/OverlayPage';
 import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
 import { useRouteSeo } from '../../seo/useRouteSeo';
 import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
+import { COUNTRY_COVERAGE, RESEARCH_TYPES_LABEL } from '../../utils/siteFacts';
+import { FaqJsonLd } from '../../components/marketing/FaqJsonLd';
 
 interface ComparisonRow {
   dimension: string;
@@ -32,7 +33,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Respondent supply',               vett: 'AI personas generated to your screener spec',                   competitor: 'You bring your own audience (email list, embed, link)', vettWins: true  },
   { dimension: 'Form / survey UX',                vett: 'Functional: question types, branching, screening',              competitor: 'Best-in-class: conversational, one-question-at-a-time', vettWins: false },
   { dimension: 'Pricing model',                   vett: `Per mission (${SELF_SERVE_RANGE} flat); no subscription`,                 competitor: 'Subscription: Basic $39/mo, Plus $79/mo, Business $129/mo (USD, monthly billing)', vettWins: true  },
-  { dimension: 'Geographic reach',                vett: '193 countries (full ISO list, AI-modelled)',                    competitor: 'Wherever you can recruit your own respondents',         vettWins: true  },
+  { dimension: 'Geographic reach',                vett: `${COUNTRY_COVERAGE} (AI-modelled)`,                    competitor: 'Wherever you can recruit your own respondents',         vettWins: true  },
   { dimension: 'AI insight synthesis',            vett: 'Built-in: executive summary, contradictions, cross-cut',        competitor: 'Some AI question-suggestion in Talent plan; not a research-synthesis layer', vettWins: true  },
   { dimension: 'Brand lift framework',            vett: 'Built-in 9-category Happydemics-style framework',               competitor: 'DIY in form builder',                                  vettWins: true  },
   { dimension: 'Creative attention analysis',     vett: 'Frame-by-frame emotion, attention, message clarity for $19/asset', competitor: 'Not in core product',                              vettWins: true  },
@@ -65,7 +66,7 @@ const FAQS = [
   },
   {
     q: 'Where does VETT lose to Typeform?',
-    a: 'Three real things: (1) Form UX - Typeform\'s conversational one-question-at-a-time format converts dramatically better than VETT\'s research-style form, and that\'s by design (we\'re showing personas, not converting visitors). (2) Integrations - Zapier / Salesforce / HubSpot / Slack / Notion all hook into Typeform; VETT has PDF / PowerPoint / Excel export and an API on the roadmap. (3) Templates marketplace - 800+ form templates vs our 14 mission types. We tell users: use Typeform for any survey where the audience is yours and the conversation matters; use VETT when you need synthetic respondents and AI synthesis at the back end.',
+    a: `Three real things: (1) Form UX - Typeform's conversational one-question-at-a-time format converts dramatically better than VETT's research-style form, and that's by design (we're showing personas, not converting visitors). (2) Integrations - Zapier / Salesforce / HubSpot / Slack / Notion all hook into Typeform; VETT has PDF / PowerPoint / Excel export and an API on the roadmap. (3) Templates marketplace - 800+ form templates vs our ${RESEARCH_TYPES_LABEL}. We tell users: use Typeform for any survey where the audience is yours and the conversation matters; use VETT when you need synthetic respondents and AI synthesis at the back end.`,
   },
 ];
 
@@ -83,33 +84,9 @@ export function VsTypeformPage() {
   // VsPageTemplate and from the prerendered head.
   useRouteSeo('/vs/typeform');
 
-  // The FAQPage JSON-LD stays here: it is per-page structured data, not a
-  // head tag the manifest owns.
-  useEffect(() => {
-
-
-
-    const ld = document.createElement('script');
-    ld.type = 'application/ld+json';
-    ld.id = 'vs-typeform-faq-schema';
-    ld.text = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'FAQPage',
-      mainEntity: FAQS.map((f) => ({
-        '@type': 'Question',
-        name: f.q,
-        acceptedAnswer: { '@type': 'Answer', text: f.a },
-      })),
-    });
-    document.head.appendChild(ld);
-
-    return () => {
-      document.getElementById('vs-typeform-faq-schema')?.remove();
-    };
-  }, []);
-
   return (
     <OverlayPage>
+      <FaqJsonLd faqs={FAQS} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {/* H1 */}
         <header className="mb-10">

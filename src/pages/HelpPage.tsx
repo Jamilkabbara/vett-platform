@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, MessageCircleQuestion, Mail, BookOpen } from
 import { OverlayPage } from '../components/layout/OverlayPage';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import { COUNTRY_COVERAGE } from '../utils/siteFacts';
 
 /**
  * Pass 32 X10 — /help page rewrite + Ask VETT mount.
@@ -72,7 +73,7 @@ const FAQS: FAQ[] = [
     category: 'Targeting',
     question: 'Can I target by country, age, or job title?',
     answer:
-      'Yes. Geography (160+ countries) plus city-level targeting in major markets, age ranges, gender, education, marital and parental status, employment, industry, seniority, company size, income band, device preference, and behavioral attributes. The targeting picker lets you stack any number of criteria. Narrow combinations (e.g. CMOs at SaaS companies in Germany) cost more because the persona generator has to honor every constraint when synthesizing the population.',
+      `Yes. Geography (${COUNTRY_COVERAGE}) plus city-level targeting in major markets, age ranges, gender, education, marital and parental status, employment, industry, seniority, company size, income band, device preference, and behavioral attributes. The targeting picker lets you stack any number of criteria. Narrow combinations (e.g. CMOs at SaaS companies in Germany) cost more because the persona generator has to honor every constraint when synthesizing the population.`,
   },
   {
     category: 'Targeting',
@@ -164,11 +165,13 @@ export const HelpPage = () => {
                           aria-hidden
                         />
                       </div>
-                      {open && (
-                        <div className="px-6 pb-6 -mt-1">
-                          <p className="text-white/70 leading-relaxed">{faq.answer}</p>
-                        </div>
-                      )}
+                      {/* Always in the page, hidden while closed. Rendering the
+                          answer only when open kept every Help answer out of the
+                          prerendered HTML, so crawlers that do not run
+                          JavaScript saw questions with no answers. */}
+                      <div className="px-6 pb-6 -mt-1" hidden={!open}>
+                        <p className="text-white/70 leading-relaxed">{faq.answer}</p>
+                      </div>
                     </button>
                   );
                 })}

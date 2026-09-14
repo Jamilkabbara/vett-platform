@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
@@ -33,7 +33,7 @@ if (typeof window !== 'undefined') {
 // Guarded to production, skipped on preview hosts, and deferred to window load.
 registerServiceWorker();
 
-createRoot(document.getElementById('root')!).render(
+const tree = (
   <StrictMode>
     <AuthProvider>
       <ToastProvider>
@@ -42,3 +42,21 @@ createRoot(document.getElementById('root')!).render(
     </AuthProvider>
   </StrictMode>
 );
+
+// Public marketing pages arrive fully rendered (scripts/prerender.mjs). Where
+// the prerender says the tree matches, hydrate: keep the page on screen and
+// attach to it, instead of discarding it and showing a loader while the page's
+// code downloads. Only for the exact path that was prerendered - a trailing
+// slash aside - so a shell served for any other URL is always rendered fresh.
+const rootEl = document.getElementById('root')!;
+const normalise = (p: string) => (p.length > 1 ? p.replace(/\/+$/, '') : p);
+const canHydrate =
+  rootEl.dataset.prerender === 'hydrate'
+  && rootEl.firstElementChild !== null
+  && normalise(rootEl.dataset.prerenderPath || '') === normalise(window.location.pathname);
+
+if (canHydrate) {
+  hydrateRoot(rootEl, tree);
+} else {
+  createRoot(rootEl).render(tree);
+}
