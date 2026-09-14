@@ -3,63 +3,74 @@ import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
 import { COUNTRY_COVERAGE, RESEARCH_TYPES_LABEL } from '../../utils/siteFacts';
 
 /**
- * Pass 35 C3 — VETT vs Aaru.
- * Aaru is an academic-provenance synthetic-respondent platform
- * focused on policy / public-opinion modeling, not commercial market
- * research per se. Be honest about the difference in target use case.
+ * VETT vs Aaru.
+ *
+ * REWRITTEN 2026-09-14. This page used to present Aaru as an academic,
+ * policy-modelling and election-forecasting platform - "a different target
+ * use case than commercial market research", so not really a competitor. That
+ * is no longer how Aaru describes itself. Its homepage, checked on 2026-09-14:
+ *
+ *   "Simulate what people will do before you decide."
+ *   "Test a product, price, message, or strategy on the populations that
+ *    matter to your business - then predict the outcome before you commit."
+ *
+ * which is the job VETT does. Every competitor claim below is taken from
+ * https://aaru.com as it read that day; rows we could not source from Aaru's
+ * own site were dropped rather than estimated. Aaru's homepage makes no
+ * mention of politics, elections or public policy, and shows no pricing.
  */
 export function VsAaruPage() {
   return (
     <VsPageTemplate
       competitorName="Aaru"
-      competitorTagline="Academic-provenance synthetic-respondent platform focused on policy modeling, election forecasting, public-opinion simulation. Different target use case than commercial market research."
-      vettTagline={`Commercial market-research synthetic-respondent platform - pricing, feature priority, brand-lift, creative attention. Methodology-first, ${SELF_SERVE_RANGE} per mission.`}
+      competitorTagline="Simulation platform that builds simulated populations grounded in real-world behavior and outcomes, to test a product, price, message or strategy before a decision. Engaged through a contact form; pricing is not published."
+      vettTagline={`Self-serve synthetic-respondent research - pricing, feature priority, brand lift, creative attention. Methodology-first, ${SELF_SERVE_RANGE} per mission.`}
       slug="/vs/aaru"
       competitorRefUrl="https://www.aaru.com/"
       rows={[
         {
-          dimension: 'Primary use case',
-          vett: 'Commercial market research — pricing, brand, creative, concept testing',
-          competitor: 'Policy / public-opinion modeling, election forecasting, demographic simulation',
+          dimension: 'What it is for',
+          vett: 'Commercial market research: pricing, concept tests, feature priority, brand lift, creative attention',
+          competitor: 'Testing a product, price, message or strategy on the populations that matter to a business, before committing',
           verdict: 'tie',
         },
         {
-          dimension: 'Output deliverable',
-          vett: 'Methodology-bound research reports (PDF / PPTX / XLSX) for product + marketing teams',
-          competitor: 'Public-opinion forecasts, scenario simulations for academic / policy clients',
-          verdict: 'tie',
-        },
-        {
-          dimension: 'Pricing transparency',
-          vett: `${SELF_SERVE_RANGE} published tiers; one-time per mission`,
-          competitor: 'Enterprise / academic licensing; not transparently published',
+          dimension: 'How you buy it',
+          vett: `Self-serve. Published prices, ${SELF_SERVE_RANGE} per mission, paid at checkout`,
+          competitor: 'Through a contact form. No self-serve signup and no published pricing on aaru.com',
           verdict: 'vett',
         },
         {
-          dimension: 'Methodology coverage',
-          vett: `${RESEARCH_TYPES_LABEL}, built on named frameworks (Van Westendorp, MaxDiff, NPS, brand-lift, etc.) with framework-specific results`,
-          competitor: 'Bespoke simulation per study; not framework-bound in the same sense',
-          verdict: 'tie',
-        },
-        {
-          dimension: 'Academic provenance',
-          vett: 'Frameworks themselves are academically established (VW 1976, MaxDiff Sawtooth, Reichheld NPS); platform is commercial',
-          competitor: 'Stronger academic positioning + research-team provenance',
+          dimension: 'Published evidence against real outcomes',
+          vett: 'The research frameworks are peer-reviewed; VETT results are a directional read, and no validation study against real outcomes is published yet',
+          competitor: 'Publishes an EY case study recreating six months of global wealth research in one day, reporting a 0.90 median correlation',
           verdict: 'competitor',
         },
         {
-          dimension: 'MENA market focus',
-          vett: `Persona calibration tuned for MENA demographics + ${COUNTRY_COVERAGE}`,
-          competitor: 'US-political-research roots; global expansion',
+          dimension: 'Published case studies',
+          vett: 'None published yet',
+          competitor: 'EY (wealth research) and Breakwater (a quarterly tracker of 71 judgments across 40,000 simulated investors)',
+          verdict: 'competitor',
+        },
+        {
+          dimension: 'Research framework per study',
+          vett: `${RESEARCH_TYPES_LABEL}, most built on a named framework (Van Westendorp, MaxDiff, NPS, brand lift) with framework-specific results`,
+          competitor: 'Not described on aaru.com',
           verdict: 'vett',
         },
+        {
+          dimension: 'Market coverage',
+          vett: `Persona calibration tuned for MENA, targeting across ${COUNTRY_COVERAGE}`,
+          competitor: 'Not stated on aaru.com; named work covers wealth research, capital markets and home goods',
+          verdict: 'tie',
+        },
       ]}
-      whenToUseVett={`Commercial product / marketing decisions — pricing a SaaS subscription, ranking a feature roadmap, testing an ad before media spend, measuring brand awareness pre/post campaign. Anything where the output goes to a product manager, founder, or marketing lead. MENA-specific work.`}
-      whenToUseCompetitor={`Public-policy modeling, election forecasting, large-scale demographic simulation, academic research where institutional credibility + provenance matter more than commercial framework binding. Aaru's roots in this space are strong.`}
+      whenToUseVett={`You want to run the study yourself, today, at a published price. Pricing a subscription, ranking a feature roadmap, testing an ad before media spend, measuring brand awareness before and after a campaign. You want the result bound to a named research framework, with exportable reports for a product or marketing team. MENA-specific work.`}
+      whenToUseCompetitor={`A high-stakes decision where you would rather commission a simulation than run one, and published evidence of correlation with real outcomes matters to the people you report to - as in Aaru's EY wealth-research case study. Financial-services work, where Aaru's published case studies sit.`}
       faqs={[
         {
-          q: 'Both use synthetic respondents — does Aaru replace VETT or vice versa?',
-          a: 'No — they are pointed at different categories. Aaru\'s strength is public-opinion / policy simulation. VETT\'s is commercial product + marketing research bound to named methodologies. The synthetic-respondent generation is a shared technical primitive but the research surfaces and deliverables differ.',
+          q: 'Aaru and VETT both simulate people. Are they competitors?',
+          a: `Yes. Aaru describes its platform as a way to simulate what people will do before you decide, and to test a product, price, message or strategy on the populations that matter to your business. That is the same job VETT does. The differences are in how you buy it and what evidence is published. VETT is self-serve, with published prices from ${SELF_SERVE_RANGE.split(' to ')[0]} per mission and a named research framework behind most studies. Aaru works through a contact form, does not publish pricing, and publishes case studies, including one in which EY reports a 0.90 median correlation against six months of wealth research.`,
         },
       ]}
     />

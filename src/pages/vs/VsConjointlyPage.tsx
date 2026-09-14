@@ -73,7 +73,7 @@ export function VsConjointlyPage() {
         },
         {
           q: 'Conjointly has peer-reviewed methodology. Does VETT?',
-          a: 'Conjointly\'s methodology validation comes through academic publications (UNSW Sydney research team). The frameworks VETT uses (Van Westendorp 1976, MaxDiff via Sawtooth, NPS via Reichheld 2003) are themselves peer-reviewed in the academic literature. The synthetic-respondent simulation pipeline is not. We say so explicitly on /methodologies and in HONEST_CLAIMS.md.',
+          a: 'Conjointly\'s methodology validation comes through academic publications (UNSW Sydney research team). The frameworks VETT uses (Van Westendorp 1976, MaxDiff via Sawtooth, NPS via Reichheld 2003) are themselves peer-reviewed in the academic literature. The synthetic-respondent simulation pipeline is not.',
         },
         {
           q: 'Why is VETT so much cheaper?',

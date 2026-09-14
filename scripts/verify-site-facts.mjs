@@ -76,6 +76,12 @@ const BANNED = [
   ['13 research types', 'there are 14 research types'],
   ['charged flat per respondent bracket', 'Creative Attention is billed per creative asset'],
   ['Charged per bracket, not per respondent', 'Creative Attention is billed per creative asset'],
+  // Internal repo files and paths do not belong in public copy.
+  ['HONEST_CLAIMS.md', 'an internal repo file, not something a reader can open'],
+  // Competitor figures that were wrong when checked against their own sites on 2026-09-14.
+  ['~$249/month', 'Synthetic Users plans start at $12,500/year'],
+  ['low thousands per year', 'Yabble subscriptions start at US$8,900/year'],
+  ['election forecasting', 'Aaru no longer describes itself this way'],
 ];
 // Historical records that quote the site as it was. Rewriting them would
 // falsify the record; they are not published.

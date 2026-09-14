@@ -5,15 +5,21 @@ import {
 import { COUNTRY_COVERAGE } from '../../utils/siteFacts';
 
 /**
- * Pass 35 C3 — VETT vs Synthetic Users.
- * Synthetic Users is a YC-backed UX research platform that generates
- * synthetic interview personas for qualitative research.
+ * Pass 35 C3 - VETT vs Synthetic Users.
+ * Synthetic Users is a UX research platform that generates synthetic
+ * interview personas for qualitative research.
+ *
+ * Pricing row checked against https://www.syntheticusers.com/pricing on
+ * 2026-09-14: "Plans start at $12,500/year", one pool of Research Tokens,
+ * "$2-60 Per interview", "A standard-depth interview burns about 10,000
+ * tokens". It previously quoted a monthly figure that came to roughly a
+ * fifth of the real entry price.
  */
 export function VsSyntheticUsersPage() {
   return (
     <VsPageTemplate
       competitorName="Synthetic Users"
-      competitorTagline="Synthetic-respondent platform focused on qualitative UX research — interview-style persona conversations, problem-discovery, journey mapping. YC-backed, US-rooted."
+      competitorTagline="Synthetic-respondent platform focused on qualitative UX research - interview-style persona conversations, problem discovery, journey mapping."
       vettTagline={`Methodology-first synthetic-respondent platform for quantitative market research - Van Westendorp pricing, MaxDiff feature priority, brand-health funnel, ${SELF_SERVE_RANGE} pricing.`}
       slug="/vs/synthetic-users"
       competitorRefUrl="https://www.syntheticusers.com/"
@@ -21,7 +27,7 @@ export function VsSyntheticUsersPage() {
         {
           dimension: 'Research shape',
           vett: 'Quantitative - n=5 to 1,250 per mission, per-question distributions, statistical-shape outputs',
-          competitor: 'Qualitative — interview-style conversations with synthetic personas, problem discovery, journey mapping',
+          competitor: 'Qualitative - interview-style conversations with synthetic personas, problem discovery, journey mapping',
           verdict: 'tie',
         },
         {
@@ -33,12 +39,12 @@ export function VsSyntheticUsersPage() {
         {
           dimension: 'Pricing',
           vett: `${SELF_SERVE_RANGE} per mission (one-time)`,
-          competitor: 'Subscription tiers starting ~$249/month',
+          competitor: 'Annual plans from $12,500/year: one token pool, $2 to $60 per interview (a standard-depth interview uses about 10,000 tokens)',
           verdict: 'vett',
         },
         {
           dimension: 'Use case fit',
-          vett: 'Pricing studies, concept tests, ad effectiveness, brand-lift, NPS / CSAT — quantitative go/no-go',
+          vett: 'Pricing studies, concept tests, ad effectiveness, brand lift, NPS / CSAT - quantitative go/no-go',
           competitor: 'Pre-research discovery, journey mapping, qualitative iteration on early-stage product ideas',
           verdict: 'tie',
         },
@@ -55,12 +61,12 @@ export function VsSyntheticUsersPage() {
           verdict: 'tie',
         },
       ]}
-      whenToUseVett={`When the question is quantitative — "what is the optimal price point", "which feature should ship first", "how does brand-lift compare exposed-vs-control". When the deliverable needs framework documentation (Van Westendorp PMC/PME/IPP/OPP, MaxDiff utility scores, NPS standardized scoring). When you want exportable charts + tables for a stakeholder deck.`}
-      whenToUseCompetitor={`When the question is qualitative — "what problems does my user care about", "what's the unmet need behind this purchase", "how would a Gen Z user describe this experience". When you want interview-style depth not statistical breadth. When the upstream research goal is discovery + empathy not measurement.`}
+      whenToUseVett={`When the question is quantitative - "what is the optimal price point", "which feature should ship first", "how does brand-lift compare exposed-vs-control". When the deliverable needs framework documentation (Van Westendorp PMC/PME/IPP/OPP, MaxDiff utility scores, NPS standardized scoring). When you want exportable charts + tables for a stakeholder deck.`}
+      whenToUseCompetitor={`When the question is qualitative - "what problems does my user care about", "what's the unmet need behind this purchase", "how would a Gen Z user describe this experience". When you want interview-style depth not statistical breadth. When the upstream research goal is discovery + empathy not measurement.`}
       faqs={[
         {
           q: 'Both are synthetic-respondent platforms. Different jobs?',
-          a: 'Yes — same broad category, different research shape. Synthetic Users is qualitative discovery (interview transcripts, journey mapping). VETT is quantitative measurement (per-question distributions, framework-bound results). Many teams use both: Synthetic Users to discover the problem, VETT to measure willingness-to-pay or feature priority.',
+          a: 'Yes - same broad category, different research shape. Synthetic Users is qualitative discovery (interview transcripts, journey mapping). VETT is quantitative measurement (per-question distributions, framework-bound results). Many teams use both: Synthetic Users to discover the problem, VETT to measure willingness-to-pay or feature priority.',
         },
       ]}
     />

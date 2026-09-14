@@ -3,9 +3,16 @@ import { COUNTRY_COVERAGE, RESEARCH_TYPES_LABEL } from '../../utils/siteFacts';
 import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
 
 /**
- * Pass 35 C3 — VETT vs Yabble.
+ * Pass 35 C3 - VETT vs Yabble.
  * Yabble is an AI-powered insights platform with audience generation
- * + survey gen, NZ-rooted, mid-market pricing.
+ * + survey gen, NZ-rooted.
+ *
+ * Pricing row checked on 2026-09-14 against Yabble's own site. Its homepage
+ * says "Subscriptions start from only US$800 per month"; its pricing page
+ * lists the cheapest plan, Tier 0, at "$8,900 USD" billed "ANNUALLY", with no
+ * monthly option, and describes that as "less than $800 p/m". Both are
+ * stated so a reader does not assume monthly billing exists. It previously
+ * gave a vague annual range well below the real entry price.
  */
 export function VsYabblePage() {
   return (
@@ -25,7 +32,7 @@ export function VsYabblePage() {
         {
           dimension: 'Pricing entry point',
           vett: '$9 Sniff Test (5 personas)',
-          competitor: 'Subscription tiers starting in the low thousands per year',
+          competitor: 'Annual subscriptions from US$8,900/year (under US$800/month equivalent), billed annually',
           verdict: 'vett',
         },
         {
