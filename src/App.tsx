@@ -83,14 +83,14 @@ const VsTypeformPage                = lazy(() => import('./pages/vs/VsTypeformPa
 const VsUserTestingPage             = lazy(() => import('./pages/vs/VsUserTestingPage').then(m => ({ default: m.VsUserTestingPage })));
 const VsPollfishPage                = lazy(() => import('./pages/vs/VsPollfishPage').then(m => ({ default: m.VsPollfishPage })));
 const VsTraditionalPage             = lazy(() => import('./pages/vs/VsTraditionalPage').then(m => ({ default: m.VsTraditionalPage })));
-// Pass 35 C3+C4 — 6 new competitive pages (yabble, synthetic-users,
-// conjointly, aaru, quantilope, traditional-research category page).
+// Pass 35 C3+C4 — competitive pages on the shared template (yabble,
+// synthetic-users, conjointly, aaru, quantilope). traditional-research was
+// merged into /vs/traditional on 2026-09-14.
 const VsConjointlyPage              = lazy(() => import('./pages/vs/VsConjointlyPage').then(m => ({ default: m.VsConjointlyPage })));
 const VsYabblePage                  = lazy(() => import('./pages/vs/VsYabblePage').then(m => ({ default: m.VsYabblePage })));
 const VsSyntheticUsersPage          = lazy(() => import('./pages/vs/VsSyntheticUsersPage').then(m => ({ default: m.VsSyntheticUsersPage })));
 const VsAaruPage                    = lazy(() => import('./pages/vs/VsAaruPage').then(m => ({ default: m.VsAaruPage })));
 const VsQuantilopePage              = lazy(() => import('./pages/vs/VsQuantilopePage').then(m => ({ default: m.VsQuantilopePage })));
-const VsTraditionalResearchPage     = lazy(() => import('./pages/vs/VsTraditionalResearchPage').then(m => ({ default: m.VsTraditionalResearchPage })));
 // Case studies. One thin page per study (the /vs precedent), each route in
 // scripts/seo-routes.mjs so it is prerendered with its own head and sitemap row.
 const CaseStudiesIndexPage          = lazy(() => import('./pages/case-studies/CaseStudiesIndexPage').then(m => ({ default: m.CaseStudiesIndexPage })));
@@ -243,7 +243,9 @@ export function AppShell() {
               <Route path="/vs/synthetic-users" element={<VsSyntheticUsersPage />} />
               <Route path="/vs/aaru" element={<VsAaruPage />} />
               <Route path="/vs/quantilope" element={<VsQuantilopePage />} />
-              <Route path="/vs/traditional-research" element={<VsTraditionalResearchPage />} />
+              {/* Merged into /vs/traditional: the two pages targeted the same query.
+                  vercel.json 301s this path on the server; this covers in-app navigation. */}
+              <Route path="/vs/traditional-research" element={<Navigate to="/vs/traditional" replace />} />
               <Route path="/vs/traditional" element={<VsTraditionalPage />} />
 
               {/* Case studies. The index plus one page per study. */}

@@ -26,7 +26,16 @@ const fail = [];
 // /vs is the set that actually grew and left the sitemap behind: six of eleven
 // comparison pages were missing from it. Any route under /vs is public
 // marketing by definition, so the rule can be mechanical.
-const vsInRouter = [...app.matchAll(/<Route path="(\/vs\/[a-z-]+)"/g)].map((m) => m[1]);
+// A /vs route whose element is only a <Navigate> is a redirect to another
+// page, not a page of its own (e.g. /vs/traditional-research, merged into
+// /vs/traditional), so it needs no manifest entry of its own. Its target does.
+const vsInRouter = [...app.matchAll(/<Route path="(\/vs\/[a-z-]+)" element=\{([^}]*)\}/g)]
+  .filter((m) => !/^<Navigate\b/.test(m[2].trim()))
+  .map((m) => m[1]);
+const vsRedirects = [...app.matchAll(/<Route path="(\/vs\/[a-z-]+)" element=\{<Navigate to="([^"]+)"/g)];
+for (const [, from, to] of vsRedirects) {
+  if (!PUBLIC_ROUTES.some((r) => r.path === to)) fail.push(`${from} redirects to ${to}, which is not in the SEO manifest`);
+}
 if (vsInRouter.length === 0) fail.push('found no /vs routes in App.tsx - this check has gone vacuous');
 const known = new Set(PUBLIC_ROUTES.map((r) => r.path));
 for (const p of vsInRouter) {

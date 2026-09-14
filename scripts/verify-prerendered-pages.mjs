@@ -134,6 +134,17 @@ if (!catchAll || catchAll.destination !== '/app-shell.html') {
   failures.push('vercel.json catch-all rewrite does not point at /app-shell.html: app routes would be served the prerendered homepage');
 }
 
+// Redirects: every one is a real 301 (Vercel's "permanent: true" sends 308),
+// and no redirected path is also a manifest route or a prerendered file - a
+// page that still exists is a duplicate the redirect was meant to remove.
+for (const r of vercel.redirects || []) {
+  if (r.statusCode !== 301) failures.push(`vercel.json redirect ${r.source} is not a 301`);
+  const path = r.source.replace(/\/$/, '');
+  if (PUBLIC_ROUTES.some((route) => route.path === path)) failures.push(`${path} is redirected but still in scripts/seo-routes.mjs`);
+  if (existsSync(join(DIST, path.slice(1), 'index.html'))) failures.push(`${path} is redirected but dist still contains a prerendered page for it`);
+  if (!PUBLIC_ROUTES.some((route) => route.path === r.destination)) failures.push(`redirect ${r.source} points at ${r.destination}, which is not a public route`);
+}
+
 if (failures.length) {
   console.error(`\nverify-prerendered-pages FAILED (${failures.length})\n`);
   for (const f of failures) console.error('  - ' + f);

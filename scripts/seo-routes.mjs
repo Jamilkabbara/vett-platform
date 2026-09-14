@@ -181,9 +181,10 @@ export const PUBLIC_ROUTES = [
  * tidier one would put text in front of a crawler that no visitor ever sees.
  * scripts/verify-seo-routes.mjs checks each one against its source file.
  *
- * NOTE for the owner: /vs/traditional and /vs/traditional-research are two
- * separate live pages about the same comparison, both in the sitemap. They
- * will compete with each other. Worth merging one into the other.
+ * /vs/traditional-research used to be listed here as well: a second page on
+ * the same comparison, competing with /vs/traditional for the same query. It
+ * was merged on 2026-09-14 - vercel.json 301s it to /vs/traditional - so it is
+ * no longer prerendered or in the sitemap.
  */
 const VS = [
   // slug, competitor as it appears in copy, what they are, the page's real h1
@@ -195,14 +196,8 @@ const VS = [
   ['conjointly',           'Conjointly',         'conjoint and pricing research on a real panel',   'VETT vs Conjointly'],
   ['yabble',               'Yabble',             'AI-generated respondents and insight synthesis',  'VETT vs Yabble'],
   ['synthetic-users',      'Synthetic Users',    'AI-generated qualitative interviews',             'VETT vs Synthetic Users'],
-  ['aaru',                 'Aaru',               'agent-based population simulation',               'VETT vs Aaru'],
+  ['aaru',                 'Aaru',               'population simulation for testing business decisions', 'VETT vs Aaru'],
   ['quantilope',           'Quantilope',         'an automated research platform on a real panel',  'VETT vs Quantilope'],
-  // Its own nav label and its sibling page both call this one "agencies";
-  // only the competitorName prop it passes to the template says "traditional
-  // research", which is why its rendered h1 reads the way it does. The title
-  // uses the agency framing so this page and /vs/traditional are telling a
-  // crawler two different things, which is the truth: they are two pages.
-  ['traditional-research', 'traditional research agencies', 'full-service custom research', 'VETT vs traditional research'],
 ];
 
 for (const [slug, name, what, h1] of VS) {
