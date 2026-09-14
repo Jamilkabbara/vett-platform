@@ -95,6 +95,25 @@ for (const route of PUBLIC_ROUTES) {
     fail(route.path, 'a loading spinner was rendered where the page should be');
   }
 
+  // Every comparison page carries FAQPage structured data IN the prerendered
+  // HTML (not added later by browser JavaScript), and every question in it is
+  // a question the page visibly shows.
+  if (route.path.startsWith('/vs/')) {
+    const blocks = [...rootBody.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+      .map((m) => { try { return JSON.parse(m[1]); } catch { return null; } })
+      .filter((j) => j && j['@type'] === 'FAQPage');
+    if (blocks.length !== 1) {
+      fail(route.path, `expected 1 FAQPage JSON-LD block in the prerendered page, found ${blocks.length}`);
+    } else {
+      const questions = (blocks[0].mainEntity || []).map((q) => q.name);
+      if (!questions.length) fail(route.path, 'FAQPage JSON-LD has no questions');
+      const norm = (t) => t.replace(/\s+/g, ' ').trim();
+      for (const q of questions) {
+        if (!norm(text).includes(norm(q))) fail(route.path, `FAQPage JSON-LD question not visible on the page: "${q.slice(0, 60)}"`);
+      }
+    }
+  }
+
   for (const leak of ['[object Object]', 'undefined', 'NaN']) {
     if (new RegExp(`(^|[^A-Za-z])${leak.replace(/[[\]]/g, '\\$&')}([^A-Za-z]|$)`).test(text)) fail(route.path, `"${leak}" appears in the visible text`);
   }

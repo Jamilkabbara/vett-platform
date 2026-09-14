@@ -13,13 +13,13 @@
  * creative attention; concede on form UX, conversion rates, integrations,
  * templates marketplace.
  */
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { OverlayPage } from '../../components/layout/OverlayPage';
 import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
 import { useRouteSeo } from '../../seo/useRouteSeo';
 import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
 import { COUNTRY_COVERAGE, RESEARCH_TYPES_LABEL } from '../../utils/siteFacts';
+import { FaqJsonLd } from '../../components/marketing/FaqJsonLd';
 
 interface ComparisonRow {
   dimension: string;
@@ -84,33 +84,9 @@ export function VsTypeformPage() {
   // VsPageTemplate and from the prerendered head.
   useRouteSeo('/vs/typeform');
 
-  // The FAQPage JSON-LD stays here: it is per-page structured data, not a
-  // head tag the manifest owns.
-  useEffect(() => {
-
-
-
-    const ld = document.createElement('script');
-    ld.type = 'application/ld+json';
-    ld.id = 'vs-typeform-faq-schema';
-    ld.text = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'FAQPage',
-      mainEntity: FAQS.map((f) => ({
-        '@type': 'Question',
-        name: f.q,
-        acceptedAnswer: { '@type': 'Answer', text: f.a },
-      })),
-    });
-    document.head.appendChild(ld);
-
-    return () => {
-      document.getElementById('vs-typeform-faq-schema')?.remove();
-    };
-  }, []);
-
   return (
     <OverlayPage>
+      <FaqJsonLd faqs={FAQS} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {/* H1 */}
         <header className="mb-10">

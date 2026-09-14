@@ -18,8 +18,9 @@
 
 import { Link } from 'react-router-dom';
 import { OverlayPage } from '../layout/OverlayPage';
-import { Check, X, Minus, ArrowRight, Sparkles } from 'lucide-react';
+import { Check, X, Minus, ArrowRight, Sparkles, Zap, AlertTriangle } from 'lucide-react';
 import { useRouteSeo } from '../../seo/useRouteSeo';
+import { FaqJsonLd } from './FaqJsonLd';
 
 export type Verdict = 'vett' | 'competitor' | 'tie';
 
@@ -42,13 +43,25 @@ export interface VsPageProps {
   /** Honest "when to use VETT" + "when to use [competitor]" paragraphs. */
   whenToUseVett: string;
   whenToUseCompetitor: string;
-  /** Optional FAQ items. */
+  /** Optional FAQ items. Any number; also emitted as FAQPage JSON-LD. */
   faqs?: Array<{ q: string; a: string }>;
+  /**
+   * Optional 90-second TL;DR, shown above the comparison table. Six or seven
+   * short bullets, modelled on the block on /vs/typeform.
+   */
+  tldr?: string[];
+  /**
+   * Optional one-sentence statement of where VETT loses to this competitor,
+   * shown on its own outside the table. On /vs/typeform the equivalent line,
+   * "Form UX: Typeform wins", is the most credible sentence on the page; it
+   * should not be buried in a table row.
+   */
+  whereWeLose?: string;
 }
 
 const VerdictIcon = ({ v }: { v: Verdict }) => {
   if (v === 'vett') return <Check className="w-4 h-4 text-lime" aria-hidden />;
-  if (v === 'competitor') return <X className="w-4 h-4 text-amber-300" aria-hidden />;
+  if (v === 'competitor') return <X className="w-4 h-4 text-amber" aria-hidden />;
   return <Minus className="w-4 h-4 text-white/40" aria-hidden />;
 };
 
@@ -62,6 +75,8 @@ export function VsPageTemplate({
   whenToUseVett,
   whenToUseCompetitor,
   faqs = [],
+  tldr = [],
+  whereWeLose,
 }: VsPageProps) {
   // Title, description and canonical all come from the SEO manifest, which is
   // also what scripts/prerender.mjs bakes into the static HTML for this route.
@@ -71,6 +86,7 @@ export function VsPageTemplate({
 
   return (
     <OverlayPage>
+      <FaqJsonLd faqs={faqs} />
       <div className="max-w-5xl mx-auto">
         {/* Hero */}
         <div className="mb-12">
@@ -93,6 +109,35 @@ export function VsPageTemplate({
             </div>
           </div>
         </div>
+
+        {/* 90-second TL;DR */}
+        {tldr.length > 0 && (
+          <section className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 md:p-8 mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="w-4 h-4 text-primary" aria-hidden />
+              <h2 className="text-primary text-xs font-black uppercase tracking-widest">90-second TL;DR</h2>
+            </div>
+            <ul className="space-y-3 text-white/80 text-base leading-relaxed">
+              {tldr.map((item, i) => (
+                <li key={i} className="flex gap-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-2.5" aria-hidden />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Where VETT loses - stated on its own, not inside a table row */}
+        {whereWeLose && (
+          <section className="rounded-2xl border border-amber/40 bg-amber/[0.07] p-6 mb-12 flex gap-4 items-start">
+            <AlertTriangle className="w-5 h-5 text-amber shrink-0 mt-0.5" aria-hidden />
+            <div>
+              <h2 className="text-amber text-xs font-black uppercase tracking-widest mb-2">Where VETT loses</h2>
+              <p className="text-white text-base md:text-lg font-bold leading-relaxed">{whereWeLose}</p>
+            </div>
+          </section>
+        )}
 
         {/* Comparison table */}
         <div className="mb-12">
@@ -130,8 +175,8 @@ export function VsPageTemplate({
           <p className="text-white/40 text-xs mt-3 italic">
             Verdict legend: <Check className="inline w-3 h-3 text-lime" /> VETT advantage ·
             <Minus className="inline w-3 h-3 text-white/40" /> tie ·
-            <X className="inline w-3 h-3 text-amber-300" /> {competitorName} advantage.
-            One column being "VETT" doesn&apos;t mean VETT is better overall — different jobs, different tools.
+            <X className="inline w-3 h-3 text-amber" /> {competitorName} advantage.
+            One column being "VETT" doesn&apos;t mean VETT is better overall - different jobs, different tools.
           </p>
         </div>
 

@@ -20,13 +20,13 @@
  * After Jamil reviews voice/tone, this template ships for
  * vs/typeform, vs/usertesting, vs/pollfish, vs/traditional.
  */
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { OverlayPage } from '../../components/layout/OverlayPage';
 import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
 import { useRouteSeo } from '../../seo/useRouteSeo';
 import { SELF_SERVE_RANGE_FOR_COUNTS } from '../../utils/priceCopy';
 import { COUNTRY_COVERAGE } from '../../utils/siteFacts';
+import { FaqJsonLd } from '../../components/marketing/FaqJsonLd';
 
 interface ComparisonRow {
   dimension: string;
@@ -78,45 +78,17 @@ const FAQS = [
 ];
 
 export function VsSurveyMonkeyPage() {
-  // Pass 23 B1 + B2 — page-level SEO. Title + description + canonical
-  // updated for this route. The Schema.org FAQPage JSON-LD is injected
-  // inline via a useEffect so we can dehydrate clean if React unmounts
-  // (e.g. SPA back-navigation).
+  // The FAQPage JSON-LD is rendered in the page by FaqJsonLd, so it is in the
+  // prerendered HTML; it used to be appended to <head> from a browser-only effect.
   // Title, description and canonical come from the SEO manifest, which is
   // also what scripts/prerender.mjs bakes into this route's static HTML. This
   // page used to write its own, in a different spelling from the shared
   // VsPageTemplate and from the prerendered head.
   useRouteSeo('/vs/surveymonkey');
 
-  // The FAQPage JSON-LD stays here: it is per-page structured data, not a
-  // head tag the manifest owns.
-  useEffect(() => {
-
-
-    // Canonical
-
-    // FAQPage JSON-LD
-    const ld = document.createElement('script');
-    ld.type = 'application/ld+json';
-    ld.id = 'vs-surveymonkey-faq-schema';
-    ld.text = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'FAQPage',
-      mainEntity: FAQS.map((f) => ({
-        '@type': 'Question',
-        name: f.q,
-        acceptedAnswer: { '@type': 'Answer', text: f.a },
-      })),
-    });
-    document.head.appendChild(ld);
-
-    return () => {
-      document.getElementById('vs-surveymonkey-faq-schema')?.remove();
-    };
-  }, []);
-
   return (
     <OverlayPage>
+      <FaqJsonLd faqs={FAQS} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {/* H1 */}
         <header className="mb-10">

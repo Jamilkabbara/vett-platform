@@ -27,6 +27,15 @@ export function VsAaruPage() {
       vettTagline={`Self-serve synthetic-respondent research - pricing, feature priority, brand lift, creative attention. Methodology-first, ${SELF_SERVE_RANGE} per mission.`}
       slug="/vs/aaru"
       competitorRefUrl="https://www.aaru.com/"
+      tldr={[
+        'Same job: Aaru and VETT both simulate how people will respond, to test a product, price, message or strategy before a decision.',
+        `Buying: VETT is self-serve with published prices, ${SELF_SERVE_RANGE} per mission. Aaru works through a contact form and publishes no pricing.`,
+        'Evidence: Aaru publishes an EY case study reporting a 0.90 median correlation against six months of real wealth research. VETT has published no validation study yet.',
+        'Frameworks: most VETT research types are bound to a named framework (Van Westendorp, MaxDiff, NPS, brand lift). Aaru does not describe a framework per study on its site.',
+        "Where Aaru's published work sits: wealth research, capital markets and home goods.",
+        'Use VETT to run a study yourself today at a known price; use Aaru for a commissioned, high-stakes simulation where published correlation with real outcomes matters.',
+      ]}
+      whereWeLose="Published evidence: Aaru shows an EY case study reporting a 0.90 median correlation with real research, and named clients. VETT has published neither yet."
       rows={[
         {
           dimension: 'What it is for',
