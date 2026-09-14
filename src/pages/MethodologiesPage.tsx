@@ -174,7 +174,7 @@ const METHODOLOGIES: Methodology[] = [
     name: 'Audience Profiling',
     short: 'K-means segmentation across psychographic + behavioral attributes.',
     detail: 'Generate a population, run K-means clustering on the response matrix, surface 3-5 segments with prototype personas, decision drivers, and addressable size.',
-    framework: 'K-means clustering segmentation — McKinsey-style psychographic profiling.',
+    framework: 'K-means clustering segmentation on psychographic and behavioural attributes, run when a study has at least 50 respondents.',
     status: 'in_progress',
     goalId: 'audience_profiling',
   },

@@ -94,6 +94,11 @@ const BANNED = [
   ['tuned for MENA', 'nothing in persona generation is MENA-specific'],
   ['API on the roadmap', 'the /api page makes no roadmap promise'],
   ['usually directionally identical', 'VETT has no comparison with real panels'],
+  // Overclaims removed on 2026-09-14.
+  ['research-grade emotion mapping', 'Creative Attention scores 24 emotions per frame; nothing makes it research-grade'],
+  ['research-grade instruments', 'say established research frameworks'],
+  ['McKinsey-style', 'names another firm the method is not sourced to'],
+  ['usually 5-15 minutes', 'measured: median 2.1 min, mean 8.5 min across 40 missions; the range was never measured'],
 ];
 // Historical records that quote the site as it was. Rewriting them would
 // falsify the record; they are not published.

@@ -162,7 +162,8 @@ export function ProcessingPage() {
             {mission?.title || 'Processing your mission…'}
           </h1>
           <p className="text-t3 text-sm leading-relaxed">
-            We&apos;ll redirect you to your results when this completes — usually 5-15 minutes.
+            We&apos;ll redirect you to your results when this completes. Small studies often
+            finish within a few minutes; larger ones take longer.
             You can also leave this page; we&apos;ll email you when ready.
           </p>
         </div>
