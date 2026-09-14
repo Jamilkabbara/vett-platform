@@ -51,7 +51,7 @@ export function VsAaruPage() {
         },
         {
           dimension: 'Published evidence against real outcomes',
-          vett: 'The research frameworks are peer-reviewed; VETT results are a directional read, and no validation study against real outcomes is published yet',
+          vett: 'The research frameworks are published and widely used; VETT results are a directional read, and no validation study against real outcomes is published yet',
           competitor: 'Publishes an EY case study recreating six months of global wealth research in one day, reporting a 0.90 median correlation',
           verdict: 'competitor',
         },
@@ -69,12 +69,12 @@ export function VsAaruPage() {
         },
         {
           dimension: 'Market coverage',
-          vett: `Persona calibration tuned for MENA, targeting across ${COUNTRY_COVERAGE}`,
+          vett: `Targeting across ${COUNTRY_COVERAGE}`,
           competitor: 'Not stated on aaru.com; named work covers wealth research, capital markets and home goods',
           verdict: 'tie',
         },
       ]}
-      whenToUseVett={`You want to run the study yourself, today, at a published price. Pricing a subscription, ranking a feature roadmap, testing an ad before media spend, measuring brand awareness before and after a campaign. You want the result bound to a named research framework, with exportable reports for a product or marketing team. MENA-specific work.`}
+      whenToUseVett={`You want to run the study yourself, today, at a published price. Pricing a subscription, ranking a feature roadmap, testing an ad before media spend, measuring brand awareness before and after a campaign. You want the result bound to a named research framework, with exportable reports for a product or marketing team.`}
       whenToUseCompetitor={`A high-stakes decision where you would rather commission a simulation than run one, and published evidence of correlation with real outcomes matters to the people you report to - as in Aaru's EY wealth-research case study. Financial-services work, where Aaru's published case studies sit.`}
       faqs={[
         {

@@ -190,11 +190,11 @@ export const PUBLIC_ROUTES = [
  */
 const VS = [
   // slug, competitor as it appears in copy, what they are, the page's real h1
-  ['surveymonkey',         'SurveyMonkey',       'survey tooling with a bring-your-own audience',   'VETT vs SurveyMonkey: Which Is Right for You?'],
-  ['typeform',             'Typeform',           'form building with a bring-your-own audience',    'VETT vs Typeform: Which Is Right for You?'],
-  ['usertesting',          'UserTesting',        'moderated and unmoderated usability testing',     'VETT vs UserTesting: Which Is Right for You?'],
-  ['pollfish',             'Pollfish',           'a mobile-first consumer panel',                   'VETT vs Pollfish: Which Is Right for You?'],
-  ['traditional',          'traditional research', 'the classic panel and agency model',            'VETT vs Traditional Research: Which Is Right for You?'],
+  ['surveymonkey',         'SurveyMonkey',       'survey tooling with a bring-your-own audience',   'VETT vs SurveyMonkey'],
+  ['typeform',             'Typeform',           'form building with a bring-your-own audience',    'VETT vs Typeform'],
+  ['usertesting',          'UserTesting',        'moderated and unmoderated usability testing',     'VETT vs UserTesting'],
+  ['pollfish',             'Pollfish',           'a mobile-first consumer panel',                   'VETT vs Pollfish'],
+  ['traditional',          'traditional research', 'the classic panel and agency model',            'VETT vs Traditional Research'],
   ['conjointly',           'Conjointly',         'conjoint and pricing research on a real panel',   'VETT vs Conjointly'],
   ['yabble',               'Yabble',             'AI-generated respondents and insight synthesis',  'VETT vs Yabble'],
   ['synthetic-users',      'Synthetic Users',    'AI-generated qualitative interviews',             'VETT vs Synthetic Users'],

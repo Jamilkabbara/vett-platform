@@ -1,18 +1,18 @@
 /**
  * Pass 35 C3 — Shared template for /vs/* competitive pages.
  *
- * Honest framing throughout: competitor strengths acknowledged
- * (e.g. Conjointly's peer-reviewed validation is real, write it that
- * way), VETT positioning kept truthful (faster + cheaper + MENA-
- * rooted, NOT "more accurate" or "panel replacement").
+ * Honest framing throughout: competitor strengths acknowledged, VETT
+ * positioning kept truthful (faster and cheaper, NOT "more accurate" or
+ * "panel replacement"). Every competitor statement comes from the
+ * competitor's own site, listed in `sources` with the date it was checked;
+ * anything that cannot be sourced there is left out rather than estimated.
  *
  * Each consuming page passes:
  *   - competitor name + 1-line positioning
  *   - 5-7 honest comparison rows (each row reads "VETT" or "tie" or
  *     "competitor" — no false-equivalence "VETT wins everywhere")
  *   - 1-3 paragraphs on "When to use VETT vs [competitor]"
- *   - Reference link to competitor's public methodology / pricing
- *     page (we do not link directly to sales pages of competitors)
+ *   - the pages on the competitor's own site the claims were taken from
  */
 
 
@@ -21,6 +21,8 @@ import { OverlayPage } from '../layout/OverlayPage';
 import { Check, X, Minus, ArrowRight, Sparkles, Zap, AlertTriangle } from 'lucide-react';
 import { useRouteSeo } from '../../seo/useRouteSeo';
 import { FaqJsonLd } from './FaqJsonLd';
+import { VS_COMPARISONS } from './vsComparisons';
+import { SELF_SERVE_MIN_RESPONDENTS, SELF_SERVE_MIN_USD } from '../../utils/priceCopy';
 
 export type Verdict = 'vett' | 'competitor' | 'tie';
 
@@ -38,7 +40,20 @@ export interface VsPageProps {
   /** Path relative to root, e.g. '/vs/conjointly' for canonical URL. */
   slug: string;
   /** Public reference URL on the competitor site (methodology / pricing). */
-  competitorRefUrl: string;
+  competitorRefUrl?: string;
+  /**
+   * Every page on the competitor's own site a claim was taken from. Shown at
+   * the foot of the page with `checkedOn`. Use instead of competitorRefUrl
+   * when the claims come from more than one page.
+   */
+  sources?: string[];
+  /** Human-readable date the sources were read, e.g. "14 September 2026". */
+  checkedOn?: string;
+  /**
+   * Optional note shown with the sources, for a page that has no single
+   * competitor site (traditional research) or a source that could not be read.
+   */
+  sourceNote?: string;
   rows: ComparisonRow[];
   /** Honest "when to use VETT" + "when to use [competitor]" paragraphs. */
   whenToUseVett: string;
@@ -71,6 +86,9 @@ export function VsPageTemplate({
   vettTagline,
   slug,
   competitorRefUrl,
+  sources,
+  checkedOn,
+  sourceNote,
   rows,
   whenToUseVett,
   whenToUseCompetitor,
@@ -144,7 +162,30 @@ export function VsPageTemplate({
           <h2 className="text-xs font-black text-primary uppercase tracking-widest mb-4">
             Side by side
           </h2>
-          <div className="glass-panel rounded-2xl border border-white/10 overflow-x-auto">
+          {/* Phones (<640px): one card per row. At 375 the four-column table
+              gave each text column about 100px, stretched a row to 287px and
+              pushed the verdict icons past the right edge. Same pattern as the
+              bespoke /vs pages. */}
+          <div className="sm:hidden space-y-3">
+            {rows.map((r, i) => (
+              <div key={i} className="glass-panel rounded-2xl border border-white/10 p-4">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <p className="text-white font-bold text-sm">{r.dimension}</p>
+                  <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white/50">
+                    <VerdictIcon v={r.verdict} />
+                    {r.verdict === 'vett' ? 'VETT' : r.verdict === 'competitor' ? competitorName : 'Tie'}
+                  </span>
+                </div>
+                <p className="text-lime text-[10px] font-black uppercase tracking-widest mb-1">VETT</p>
+                <p className="text-white/80 text-sm leading-relaxed mb-3">{r.vett}</p>
+                <p className="text-white/50 text-[10px] font-black uppercase tracking-widest mb-1">{competitorName}</p>
+                <p className="text-white/60 text-sm leading-relaxed">{r.competitor}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Tablet and up: the table. */}
+          <div className="hidden sm:block glass-panel rounded-2xl border border-white/10 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
@@ -211,9 +252,9 @@ export function VsPageTemplate({
 
         {/* Reference + CTA */}
         <div className="text-center glass-panel p-12 rounded-3xl border border-white/5 mb-8">
-          <h3 className="text-2xl font-black text-white mb-3">Try VETT for $9</h3>
+          <h3 className="text-2xl font-black text-white mb-3">Try VETT for ${SELF_SERVE_MIN_USD}</h3>
           <p className="text-white/60 mb-6 max-w-md mx-auto">
-            Sniff Test tier, 5 personas, about 10 minutes, full results page.
+            Sniff Test: {SELF_SERVE_MIN_RESPONDENTS} personas, results in minutes, full results page.
           </p>
           <Link
             to="/setup"
@@ -224,17 +265,41 @@ export function VsPageTemplate({
           </Link>
         </div>
 
-        <p className="text-center text-white/40 text-xs">
-          {competitorName} reference:{' '}
-          <a
-            href={competitorRefUrl}
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-            className="underline hover:text-white/70"
-          >
-            {competitorRefUrl}
-          </a>
-        </p>
+        {/* Other comparisons */}
+        <nav aria-label="Other comparisons" className="border-t border-white/10 pt-8 mb-8">
+          <h2 className="text-xs font-black uppercase tracking-widest text-white/40 mb-4">Other comparisons</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {VS_COMPARISONS.filter((c) => `/vs/${c.slug}` !== slug).map((c) => (
+              <Link
+                key={c.slug}
+                to={`/vs/${c.slug}`}
+                className="rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-colors px-4 py-3 text-white/70 hover:text-white text-sm font-semibold flex items-center justify-between"
+              >
+                VETT vs {c.name}
+                <ArrowRight className="w-4 h-4 text-primary opacity-60" aria-hidden />
+              </Link>
+            ))}
+          </div>
+        </nav>
+
+        {/* Sources */}
+        {(sources?.length || competitorRefUrl || sourceNote) && (
+          <div className="text-center text-white/40 text-xs space-y-1">
+            {sourceNote && <p className="max-w-2xl mx-auto">{sourceNote}</p>}
+            {(sources?.length || competitorRefUrl) && (
+              <p>
+                {competitorName} sources{checkedOn ? `, checked ${checkedOn}` : ''}:
+              </p>
+            )}
+            {(sources ?? (competitorRefUrl ? [competitorRefUrl] : [])).map((url) => (
+              <p key={url} className="break-all">
+                <a href={url} target="_blank" rel="noopener noreferrer nofollow" className="underline hover:text-white/70">
+                  {url}
+                </a>
+              </p>
+            ))}
+          </div>
+        )}
       </div>
     </OverlayPage>
   );

@@ -45,7 +45,20 @@ export default {
 
         // §3 design system — sentiment + low-n flag (mirrors backend exports/shared.js BRAND)
         coral: '#F2787F', // negative sentiment
-        amber: '#E7B45A', // low-n / directional confidence flag
+        // Low-n / directional confidence flag, and every other warning state.
+        // Defined as an object, not a single string: a string here replaces
+        // Tailwind's whole default amber palette, so amber-300/400/500/700
+        // (101 uses across setup, results, missions and admin) generated no
+        // CSS and every one of those warnings rendered as plain white text.
+        // The shades the app uses resolve to the brand amber; 700 is a darker
+        // tone for the one filled badge that needs contrast behind amber text.
+        amber: {
+          DEFAULT: '#E7B45A',
+          300: '#E7B45A',
+          400: '#E7B45A',
+          500: '#E7B45A',
+          700: '#8A6526',
+        },
 
         // "VETT IT" purple gradient stops (btn-vi)
         'purple-from': '#6d28d9',

@@ -82,27 +82,45 @@ const BANNED = [
   ['~$249/month', 'Synthetic Users plans start at $12,500/year'],
   ['low thousands per year', 'Yabble subscriptions start at US$8,900/year'],
   ['election forecasting', 'Aaru no longer describes itself this way'],
+  // Stale product promises. The recruit loop can deliver fewer respondents
+  // than ordered, and results are a directional read.
+  ['no refunds needed', 'VETT can deliver fewer respondents than ordered; do not promise otherwise'],
+  ['research-grade insights', 'VETT results are a directional read'],
+  // VETT claims removed from the comparison pages on 2026-09-14 because the
+  // product or the data does not support them.
+  ['$0.78 to $3.50', 'the per-respondent range comes from SELF_SERVE_RATE_RANGE'],
+  ['Happydemics', 'VETT does not describe its brand-lift framework this way'],
+  ['Same underlying AI', 'implies a model vendor'],
+  ['tuned for MENA', 'nothing in persona generation is MENA-specific'],
+  ['API on the roadmap', 'the /api page makes no roadmap promise'],
+  ['usually directionally identical', 'VETT has no comparison with real panels'],
 ];
 // Historical records that quote the site as it was. Rewriting them would
 // falsify the record; they are not published.
 const EXEMPT = [/^src\/pages\/__perf__\//];
 const TEXT = /\.(tsx?|mjs|jsx?|md|txt|html|json|webmanifest|xml)$/;
+function scan(rel) {
+  const s = readFileSync(join(ROOT, rel), 'utf8');
+  for (const [needle, why] of BANNED) {
+    if (s.includes(needle)) {
+      const line = s.slice(0, s.indexOf(needle)).split('\n').length;
+      fail(`${rel}:${line} contains "${needle}" - ${why}`);
+    }
+  }
+}
 function walk(dir) {
   for (const name of readdirSync(join(ROOT, dir))) {
     const rel = `${dir}/${name}`;
     if (statSync(join(ROOT, rel)).isDirectory()) { walk(rel); continue; }
     if (!TEXT.test(name) || EXEMPT.some((re) => re.test(rel))) continue;
-    const s = readFileSync(join(ROOT, rel), 'utf8');
-    for (const [needle, why] of BANNED) {
-      if (s.includes(needle)) {
-        const line = s.slice(0, s.indexOf(needle)).split('\n').length;
-        fail(`${rel}:${line} contains "${needle}" - ${why}`);
-      }
-    }
+    scan(rel);
   }
 }
 walk('src');
 walk('public');
+// index.html carries the head every page starts from, including the homepage
+// structured data and the share description.
+scan('index.html');
 
 if (failures.length) {
   console.error(`\nverify-site-facts FAILED (${failures.length})\n`);

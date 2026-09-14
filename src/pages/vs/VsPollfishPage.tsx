@@ -1,273 +1,105 @@
+import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
+import { COUNTRY_COVERAGE, RESEARCH_TYPES_LABEL } from '../../utils/siteFacts';
+import { SELF_SERVE_FROM, SELF_SERVE_RANGE, SELF_SERVE_RATE_RANGE } from '../../utils/priceCopy';
+
 /**
- * Pass 23 B2 expansion - VETT vs Pollfish comparison page.
+ * VETT vs Pollfish.
  *
- * Route: /vs/pollfish
+ * REWRITTEN 2026-09-14 onto the shared template, WITH EVERY POLLFISH CLAIM
+ * REMOVED. The standard for these pages is that each statement about a
+ * competitor comes from the competitor's own site on the day it was checked.
+ * pollfish.com could not be read that day: the TLS handshake to www.pollfish.com
+ * timed out from curl, from a web fetcher and from a browser, while
+ * typeform.com loaded normally from the same machine as a control, and
+ * resources.pollfish.com only redirected back to www.pollfish.com.
  *
- * Pollfish is a mobile-first DSP-integrated panel: real respondents
- * captured in-app via SDK partnerships, CPI pricing, real-time delivery.
- * VETT is synthetic. Different supply mechanisms; closer head-to-head
- * on the "fast quantitative survey" job than UserTesting was.
+ * The previous page's own header said its pricing was never read either
+ * ("pollfish.com was returning a TLS error on WebFetch at the time of
+ * writing"), yet it published Pollfish supply, pricing-model, coverage and
+ * speed claims ("Strong supply in EU + emerging markets", "Pay-as-you-go CPI +
+ * minimum spend", "typically a few dollars per completed interview", "Hours;
+ * sometimes minutes", "tens of thousands of completes"), plus VETT at "$0.78 to
+ * $3.50" per respondent and "Most teams find the directional signal lines up".
+ * None of that could be sourced, so none of it is here.
  *
- * Pricing on this page is hedged with cite-and-date because pollfish.com
- * was returning a TLS error on WebFetch at the time of writing - readers
- * are pointed to the live pricing page for current numbers.
+ * When pollfish.com can be read, source Pollfish's prices, panel, coverage and
+ * speed from it and restore the competitor side of the table.
  */
-import { Link } from 'react-router-dom';
-import { OverlayPage } from '../../components/layout/OverlayPage';
-import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
-import { useRouteSeo } from '../../seo/useRouteSeo';
-import {
-  MAX_SELF_SERVE_RESPONDENTS,
-  SELF_SERVE_FROM,
-  SELF_SERVE_MIN_RESPONDENTS,
-  SELF_SERVE_RANGE,
-  SELF_SERVE_RATE_HIGH_USD,
-  SELF_SERVE_RATE_LOW_USD,
-  SELF_SERVE_RATE_RANGE,
-} from '../../utils/priceCopy';
-import { COUNTRY_COVERAGE } from '../../utils/siteFacts';
-import { FaqJsonLd } from '../../components/marketing/FaqJsonLd';
-
-interface ComparisonRow {
-  dimension: string;
-  vett: string;
-  competitor: string;
-  vettWins: boolean;
-}
-
-const COMPARISON_ROWS: ComparisonRow[] = [
-  { dimension: 'Respondent type',                 vett: 'AI personas generated to your screener',                        competitor: 'Real mobile users captured in-app via SDK partner network', vettWins: false },
-  { dimension: 'Time to first insight',           vett: 'Minutes',                                                       competitor: 'Hours; sometimes minutes for low-friction screeners',  vettWins: true  },
-  { dimension: 'Cost per respondent',             vett: '$0.78 to $3.50',                                                 competitor: 'CPI model; varies by demographic and survey length (check pollfish.com/pricing)', vettWins: false },
-  { dimension: 'Pricing model',                   vett: `Per mission (${SELF_SERVE_RANGE} flat); no subscription`,                 competitor: 'Pay-as-you-go CPI + minimum spend per study',          vettWins: true  },
-  { dimension: 'Sample size per study',           vett: '5 to 1,250 personas per mission',                                  competitor: 'Hundreds to tens of thousands; depends on demographic supply', vettWins: false },
-  { dimension: 'Screener strictness',             vett: 'Constraint-based generation - personas are generated TO the spec', competitor: 'Filter-based on real-mobile-user attributes; strict screeners cost more or take longer', vettWins: true  },
-  { dimension: 'AI insight synthesis',            vett: 'Built-in: executive summary, contradictions, cross-cut',        competitor: 'Reporting dashboard + cross-tabs; AI synthesis layer is not the core deliverable', vettWins: true  },
-  { dimension: 'Brand lift framework',            vett: 'Built-in 9-category Happydemics-style framework',               competitor: 'Templates available; methodology is DIY',              vettWins: true  },
-  { dimension: 'Creative attention analysis',     vett: 'Frame-by-frame emotion, attention, message clarity for $19/asset', competitor: 'Concept-test templates; not frame-by-frame',          vettWins: true  },
-  { dimension: 'Geographic reach',                vett: `${COUNTRY_COVERAGE} (AI-modelled)`,                    competitor: 'Strong supply in EU + emerging markets via mobile partners; coverage varies by country', vettWins: false },
-  { dimension: 'Mobile-only audience',            vett: 'Targetable via screener (any device)',                          competitor: 'Native to product - all respondents are mobile users by definition', vettWins: false },
-  { dimension: 'Best for...',                     vett: 'Pre-launch validation, brand-lift baselines, creative attention, screener-strict niches', competitor: 'Fast quantitative surveys to mobile users where real-respondent supply matters', vettWins: false },
-];
-
-const FAQS = [
-  {
-    q: 'Pollfish has real mobile users. Why use VETT?',
-    a: `If real-respondent supply matters to you - because the deliverable is going to a stakeholder who needs to see "verified humans" or because you're testing creative reaction in a market where AI training data is thin - Pollfish is the right tool. VETT shines when you'd rather have AI-synthesised insight, screener-strict niches that real-panel supply struggles with, brand-lift framework or creative-attention output, or pre-launch validation where you don't have an audience or panel budget yet. Many teams use both: VETT for the cheap fast iteration loops (${SELF_SERVE_FROM} a round), Pollfish for the pre-launch real-respondent confirmation.`,
-  },
-  {
-    q: 'Can VETT match Pollfish on cost per respondent?',
-    a: `VETT's cost per respondent is ${SELF_SERVE_RATE_RANGE} depending on tier (the effective rate at the ${SELF_SERVE_MIN_RESPONDENTS}-persona entry tier is $${SELF_SERVE_RATE_HIGH_USD.toFixed(2)}; at the ${MAX_SELF_SERVE_RESPONDENTS.toLocaleString('en-US')}-persona ceiling it is $${SELF_SERVE_RATE_LOW_USD.toFixed(2)}). Pollfish's CPI varies by demographic targeting and survey length - typically a few dollars per completed interview, sometimes higher for niche demos or strict screeners (check pollfish.com/pricing for current numbers). On unit cost they're often in the same ballpark; the difference is what the unit IS - a synthetic persona response (VETT) vs a real mobile user response (Pollfish).`,
-  },
-  {
-    q: 'Where is Pollfish stronger geographically?',
-    a: `Pollfish's supply is strongest in markets with deep mobile SDK integration: EU, parts of SEA, and tier-1 emerging markets where their app-publisher partner network has scale. They publish their country-coverage list - check it before committing to a study. VETT's coverage is AI-modelled across ${COUNTRY_COVERAGE}, which means usable signal even in markets where Pollfish's real-supply is patchy. The trade-off: real respondents in Pollfish-strong countries vs synthetic personas everywhere.`,
-  },
-  {
-    q: 'Can I run the same study on VETT and Pollfish to compare?',
-    a: "Yes. A small Sniff Test ($9, 5 personas) before a Pollfish run is a cheap way to narrow the question. VETT has not published a comparison of its results against Pollfish results, so we cannot tell you how often the two agree; compare them on your own study. A sensible order is the cheap VETT pass first, then a Pollfish study at scale if the concept survives.",
-  },
-  {
-    q: 'Does VETT do mobile-only audience targeting?',
-    a: "Yes, but differently. VETT's screener accepts \"smartphone-only respondents\" or \"daily mobile-app users\" as targeting criteria, and the AI generates personas matching that profile. What VETT does not do is verify that those personas are actually using mobile devices the way Pollfish does (Pollfish's whole point is that respondents are caught in-app). If \"the respondent must demonstrably be on a phone right now\" is the requirement, Pollfish is the right tool. If \"the respondent's profile fits a mobile-first user persona\" is enough, VETT works.",
-  },
-  {
-    q: 'Where does VETT lose to Pollfish?',
-    a: 'Three real things: (1) Real-respondent supply - Pollfish hands you actual humans answering on actual phones; we hand you AI-modelled persona responses. For high-stakes decisions where verified-human is the requirement, that gap matters. (2) Mobile-native targeting - "this respondent is on iOS right now" is a Pollfish-only deliverable; we can target mobile-using personas but not verify the moment-of-response device. (3) Stakeholder credibility for "real consumer" claims - "1,000 real mobile respondents in 5 countries" reads stronger than "1,000 synthetic personas matching the same screener" to a board or a regulator. We tell users: pair us. VETT for the cheap iteration loops; Pollfish for the pre-launch real-respondent confirmation.',
-  },
-];
-
-const OTHER_COMPARISONS = [
-  { slug: 'surveymonkey', label: 'VETT vs SurveyMonkey' },
-  { slug: 'typeform',     label: 'VETT vs Typeform' },
-  { slug: 'usertesting',  label: 'VETT vs UserTesting' },
-  { slug: 'traditional',  label: 'VETT vs traditional research agencies' },
-];
+const NOT_CHECKED = 'Not stated here: pollfish.com could not be read when this page was checked';
 
 export function VsPollfishPage() {
-  // Title, description and canonical come from the SEO manifest, which is
-  // also what scripts/prerender.mjs bakes into this route's static HTML. This
-  // page used to write its own, in a different spelling from the shared
-  // VsPageTemplate and from the prerendered head.
-  useRouteSeo('/vs/pollfish');
-
   return (
-    <OverlayPage>
-      <FaqJsonLd faqs={FAQS} />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <header className="mb-10">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white/60 mb-5">
-            Comparison · VETT vs Pollfish
-          </span>
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white leading-tight mb-4">
-            VETT vs Pollfish: Which Is Right for You?
-          </h1>
-          <p className="text-white/70 text-lg md:text-xl max-w-2xl leading-relaxed">
-            Pollfish is mobile-first real respondents captured in-app.
-            VETT is AI-modelled personas generated to your screener.
-            Both fast quantitative; different supply mechanisms.
-          </p>
-        </header>
-
-        <section className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 md:p-8 mb-12">
-          <div className="flex items-center gap-2 mb-4">
-            <Zap className="w-4 h-4 text-primary" />
-            <span className="text-primary text-xs font-black uppercase tracking-widest">90-second TL;DR</span>
-          </div>
-          <ul className="space-y-3 text-white/80 text-base leading-relaxed">
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Speed:</strong> VETT in minutes; Pollfish in hours-to-minutes depending on demographic supply.</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Screener strictness:</strong> VETT generates personas TO your spec - no waiting for real-mobile supply to satisfy a tight filter.</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">AI synthesis:</strong> Built into VETT. Pollfish has reporting + cross-tabs but synthesis is mostly DIY.</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Pricing model:</strong> VETT {SELF_SERVE_RANGE} flat per mission. Pollfish CPI + minimum spend per study.</span></li>
-            <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Real respondents:</strong> Pollfish wins. Real mobile users captured in-app via SDK partner network.</span></li>
-            <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Mobile-native targeting:</strong> Pollfish wins. "This respondent is on iOS right now" is theirs by definition.</span></li>
-          </ul>
-        </section>
-
-        <section className="mb-14">
-          <h2 className="text-2xl md:text-3xl font-black text-white mb-6">Side-by-side comparison</h2>
-
-          <div className="sm:hidden space-y-3">
-            {COMPARISON_ROWS.map((row) => (
-              <div key={row.dimension} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-                <p className="text-white/60 text-[11px] font-bold uppercase tracking-widest mb-3">{row.dimension}</p>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    {row.vettWins && <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
-                    <div className="flex-1">
-                      <p className="text-primary text-[10px] font-black uppercase tracking-widest mb-0.5">VETT</p>
-                      <p className="text-white text-sm leading-relaxed">{row.vett}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    {!row.vettWins && <Check className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />}
-                    <div className="flex-1">
-                      <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mb-0.5">Pollfish</p>
-                      <p className="text-white/60 text-sm leading-relaxed">{row.competitor}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="hidden sm:block rounded-2xl border border-white/10 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[600px]">
-                <thead className="bg-white/5 border-b border-white/10">
-                  <tr>
-                    <th className="text-left px-4 py-3 text-white/60 font-bold uppercase tracking-widest text-xs">Dimension</th>
-                    <th className="text-left px-4 py-3 text-primary font-black uppercase tracking-widest text-xs">VETT</th>
-                    <th className="text-left px-4 py-3 text-white/60 font-black uppercase tracking-widest text-xs">Pollfish</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON_ROWS.map((row) => (
-                    <tr key={row.dimension} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02]">
-                      <td className="px-4 py-3 text-white/70 font-semibold align-top">{row.dimension}</td>
-                      <td className="px-4 py-3 text-white align-top">
-                        <span className="inline-flex items-start gap-2">
-                          {row.vettWins && <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
-                          <span>{row.vett}</span>
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-white/60 align-top">
-                        <span className="inline-flex items-start gap-2">
-                          {!row.vettWins && <Check className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />}
-                          <span>{row.competitor}</span>
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid md:grid-cols-2 gap-6 mb-14">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 md:p-8">
-            <div className="flex items-center gap-2 mb-3">
-              <Globe className="w-5 h-5 text-white/70" />
-              <h3 className="text-xl font-black text-white">When to use Pollfish</h3>
-            </div>
-            <ul className="space-y-3 text-white/70 text-base leading-relaxed">
-              <li>You need real respondents on a mobile device, captured in-app, with verified human behaviour.</li>
-              <li>Your audience is in markets where Pollfish has strong SDK-partner supply (EU, tier-1 SEA).</li>
-              <li>You're presenting findings to stakeholders who need "verified mobile respondents" framing.</li>
-              <li>You need scale - Pollfish can deliver tens of thousands of completes when supply allows.</li>
-            </ul>
-          </div>
-          <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-6 md:p-8">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <h3 className="text-xl font-black text-primary">When to use VETT</h3>
-            </div>
-            <ul className="space-y-3 text-white/80 text-base leading-relaxed">
-              <li>Pre-launch validation where you can't yet justify CPI + minimum-spend overhead.</li>
-              <li>Strict screeners (high-income + niche profession + market) where real-panel supply is thin.</li>
-              <li>You want AI synthesis (executive summary, tensions, cross-cut) baked in, not a DIY analyst step.</li>
-              <li>You want a brand-lift baseline or creative-attention scorecard - both are templated in VETT.</li>
-              <li>Your audience is in markets (MENA, parts of Africa) where Pollfish supply is patchy.</li>
-              <li>You're price-sensitive: $9-$299 covers most early-stage iteration cycles.</li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="mb-14">
-          <h2 className="text-2xl md:text-3xl font-black text-white mb-6">FAQ</h2>
-          <div className="space-y-4">
-            {FAQS.map((f, i) => (
-              <details key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 group" open={i === 0}>
-                <summary className="cursor-pointer text-white font-bold text-base list-none flex items-center justify-between gap-3">
-                  <span>{f.q}</span>
-                  <span className="text-primary text-xl group-open:rotate-45 transition-transform inline-block">+</span>
-                </summary>
-                <p className="mt-3 text-white/70 text-sm md:text-base leading-relaxed">{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-8 md:p-10 text-center mb-14">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <DollarSign className="w-5 h-5 text-primary" />
-            <span className="text-primary text-xs font-black uppercase tracking-widest">From $9</span>
-          </div>
-          <h3 className="text-2xl md:text-4xl font-black text-white mb-3">Cheap iteration before the real-panel run</h3>
-          <p className="text-white/70 text-base md:text-lg max-w-xl mx-auto mb-6">
-            Run a 5-persona Sniff Test for $9 to gut-check before
-            committing to a Pollfish CPI + minimum spend. Most teams find
-            the directional signal lines up; the ones that don't, you
-            saved real money on.
-          </p>
-          <Link
-            to="/landing"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-gray-900 font-black hover:scale-[1.02] transition-transform shadow-2xl shadow-primary/30"
-          >
-            Start your first mission
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </section>
-
-        <section className="border-t border-white/10 pt-8 mb-12">
-          <h3 className="text-sm font-black uppercase tracking-widest text-white/40 mb-4">Other comparisons</h3>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {OTHER_COMPARISONS.map((c) => (
-              <Link
-                key={c.slug}
-                to={`/vs/${c.slug}`}
-                className="rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-colors px-4 py-3 text-white/70 hover:text-white text-sm font-semibold flex items-center justify-between"
-              >
-                {c.label}
-                <ArrowRight className="w-4 h-4 text-primary opacity-60" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      </div>
-    </OverlayPage>
+    <VsPageTemplate
+      competitorName="Pollfish"
+      competitorTagline="Pollfish's own site could not be read when this page was last checked, so this page makes no claims about its prices, panel, coverage or speed."
+      vettTagline={`Synthetic-respondent research: describe the audience, and VETT simulates respondents and returns results in minutes. ${RESEARCH_TYPES_LABEL}, ${SELF_SERVE_RANGE} per mission, no subscription.`}
+      slug="/vs/pollfish"
+      checkedOn="14 September 2026"
+      sourceNote="Every statement about a competitor on these pages comes from the competitor's own site. pollfish.com could not be reached on 14 September 2026, so the Pollfish side of this page is left blank until it can be checked. For Pollfish's current prices and panel, see pollfish.com."
+      tldr={[
+        'Respondents: VETT simulates respondents with AI, so there is no one to recruit and no fieldwork.',
+        `Price: VETT is ${SELF_SERVE_RANGE} per mission, which works out at ${SELF_SERVE_RATE_RANGE} per respondent, with no subscription.`,
+        `Targeting: a free-text audience description and screening questions, plus location, demographic, professional, income and behavioural targeting across ${COUNTRY_COVERAGE}.`,
+        'Evidence: VETT results are a directional read, and VETT has not published a study comparing them with real-respondent results.',
+        "Pollfish: we could not read Pollfish's site when this page was checked, so it quotes nothing about Pollfish. Check pollfish.com for its current offer.",
+        'Use VETT for a fast, cheap directional read; use a real-respondent panel when the decision has to rest on real people.',
+      ]}
+      whereWeLose="Real respondents: any study answered by real people gives you measured responses. VETT's respondents are simulated, so its results are a directional read."
+      rows={[
+        {
+          dimension: 'Who answers',
+          vett: 'Synthetic personas generated to your audience description',
+          competitor: NOT_CHECKED,
+          verdict: 'tie',
+        },
+        {
+          dimension: 'Time to results',
+          vett: 'Minutes; no fieldwork',
+          competitor: NOT_CHECKED,
+          verdict: 'tie',
+        },
+        {
+          dimension: 'Price',
+          vett: `${SELF_SERVE_RANGE} per mission (${SELF_SERVE_RATE_RANGE} per respondent), no subscription`,
+          competitor: NOT_CHECKED,
+          verdict: 'tie',
+        },
+        {
+          dimension: 'Framework studies',
+          vett: `${RESEARCH_TYPES_LABEL}, including Van Westendorp and Gabor-Granger pricing, MaxDiff and Kano, NPS and a brand-lift study`,
+          competitor: NOT_CHECKED,
+          verdict: 'tie',
+        },
+      ]}
+      whenToUseVett={`You want a directional read in minutes, before paying for real responses. You are still shaping the question and expect to run several versions. You want a framework, such as Van Westendorp pricing or a brand-lift study, set up for you.`}
+      whenToUseCompetitor={`The answer has to come from real people. Check pollfish.com for what Pollfish offers today; this page does not describe it.`}
+      faqs={[
+        {
+          q: 'Why does this page say so little about Pollfish?',
+          a: "Every statement about a competitor on VETT's comparison pages comes from that competitor's own site, checked on the date shown. pollfish.com could not be reached when this page was checked, so rather than repeat older or second-hand claims, the Pollfish side is left blank until it can be checked.",
+        },
+        {
+          q: 'How much does VETT cost?',
+          a: `VETT charges per mission, ${SELF_SERVE_RANGE}, with no subscription. That works out at ${SELF_SERVE_RATE_RANGE} per respondent.`,
+        },
+        {
+          q: 'Are VETT respondents real people?',
+          a: 'No. VETT simulates respondents with AI to the audience you describe. Its results are a directional read, and VETT has not published a study comparing them with real-respondent results.',
+        },
+        {
+          q: 'Can I target a specific audience?',
+          a: `Yes. You describe the audience in your own words and can add screening questions, plus location, demographic, professional, income and behavioural targeting across ${COUNTRY_COVERAGE}. VETT generates personas to that description rather than filtering a panel.`,
+        },
+        {
+          q: 'Can I run the same study on VETT and a real panel?',
+          a: `Yes. A small VETT mission, ${SELF_SERVE_FROM}, before a real-panel study is a cheap way to narrow the question. VETT has not published how often its results agree with real panels, so compare them on your own study.`,
+        },
+        {
+          q: 'Where does VETT lose to a real-respondent panel?',
+          a: 'Real respondents. A panel study gives you measured answers from real people, which is what a high-stakes decision should rest on. VETT simulates respondents and gives you a directional read.',
+        },
+      ]}
+    />
   );
 }
-
 export default VsPollfishPage;

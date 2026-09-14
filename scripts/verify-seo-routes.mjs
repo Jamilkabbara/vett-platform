@@ -90,13 +90,6 @@ for (const r of PUBLIC_ROUTES) {
 // pages are the ones with a real risk of drift: they come from two different
 // components that word the heading differently, and five of them were recently
 // edited. Read each page's own <h1> out of its source and compare.
-const VS_SOURCES = {
-  '/vs/surveymonkey':         'src/pages/vs/VsSurveyMonkeyPage.tsx',
-  '/vs/typeform':             'src/pages/vs/VsTypeformPage.tsx',
-  '/vs/usertesting':          'src/pages/vs/VsUserTestingPage.tsx',
-  '/vs/pollfish':             'src/pages/vs/VsPollfishPage.tsx',
-  '/vs/traditional':          'src/pages/vs/VsTraditionalPage.tsx',
-};
 const TEMPLATE_H1 = /<h1[^>]*>([\s\S]*?)<\/h1>/;
 
 /** The literal text inside the first <h1>, with JSX whitespace collapsed. */
@@ -112,24 +105,50 @@ function renderedH1(file) {
     .trim();
 }
 
+// Resolve each /vs route to its page file through App.tsx itself (route ->
+// component -> lazy import path), so a new comparison page is checked without
+// anyone remembering to list it here.
+const lazyFile = Object.fromEntries(
+  [...app.matchAll(/const (\w+)\s*=\s*lazy\(\(\) => import\('\.\/([^']+)'\)/g)].map((m) => [m[1], `src/${m[2]}.tsx`]),
+);
+const vsComponent = Object.fromEntries(
+  [...app.matchAll(/<Route path="(\/vs\/[a-z-]+)" element=\{<(\w+) \/>\}/g)].map((m) => [m[1], m[2]]),
+);
+
+// The template renders `VETT vs {competitorName}`; if that ever changes, the
+// competitorName comparison below would be checking the wrong thing.
+const tplH1 = renderedH1('src/components/marketing/VsPageTemplate.tsx');
+if (tplH1 !== 'VETT vs {competitorName}') {
+  fail.push(`VsPageTemplate h1 is now "${tplH1}"; the check below assumes "VETT vs {competitorName}"`);
+}
+
 let h1Checked = 0;
-for (const [path, file] of Object.entries(VS_SOURCES)) {
+for (const path of vsInRouter) {
   const route = PUBLIC_ROUTES.find((r) => r.path === path);
-  if (!route) { fail.push(`${path} is missing from the manifest`); continue; }
-  const actual = renderedH1(file);
-  if (actual == null) { fail.push(`could not find an <h1> in ${file}`); continue; }
+  const file = lazyFile[vsComponent[path]];
+  if (!route || !file) { fail.push(`${path}: could not resolve its page file from App.tsx`); continue; }
+  const src = readFileSync(join(ROOT, file), 'utf8');
+  let actual;
+  if (src.includes('<VsPageTemplate')) {
+    const name = src.match(/competitorName="([^"]+)"/);
+    if (!name) { fail.push(`${file} uses VsPageTemplate without a literal competitorName`); continue; }
+    actual = `VETT vs ${name[1]}`;
+  } else {
+    actual = renderedH1(file);
+    if (actual == null) { fail.push(`could not find an <h1> in ${file}`); continue; }
+  }
   h1Checked += 1;
   if (actual !== route.h1) {
     fail.push(`${path}: manifest h1 is "${route.h1}" but ${file} renders "${actual}" - a crawler would be shown text no visitor sees`);
   }
 }
-if (h1Checked !== Object.keys(VS_SOURCES).length) fail.push('the h1 comparison went partly vacuous');
+if (h1Checked !== vsInRouter.length) fail.push('the /vs h1 comparison went partly vacuous');
 
-// The six template-driven pages all render `VETT vs {competitorName}`.
-const tplH1 = renderedH1('src/components/marketing/VsPageTemplate.tsx');
-if (tplH1 !== 'VETT vs {competitorName}') {
-  fail.push(`VsPageTemplate h1 is now "${tplH1}"; the manifest assumes "VETT vs {competitorName}" for the six pages that use it`);
-}
+// The "Other comparisons" links list exactly the published comparison pages.
+const vsList = readFileSync(join(ROOT, 'src/components/marketing/vsComparisons.ts'), 'utf8');
+const listed = new Set([...vsList.matchAll(/slug: '([a-z-]+)'/g)].map((m) => `/vs/${m[1]}`));
+for (const p of vsInRouter) if (!listed.has(p)) fail.push(`${p} is missing from src/components/marketing/vsComparisons.ts, so no other comparison page links to it`);
+for (const p of listed) if (!vsInRouter.includes(p)) fail.push(`vsComparisons.ts links to ${p}, which is not a comparison page in App.tsx`);
 
 // ── 7. Case study h1s, without letting the check go vacuous ───────────────
 // The /vs checks above compare the LITERAL text inside a page's <h1>. That
