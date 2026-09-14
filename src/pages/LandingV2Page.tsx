@@ -416,7 +416,7 @@ export function LandingV2Page() {
       {/* ══ LOGO WALL ═════════════════════════════════════════════════ */}
       <Wrap className="pt-[26px] pb-1.5 text-center">
         <div className="text-[11px] tracking-[0.2em] uppercase text-[#5C6470] font-semibold mb-[22px]">
-          Powering decisions for builders at
+          Used by people at
         </div>
         <div className="flex flex-wrap justify-center items-center gap-x-[54px] gap-y-[18px]">
           {COMPANY_LOGOS.map((name) => (
