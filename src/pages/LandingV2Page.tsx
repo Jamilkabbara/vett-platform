@@ -67,7 +67,8 @@ import {
 import { PricingLadders } from '../components/landing-v2/PricingLadders';
 
 import '../styles/landing-v2.css';
-import { COUNTRY_COVERAGE } from '../utils/siteFacts';
+import { COUNTRY_COVERAGE, COUNTRY_COVERAGE_FLOOR } from '../utils/siteFacts';
+import { SELF_SERVE_MIN_USD } from '../utils/priceCopy';
 
 /* ══════════════════════════════════════════════════════════════════════
    Content - copy taken verbatim from vett-landing.html except where the
@@ -83,10 +84,18 @@ const HERO_PHRASES = [
 
 const COMPANY_LOGOS = ['Google', 'Uber', 'Stripe', 'Airbnb', 'Noon', 'Careem'];
 
+// These count up from 0 in the browser, so the prerendered HTML holds "0" and
+// a text search for the final figure finds nothing. That is how "150+ Markets
+// worldwide" outlived the move to 190+ countries.
+//
+// The time stat is measured, not a target: on 2026-09-14, 40 completed
+// missions had a median of 2.1 minutes from start to completion, but 36 of
+// them were 5 to 25 respondents (median 1.7) and the mean across all 40 was
+// 8.5 minutes, so it is labelled as a median for small studies, not an average.
 const SPEED_STATS = [
-  { value: 9, prefix: '$', suffix: '', label: 'Starting price per mission. No subscriptions, ever.' },
-  { value: 2, prefix: '', suffix: 'min', label: 'Average time from launch to full research insights.' },
-  { value: 150, prefix: '', suffix: '+', label: 'Markets worldwide. Any country, any city.' },
+  { value: SELF_SERVE_MIN_USD, prefix: '$', suffix: '', label: 'Starting price per mission. No subscriptions, ever.' },
+  { value: 2, prefix: '', suffix: 'min', label: 'Median time from launch to results on studies of 5 to 25 respondents.' },
+  { value: COUNTRY_COVERAGE_FLOOR, prefix: '', suffix: '+', label: 'Countries you can target.' },
 ];
 
 /**
@@ -142,7 +151,7 @@ const RESEARCH_TYPES: Array<{
   { emoji: '📣', title: 'Creative & Ad Testing',       desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                         goalId: 'marketing' },
   { emoji: '⭐', title: 'Customer Satisfaction',       desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                      goalId: 'satisfaction' },
   { emoji: '🗺️', title: 'Feature Roadmap',             desc: 'Let your users tell you what to build next. Kano model prioritisation.',                          goalId: 'roadmap' },
-  { emoji: '🌍', title: 'Market Entry',                desc: 'Validate demand in new geographies before expanding. Test any country, any city.',                 goalId: 'market_entry' },
+  { emoji: '🌍', title: 'Market Entry',                desc: 'Validate demand in a new country before you expand into it.',                 goalId: 'market_entry' },
   { emoji: '📡', title: 'Brand Lift Study',            desc: 'Measure brand awareness, recall, sentiment and purchase intent before and after campaigns.',        goalId: 'brand_lift' },
   { emoji: '🎬', title: 'Creative Attention Analysis', desc: 'Measure emotional response, attention, and engagement on your video or image creatives with research-grade emotion mapping.', accent: true, goalId: 'creative_attention' },
   { emoji: '🔄', title: 'Churn Research',              desc: 'Understand why customers leave and what would bring them back. Simulate your churned segment.',      goalId: 'churn_research' },
@@ -793,7 +802,7 @@ export function LandingV2Page() {
             </h2>
             <p className="text-[#5C6470] text-[13.5px] mt-4 mb-2">No credit card required to start</p>
             <p className="text-[#8B919C] text-[17px] max-w-[48ch] mx-auto mb-7">
-              Your next business decision shouldn&apos;t be a guess. Get research-grade insights from
+              Your next business decision shouldn&apos;t be a guess. Get a directional read from
               AI-simulated audiences. In minutes.
             </p>
             <V2Button variant="indigo" size="lg" onClick={goVettIt}>

@@ -111,10 +111,8 @@ Extra questions beyond the included 10 are $5 each.
 
 ## Markets
 
-VETT supports research in 190+ countries. Strong coverage in MENA
-(UAE, Saudi Arabia, Egypt, Lebanon, Jordan), GCC, Europe (UK,
-Germany, France, Spain), North America (US, Canada), India, Singapore,
-Brazil, and frontier markets.
+VETT supports research in 190+ countries. Respondents are simulated, so
+this is the list of countries you can target, not the reach of a panel.
 
 ## Useful URLs
 
