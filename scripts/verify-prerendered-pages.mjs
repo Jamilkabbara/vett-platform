@@ -37,6 +37,13 @@ const SHORT_ROUTES = {
   '/blog': 60,     // the post list loads client-side from Supabase; the shell and heading are what exist at build time
   '/contact': 150, // a heading, one line and a form
 };
+// Routes whose worth to a crawler is content that is easy to leave out of the
+// HTML by accident. /help rendered each FAQ answer only when its accordion was
+// open, so the prerendered page had twelve questions and no answers (1,296
+// characters). With every answer in the page it is ~7,300.
+const LONG_ROUTES = {
+  '/help': 5000,
+};
 
 const decode = (s) => s
   .replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&')
@@ -81,7 +88,7 @@ for (const route of PUBLIC_ROUTES) {
     if (got.replace(/\s/g, '') !== want.replace(/\s/g, '')) fail(route.path, `rendered h1 "${got}" does not match the manifest h1 "${want}"`);
   }
 
-  const min = SHORT_ROUTES[route.path] ?? MIN_TEXT;
+  const min = SHORT_ROUTES[route.path] ?? LONG_ROUTES[route.path] ?? MIN_TEXT;
   if (text.length < min) fail(route.path, `only ${text.length} visible characters rendered (minimum ${min}) - this looks like a stub, not the page`);
 
   if (!SHORT_ROUTES[route.path] && /animate-spin/.test(rootBody) && text.length < MIN_TEXT * 2) {

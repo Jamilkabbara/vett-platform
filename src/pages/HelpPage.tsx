@@ -165,11 +165,13 @@ export const HelpPage = () => {
                           aria-hidden
                         />
                       </div>
-                      {open && (
-                        <div className="px-6 pb-6 -mt-1">
-                          <p className="text-white/70 leading-relaxed">{faq.answer}</p>
-                        </div>
-                      )}
+                      {/* Always in the page, hidden while closed. Rendering the
+                          answer only when open kept every Help answer out of the
+                          prerendered HTML, so crawlers that do not run
+                          JavaScript saw questions with no answers. */}
+                      <div className="px-6 pb-6 -mt-1" hidden={!open}>
+                        <p className="text-white/70 leading-relaxed">{faq.answer}</p>
+                      </div>
                     </button>
                   );
                 })}
