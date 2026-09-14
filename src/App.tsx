@@ -91,6 +91,8 @@ const VsYabblePage                  = lazy(() => import('./pages/vs/VsYabblePage
 const VsSyntheticUsersPage          = lazy(() => import('./pages/vs/VsSyntheticUsersPage').then(m => ({ default: m.VsSyntheticUsersPage })));
 const VsAaruPage                    = lazy(() => import('./pages/vs/VsAaruPage').then(m => ({ default: m.VsAaruPage })));
 const VsQuantilopePage              = lazy(() => import('./pages/vs/VsQuantilopePage').then(m => ({ default: m.VsQuantilopePage })));
+const VsAttestPage                  = lazy(() => import('./pages/vs/VsAttestPage').then(m => ({ default: m.VsAttestPage })));
+const VsQualtricsPage               = lazy(() => import('./pages/vs/VsQualtricsPage').then(m => ({ default: m.VsQualtricsPage })));
 // Case studies. One thin page per study (the /vs precedent), each route in
 // scripts/seo-routes.mjs so it is prerendered with its own head and sitemap row.
 const CaseStudiesIndexPage          = lazy(() => import('./pages/case-studies/CaseStudiesIndexPage').then(m => ({ default: m.CaseStudiesIndexPage })));
@@ -243,6 +245,8 @@ export function AppShell() {
               <Route path="/vs/synthetic-users" element={<VsSyntheticUsersPage />} />
               <Route path="/vs/aaru" element={<VsAaruPage />} />
               <Route path="/vs/quantilope" element={<VsQuantilopePage />} />
+              <Route path="/vs/attest" element={<VsAttestPage />} />
+              <Route path="/vs/qualtrics" element={<VsQualtricsPage />} />
               {/* Merged into /vs/traditional: the two pages targeted the same query.
                   vercel.json 301s this path on the server; this covers in-app navigation. */}
               <Route path="/vs/traditional-research" element={<Navigate to="/vs/traditional" replace />} />

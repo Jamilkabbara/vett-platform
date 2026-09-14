@@ -198,6 +198,8 @@ const VS = [
   ['synthetic-users',      'Synthetic Users',    'AI-generated qualitative interviews',             'VETT vs Synthetic Users'],
   ['aaru',                 'Aaru',               'population simulation for testing business decisions', 'VETT vs Aaru'],
   ['quantilope',           'Quantilope',         'an automated research platform on a real panel',  'VETT vs Quantilope'],
+  ['attest',               'Attest',             'consumer surveys on a real panel across 59 countries', 'VETT vs Attest'],
+  ['qualtrics',            'Qualtrics',          'an enterprise research platform with human and synthetic panels', 'VETT vs Qualtrics'],
 ];
 
 for (const [slug, name, what, h1] of VS) {
