@@ -5,7 +5,7 @@
   "type": "module",
   "vettPass": 49,
   "scripts": {
-    "test": "node scripts/verify-question-metadata-roundtrip.mjs && node scripts/verify-markdown-rendering.mjs && node scripts/verify-no-orphan-session-handoff.mjs && node scripts/verify-no-published-promo-default.mjs && node scripts/verify-promo-quote-parsing.mjs && node scripts/verify-seo-routes.mjs && node scripts/verify-sw-passthrough.mjs && node scripts/verify-centerpiece-fallback.mjs && node scripts/verify-price-copy.mjs && node scripts/verify-site-facts.mjs",
+    "test": "node scripts/verify-question-metadata-roundtrip.mjs && node scripts/verify-markdown-rendering.mjs && node scripts/verify-no-orphan-session-handoff.mjs && node scripts/verify-no-published-promo-default.mjs && node scripts/verify-promo-quote-parsing.mjs && node scripts/verify-seo-routes.mjs && node scripts/verify-sw-passthrough.mjs && node scripts/verify-centerpiece-fallback.mjs && node scripts/verify-price-copy.mjs && node scripts/verify-site-facts.mjs && node scripts/verify-ca-targeting.mjs",
     "dev": "vite",
     "build": "node scripts/verify-price-copy.mjs && node scripts/verify-site-facts.mjs && node scripts/write-version.js && node scripts/sitemap.mjs && vite build && vite build --ssr src/entry-prerender.tsx --outDir dist-prerender && node scripts/prerender.mjs && node scripts/verify-prerendered-pages.mjs",
     "lint": "eslint .",

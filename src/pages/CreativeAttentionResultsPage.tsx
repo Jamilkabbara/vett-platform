@@ -53,6 +53,7 @@ import { CrossChannelBenchmarks } from '../components/creative-attention/CrossCh
 import { PlatformFitPanel } from '../components/creative-attention/PlatformFitPanel';
 import { CreativeExportMenu } from '../components/creative-attention/CreativeExportMenu';
 import { HotspotHeatmap } from '../components/creative-attention/HotspotHeatmap';
+import { PlacementMarketPanel } from '../components/creative-attention/PlacementMarketPanel';
 
 // Legacy alias kept for in-file references; new code imports the v2 map.
 const EMOTION_COLORS: Record<string, string> = EMOTION_COLORS_V2;
@@ -398,6 +399,11 @@ export function CreativeAttentionResultsPage() {
           isVideo={creativeIsVideo}
           altText={`Creative for ${title} with attention hotspots overlaid`}
         />
+
+        {/* What this run was measured against: the chosen placement against
+            its published attention norm, and the market's qualitative notes.
+            Renders nothing for analyses that predate placement and market. */}
+        <PlacementMarketPanel analysis={analysis} />
 
         {/* Pass 24 Bug 24.01 F2 — Creative Effectiveness Score dial.
             Renders only when the v2 pipeline returned the composite

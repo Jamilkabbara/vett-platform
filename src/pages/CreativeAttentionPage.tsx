@@ -51,6 +51,14 @@ import { api } from '../lib/apiClient';
 import { logPaymentError } from '../lib/paymentErrorLogger';
 import { creativeAttentionPrice, CA_FIXED_RESPONDENT_COUNT, CREATIVE_ATTENTION_TIERS } from '../utils/pricingEngine';
 import { getGoalById } from '../data/missionGoals';
+import {
+  buildCaMissionInsert, placementsForUpload, CA_AUDIENCE_MAX_LENGTH,
+} from '../lib/caMissionInsert.mjs';
+import { CaPlacementMarketFields, type CaOptionsState } from '../components/creative-attention/CaPlacementMarketFields';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
+
+
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -95,10 +103,50 @@ export function CreativeAttentionPage() {
   const [description,     setDescription]     = useState('');
   const [selectedEmotions, setSelectedEmotions] = useState<Set<Emotion>>(new Set());
   const [keyMessage,      setKeyMessage]      = useState('');
+  // Where the creative will run, and in which market. Placement is required:
+  // it decides which published attention norm the result is compared
+  // against. Market is optional and qualitative only.
+  const [placementId,     setPlacementId]     = useState<string>('');
+  const [marketCode,      setMarketCode]      = useState<string>('');
+  const [caOptions,       setCaOptions]       = useState<CaOptionsState>({ status: 'loading' });
 
   // Step 3 — Payment (Pass 23 Bug 23.0e v2: redirect to Stripe Checkout)
   const [creating,        setCreating]         = useState(false);
   const [promo, setPromo] = useState<PromoQuote | null>(null);
+
+  // The placement and market lists come from the server, which serves the
+  // same lists the analysis validates against - there is no copy here to
+  // drift. A 503 still carries placements; only markets are withheld.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/creative-attention/options`);
+        const body = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (body && Array.isArray(body.placements) && body.placements.length) {
+          setCaOptions({ status: 'ready', placements: body.placements, markets: Array.isArray(body.markets) ? body.markets : null });
+        } else {
+          setCaOptions({ status: 'failed' });
+        }
+      } catch {
+        if (!cancelled) setCaOptions({ status: 'failed' });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const uploadMediaType: 'image' | 'video' =
+    (creative?.mimeType || '').toLowerCase().startsWith('video/') ? 'video' : 'image';
+  const offeredPlacements = caOptions.status === 'ready'
+    ? placementsForUpload(caOptions.placements, uploadMediaType)
+    : [];
+
+  // Replacing an image with a video (or back) can make the chosen placement
+  // one this format cannot be scored for. Clear it rather than submit it.
+  useEffect(() => {
+    if (placementId && !offeredPlacements.some((p) => p.id === placementId)) setPlacementId('');
+  }, [uploadMediaType, caOptions.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // step 1 = upload, 2 = context form, 3 = checkout in flight (creating
   // is true once the user hits the CTA; we never come back from Stripe
@@ -175,7 +223,8 @@ export function CreativeAttentionPage() {
 
   // Pass 23 Bug 23.76 — brief context textarea is now optional. Brand
   // name still required (AI synthesis needs it for attribution + tone).
-  const canProceed = creative && brandName.trim().length > 0;
+  const canProceed = creative && brandName.trim().length > 0
+    && offeredPlacements.some((p) => p.id === placementId);
 
   const handleCreateMission = async () => {
     if (!user) {
@@ -184,6 +233,7 @@ export function CreativeAttentionPage() {
     }
     if (!creative) { toast.error('Please upload a creative file first'); return; }
     if (!brandName.trim()) { toast.error('Please enter your brand name'); return; }
+    if (!offeredPlacements.some((p) => p.id === placementId)) { toast.error('Choose where this creative will run'); return; }
     // Pass 23 Bug 23.76 — description is now optional (replaces the
     // hard-required prompt that confused users into thinking they had
     // to spec a survey for an asset analysis).
@@ -201,40 +251,37 @@ export function CreativeAttentionPage() {
       const caTier = CREATIVE_ATTENTION_TIERS.find(t => t.id === mediaType)
                   || CREATIVE_ATTENTION_TIERS[CREATIVE_ATTENTION_TIERS.length - 1];
 
+      // Built by caMissionInsert so a Node check executes the exact row: the
+      // audience goes to ca_target_audience (never the shared target_audience
+      // JSONB, which holds an object on every other mission type), and the
+      // placement must be one this upload format can be scored for.
+      // media_url is the signed Storage URL from FileUpload (1h validity); the
+      // storage path lives in brief_attachment so results can re-sign it.
+      const row = buildCaMissionInsert({
+        userId:          user.id,
+        brandName,
+        description,
+        respondentCount,
+        tier:            caTier,
+        mediaType,
+        mediaUrl:        creative.publicUrl || null,
+        targetAudience,
+        placementId,
+        marketCode:      marketCode || null,
+        desiredEmotions: selectedEmotions.size > 0 ? Array.from(selectedEmotions) : null,
+        keyMessage,
+        briefAttachment: {
+          path:         creative.path,
+          mimeType:     creative.mimeType,
+          originalName: creative.originalName,
+          sizeBytes:    creative.sizeBytes,
+        },
+        placements: caOptions.status === 'ready' ? caOptions.placements : [],
+      });
+
       const { data: mission, error } = await supabase
         .from('missions')
-        .insert([{
-          user_id:          user.id,
-          title:            `Creative Attention: ${brandName.trim()}`,
-          brief:            description.trim(),
-          goal_type:        'creative_attention',
-          status:           'draft',
-          respondent_count: respondentCount,
-          price_estimated:  caTier.packagePrice,
-          tier:             caTier.id,
-          media_type:       mediaType,  // image or video
-          // Pass 23 Bug 23.75 — persist the asset URL so /creative-results/:id
-          // can render the uploaded creative as a hero image (was always
-          // NULL before; results pages displayed text descriptions only,
-          // never the actual creative). The URL is the signed Supabase
-          // Storage URL from FileUpload (1h validity); the storage path
-          // lives in brief_attachment so the page can re-sign on demand
-          // for views past expiry.
-          media_url:        creative.publicUrl || null,
-          brand_name:       brandName.trim(),
-          target_audience:  targetAudience.trim() || null,
-          desired_emotions: selectedEmotions.size > 0
-            ? Array.from(selectedEmotions)
-            : null,
-          key_message:      keyMessage.trim() || null,
-          // Store the creative file path so the backend can download it
-          brief_attachment: {
-            path:         creative.path,
-            mimeType:     creative.mimeType,
-            originalName: creative.originalName,
-            sizeBytes:    creative.sizeBytes,
-          },
-        }])
+        .insert([row])
         .select()
         .single();
 
@@ -474,6 +521,16 @@ export function CreativeAttentionPage() {
                 />
               </div>
 
+              {/* Where it will run (required) and the market (optional). */}
+              <CaPlacementMarketFields
+                options={caOptions}
+                offeredPlacements={offeredPlacements}
+                placementId={placementId}
+                onPlacementChange={setPlacementId}
+                marketCode={marketCode}
+                onMarketChange={setMarketCode}
+              />
+
               {/* Target audience */}
               <div>
                 <label className="block text-xs text-[var(--t3)] mb-1.5 font-medium">
@@ -482,7 +539,8 @@ export function CreativeAttentionPage() {
                 <textarea
                   value={targetAudience}
                   onChange={(e) => setTargetAudience(e.target.value)}
-                  placeholder="e.g. Working mothers in UAE aged 28–38, interested in health and convenience"
+                  maxLength={CA_AUDIENCE_MAX_LENGTH}
+                  placeholder="e.g. Working mothers in UAE aged 28 to 38, interested in health and convenience"
                   rows={2}
                   className="w-full bg-[var(--bg2)] border border-[var(--b1)] rounded-xl px-4 py-3 text-sm text-[var(--t1)] placeholder:text-[var(--t3)] focus:outline-none focus:border-purple-500/60 transition-colors resize-none"
                 />
