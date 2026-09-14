@@ -67,6 +67,7 @@ import {
 import { PricingLadders } from '../components/landing-v2/PricingLadders';
 
 import '../styles/landing-v2.css';
+import { COUNTRY_COVERAGE } from '../utils/siteFacts';
 
 /* ══════════════════════════════════════════════════════════════════════
    Content - copy taken verbatim from vett-landing.html except where the
@@ -133,6 +134,10 @@ const RESEARCH_TYPES: Array<{
   goalId: string;
 }> = [
   { emoji: '🚀', title: 'Product Validation',          desc: 'Test if your idea has real demand before building. Find your PMF signal fast.',                    goalId: 'validate' },
+  // Compare Concepts and General Research were missing: the section is headed
+  // "Every type of research" and showed 12 of the 14 live research types.
+  // scripts/verify-site-facts.mjs now fails if a live goal type has no card.
+  { emoji: '⚖️', title: 'Compare Concepts',            desc: 'Put concepts, designs or messages head to head and see which one wins, and why.',                   goalId: 'compare' },
   { emoji: '💰', title: 'Pricing Research',            desc: 'Find the exact price point that maximises revenue. Van Westendorp + WTP analysis.',                goalId: 'pricing' },
   { emoji: '📣', title: 'Creative & Ad Testing',       desc: 'Test ad copy, visuals, and messaging before you spend a dollar on media.',                         goalId: 'marketing' },
   { emoji: '⭐', title: 'Customer Satisfaction',       desc: 'Measure CSAT, NPS, and satisfaction across product dimensions at any scale.',                      goalId: 'satisfaction' },
@@ -144,6 +149,7 @@ const RESEARCH_TYPES: Array<{
   { emoji: '🔍', title: 'Competitor Analysis',         desc: 'Benchmark your brand against competitors on key dimensions. Brand association mapping.',            goalId: 'competitor' },
   { emoji: '🎯', title: 'Audience Profiling',          desc: 'Build a deep psychographic and behavioural profile of your target customer segment.',               goalId: 'audience_profiling' },
   { emoji: '✍️', title: 'Naming & Messaging',          desc: 'Test product names, taglines, and positioning across your target audience.',                       goalId: 'naming_messaging' },
+  { emoji: '🧠', title: 'General Research',            desc: 'Ask any question about your audience. VETT designs the survey and reads the answers.',            goalId: 'research' },
 ];
 
 const LOOP_STEPS = [
@@ -394,7 +400,7 @@ export function LandingV2Page() {
           <span className="text-[#5C6470]">&middot;</span>
           <span>Results in minutes</span>
           <span className="text-[#5C6470]">&middot;</span>
-          <span>150+ markets worldwide</span>
+          <span>{COUNTRY_COVERAGE} worldwide</span>
           <span className="text-[#5C6470]">&middot;</span>
           <span>Every respondent matches your audience</span>
         </div>
@@ -768,7 +774,7 @@ export function LandingV2Page() {
                 No subscriptions.
               </>
             }
-            body="Three flows, three ladders. Validate scales by respondents, Brand Lift starts at statistical sample sizes, Creative Attention is charged flat per respondent bracket."
+            body="Three flows, three ladders. Validate scales by respondents, Brand Lift starts at statistical sample sizes, Creative Attention is billed per creative asset."
           />
         </Reveal>
         <Reveal delay={1}>
@@ -801,7 +807,7 @@ export function LandingV2Page() {
               <span>&middot;</span>
               <span>From $9</span>
               <span>&middot;</span>
-              <span>150+ markets</span>
+              <span>{COUNTRY_COVERAGE}</span>
               <span>&middot;</span>
               <span>Every respondent matches your audience</span>
             </div>

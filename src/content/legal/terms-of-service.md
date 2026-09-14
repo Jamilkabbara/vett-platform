@@ -50,7 +50,7 @@ VETT generates AI-modeled synthetic personas to deliver market research insights
 
 - Research types: Validate Product, Compare Concepts, Test Marketing/Ads, Customer Satisfaction, Pricing Research, Feature Roadmap, General Research, Competitor Analysis, Audience Profiling, Naming & Messaging, Market Entry, Churn Research, Brand Lift Study, Creative Attention Analysis
 - Mission sizes from 5 to 1,250 respondents self-serve, priced as set out in Section 5.1. Larger studies are available as a managed engagement on request
-- AI-generated synthetic personas across 193 countries
+- AI-generated synthetic personas across 190+ countries
 - AI synthesis: insights, contradictions, cross-segment analysis
 - Multi-format exports: PDF, PPTX and XLSX for every study; Creative Attention adds CSV and JSON
 

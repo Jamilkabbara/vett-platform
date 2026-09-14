@@ -1,4 +1,6 @@
 import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
+import { COUNTRY_COVERAGE, RESEARCH_TYPES_LABEL } from '../../utils/siteFacts';
+import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
 
 /**
  * Pass 35 C3 — VETT vs Yabble.
@@ -10,7 +12,7 @@ export function VsYabblePage() {
     <VsPageTemplate
       competitorName="Yabble"
       competitorTagline="AI insights platform with synthetic-audience generation + AI survey design + thematic analysis. NZ-headquartered, mid-market pricing, enterprise-friendly UX."
-      vettTagline="Methodology-first synthetic-respondent platform with 11 named frameworks (Van Westendorp / MaxDiff / NPS / brand-health funnel), $9-35 entry pricing, MENA-rooted."
+      vettTagline={`Methodology-first synthetic-respondent platform with ${RESEARCH_TYPES_LABEL} on named frameworks (Van Westendorp / MaxDiff / NPS / brand-health funnel), ${SELF_SERVE_RANGE} pricing, MENA-rooted.`}
       slug="/vs/yabble"
       competitorRefUrl="https://www.yabble.com/"
       rows={[
@@ -28,7 +30,7 @@ export function VsYabblePage() {
         },
         {
           dimension: 'Geographic focus',
-          vett: 'MENA-rooted persona calibration; 160+ countries supported',
+          vett: `MENA-rooted persona calibration; ${COUNTRY_COVERAGE} supported`,
           competitor: 'NZ + AU + UK + US deep; EMEA + APAC supported',
           verdict: 'tie',
         },

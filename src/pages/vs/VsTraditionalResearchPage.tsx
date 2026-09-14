@@ -23,7 +23,7 @@ export function VsTraditionalResearchPage() {
         },
         {
           dimension: 'Turnaround',
-          vett: 'Minutes for $9-99 tiers; 30 min max for largest tiers',
+          vett: 'Minutes for smaller studies; 30 min max for the largest',
           competitor: '4-12 weeks typical for panel quant; 6-16 weeks for agency engagements',
           verdict: 'vett',
         },

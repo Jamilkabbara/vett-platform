@@ -34,6 +34,7 @@ import {
   respondentLadderBase,
   type AnyTier,
 } from '../../utils/pricingEngine';
+import { CREATIVE_ATTENTION_BILLING } from '../../utils/siteFacts';
 
 interface Tier {
   name: string;
@@ -120,7 +121,7 @@ const LADDERS: Ladder[] = [
   {
     id: 'creative_attention',
     label: 'CREATIVE ATTENTION',
-    desc: 'Frame-by-frame attention analysis on your creative. Charged per bracket, not per respondent.',
+    desc: `Frame-by-frame attention analysis on your creative. ${CREATIVE_ATTENTION_BILLING}`,
     cta: 'START A CREATIVE ATTENTION MISSION',
     tiers: flatTiers(CREATIVE_ATTENTION_TIERS),
   },

@@ -1,5 +1,6 @@
 import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
 import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
+import { COUNTRY_COVERAGE } from '../../utils/siteFacts';
 
 /**
  * Pass 35 C3 — VETT vs Quantilope.
@@ -47,7 +48,7 @@ export function VsQuantilopePage() {
         },
         {
           dimension: 'Geographic depth',
-          vett: 'MENA-rooted persona calibration; 160+ countries',
+          vett: `MENA-rooted persona calibration; ${COUNTRY_COVERAGE}`,
           competitor: '90+ countries via panel partners; deepest in NA + EU',
           verdict: 'tie',
         },

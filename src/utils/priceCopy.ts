@@ -42,6 +42,9 @@ export const SELF_SERVE_MIN_RESPONDENTS = volumeLow.anchorCount;
 /** "$9 to $1,099" */
 export const SELF_SERVE_RANGE = `${usd(SELF_SERVE_MIN_USD)} to ${usd(SELF_SERVE_MAX_USD)}`;
 
+/** "from $9" - for sentences about a single small study or one iteration round. */
+export const SELF_SERVE_FROM = `from ${usd(SELF_SERVE_MIN_USD)}`;
+
 /** "$9 (5 personas) to $1,099 (1,250 personas)" */
 export const SELF_SERVE_RANGE_WITH_COUNTS =
   `${usd(SELF_SERVE_MIN_USD)} (${SELF_SERVE_MIN_RESPONDENTS.toLocaleString('en-US')} personas) ` +

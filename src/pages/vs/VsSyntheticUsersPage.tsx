@@ -1,5 +1,8 @@
 import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
-import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
+import {
+  SELF_SERVE_RANGE,
+} from '../../utils/priceCopy';
+import { COUNTRY_COVERAGE } from '../../utils/siteFacts';
 
 /**
  * Pass 35 C3 — VETT vs Synthetic Users.
@@ -11,7 +14,7 @@ export function VsSyntheticUsersPage() {
     <VsPageTemplate
       competitorName="Synthetic Users"
       competitorTagline="Synthetic-respondent platform focused on qualitative UX research — interview-style persona conversations, problem-discovery, journey mapping. YC-backed, US-rooted."
-      vettTagline="Methodology-first synthetic-respondent platform for quantitative market research — Van Westendorp pricing, MaxDiff feature priority, brand-health funnel, $9-35 entry tiers."
+      vettTagline={`Methodology-first synthetic-respondent platform for quantitative market research - Van Westendorp pricing, MaxDiff feature priority, brand-health funnel, ${SELF_SERVE_RANGE} pricing.`}
       slug="/vs/synthetic-users"
       competitorRefUrl="https://www.syntheticusers.com/"
       rows={[
@@ -47,7 +50,7 @@ export function VsSyntheticUsersPage() {
         },
         {
           dimension: 'Geographic calibration',
-          vett: 'MENA-rooted; 160+ countries',
+          vett: `MENA-rooted; ${COUNTRY_COVERAGE}`,
           competitor: 'US + EU primary; global supported',
           verdict: 'tie',
         },

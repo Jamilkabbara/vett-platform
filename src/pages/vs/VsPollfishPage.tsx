@@ -19,12 +19,14 @@ import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-r
 import { useRouteSeo } from '../../seo/useRouteSeo';
 import {
   MAX_SELF_SERVE_RESPONDENTS,
+  SELF_SERVE_FROM,
   SELF_SERVE_MIN_RESPONDENTS,
   SELF_SERVE_RANGE,
   SELF_SERVE_RATE_HIGH_USD,
   SELF_SERVE_RATE_LOW_USD,
   SELF_SERVE_RATE_RANGE,
 } from '../../utils/priceCopy';
+import { COUNTRY_COVERAGE } from '../../utils/siteFacts';
 
 interface ComparisonRow {
   dimension: string;
@@ -43,7 +45,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'AI insight synthesis',            vett: 'Built-in: executive summary, contradictions, cross-cut',        competitor: 'Reporting dashboard + cross-tabs; AI synthesis layer is not the core deliverable', vettWins: true  },
   { dimension: 'Brand lift framework',            vett: 'Built-in 9-category Happydemics-style framework',               competitor: 'Templates available; methodology is DIY',              vettWins: true  },
   { dimension: 'Creative attention analysis',     vett: 'Frame-by-frame emotion, attention, message clarity for $19/asset', competitor: 'Concept-test templates; not frame-by-frame',          vettWins: true  },
-  { dimension: 'Geographic reach',                vett: '193 countries (full ISO list, AI-modelled)',                    competitor: 'Strong supply in EU + emerging markets via mobile partners; coverage varies by country', vettWins: false },
+  { dimension: 'Geographic reach',                vett: `${COUNTRY_COVERAGE} (AI-modelled)`,                    competitor: 'Strong supply in EU + emerging markets via mobile partners; coverage varies by country', vettWins: false },
   { dimension: 'Mobile-only audience',            vett: 'Targetable via screener (any device)',                          competitor: 'Native to product - all respondents are mobile users by definition', vettWins: false },
   { dimension: 'Best for...',                     vett: 'Pre-launch validation, brand-lift baselines, creative attention, screener-strict niches', competitor: 'Fast quantitative surveys to mobile users where real-respondent supply matters', vettWins: false },
 ];
@@ -51,7 +53,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
 const FAQS = [
   {
     q: 'Pollfish has real mobile users. Why use VETT?',
-    a: "If real-respondent supply matters to you - because the deliverable is going to a stakeholder who needs to see \"verified humans\" or because you're testing creative reaction in a market where AI training data is thin - Pollfish is the right tool. VETT shines when you'd rather have AI-synthesised insight, screener-strict niches that real-panel supply struggles with, brand-lift framework or creative-attention output, or pre-launch validation where you don't have an audience or panel budget yet. Many teams use both: VETT for the cheap fast iteration loops ($9-$99 per round), Pollfish for the pre-launch real-respondent confirmation.",
+    a: `If real-respondent supply matters to you - because the deliverable is going to a stakeholder who needs to see "verified humans" or because you're testing creative reaction in a market where AI training data is thin - Pollfish is the right tool. VETT shines when you'd rather have AI-synthesised insight, screener-strict niches that real-panel supply struggles with, brand-lift framework or creative-attention output, or pre-launch validation where you don't have an audience or panel budget yet. Many teams use both: VETT for the cheap fast iteration loops (${SELF_SERVE_FROM} a round), Pollfish for the pre-launch real-respondent confirmation.`,
   },
   {
     q: 'Can VETT match Pollfish on cost per respondent?',
@@ -59,7 +61,7 @@ const FAQS = [
   },
   {
     q: 'Where is Pollfish stronger geographically?',
-    a: "Pollfish's supply is strongest in markets with deep mobile SDK integration: EU, parts of SEA, and tier-1 emerging markets where their app-publisher partner network has scale. They publish their country-coverage list - check it before committing to a study. VETT's coverage is AI-modelled across 193 countries (full ISO list, src/data/targetingOptions.ts), which means usable signal even in markets where Pollfish's real-supply is patchy. The trade-off: real respondents in Pollfish-strong countries vs synthetic personas everywhere.",
+    a: `Pollfish's supply is strongest in markets with deep mobile SDK integration: EU, parts of SEA, and tier-1 emerging markets where their app-publisher partner network has scale. They publish their country-coverage list - check it before committing to a study. VETT's coverage is AI-modelled across ${COUNTRY_COVERAGE}, which means usable signal even in markets where Pollfish's real-supply is patchy. The trade-off: real respondents in Pollfish-strong countries vs synthetic personas everywhere.`,
   },
   {
     q: 'Can I run the same study on VETT and Pollfish to compare?',

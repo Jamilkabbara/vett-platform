@@ -1,5 +1,6 @@
 import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
 import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
+import { COUNTRY_COVERAGE, RESEARCH_TYPES_LABEL } from '../../utils/siteFacts';
 
 /**
  * Pass 35 C3 — VETT vs Aaru.
@@ -36,7 +37,7 @@ export function VsAaruPage() {
         },
         {
           dimension: 'Methodology coverage',
-          vett: '11 named frameworks (Van Westendorp, MaxDiff, NPS, brand-lift, etc.) with framework-specific results',
+          vett: `${RESEARCH_TYPES_LABEL}, built on named frameworks (Van Westendorp, MaxDiff, NPS, brand-lift, etc.) with framework-specific results`,
           competitor: 'Bespoke simulation per study; not framework-bound in the same sense',
           verdict: 'tie',
         },
@@ -48,7 +49,7 @@ export function VsAaruPage() {
         },
         {
           dimension: 'MENA market focus',
-          vett: 'Persona calibration tuned for MENA demographics + 160+ countries',
+          vett: `Persona calibration tuned for MENA demographics + ${COUNTRY_COVERAGE}`,
           competitor: 'US-political-research roots; global expansion',
           verdict: 'vett',
         },

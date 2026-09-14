@@ -14,7 +14,11 @@ import { Link } from 'react-router-dom';
 import { OverlayPage } from '../../components/layout/OverlayPage';
 import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
 import { useRouteSeo } from '../../seo/useRouteSeo';
-import { SELF_SERVE_RANGE } from '../../utils/priceCopy';
+import {
+  SELF_SERVE_FROM,
+  SELF_SERVE_RANGE,
+} from '../../utils/priceCopy';
+import { COUNTRY_COVERAGE } from '../../utils/siteFacts';
 
 interface ComparisonRow {
   dimension: string;
@@ -34,7 +38,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Mobile-app walk-through testing', vett: 'Not in product',                                                competitor: 'Native iOS / Android session recording',                vettWins: false },
   { dimension: 'Survey-style quantitative data',  vett: 'Yes - structured cross-tabs, segments, scoring',                competitor: 'Limited - testimonial patterns + AI summaries; not the core deliverable', vettWins: true  },
   { dimension: 'Brand lift framework',            vett: 'Built-in 9-category Happydemics-style framework',               competitor: 'Not in product',                                       vettWins: true  },
-  { dimension: 'Geographic reach',                vett: '193 countries (full ISO list, AI-modelled)',                    competitor: 'Tester panels across major markets; emerging-market depth varies', vettWins: false },
+  { dimension: 'Geographic reach',                vett: `${COUNTRY_COVERAGE} (AI-modelled)`,                    competitor: 'Tester panels across major markets; emerging-market depth varies', vettWins: false },
   { dimension: 'Best for...',                     vett: 'Pre-launch validation, brand-lift baselines, message testing, persona research at scale', competitor: 'Live product UX testing, mobile-app usability, observing real users actually clicking', vettWins: false },
 ];
 
@@ -53,7 +57,7 @@ const FAQS = [
   },
   {
     q: 'When do I use UserTesting vs VETT?',
-    a: "A rough split: use UserTesting when the question is \"is this product easy to use?\" or \"where does this UX break?\" - questions that need observation of a real tester. Use VETT when the question is \"would this audience care about this concept?\" or \"which version of this message lands harder?\" - questions that need scale + screener flexibility + AI synthesis. Many teams use both at different stages: VETT for the first 5-10 concept-validation iterations ($9-$99 per round), UserTesting for the polish-the-UX phase before launch (5-15 video sessions).",
+    a: `A rough split: use UserTesting when the question is "is this product easy to use?" or "where does this UX break?" - questions that need observation of a real tester. Use VETT when the question is "would this audience care about this concept?" or "which version of this message lands harder?" - questions that need scale + screener flexibility + AI synthesis. Many teams use both at different stages: VETT for the first 5-10 concept-validation iterations (${SELF_SERVE_FROM} a round), UserTesting for the polish-the-UX phase before launch (5-15 video sessions).`,
   },
   {
     q: 'How much does UserTesting cost vs VETT?',

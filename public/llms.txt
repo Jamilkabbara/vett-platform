@@ -2,9 +2,9 @@
 
 > Methodology-first synthetic-respondent research platform. AI personas
 > calibrated to your audience answer your survey;
-> 14 supported research frameworks (Van Westendorp, MaxDiff, NPS,
-> brand-health funnel, etc. - each peer-reviewed in the academic
-> literature). VETT outputs are synthetic-respondent simulations of
+> 14 research types, built on established frameworks (Van Westendorp,
+> MaxDiff, NPS, brand-health funnel, etc. - each peer-reviewed in the
+> academic literature). VETT outputs are synthetic-respondent simulations of
 > those frameworks. Treat as fast directional signal, not panel-grade
 > truth.
 
@@ -111,7 +111,7 @@ Extra questions beyond the included 10 are $5 each.
 
 ## Markets
 
-VETT supports research in 190+ countries (full ISO 3166-1 list). Strong coverage in MENA
+VETT supports research in 190+ countries. Strong coverage in MENA
 (UAE, Saudi Arabia, Egypt, Lebanon, Jordan), GCC, Europe (UK,
 Germany, France, Spain), North America (US, Canada), India, Singapore,
 Brazil, and frontier markets.

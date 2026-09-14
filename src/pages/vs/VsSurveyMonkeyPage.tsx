@@ -26,6 +26,7 @@ import { OverlayPage } from '../../components/layout/OverlayPage';
 import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
 import { useRouteSeo } from '../../seo/useRouteSeo';
 import { SELF_SERVE_RANGE_FOR_COUNTS } from '../../utils/priceCopy';
+import { COUNTRY_COVERAGE } from '../../utils/siteFacts';
 
 interface ComparisonRow {
   dimension: string;
@@ -38,7 +39,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { dimension: 'Time to first insight',          vett: 'Minutes',                              competitor: 'Days to weeks (panel recruit)',     vettWins: true  },
   { dimension: 'Cost per respondent',             vett: '$0.78 to $3.50',                        competitor: '$1 – $5 (basic) / $10+ (qualified)', vettWins: true  },
   { dimension: 'Minimum mission cost',            vett: '$9 (Sniff Test, 5 personas)',          competitor: '~$1+/response, panels min ~$200',   vettWins: true  },
-  { dimension: 'Geographic reach',                vett: '193 countries (full ISO list, AI-modelled)', competitor: '~190 countries via Audience panel', vettWins: false },
+  { dimension: 'Geographic reach',                vett: `${COUNTRY_COVERAGE} (AI-modelled)`, competitor: '~190 countries via Audience panel', vettWins: false },
   { dimension: 'Custom screener',                 vett: 'Constraint-based generation, persona is generated TO the spec', competitor: 'Filter-based on real panelists; longer wait if strict', vettWins: true  },
   { dimension: 'Real human respondents',          vett: 'No - synthetic personas with realistic distributions',          competitor: 'Yes - verified panel members',  vettWins: false },
   { dimension: 'Demographic depth',               vett: 'Persona-level: occupation, income, behaviours, decision style', competitor: 'Demographic targeting + screening filters', vettWins: false },

@@ -141,7 +141,8 @@ export const CITIES: Record<string, string[]> = {
 };
 
 /**
- * COUNTRIES — full ISO 3166-1 alpha-2 list, ~192 entries.
+ * COUNTRIES - 193 entries: the UN member states, keyed by ISO 3166-1 alpha-2 code.
+ * (Not the whole ISO list, which has 249 entries including territories.)
  *
  * Pass 6B changes vs previous 58-entry list:
  *   - Removed Israel (IL) per product decision

@@ -1,4 +1,6 @@
 import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
+import { COUNTRY_COVERAGE, RESEARCH_TYPES_LABEL } from '../../utils/siteFacts';
+import { SELF_SERVE_FROM, SELF_SERVE_RANGE } from '../../utils/priceCopy';
 
 /**
  * Pass 35 C3 — VETT vs Conjointly.
@@ -6,7 +8,7 @@ import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
  * Conjointly genuinely has peer-reviewed methodology validation
  * (academic publications via UNSW Sydney). State that. VETT does
  * NOT replace Conjointly — VETT runs the same frameworks (Van
- * Westendorp, MaxDiff, NPS) on synthetic respondents at $9-35
+ * Westendorp, MaxDiff, NPS) on synthetic respondents, priced from $9
  * tiers, useful for fast iteration before a Conjointly study,
  * not as a substitute for Conjointly's panel-grade output.
  */
@@ -15,7 +17,7 @@ export function VsConjointlyPage() {
     <VsPageTemplate
       competitorName="Conjointly"
       competitorTagline="Mature research platform with real-panel + synthetic options, peer-reviewed methodology validation, mid-market pricing ($200-1000+ per study)."
-      vettTagline="Synthetic-respondent fast iteration on the same frameworks (Van Westendorp, MaxDiff, NPS), $9-35 tiers, MENA-rooted, methodology-first."
+      vettTagline={`Synthetic-respondent fast iteration on the same frameworks (Van Westendorp, MaxDiff, NPS), ${SELF_SERVE_RANGE} pricing, MENA-rooted, methodology-first.`}
       slug="/vs/conjointly"
       competitorRefUrl="https://conjointly.com/methodology/"
       rows={[
@@ -33,13 +35,13 @@ export function VsConjointlyPage() {
         },
         {
           dimension: 'Methodology coverage',
-          vett: 'All 13 research types live (validate / pricing / roadmap / brand_lift / CSAT / churn / competitor / naming / marketing / compare / audience_profiling / market_entry / creative_attention)',
+          vett: `All ${RESEARCH_TYPES_LABEL} live (validate / pricing / roadmap / brand_lift / CSAT / churn / competitor / naming / marketing / compare / audience_profiling / market_entry / creative_attention / general research)`,
           competitor: 'Conjoint, MaxDiff, BPTO, monadic, claims tests + 10+ specialty designs',
           verdict: 'competitor',
         },
         {
           dimension: 'Turnaround time',
-          vett: 'Minutes (5-15min for $9-99 tiers, scales with respondent count)',
+          vett: 'Minutes (5-15 min for smaller studies; scales with respondent count)',
           competitor: 'Hours to days for synthetic; days to weeks for panel',
           verdict: 'vett',
         },
@@ -51,7 +53,7 @@ export function VsConjointlyPage() {
         },
         {
           dimension: 'Geographic depth',
-          vett: '160+ countries; MENA-calibrated demographics specifically',
+          vett: `${COUNTRY_COVERAGE}; MENA-calibrated demographics specifically`,
           competitor: '90+ countries via partner panels; deepest in NA + EU + AU',
           verdict: 'tie',
         },
@@ -67,7 +69,7 @@ export function VsConjointlyPage() {
       faqs={[
         {
           q: 'Does VETT replace Conjointly?',
-          a: 'No. They are complementary. VETT iterates cheaply ($9-35 per round, minutes); Conjointly delivers the panel-grade study you take to the board. Many teams use both: VETT for the cheap pre-test, Conjointly for the locked-in research.',
+          a: `No. They are complementary. VETT iterates cheaply (${SELF_SERVE_FROM} a round, minutes); Conjointly delivers the panel-grade study you take to the board. Many teams use both: VETT for the cheap pre-test, Conjointly for the locked-in research.`,
         },
         {
           q: 'Conjointly has peer-reviewed methodology. Does VETT?',
@@ -75,7 +77,7 @@ export function VsConjointlyPage() {
         },
         {
           q: 'Why is VETT so much cheaper?',
-          a: 'No panel recruitment cost. Synthetic respondents are AI-generated; the marginal cost is inference spend ($0.50-1.50 per mission). We pass that to customers as the $9-99 entry tiers. Conjointly\'s real-panel pricing reflects panel acquisition + retention + screening costs that don\'t exist on our side.',
+          a: `No panel recruitment cost. Synthetic respondents are AI-generated; the marginal cost is inference spend ($0.50-1.50 per mission). We pass that to customers as entry pricing ${SELF_SERVE_FROM}. Conjointly's real-panel pricing reflects panel acquisition + retention + screening costs that don't exist on our side.`,
         },
       ]}
     />

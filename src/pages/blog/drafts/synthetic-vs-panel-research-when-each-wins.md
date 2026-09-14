@@ -37,7 +37,7 @@ Research buyers keep hearing the question framed as a choice: do you trust AI pe
 
 ## The hybrid loop most teams converge on
 
-- Round 1-3: synthetic, $9-$99 per round, ideas die or get sharper
+- Round 1-3: synthetic, from $9 per round, ideas die or get sharper
 - Round 4: synthetic at scale ($899) to confirm the dominant signal across segments
 - Round 5: real-panel agency study with a *specific* brief because rounds 1-4 already burned through the questions an agency would charge $50K to discover
 - Result: agency SOW typically costs less than it would have, because the brief is concrete
