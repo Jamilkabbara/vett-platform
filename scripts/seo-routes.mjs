@@ -139,6 +139,14 @@ export const PUBLIC_ROUTES = [
     changefreq: 'monthly', priority: '0.1', sitemap: false,
   },
   {
+    path: '/vs',
+    title: 'VETT comparisons - honest comparisons with other research tools',
+    description: 'How VETT compares with survey platforms, research panels, synthetic-respondent tools and research agencies, with every competitor claim sourced from the competitor\'s own site.',
+    h1: 'VETT comparisons',
+    intro: 'How VETT compares with other research tools and agencies. Every statement about another company is taken from its own site, and each page says where VETT loses.',
+    changefreq: 'monthly', priority: '0.6',
+  },
+  {
     path: '/api',
     title: 'VETT API',
     description: 'There is no public VETT API today. What exists, what is planned, and how to reach us if you need programmatic access.',
@@ -187,13 +195,16 @@ export const PUBLIC_ROUTES = [
  * the same comparison, competing with /vs/traditional for the same query. It
  * was merged on 2026-09-14 - vercel.json 301s it to /vs/traditional - so it is
  * no longer prerendered or in the sitemap.
+ *
+ * /vs/pollfish was taken down on 2026-09-14 the same way: pollfish.com could
+ * not be read, so none of the page's claims about Pollfish could be sourced.
+ * vercel.json 301s it to /vs, the list of comparison pages.
  */
 const VS = [
   // slug, competitor as it appears in copy, what they are, the page's real h1
   ['surveymonkey',         'SurveyMonkey',       'survey tooling with a bring-your-own audience',   'VETT vs SurveyMonkey'],
   ['typeform',             'Typeform',           'form building with a bring-your-own audience',    'VETT vs Typeform'],
   ['usertesting',          'UserTesting',        'moderated and unmoderated usability testing',     'VETT vs UserTesting'],
-  ['pollfish',             'Pollfish',           'a mobile-first consumer panel',                   'VETT vs Pollfish'],
   ['traditional',          'traditional research', 'the classic panel and agency model',            'VETT vs Traditional Research'],
   ['conjointly',           'Conjointly',         'conjoint and pricing research on a real panel',   'VETT vs Conjointly'],
   ['yabble',               'Yabble',             'AI-generated respondents and insight synthesis',  'VETT vs Yabble'],
