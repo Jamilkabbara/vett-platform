@@ -54,7 +54,7 @@ export function VsAttestPage() {
         },
         {
           dimension: 'Turnaround',
-          vett: 'Minutes (5-15 min for smaller studies; scales with respondent count)',
+          vett: 'Minutes; no fieldwork, because respondents are simulated',
           competitor: 'Surveys launch in minutes and return results in hours; AI-moderated interviews return findings in days',
           verdict: 'vett',
         },

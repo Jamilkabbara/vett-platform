@@ -1,264 +1,135 @@
+import { VsPageTemplate } from '../../components/marketing/VsPageTemplate';
+import { RESEARCH_TYPES_LABEL } from '../../utils/siteFacts';
+import { MAX_SELF_SERVE_RESPONDENTS, SELF_SERVE_FROM, SELF_SERVE_MIN_RESPONDENTS, SELF_SERVE_RANGE } from '../../utils/priceCopy';
+
 /**
- * Pass 23 B2 expansion - VETT vs UserTesting comparison page.
+ * VETT vs UserTesting.
  *
- * Route: /vs/usertesting
+ * REWRITTEN 2026-09-14 onto the shared template, against UserTesting's own
+ * site. What the previous page said, and what was wrong with it:
+ *   - "Industry chatter puts a typical enterprise contract in the low-five-
+ *     figures", "per-session cost roughly $49-$80": not on usertesting.com.
+ *   - "5-30 testers per study is typical": not on usertesting.com.
+ *   - UserTesting survey data "Limited": its plans include "Unmoderated tests,
+ *     including surveys".
+ *   - "Hours to a day" per round: UserTesting says it delivers "80% of sessions
+ *     in just a few hours".
+ *   - "Native iOS / Android session recording": its mobile page says you can
+ *     "test iOS, Android, and TestFlight links" with "full screen recording";
+ *     the rows below use its words.
+ *   - VETT at 78 cents to 3.50 dollars per respondent, "$99 for 50 respondents
+ *     (Confidence tier)", "structured cross-tabs": none of these is true.
  *
- * Honest framing: UserTesting is a different category (video usability
- * sessions with real humans). VETT does not do video usability testing.
- * The page exists for SEO traffic from "VETT vs UserTesting" searches and
- * answers the "are these the same product?" question with a clear "no,
- * different jobs" - then shows where each one's the right tool.
+ * What usertesting.com says, 2026-09-14:
+ *   - /plans: editions Advanced, Ultimate, Ultimate+, each "Request pricing";
+ *     "Test-based Consumption" and "Team-based Unlimited" plans; "Unlimited
+ *     users across the enterprise (no per-seat charges)". Advanced includes
+ *     "AI-generated Insight Summaries", "Global participant panel across 60+
+ *     countries", "Unmoderated tests, including surveys, interaction tests, and
+ *     think-out-loud", "Moderated, Live Conversation", "Sentiment analysis",
+ *     "Integrations with Slack, Teams, Jira, Figma, FigJam, Miro". FAQ: "run a
+ *     test for free now and receive a video of a real person reviewing your
+ *     website, typically in less than an hour"; "the price for each plan varies
+ *     depending on the number of users, types, and features". "deliver 80% of
+ *     sessions in just a few hours". "3,000+ customers, including 75 of the
+ *     Fortune 100".
+ *   - /solutions/mobile-testing: "test iOS, Android, and TestFlight links",
+ *     "full screen recording", "Just upload your IPA or APK files".
  */
-import { Link } from 'react-router-dom';
-import { OverlayPage } from '../../components/layout/OverlayPage';
-import { Check, X, ArrowRight, Zap, DollarSign, Globe, Sparkles } from 'lucide-react';
-import { useRouteSeo } from '../../seo/useRouteSeo';
-import {
-  SELF_SERVE_FROM,
-  SELF_SERVE_RANGE,
-} from '../../utils/priceCopy';
-import { COUNTRY_COVERAGE } from '../../utils/siteFacts';
-import { FaqJsonLd } from '../../components/marketing/FaqJsonLd';
-
-interface ComparisonRow {
-  dimension: string;
-  vett: string;
-  competitor: string;
-  vettWins: boolean;
-}
-
-const COMPARISON_ROWS: ComparisonRow[] = [
-  { dimension: 'Output format',                   vett: 'Survey responses + AI synthesis (exec summary, tensions, cross-cut)', competitor: 'Recorded video sessions of a real tester narrating their experience', vettWins: false },
-  { dimension: 'Respondent type',                 vett: 'AI personas generated to your screener',                        competitor: 'Real human testers from a managed panel',               vettWins: false },
-  { dimension: 'Time to first insight',           vett: 'Minutes (synthetic responses)',                                 competitor: 'Hours to a day (testers schedule + record + transcript)', vettWins: true  },
-  { dimension: 'Cost per respondent',             vett: '$0.78 to $3.50',                                                 competitor: 'Public per-session cost not disclosed; enterprise contracts typical', vettWins: true  },
-  { dimension: 'Pricing model',                   vett: `Per mission (${SELF_SERVE_RANGE} flat); no subscription`,                 competitor: 'Enterprise sales: Advanced / Ultimate / Ultimate+ tiers; contact sales for quote', vettWins: true  },
-  { dimension: 'Sample size per study',           vett: '5 to 1,250 personas per mission',                                  competitor: '5-30 testers per study is typical (video review takes time)', vettWins: true  },
-  { dimension: 'Video usability testing',         vett: 'Not in product',                                                competitor: 'Core capability - this is what they do',                vettWins: false },
-  { dimension: 'Mobile-app walk-through testing', vett: 'Not in product',                                                competitor: 'Native iOS / Android session recording',                vettWins: false },
-  { dimension: 'Survey-style quantitative data',  vett: 'Yes - structured cross-tabs, segments, scoring',                competitor: 'Limited - testimonial patterns + AI summaries; not the core deliverable', vettWins: true  },
-  { dimension: 'Brand lift framework',            vett: 'Built-in 9-category Happydemics-style framework',               competitor: 'Not in product',                                       vettWins: true  },
-  { dimension: 'Geographic reach',                vett: `${COUNTRY_COVERAGE} (AI-modelled)`,                    competitor: 'Tester panels across major markets; emerging-market depth varies', vettWins: false },
-  { dimension: 'Best for...',                     vett: 'Pre-launch validation, brand-lift baselines, message testing, persona research at scale', competitor: 'Live product UX testing, mobile-app usability, observing real users actually clicking', vettWins: false },
-];
-
-const FAQS = [
-  {
-    q: 'Is VETT an alternative to UserTesting?',
-    a: "Mostly no - we solve different problems. UserTesting is for live product UX: watching a real human navigate your app, click around, narrate confusion, surface friction. VETT is for survey-style validation: asking 50-1,000 personas structured questions and getting AI-synthesised insight back. If you want to know whether your checkout flow has a usability bug, use UserTesting. If you want to know whether your concept resonates with a target market, use VETT. Some teams run both - VETT for the early-validation loops (cheap, fast, 50+ personas), UserTesting for the pre-launch UX audit (real humans, 5-15 testers, video).",
-  },
-  {
-    q: 'Can VETT do video usability testing?',
-    a: "No. We don't generate video walk-throughs of a real or synthetic user clicking through your product. The closest VETT does is open-text feedback on a creative or concept (text, images, or video uploaded for the persona to react to). For actual usability sessions, UserTesting (or Maze, Lookback, PlaybookUX) is the right tool.",
-  },
-  {
-    q: 'Can VETT do mobile-app testing?',
-    a: "Not in the same sense as UserTesting. VETT can target mobile-using personas in your screener (\"smartphone-only respondents in MENA aged 25-34\") and ask them survey questions about an app concept, screenshot, or value prop. We don't record a real human navigating the app. If you need that, UserTesting's native iOS/Android session recording is the standard.",
-  },
-  {
-    q: 'When do I use UserTesting vs VETT?',
-    a: `A rough split: use UserTesting when the question is "is this product easy to use?" or "where does this UX break?" - questions that need observation of a real tester. Use VETT when the question is "would this audience care about this concept?" or "which version of this message lands harder?" - questions that need scale + screener flexibility + AI synthesis. Many teams use both at different stages: VETT for the first 5-10 concept-validation iterations (${SELF_SERVE_FROM} a round), UserTesting for the polish-the-UX phase before launch (5-15 video sessions).`,
-  },
-  {
-    q: 'How much does UserTesting cost vs VETT?',
-    a: "UserTesting doesn't publish per-session pricing - their plans (Advanced / Ultimate / Ultimate+) are quoted via sales based on user count and test volume. Industry chatter puts a typical enterprise contract in the low-five-figures-per-year range, with per-session cost roughly $49-$80 in the older publicly-listed tiers (this can be wrong as of 2026 - check usertesting.com/plans for current). VETT charges per mission: $9 for a 5-respondent Sniff Test, $99 for 50 respondents (Confidence tier), $899 for 1,000 (Scale tier). No subscription. The two products serve different jobs, so price-per-unit comparisons are tricky.",
-  },
-  {
-    q: 'Where does VETT lose to UserTesting?',
-    a: 'Three real things: (1) Real-human observation - watching an actual tester struggle with a checkout flow is a deliverable VETT cannot produce. We have AI personas reacting to text and concepts, not real fingers on glass. (2) Mobile-app session recording - native iOS/Android tester sessions are core UserTesting; not in our product. (3) Stakeholder credibility for UX claims - "watch this video of a real customer fail to find the CTA" is dramatically more persuasive in a stakeholder review than survey aggregates. We tell users: pair us. VETT for the upstream validation work; UserTesting for the downstream usability proof.',
-  },
-];
-
-const OTHER_COMPARISONS = [
-  { slug: 'surveymonkey', label: 'VETT vs SurveyMonkey' },
-  { slug: 'typeform',     label: 'VETT vs Typeform' },
-  { slug: 'pollfish',     label: 'VETT vs Pollfish' },
-  { slug: 'traditional',  label: 'VETT vs traditional research agencies' },
-];
-
 export function VsUserTestingPage() {
-  // Title, description and canonical come from the SEO manifest, which is
-  // also what scripts/prerender.mjs bakes into this route's static HTML. This
-  // page used to write its own, in a different spelling from the shared
-  // VsPageTemplate and from the prerendered head.
-  useRouteSeo('/vs/usertesting');
-
   return (
-    <OverlayPage>
-      <FaqJsonLd faqs={FAQS} />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <header className="mb-10">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white/60 mb-5">
-            Comparison · VETT vs UserTesting
-          </span>
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white leading-tight mb-4">
-            VETT vs UserTesting: Which Is Right for You?
-          </h1>
-          <p className="text-white/70 text-lg md:text-xl max-w-2xl leading-relaxed">
-            UserTesting watches real humans use your product. VETT runs
-            surveys against AI personas. Different jobs, sometimes both.
-          </p>
-        </header>
-
-        <section className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 md:p-8 mb-12">
-          <div className="flex items-center gap-2 mb-4">
-            <Zap className="w-4 h-4 text-primary" />
-            <span className="text-primary text-xs font-black uppercase tracking-widest">90-second TL;DR</span>
-          </div>
-          <ul className="space-y-3 text-white/80 text-base leading-relaxed">
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Output format:</strong> VETT delivers structured survey responses + AI synthesis. UserTesting delivers video recordings of real testers narrating their experience. Different deliverables.</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Sample size:</strong> VETT runs 5 to 1,250 personas per mission, and larger studies as a managed engagement. UserTesting studies typically use 5-30 testers (video review takes time).</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Time to insight:</strong> VETT in minutes. UserTesting in hours-to-a-day per round (testers schedule + record + transcript).</span></li>
-            <li className="flex gap-3"><Check className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong className="text-white">Pricing:</strong> VETT {SELF_SERVE_RANGE} per mission, no subscription. UserTesting is enterprise-sales; per-session pricing not publicly listed.</span></li>
-            <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Real humans:</strong> UserTesting wins. Watching an actual tester use your product is irreplaceable for usability work.</span></li>
-            <li className="flex gap-3"><X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" /><span><strong className="text-white">Mobile-app walkthroughs:</strong> UserTesting wins. Native iOS / Android session recording isn't in VETT.</span></li>
-          </ul>
-        </section>
-
-        <section className="mb-14">
-          <h2 className="text-2xl md:text-3xl font-black text-white mb-6">Side-by-side comparison</h2>
-
-          <div className="sm:hidden space-y-3">
-            {COMPARISON_ROWS.map((row) => (
-              <div key={row.dimension} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-                <p className="text-white/60 text-[11px] font-bold uppercase tracking-widest mb-3">{row.dimension}</p>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    {row.vettWins && <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
-                    <div className="flex-1">
-                      <p className="text-primary text-[10px] font-black uppercase tracking-widest mb-0.5">VETT</p>
-                      <p className="text-white text-sm leading-relaxed">{row.vett}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    {!row.vettWins && <Check className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />}
-                    <div className="flex-1">
-                      <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mb-0.5">UserTesting</p>
-                      <p className="text-white/60 text-sm leading-relaxed">{row.competitor}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="hidden sm:block rounded-2xl border border-white/10 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[600px]">
-                <thead className="bg-white/5 border-b border-white/10">
-                  <tr>
-                    <th className="text-left px-4 py-3 text-white/60 font-bold uppercase tracking-widest text-xs">Dimension</th>
-                    <th className="text-left px-4 py-3 text-primary font-black uppercase tracking-widest text-xs">VETT</th>
-                    <th className="text-left px-4 py-3 text-white/60 font-black uppercase tracking-widest text-xs">UserTesting</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON_ROWS.map((row) => (
-                    <tr key={row.dimension} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02]">
-                      <td className="px-4 py-3 text-white/70 font-semibold align-top">{row.dimension}</td>
-                      <td className="px-4 py-3 text-white align-top">
-                        <span className="inline-flex items-start gap-2">
-                          {row.vettWins && <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
-                          <span>{row.vett}</span>
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-white/60 align-top">
-                        <span className="inline-flex items-start gap-2">
-                          {!row.vettWins && <Check className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />}
-                          <span>{row.competitor}</span>
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid md:grid-cols-2 gap-6 mb-14">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 md:p-8">
-            <div className="flex items-center gap-2 mb-3">
-              <Globe className="w-5 h-5 text-white/70" />
-              <h3 className="text-xl font-black text-white">When to use UserTesting</h3>
-            </div>
-            <ul className="space-y-3 text-white/70 text-base leading-relaxed">
-              <li>You're past the concept stage and have a working product to test.</li>
-              <li>You need to see a real human actually use the thing - clicks, hesitation, confusion, fixes.</li>
-              <li>You're auditing mobile-app usability where session recording is the deliverable.</li>
-              <li>You're prepping a stakeholder review and "watch this video" beats "look at this dashboard."</li>
-              <li>You're at enterprise scale and an annual contract makes sense.</li>
-            </ul>
-          </div>
-          <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-6 md:p-8">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <h3 className="text-xl font-black text-primary">When to use VETT</h3>
-            </div>
-            <ul className="space-y-3 text-white/80 text-base leading-relaxed">
-              <li>Pre-launch validation: you don't have a product yet, or you have only mockups.</li>
-              <li>You need 50+ responses to a screener-targeted persona, not 5 video sessions.</li>
-              <li>You're testing a concept, message, or positioning - not a UX flow.</li>
-              <li>You want AI-synthesised insight (executive summary, tensions, cross-cut) on cheap iterations.</li>
-              <li>You want to test creative (image / video) for emotion + attention + clarity at $19/asset.</li>
-              <li>Your audience is in MENA / emerging markets where tester panels are thin.</li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="mb-14">
-          <h2 className="text-2xl md:text-3xl font-black text-white mb-6">FAQ</h2>
-          <div className="space-y-4">
-            {FAQS.map((f, i) => (
-              <details key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 group" open={i === 0}>
-                <summary className="cursor-pointer text-white font-bold text-base list-none flex items-center justify-between gap-3">
-                  <span>{f.q}</span>
-                  <span className="text-primary text-xl group-open:rotate-45 transition-transform inline-block">+</span>
-                </summary>
-                <p className="mt-3 text-white/70 text-sm md:text-base leading-relaxed">{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-8 md:p-10 text-center mb-14">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <DollarSign className="w-5 h-5 text-primary" />
-            <span className="text-primary text-xs font-black uppercase tracking-widest">From $9</span>
-          </div>
-          <h3 className="text-2xl md:text-4xl font-black text-white mb-3">Validate the concept before you test the UX</h3>
-          <p className="text-white/70 text-base md:text-lg max-w-xl mx-auto mb-6">
-            Run a 5-persona Sniff Test for $9 to gut-check the idea, then
-            invest in real-tester video sessions on the version that
-            survived. UserTesting after VETT, not instead of.
-          </p>
-          <Link
-            to="/landing"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-gray-900 font-black hover:scale-[1.02] transition-transform shadow-2xl shadow-primary/30"
-          >
-            Start your first mission
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </section>
-
-        <section className="border-t border-white/10 pt-8 mb-12">
-          <h3 className="text-sm font-black uppercase tracking-widest text-white/40 mb-4">Other comparisons</h3>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {OTHER_COMPARISONS.map((c) => (
-              <Link
-                key={c.slug}
-                to={`/vs/${c.slug}`}
-                className="rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-colors px-4 py-3 text-white/70 hover:text-white text-sm font-semibold flex items-center justify-between"
-              >
-                {c.label}
-                <ArrowRight className="w-4 h-4 text-primary opacity-60" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      </div>
-    </OverlayPage>
+    <VsPageTemplate
+      competitorName="UserTesting"
+      competitorTagline="Human insight platform: recorded think-out-loud and moderated sessions, interaction tests and surveys with real participants from a panel across 60+ countries, including mobile app testing. Plans priced on request."
+      vettTagline={`Synthetic-respondent research: describe the audience, and VETT simulates respondents answering a survey and returns results in minutes. ${RESEARCH_TYPES_LABEL}, ${SELF_SERVE_RANGE} per mission.`}
+      slug="/vs/usertesting"
+      sources={[
+        'https://www.usertesting.com/plans',
+        'https://www.usertesting.com/solutions/mobile-testing',
+      ]}
+      checkedOn="14 September 2026"
+      tldr={[
+        'Different jobs: UserTesting shows you real people using your website, app or prototype. VETT asks simulated respondents survey questions about a concept, price or message.',
+        'Respondents: UserTesting uses real participants from a panel across 60+ countries. VETT simulates respondents with AI.',
+        'Video: UserTesting records sessions, including full screen recording on mobile. VETT produces no video of anyone using anything.',
+        `Price: UserTesting plans are priced on request by users, test types and features. VETT is ${SELF_SERVE_RANGE} per mission, paid at checkout.`,
+        'Speed: UserTesting says it delivers 80% of sessions in a few hours. VETT returns results in minutes.',
+        'Use UserTesting to watch real people use a product; use VETT to test whether a concept, price or message lands before you build.',
+      ]}
+      whereWeLose="Watching real people: UserTesting records real participants using your website, app or prototype, on desktop and mobile. VETT cannot show you anyone using anything; it simulates survey answers."
+      rows={[
+        {
+          dimension: 'What you get',
+          vett: 'Survey results from simulated respondents, with a written summary and segment breakdowns',
+          competitor: 'Recorded think-out-loud and moderated sessions, interaction tests, surveys, transcripts and AI-generated insight summaries',
+          verdict: 'tie',
+        },
+        {
+          dimension: 'Who takes part',
+          vett: 'Synthetic personas generated to your audience description',
+          competitor: 'Real participants from a global panel across 60+ countries',
+          verdict: 'competitor',
+        },
+        {
+          dimension: 'Usability and mobile app testing',
+          vett: 'Not offered',
+          competitor: 'Tests on websites, prototypes, and iOS, Android and TestFlight apps with full screen recording',
+          verdict: 'competitor',
+        },
+        {
+          dimension: 'Time to results',
+          vett: 'Minutes',
+          competitor: '80% of sessions delivered in a few hours; a free test video typically in less than an hour',
+          verdict: 'vett',
+        },
+        {
+          dimension: 'Price',
+          vett: `${SELF_SERVE_RANGE} per mission, paid at checkout`,
+          competitor: 'Advanced, Ultimate and Ultimate+ editions, each priced on request; unlimited users with no per-seat charges',
+          verdict: 'vett',
+        },
+        {
+          dimension: 'Study size',
+          vett: `${SELF_SERVE_MIN_RESPONDENTS} to ${MAX_SELF_SERVE_RESPONDENTS.toLocaleString('en-US')} respondents per mission`,
+          competitor: 'Not stated on the plans page',
+          verdict: 'tie',
+        },
+        {
+          dimension: 'Framework studies',
+          vett: `${RESEARCH_TYPES_LABEL}, including Van Westendorp and Gabor-Granger pricing, MaxDiff and Kano, NPS and a brand-lift study`,
+          competitor: 'Card sorting and tree testing on Ultimate; test templates',
+          verdict: 'tie',
+        },
+      ]}
+      whenToUseVett={`You do not have a product to test yet, only a concept, a price or a message. You want a survey-style answer from a target audience in minutes, several times over, before building. You want a framework such as Van Westendorp pricing or MaxDiff feature ranking.`}
+      whenToUseCompetitor={`You have a website, app or prototype and need to see real people use it. You are testing a mobile app, including unreleased builds. You need recordings and quotes from real users for a stakeholder review. Your organisation buys research on an annual plan.`}
+      faqs={[
+        {
+          q: 'Is VETT an alternative to UserTesting?',
+          a: 'Mostly not. UserTesting shows you real people using your website, app or prototype, with recordings, transcripts and interaction tests. VETT asks simulated respondents survey questions about a concept, a price or a message. If you need to see where a checkout flow breaks, use UserTesting. If you want to know whether an idea appeals to a target audience before you build it, VETT is built for that.',
+        },
+        {
+          q: 'Can VETT do usability or mobile app testing?',
+          a: 'No. VETT produces no recording of anyone, real or simulated, using a product. UserTesting tests websites, prototypes and iOS, Android and TestFlight apps with full screen recording.',
+        },
+        {
+          q: 'How much does UserTesting cost compared with VETT?',
+          a: `UserTesting does not publish prices. Its plans page says the price varies with the number of users, test types and features, and every edition is priced on request; it also offers a free test. VETT charges per mission, ${SELF_SERVE_RANGE}, paid at checkout.`,
+        },
+        {
+          q: 'Does UserTesting run surveys too?',
+          a: 'Yes. Its plans include unmoderated tests covering surveys, interaction tests and think-out-loud sessions, with real participants. The difference is who answers: UserTesting surveys real people, and VETT simulates the respondents.',
+        },
+        {
+          q: 'Can I use both?',
+          a: `Yes, at different stages. VETT, ${SELF_SERVE_FROM} a mission, can test whether a concept or message appeals before there is anything to use. UserTesting can then show real people using the product you built. VETT has not published a study comparing its results with real participants, so treat a VETT result as a directional read.`,
+        },
+        {
+          q: 'Where does VETT lose to UserTesting?',
+          a: 'Real people and real products. UserTesting records real participants from a panel across 60+ countries using your website, app or prototype, and gives you transcripts, sentiment analysis and AI summaries. VETT simulates respondents and cannot test a product at all.',
+        },
+      ]}
+    />
   );
 }
-
 export default VsUserTestingPage;

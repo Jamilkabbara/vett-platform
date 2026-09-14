@@ -23,12 +23,12 @@ export function VsYabblePage() {
     <VsPageTemplate
       competitorName="Yabble"
       competitorTagline="Generative AI insights platform backed by YouGov: AI personas (Virtual Audiences), an AI research agent (Gen), and theming and sentiment analysis of your existing open-text data (Count). Annual subscriptions from US$8,900."
-      vettTagline={`Methodology-first synthetic-respondent platform: ${RESEARCH_TYPES_LABEL} on named frameworks (Van Westendorp, MaxDiff, NPS, brand-health funnel), ${SELF_SERVE_RANGE} per mission, MENA-rooted.`}
+      vettTagline={`Methodology-first synthetic-respondent platform: ${RESEARCH_TYPES_LABEL} on named frameworks (Van Westendorp, MaxDiff, NPS, brand-health funnel), ${SELF_SERVE_RANGE} per mission.`}
       slug="/vs/yabble"
       competitorRefUrl="https://www.yabble.com/pricing"
       tldr={[
         'Both simulate an audience with AI personas: Yabble calls its version Virtual Audiences.',
-        'Framework: each VETT mission is bound to a named research framework (Van Westendorp, MaxDiff, NPS and others) with its own results page.',
+        'Framework: most VETT research types are bound to a named research framework (Van Westendorp, MaxDiff, NPS and others) with its own results page.',
         `Buying: VETT is pay-per-mission, ${SELF_SERVE_RANGE}, with no subscription. Yabble is an annual subscription from US$8,900 (under US$800/month equivalent).`,
         "Your existing data: Yabble's Count themes and scores sentiment across open-text and survey responses you already have. VETT analyses only the studies it runs.",
         'Backing: Yabble is backed by YouGov.',
@@ -38,7 +38,7 @@ export function VsYabblePage() {
       rows={[
         {
           dimension: 'Methodology binding',
-          vett: 'Each mission binds to a named framework (Van Westendorp, MaxDiff, NPS, etc.) with framework-specific question generators and results pages',
+          vett: 'Most research types bind to a named framework (Van Westendorp, MaxDiff, NPS and others) with framework-specific questions and results pages',
           competitor: 'AI personas (Virtual Audiences) and an AI research agent (Gen)',
           verdict: 'vett',
         },
@@ -56,17 +56,17 @@ export function VsYabblePage() {
         },
         {
           dimension: 'Market coverage',
-          vett: `MENA-rooted persona calibration; ${COUNTRY_COVERAGE} supported`,
+          vett: `Targeting across ${COUNTRY_COVERAGE}`,
           competitor: 'Offices in New York and Auckland; backed by YouGov',
           verdict: 'tie',
         },
       ]}
-      whenToUseVett={`A solo founder or small team with no research budget who wants to test 5-10 concept variants before committing. Methodology-bound studies (Van Westendorp pricing, MaxDiff feature ranking) where you want explicit framework documentation. Pay-per-study work where an annual subscription would not pay for itself. MENA-specific work.`}
+      whenToUseVett={`A solo founder or small team with no research budget who wants to test 5-10 concept variants before committing. Methodology-bound studies (Van Westendorp pricing, MaxDiff feature ranking) where you want explicit framework documentation. Pay-per-study work where an annual subscription would not pay for itself.`}
       whenToUseCompetitor={`A team with a steady flow of open-text or survey responses to theme and analyse. An organisation with an annual research budget that suits a subscription. Work where YouGov backing matters to the people you report to.`}
       faqs={[
         {
           q: 'Both use AI personas. What is different?',
-          a: 'VETT is methodology-first: each mission binds to a named framework (Van Westendorp, MaxDiff, NPS, brand-health funnel) with framework-specific question generators and results pages, bought one mission at a time. Yabble is an annual subscription that pairs AI personas with an AI research agent and analysis of the open-text data you already hold.',
+          a: 'VETT is methodology-first: most research types bind to a named framework (Van Westendorp, MaxDiff, NPS, brand-health funnel) with framework-specific question generators and results pages, bought one mission at a time. Yabble is an annual subscription that pairs AI personas with an AI research agent and analysis of the open-text data you already hold.',
         },
         {
           q: 'How is the pricing different?',

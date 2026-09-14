@@ -30,7 +30,7 @@ export function VsConjointlyPage() {
     <VsPageTemplate
       competitorName="Conjointly"
       competitorTagline="Survey research platform that runs studies on real human respondents, strongest in product and pricing research (conjoint, Van Westendorp, Gabor-Granger, monadic concept tests). Free Basic plan; paid plans from $2,895 per team per year, with panel responses bought on top."
-      vettTagline={`Synthetic-respondent research on named frameworks (Van Westendorp, MaxDiff, NPS), ${SELF_SERVE_RANGE} per mission, MENA-rooted, methodology-first. A directional read in minutes, not a panel study.`}
+      vettTagline={`Synthetic-respondent research on named frameworks (Van Westendorp, MaxDiff, NPS), ${SELF_SERVE_RANGE} per mission, methodology-first. A directional read in minutes, not a panel study.`}
       slug="/vs/conjointly"
       competitorRefUrl="https://conjointly.com/pricing/"
       tldr={[
@@ -51,25 +51,25 @@ export function VsConjointlyPage() {
         },
         {
           dimension: 'What the result rests on',
-          vett: 'Peer-reviewed frameworks (Van Westendorp, MaxDiff, NPS); the simulation that produces VETT results is not peer-reviewed',
+          vett: 'Published, widely used frameworks (Van Westendorp, Gabor-Granger, MaxDiff, NPS); the simulation that produces VETT results has no published validation',
           competitor: 'The same kinds of framework, answered by real respondents',
           verdict: 'competitor',
         },
         {
           dimension: 'Methods',
-          vett: `${RESEARCH_TYPES_LABEL}: concept tests, Van Westendorp pricing, MaxDiff and Kano, NPS, brand lift, creative attention and more; no conjoint`,
+          vett: `${RESEARCH_TYPES_LABEL}: concept tests, Van Westendorp and Gabor-Granger pricing, MaxDiff and Kano, NPS, brand lift, creative attention and more; no conjoint`,
           competitor: 'Strongest in product and pricing research: conjoint (discrete choice), Van Westendorp, Gabor-Granger, monadic concept testing',
           verdict: 'competitor',
         },
         {
           dimension: 'Turnaround',
-          vett: 'Minutes (5-15 min for smaller studies; scales with respondent count)',
+          vett: 'Minutes; no fieldwork, because respondents are simulated',
           competitor: 'Days: Conjointly quotes insights "within days" on its predefined panels',
           verdict: 'vett',
         },
         {
           dimension: 'Price',
-          vett: `$${SELF_SERVE_MIN_USD} for ${SELF_SERVE_MIN_RESPONDENTS} personas, up to ${SELF_SERVE_RANGE.split(' to ')[1]}; no subscription, no per-respondent fees`,
+          vett: `$${SELF_SERVE_MIN_USD} for ${SELF_SERVE_MIN_RESPONDENTS} personas, up to ${SELF_SERVE_RANGE.split(' to ')[1]}; no subscription`,
           competitor: 'Basic plan at no cost; Professional $2,895 per team per year; Ultimate from $10,000 per year. Panel responses on top, from a $0.55 minimum bid',
           verdict: 'tie',
         },
@@ -88,12 +88,12 @@ export function VsConjointlyPage() {
           a: `No. They produce different kinds of evidence. VETT iterates cheaply (${SELF_SERVE_FROM} a round, minutes) on simulated respondents; Conjointly runs the study on real people. A sensible sequence is VETT to narrow the question, then a real-respondent study for the decision.`,
         },
         {
-          q: 'Is VETT peer-reviewed?',
-          a: 'Not the part that produces the numbers. The frameworks VETT uses (Van Westendorp 1976, MaxDiff via Sawtooth, NPS via Reichheld 2003) are peer-reviewed in the academic literature. The synthetic-respondent simulation that produces VETT results is not. Conjointly runs the same kinds of framework on real respondents, and has argued publicly that synthetic respondents should not be used at all.',
+          q: 'Is VETT validated?',
+          a: 'Not the part that produces the numbers. The frameworks VETT uses, such as Van Westendorp (1976), Gabor-Granger (1965) and Net Promoter Score (2003), are published and widely used. The synthetic-respondent simulation that produces VETT results has no published validation study. Conjointly runs the same kinds of framework on real respondents, and has argued publicly that synthetic respondents should not be used at all.',
         },
         {
           q: 'How do the costs compare?',
-          a: `They are shaped differently. VETT charges per mission, ${SELF_SERVE_RANGE}, with no subscription and no per-respondent fees. Conjointly has a free Basic plan and paid plans from $2,895 per team per year, and panel responses are bought on top, from a $0.55 minimum bid each. Which costs less depends on the study; only Conjointly's side gives you real respondents.`,
+          a: `They are shaped differently. VETT charges per mission, ${SELF_SERVE_RANGE}, with no subscription; the price is set by the number of respondents. Conjointly has a free Basic plan and paid plans from $2,895 per team per year, and panel responses are bought on top, from a $0.55 minimum bid each. Which costs less depends on the study; only Conjointly's side gives you real respondents.`,
         },
         {
           q: 'Which is faster?',
@@ -101,7 +101,7 @@ export function VsConjointlyPage() {
         },
         {
           q: 'Which is better for pricing research?',
-          a: 'It depends how the price will be used. VETT runs Van Westendorp price sensitivity on simulated respondents, which is useful for finding a rough price band quickly. Conjointly runs Van Westendorp, Gabor-Granger and conjoint on real respondents. VETT does not offer conjoint or Gabor-Granger. For a price point that has to survive scrutiny, use Conjointly.',
+          a: 'It depends how the price will be used. VETT runs Van Westendorp and Gabor-Granger on simulated respondents, which is useful for finding a rough price band quickly. Conjointly runs Van Westendorp, Gabor-Granger and conjoint on real respondents. VETT does not offer conjoint. For a price point that has to survive scrutiny, use Conjointly.',
         },
         {
           q: 'Where does VETT lose to Conjointly?',

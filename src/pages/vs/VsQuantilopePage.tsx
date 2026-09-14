@@ -23,18 +23,18 @@ export function VsQuantilopePage() {
     <VsPageTemplate
       competitorName="Quantilope"
       competitorTagline="Consumer-insights platform running automated quantitative methods (conjoint, MaxDiff, TURF, price sensitivity, implicit association tests) on real consumers through its panel network. Plans from $2,000/month."
-      vettTagline={`Synthetic-respondent platform on named frameworks (MaxDiff, TURF, Van Westendorp, NPS, brand lift), ${SELF_SERVE_RANGE} per mission, MENA-rooted, methodology-first.`}
+      vettTagline={`Synthetic-respondent platform on named frameworks (MaxDiff, TURF, Van Westendorp, NPS, segmentation, brand lift), ${SELF_SERVE_RANGE} per mission, methodology-first.`}
       slug="/vs/quantilope"
       competitorRefUrl="https://www.quantilope.com/pricing"
       tldr={[
         'Respondents: Quantilope reaches real consumers through its panel network (it cites 300M+ worldwide). VETT simulates respondents with AI.',
-        'Methods: both cover MaxDiff, TURF, price sensitivity and NPS. Quantilope adds choice-based conjoint, key driver analysis, segmentation and implicit association tests, which VETT does not offer.',
+        'Methods: both cover MaxDiff, TURF, price sensitivity and NPS. Quantilope adds choice-based conjoint, key driver analysis and implicit association tests, which VETT does not offer. Both offer segmentation.',
         `Cost shape: VETT is ${SELF_SERVE_RANGE} per mission, no subscription. Quantilope plans start at $2,000/month for three users.`,
         'Speed: VETT returns a directional read in minutes, without panel fieldwork.',
         'Evidence: Quantilope results are measured from real consumers; VETT results are simulated and directional.',
         'Use VETT to test many versions cheaply before a panel study; use Quantilope when the result has to come from real consumers.',
       ]}
-      whereWeLose="Real consumers and method depth: Quantilope measures real people and offers conjoint, segmentation and implicit association tests. VETT simulates respondents and offers none of those three."
+      whereWeLose="Real consumers and method depth: Quantilope measures real people and offers conjoint and implicit association tests. VETT simulates respondents and offers neither."
       rows={[
         {
           dimension: 'Respondent type',
@@ -44,7 +44,7 @@ export function VsQuantilopePage() {
         },
         {
           dimension: 'Methods',
-          vett: 'MaxDiff, TURF (in naming tests), Van Westendorp, NPS, brand lift, concept tests',
+          vett: 'MaxDiff and Kano, TURF (in tagline tests), Van Westendorp and Gabor-Granger, NPS, k-means segmentation (from 50 respondents), brand lift, concept tests',
           competitor: 'Choice-based conjoint, MaxDiff, TURF, price sensitivity meter, NPS, key driver analysis, segmentation, implicit association tests, A/B tests',
           verdict: 'competitor',
         },
@@ -62,11 +62,11 @@ export function VsQuantilopePage() {
         },
       ]}
       whenToUseVett={`Pre-launch iteration where you want to test 5-10 versions cheaply before committing to a panel study. Methodology range-finding, for example an approximate price band from Van Westendorp before locking it in with real consumers. Solo founders and small teams without a research subscription.`}
-      whenToUseCompetitor={`Teams with a research budget who need results from real consumers. Conjoint, segmentation or implicit association work, which VETT does not offer. Anything where the deliverable goes to a CMO, board or planning committee that needs a real-respondent study.`}
+      whenToUseCompetitor={`Teams with a research budget who need results from real consumers. Conjoint or implicit association work, which VETT does not offer. Anything where the deliverable goes to a CMO, board or planning committee that needs a real-respondent study.`}
       faqs={[
         {
           q: 'Quantilope offers conjoint and implicit association tests. Does VETT?',
-          a: 'No. VETT supports simpler frameworks: Van Westendorp price sensitivity, MaxDiff, NPS and a brand-lift funnel. For choice-based conjoint, segmentation or implicit association tests, use Quantilope or a conjoint specialist.',
+          a: 'No. VETT offers Van Westendorp and Gabor-Granger pricing, MaxDiff and Kano, NPS, TURF for tagline tests, k-means segmentation and a brand-lift study, but not conjoint or implicit association tests. For those, use Quantilope or a conjoint specialist.',
         },
         {
           q: 'How much does each cost?',
@@ -78,7 +78,7 @@ export function VsQuantilopePage() {
         },
         {
           q: 'Which methods do both cover?',
-          a: 'MaxDiff, TURF, price sensitivity and NPS. Quantilope also offers choice-based conjoint, key driver analysis, segmentation, implicit association tests and A/B tests. VETT adds a brand-lift funnel and concept tests on simulated respondents.',
+          a: 'MaxDiff, TURF, price sensitivity, NPS and segmentation. Quantilope also offers choice-based conjoint, key driver analysis, implicit association tests and A/B tests. VETT adds Kano, Gabor-Granger, a brand-lift study and concept tests, on simulated respondents.',
         },
         {
           q: 'How fast is VETT?',
@@ -86,7 +86,7 @@ export function VsQuantilopePage() {
         },
         {
           q: 'Where does VETT lose to Quantilope?',
-          a: 'Real consumers and method depth. Quantilope measures real people and offers conjoint, segmentation and implicit association tests. VETT simulates respondents and offers none of those three.',
+          a: 'Real consumers and method depth. Quantilope measures real people and offers conjoint and implicit association tests. VETT simulates respondents and offers neither.',
         },
       ]}
     />
