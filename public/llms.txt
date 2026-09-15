@@ -29,8 +29,9 @@ What you should expect:
 - Output: executive summary + per-question aggregates + methodology
   cards + PDF / PPTX / XLSX exports (CSV / JSON for Creative Attention)
 - Remedy, not refunds: all sales are final and VETT does not issue cash
-  refunds. If a mission fails because of a VETT-side fault, the remedy is
-  a re-run or a re-run credit. Full terms: https://www.vettit.ai/refunds
+  refunds. If a mission fails because of a VETT-side fault, VETT is alerted
+  automatically and re-runs it at no extra cost. There are no credits.
+  Full terms: https://www.vettit.ai/refunds
 
 ## Methodologies supported (14)
 

@@ -21,6 +21,7 @@ import { OverlayPage } from '../components/layout/OverlayPage';
 // /api/missions/:id/progress every 5s. Hides itself once the
 // recruitment loop has exited (target_hit or ceiling_hit).
 import { RecruitmentProgress } from '../components/results/RecruitmentProgress';
+import { MISSION_FAILURE_REMEDY } from '../utils/siteFacts';
 
 interface MissionRow {
   id: string;
@@ -134,7 +135,10 @@ export function ProcessingPage() {
           <p className="text-t3 text-sm leading-relaxed">
             {mission?.failure_reason
               ? `Reason: ${mission.failure_reason}`
-              : "An error occurred during processing. Contact support and we'll prioritize a re-run of your mission at no extra cost."}
+              : 'An error occurred during processing.'}
+          </p>
+          <p className="text-t3 text-sm leading-relaxed">
+            {MISSION_FAILURE_REMEDY}
           </p>
           <Link
             to={`/results/${missionId}`}

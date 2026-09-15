@@ -98,6 +98,10 @@ const BANNED = [
   ['research-grade emotion mapping', 'Creative Attention scores 24 emotions per frame; nothing makes it research-grade'],
   ['research-grade instruments', 'say established research frameworks'],
   ['McKinsey-style', 'names another firm the method is not sourced to'],
+  // Failure remedy: VETT has no credit system, and the remedy is automatic.
+  ['re-run credit', 'VETT cannot issue credits; the remedy is a re-run'],
+  ['credit for an equivalent mission', 'VETT cannot issue credits; the remedy is a re-run'],
+  ["Contact support and we'll prioritize a re-run", 'a failure alerts VETT automatically; use MISSION_FAILURE_REMEDY'],
   ['usually 5-15 minutes', 'measured: median 2.1 min, mean 8.5 min across 40 missions; the range was never measured'],
 ];
 // Historical records that quote the site as it was. Rewriting them would
@@ -123,6 +127,19 @@ function walk(dir) {
 }
 walk('src');
 walk('public');
+// The failure remedy is stated in the same words wherever a customer reads it.
+{
+  const facts = read('src/utils/siteFacts.ts');
+  const m = facts.match(/MISSION_FAILURE_REMEDY =\s*'([^']+)'\s*\+\s*'([^']+)'\s*\+\s*'([^']+)'/);
+  if (!m) fail('could not read MISSION_FAILURE_REMEDY from src/utils/siteFacts.ts');
+  else {
+    const remedy = m[1] + m[2] + m[3];
+    const flat = (t) => t.replace(/\*\*/g, '').replace(/\s+/g, ' ');
+    for (const f of ['src/content/legal/refund-policy.md', 'src/pages/HelpPage.tsx']) {
+      if (!flat(read(f)).includes(remedy)) fail(`${f} does not state the failure remedy in the words of MISSION_FAILURE_REMEDY`);
+    }
+  }
+}
 // index.html carries the head every page starts from, including the homepage
 // structured data and the share description.
 scan('index.html');

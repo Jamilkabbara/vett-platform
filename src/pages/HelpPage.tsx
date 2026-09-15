@@ -67,7 +67,7 @@ const FAQS: FAQ[] = [
     // full refunds, contradicting the NO REFUNDS policy / Terms §5.3).
     question: 'What if a mission fails to deliver?',
     answer:
-      'VETT missions are final and we do not issue cash refunds. The only exceptions are duplicate charges and confirmed unauthorized charges, which we reverse because card-network rules require it. If your screener criteria are too strict for the audience we can reach, you receive a partial delivery of however many respondents qualified, and the synthesized insights are honest about the smaller sample; a partial delivery still counts as delivered. If a mission fails to complete because of a fault on our side, email support@vettit.ai with your Mission ID and we will re-run it or issue an equivalent re-run credit at no extra cost. We aim to reply within two business days. The Refund Policy has the full terms.',
+      'VETT missions are final and we do not issue cash refunds. The only exceptions are duplicate charges and confirmed unauthorized charges, which we reverse because card-network rules require it. If your screener criteria are too strict for the audience we can reach, you receive a partial delivery of however many respondents qualified, and the synthesized insights are honest about the smaller sample; a partial delivery still counts as delivered. If a mission fails to complete because of a fault on our side, VETT has been alerted automatically and will re-run this mission at no extra cost. You do not need to do anything. If you have not heard from us within two business days, reply to our email or write to support@vettit.ai with your Mission ID. VETT does not issue credits in place of a re-run. The Refund Policy has the full terms.',
   },
   {
     category: 'Targeting',
