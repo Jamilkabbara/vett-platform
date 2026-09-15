@@ -20,6 +20,7 @@ import { MessageSquare, X, Send, Sparkles, Minimize2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '../../lib/supabase';
 import { logPaymentError } from '../../lib/paymentErrorLogger';
+import { parseChatFrame } from '../../lib/loadOutcome.mjs';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://vettit-backend-production.up.railway.app';
 
@@ -198,6 +199,7 @@ export const ChatWidget = ({
       let assembled = '';
       let finalQuota: Quota | null = null;
       let blocked = false;
+      let streamError: string | null = null;
 
       while (true) {
         const { value, done } = await reader.read();
@@ -212,21 +214,33 @@ export const ChatWidget = ({
           if (!line) continue;
           const payload = line.slice(6);
           if (payload === '[DONE]') continue;
-          try {
-            const obj = JSON.parse(payload);
-            if (obj.delta) {
-              assembled += obj.delta;
-              setStreamingDraft(assembled);
-            } else if (obj.done) {
-              finalQuota = obj.quota || null;
-            } else if (obj.blocked) {
-              blocked = true;
-              finalQuota = obj.quota || null;
-            } else if (obj.error) {
-              throw new Error(obj.error);
-            }
-          } catch { /* ignore malformed frame */ }
+          // The server's error frame used to be thrown inside this loop's
+          // "ignore malformed frame" catch, so it was swallowed and the
+          // customer got an empty reply bubble. It now ends the stream as an
+          // error; only a frame that is not JSON is ignored.
+          const frame = parseChatFrame(payload);
+          if (frame.type === 'delta') {
+            assembled += frame.delta;
+            setStreamingDraft(assembled);
+          } else if (frame.type === 'done') {
+            finalQuota = (frame.quota as typeof finalQuota) || null;
+          } else if (frame.type === 'blocked') {
+            blocked = true;
+            finalQuota = (frame.quota as typeof finalQuota) || null;
+          } else if (frame.type === 'error') {
+            streamError = frame.error;
+          }
         }
+      }
+
+      if (streamError) {
+        // Shown in the widget's error line; the question is put back so the
+        // customer can retry. Not sent to the non-streaming fallback: the
+        // server already said why it could not answer.
+        setError(streamError);
+        setMessages((prev) => prev.slice(0, -1));
+        setInput(trimmed);
+        return;
       }
 
       if (blocked) {

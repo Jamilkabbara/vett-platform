@@ -4,6 +4,7 @@ import { api } from '../../lib/apiClient';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import toast from 'react-hot-toast';
 import { toInvoiceMission, type ApiInvoice } from '../../lib/invoiceDocument.mjs';
+import { settleInvoices } from '../../lib/loadOutcome.mjs';
 
 // Pass 29 A2 — perf-LCP-001 follow-up. jspdf + jspdf-autotable were
 // pulled into the ProfilePage chunk via a static import on
@@ -18,22 +19,23 @@ type Invoice = ApiInvoice;
 export const BillingInvoicesTab = () => {
   const [invoices, setInvoices]         = useState<Invoice[]>([]);
   const [loading, setLoading]           = useState(true);
+  const [loadError, setLoadError]       = useState<string | null>(null);
+  const [attempt, setAttempt]           = useState(0);
   const [downloading, setDownloading]   = useState<string | null>(null);
   const [pptLoading, setPptLoading]     = useState<string | null>(null);
   const { profile } = useUserProfile();
 
   useEffect(() => {
     (async () => {
-      try {
-        const data = await api.get('/api/profile/invoices');
-        setInvoices(Array.isArray(data) ? data : []);
-      } catch {
-        // fail silently — show empty state
-      } finally {
-        setLoading(false);
-      }
+      setLoading(true);
+      // A failed load used to fall through to "No invoices yet", telling a
+      // paying customer they had never paid. It is now an error with a retry.
+      const out = await settleInvoices<Invoice>(api.get('/api/profile/invoices'));
+      setInvoices(out.invoices ?? []);
+      setLoadError(out.error);
+      setLoading(false);
     })();
-  }, []);
+  }, [attempt]);
 
   const handleDownload = async (inv: Invoice) => {
     if (downloading) return;
@@ -93,6 +95,22 @@ export const BillingInvoicesTab = () => {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="w-7 h-7 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div role="alert" className="text-center py-16 border border-red-500/20 bg-red-500/[0.04] rounded-2xl">
+        <FileText className="w-10 h-10 mx-auto mb-3 text-red-400 opacity-60" />
+        <p className="font-semibold text-white">{loadError}</p>
+        <p className="text-sm text-gray-400 mt-1">This is a problem loading them, not a sign that you have none.</p>
+        <button
+          onClick={() => setAttempt((a) => a + 1)}
+          className="mt-5 px-5 py-2 rounded-xl bg-primary text-gray-900 text-sm font-bold hover:opacity-90"
+        >
+          Try again
+        </button>
       </div>
     );
   }
