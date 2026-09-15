@@ -29,14 +29,28 @@ import { Logo } from '../components/ui/Logo';
 // Pass 37 A5 — Creative attention staleness threshold. A CA mission that
 // has not produced `creative_analysis` JSON within this window is treated
 // as failed by the UI even when the DB row still reads status='paid' or
-// 'processing'. Real CA takes 30s (image) → 3min (30s video); 30 min is
-// a generous ceiling. The May demo's stuck mission 91be5c7b had been
+// 'processing'. Measured Creative Attention runs (see CA_TIMING_COPY) take
+// about a minute for an image and six to seven for a 30-second video; 30 min
+// is a generous ceiling. The May demo's stuck mission 91be5c7b had been
 // "processing" for 36 hours when the audit caught it.
 const CA_STALE_AFTER_MINUTES = 30;
-// Hard ceiling on poll duration so users who landed on a still-running
-// mission don't camp the page indefinitely. After this, surface the
-// failure UI and stop polling.
-const CA_POLL_TIMEOUT_MINUTES = 5;
+// How long this page polls before it stops and says the run is taking longer
+// than usual. It used to be 5 minutes and then showed the FAILURE screen:
+// a 30-second video takes six to seven minutes (production mission cff8a2ec,
+// 389 s; a run on 2026-09-15, 368 s), so a customer watching a normal video
+// run was told it had failed shortly before it finished. Reaching this limit
+// is not a failure: status 'failed' and the 30-minute staleness check are.
+const CA_POLL_TIMEOUT_MINUTES = 15;
+
+// Measured, not estimated. Production completed runs, 2026-04-28 to
+// 2026-09-09: seven images took 28 to 81 seconds (median 40); the one
+// completed 30-second video took 389 seconds. Runs on 2026-09-15, which add
+// the market notes step: an image 64 seconds, a 30-second video 368 seconds.
+// Video is analysed one frame per second up to 30 frames, so a longer video
+// does not take proportionally longer.
+const CA_TIMING_COPY =
+  'This usually takes about a minute for an image and six to seven minutes for a 30-second video. '
+  + 'Videos are analysed one frame per second, up to the first 30 seconds.';
 
 // ── Types (Pass 24 Bug 24.01 — moved to src/types/creativeAnalysis.ts) ──────
 // Single-source types live in `../types/creativeAnalysis`. The local aliases
@@ -100,6 +114,7 @@ export function CreativeAttentionResultsPage() {
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState<string | null>(null);
   const [polling,    setPolling]    = useState(false);
+  const [slow,       setSlow]       = useState(false);
   // Pass 37 A5 — track whether the failure was detected by the staleness
   // heuristic (vs. an explicit status='failed' from the backend). Drives
   // the failure-UI copy so users with a stuck-but-not-flagged mission see
@@ -166,8 +181,8 @@ export function CreativeAttentionResultsPage() {
         ? (Date.now() - pollStartRef.current) / 60000
         : 0;
       if (elapsedMin > CA_POLL_TIMEOUT_MINUTES) {
-        setStaleDetected(true);
-        setError('Creative analysis did not complete.');
+        // Taking longer than usual, not failed: stop polling and say so.
+        setSlow(true);
         setPolling(false);
         return;
       }
@@ -235,6 +250,25 @@ export function CreativeAttentionResultsPage() {
     );
   }
 
+  if (slow && !analysis) {
+    return (
+      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-4 text-center px-5 max-w-lg mx-auto">
+        <Film className="w-12 h-12 text-purple-400" />
+        <h2 className="text-xl font-bold text-[var(--t1)]">This analysis is taking longer than usual</h2>
+        <p className="text-[var(--t2)] text-sm leading-relaxed max-w-md">
+          It is still running. {CA_TIMING_COPY} We will email you when it is ready, or you can
+          reload this page later.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--b1)] text-[var(--t2)] hover:text-[var(--t1)] font-bold text-sm transition-colors"
+        >
+          Reload
+        </button>
+      </div>
+    );
+  }
+
   if (polling) {
     return (
       <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-4 text-center px-5">
@@ -246,9 +280,8 @@ export function CreativeAttentionResultsPage() {
         <p className="text-[var(--t2)] text-sm max-w-sm">
           Our AI is mapping attention hotspots and emotion peaks across your
           creative, then comparing the result against published channel
-          attention norms. This typically takes 30 seconds for an image or 1 to
-          3 minutes for a 30-second video; longer videos take proportionally
-          more time.
+          attention norms. {CA_TIMING_COPY} You can leave this page; we will
+          email you when it is ready.
         </p>
         <div className="mt-2 flex items-center gap-2 text-xs text-[var(--t3)]">
           <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
