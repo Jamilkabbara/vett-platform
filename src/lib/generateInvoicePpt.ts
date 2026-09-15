@@ -23,6 +23,8 @@ export interface InvoiceMissionPpt {
   respondent_count: number;
   paid_at: string;
   goal_type?: string;
+  /** The payment line at the foot, from paymentNote() in invoiceDocument.mjs. */
+  payment_note?: string;
 }
 
 export interface InvoiceProfilePpt {
@@ -180,16 +182,16 @@ export async function generateInvoicePpt(
   if (targeting > 0) {
     rows.push([
       { text: 'Advanced targeting surcharge', options: { color: C.t1, fill: { color: C.bg2 }, fontSize: 11 } },
-      { text: '—', options: { color: C.t2, fill: { color: C.bg2 }, fontSize: 11, align: 'center' } },
-      { text: '—', options: { color: C.t2, fill: { color: C.bg2 }, fontSize: 11, align: 'right' } },
+      { text: '-', options: { color: C.t2, fill: { color: C.bg2 }, fontSize: 11, align: 'center' } },
+      { text: '-', options: { color: C.t2, fill: { color: C.bg2 }, fontSize: 11, align: 'right' } },
       { text: `$${targeting.toFixed(2)}`, options: { color: C.t1, fill: { color: C.bg2 }, fontSize: 11, align: 'right', bold: true } },
     ]);
   }
   if (extraQuestions > 0) {
     rows.push([
       { text: 'Additional questions', options: { color: C.t1, fill: { color: C.bg3 }, fontSize: 11 } },
-      { text: '—', options: { color: C.t2, fill: { color: C.bg3 }, fontSize: 11, align: 'center' } },
-      { text: '—', options: { color: C.t2, fill: { color: C.bg3 }, fontSize: 11, align: 'right' } },
+      { text: '-', options: { color: C.t2, fill: { color: C.bg3 }, fontSize: 11, align: 'center' } },
+      { text: '-', options: { color: C.t2, fill: { color: C.bg3 }, fontSize: 11, align: 'right' } },
       { text: `$${extraQuestions.toFixed(2)}`, options: { color: C.t1, fill: { color: C.bg3 }, fontSize: 11, align: 'right', bold: true } },
     ]);
   }
@@ -241,7 +243,9 @@ export async function generateInvoicePpt(
   // ── Footer ─────────────────────────────────────────────────────────────────
 
   const footerY = 7.1;
-  const payText = cardLast4 ? `Paid via Stripe · Card ending ${cardLast4}` : 'Paid via Stripe';
+  // Stripe is named only when Stripe took the payment.
+  const payNote = mission.payment_note || 'Payment method not recorded';
+  const payText = cardLast4 ? `${payNote} · Card ending ${cardLast4}` : payNote;
   slide.addText(payText, { x: 0.5, y: footerY, w: 5, h: 0.28, fontSize: 9, color: C.t3 });
   slide.addText('Thank you for using VETT', {
     x: 5.5, y: footerY, w: 2.8, h: 0.28, fontSize: 9, color: C.t2, align: 'center',
