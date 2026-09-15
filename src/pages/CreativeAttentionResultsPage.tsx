@@ -54,6 +54,7 @@ import { PlatformFitPanel } from '../components/creative-attention/PlatformFitPa
 import { CreativeExportMenu } from '../components/creative-attention/CreativeExportMenu';
 import { HotspotHeatmap } from '../components/creative-attention/HotspotHeatmap';
 import { PlacementMarketPanel } from '../components/creative-attention/PlacementMarketPanel';
+import { MISSION_FAILURE_REMEDY } from '../utils/siteFacts';
 
 // Legacy alias kept for in-file references; new code imports the v2 map.
 const EMOTION_COLORS: Record<string, string> = EMOTION_COLORS_V2;
@@ -212,8 +213,8 @@ export function CreativeAttentionResultsPage() {
             policy (Pass 42 G4, Terms §5.3). */}
         <p className="text-[var(--t2)] text-sm leading-relaxed max-w-md">
           {staleDetected
-            ? "Your creative was uploaded, but the analysis pipeline never returned a result. Contact support and we'll prioritize a re-run of your mission at no extra cost. You can also try a new upload below."
-            : "Our analysis pipeline ran into an error processing this creative. Contact support and we'll prioritize a re-run of your mission at no extra cost."}
+            ? `Your creative was uploaded, but the analysis never returned a result. ${MISSION_FAILURE_REMEDY}`
+            : `Our analysis ran into an error processing this creative. ${MISSION_FAILURE_REMEDY}`}
         </p>
         <div className="mt-2 flex flex-col sm:flex-row items-center gap-3">
           <Link

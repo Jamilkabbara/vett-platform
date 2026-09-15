@@ -1,7 +1,7 @@
 # Refund Policy
 
-**Last Updated:** June 12, 2026  
-**Effective Date:** June 12, 2026
+**Last Updated:** September 15, 2026  
+**Effective Date:** September 15, 2026
 
 This Refund Policy explains how payments and remedies work for VETT (vettit.ai). Please read it carefully before purchasing. By placing an order, you agree to these terms.
 
@@ -11,7 +11,7 @@ This Refund Policy explains how payments and remedies work for VETT (vettit.ai).
 
 VETT operates on a **pay-per-mission** model. When you submit a mission, VETT immediately begins AI processing, generating respondents, running your survey, and producing analysis. Because this work and its associated compute cost are incurred as soon as a mission starts, **all sales are final and we do not issue cash refunds.**
 
-Instead of refunds, VETT stands behind its service with a **re-run remedy** (Section 2). If something goes wrong on our side, we fix it by re-running your mission or issuing a re-run credit, not by returning money.
+Instead of refunds, VETT stands behind its service with a **re-run remedy** (Section 2). If something goes wrong on our side, we fix it by re-running your mission, not by returning money.
 
 The only exceptions are the limited situations in Section 3, which we honor because payment-network rules and applicable law require it.
 
@@ -19,15 +19,19 @@ The only exceptions are the limited situations in Section 3, which we honor beca
 
 ## 2. Our Remedy: Re-Runs, Not Refunds
 
-If a mission fails to deliver because of a problem on VETT's side, we will make it right by re-running the mission or issuing a credit for an equivalent mission at no additional charge. This applies to:
+If a mission fails to deliver because of a problem on VETT's side, we will make it right by re-running the mission at no additional charge. This applies to:
 
 - **Technical failure**, a mission that fails to complete due to a VETT system error.
 - **Non-delivery**, results that are never produced because of a platform fault.
 - **Corrupted output**, result or export files that are unreadable due to a platform issue.
 
-To request a re-run, email **support@vettit.ai** with your account email and Mission ID (found in your dashboard). We aim to respond within **2 business days**. Re-run credits are valid for **12 months** from issuance, are non-transferable, and carry no cash value.
+**If a mission fails to complete**, VETT has been alerted automatically and will re-run this mission at no extra cost. You do not need to do anything. If you have not heard from us within two business days, reply to our email or write to **support@vettit.ai** with your Mission ID.
 
-A mission that **completes and delivers results is considered delivered**, even if the number of qualified respondents is lower than requested (a "partial" delivery). Partial deliveries are not eligible for a cash refund; where a partial delivery results from a VETT-side fault, the remedy is a re-run or credit at our discretion.
+**If your results or export files are unreadable**, we are not alerted automatically. Write to **support@vettit.ai** with your Mission ID and we will re-run the mission or regenerate the files. We aim to respond within **two business days**.
+
+VETT does not issue credits in place of a re-run.
+
+A mission that **completes and delivers results is considered delivered**, even if the number of qualified respondents is lower than requested (a "partial" delivery). Partial deliveries are not eligible for a cash refund; where a partial delivery results from a VETT-side fault, the remedy is a re-run at our discretion.
 
 ---
 
@@ -52,15 +56,14 @@ To be explicit, the following are **not** eligible for a cash refund (the Sectio
 - A mission that ran and delivered results, including where you are dissatisfied with the insights. Synthetic respondent data is **directional, not predictive**, and is described as such throughout the product.
 - Partial deliveries (fewer qualified respondents than requested).
 - Changing your mind after a mission has started or completed.
-- User error, incorrect screener parameters, wrong creative uploaded, or a mission submitted by mistake. Contact **support@vettit.ai**; we may offer a re-run credit as a courtesy, at our discretion.
+- User error, incorrect screener parameters, wrong creative uploaded, or a mission submitted by mistake. Contact **support@vettit.ai**; we may offer a re-run as a courtesy, at our discretion.
 - Missions removed or accounts suspended for violating our Terms of Service.
 
 ---
 
-## 5. Promotional Pricing and Credits
+## 5. Promotional Pricing
 
 - **Promotional codes** reduce the amount charged; only the amount actually charged is ever subject to the limited exceptions in Section 3.
-- **Re-run credits** issued under Section 2 are non-transferable, have no cash value, and expire **12 months** after issuance.
 
 ---
 
@@ -76,7 +79,7 @@ If you believe a charge was duplicated or unauthorized, please contact **support
 
 ## 7. Service Discontinuation
 
-If VETT permanently discontinues a mission type for which you hold an **unused, prepaid credit**, we will honor that credit toward another mission type of equal value or, where no equivalent exists, reverse the original charge for the unused credit.
+If VETT permanently discontinues a mission type after you have paid for a mission of that type that has not yet run, we will reverse the charge for that mission.
 
 ---
 
@@ -100,4 +103,4 @@ This policy does not override mandatory consumer-protection rights you may have 
 
 ---
 
-*We stand behind our work. If a mission fails on our side, tell us and we'll re-run it, that's our commitment to you.*
+*We stand behind our work. If a mission fails on our side, we re-run it at no extra cost. That is our commitment to you.*
