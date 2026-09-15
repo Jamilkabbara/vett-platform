@@ -3,6 +3,7 @@ import { FileText, Download, DollarSign, Target, TrendingUp, Presentation } from
 import { api } from '../../lib/apiClient';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import toast from 'react-hot-toast';
+import { toInvoiceMission, type ApiInvoice } from '../../lib/invoiceDocument.mjs';
 
 // Pass 29 A2 — perf-LCP-001 follow-up. jspdf + jspdf-autotable were
 // pulled into the ProfilePage chunk via a static import on
@@ -11,22 +12,8 @@ import toast from 'react-hot-toast';
 // clicks "Download invoice". Same treatment for generateInvoicePpt
 // which transitively pulls in pptxgenjs.
 
-interface Invoice {
-  invoiceId: string;
-  missionId: string;
-  missionStatement: string;
-  amount: number;
-  date: string;
-  status: string;
-  respondentCount: number;
-  // Optional cost breakdown (returned by newer backend versions)
-  base_cost_usd?: number;
-  targeting_surcharge_usd?: number;
-  extra_questions_cost_usd?: number;
-  discount_usd?: number;
-  promo_code?: string | null;
-  goal_type?: string;
-}
+// The shape GET /api/profile/invoices sends; see src/lib/invoiceDocument.mjs.
+type Invoice = ApiInvoice;
 
 export const BillingInvoicesTab = () => {
   const [invoices, setInvoices]         = useState<Invoice[]>([]);
@@ -57,35 +44,12 @@ export const BillingInvoicesTab = () => {
       // ProfilePage chunk. ~250 kB doesn't ship until the user clicks.
       const { generateInvoicePdf } = await import('../../lib/generateInvoicePdf');
 
-      // Build the InvoiceMission shape from what's available.
-      // base_cost_usd falls back to total amount when the backend doesn't
-      // return a breakdown (older missions), which keeps the line-item correct.
-      const total = inv.amount || 0;
-      const baseCost = inv.base_cost_usd ?? total;
-      const targetingSurcharge = inv.targeting_surcharge_usd ?? 0;
-      const extraQuestions = inv.extra_questions_cost_usd ?? 0;
-      const discount = inv.discount_usd ?? 0;
-
-      generateInvoicePdf(
-        {
-          id: inv.missionId,
-          title: inv.missionStatement || 'Market Research Mission',
-          total_price_usd: total,
-          base_cost_usd: baseCost,
-          targeting_surcharge_usd: targetingSurcharge,
-          extra_questions_cost_usd: extraQuestions,
-          discount_usd: discount,
-          promo_code: inv.promo_code ?? null,
-          respondent_count: inv.respondentCount || 0,
-          paid_at: inv.date,
-          goal_type: inv.goal_type || 'research',
-        },
-        {
-          displayName: profile?.displayName || '',
-          email: profile?.email || '',
-          companyName: profile?.companyName ?? null,
-        },
-      );
+      const doc = toInvoiceMission(inv);
+      generateInvoicePdf(doc, {
+        displayName: profile?.displayName || '',
+        email: profile?.email || '',
+        companyName: profile?.companyName ?? null,
+      });
     } catch (err) {
       console.error('[invoice-pdf]', err);
       toast.error('Could not generate PDF - please try again');
@@ -102,28 +66,11 @@ export const BillingInvoicesTab = () => {
       // ProfilePage chunk. Only ships when the user clicks "PPT".
       const { generateInvoicePpt } = await import('../../lib/generateInvoicePpt');
 
-      const total    = inv.amount || 0;
-      const baseCost = inv.base_cost_usd ?? total;
-      await generateInvoicePpt(
-        {
-          id:                      inv.missionId,
-          title:                   inv.missionStatement || 'Market Research Mission',
-          total_price_usd:         total,
-          base_cost_usd:           baseCost,
-          targeting_surcharge_usd: inv.targeting_surcharge_usd ?? 0,
-          extra_questions_cost_usd: inv.extra_questions_cost_usd ?? 0,
-          discount_usd:            inv.discount_usd ?? 0,
-          promo_code:              inv.promo_code ?? null,
-          respondent_count:        inv.respondentCount || 0,
-          paid_at:                 inv.date,
-          goal_type:               inv.goal_type || 'research',
-        },
-        {
-          displayName: profile?.displayName || '',
-          email:       profile?.email || '',
-          companyName: profile?.companyName ?? null,
-        },
-      );
+      await generateInvoicePpt(toInvoiceMission(inv), {
+        displayName: profile?.displayName || '',
+        email:       profile?.email || '',
+        companyName: profile?.companyName ?? null,
+      });
     } catch (err) {
       console.error('[invoice-ppt]', err);
       toast.error('Could not generate PPT - please try again');
@@ -132,7 +79,7 @@ export const BillingInvoicesTab = () => {
     }
   };
 
-  const totalSpent   = invoices.reduce((s, i) => s + (i.amount || 0), 0);
+  const totalSpent   = invoices.reduce((s, i) => s + (i.total ?? i.amount ?? 0), 0);
   const missionCount = invoices.length;
   const avgOrder     = missionCount > 0 ? totalSpent / missionCount : 0;
 
@@ -198,7 +145,7 @@ export const BillingInvoicesTab = () => {
                       <p className="text-xs text-gray-500 mt-1 truncate max-w-[200px]">{inv.missionStatement || 'Research mission'}</p>
                     </td>
                     <td className="px-6 py-5 text-right text-base font-bold text-white whitespace-nowrap">
-                      ${(inv.amount || 0).toFixed(2)}
+                      ${(inv.total ?? inv.amount ?? 0).toFixed(2)}
                     </td>
                     <td className="px-6 py-5 text-center">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-500/10 text-green-400 border border-green-500/20">
@@ -247,7 +194,7 @@ export const BillingInvoicesTab = () => {
                 <div className="flex items-center justify-between pt-4 border-t border-gray-800">
                   <div>
                     <p className="text-xs text-gray-500">{new Date(inv.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                    <p className="text-xl font-black text-white mt-1">${(inv.amount || 0).toFixed(2)}</p>
+                    <p className="text-xl font-black text-white mt-1">${(inv.total ?? inv.amount ?? 0).toFixed(2)}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button

@@ -13,6 +13,8 @@ export interface InvoiceMission {
   respondent_count: number;
   paid_at: string;
   goal_type: string;
+  /** The payment line at the foot, from paymentNote() in invoiceDocument.mjs. */
+  payment_note?: string;
 }
 
 export interface InvoiceProfile {
@@ -43,7 +45,9 @@ export function generateInvoicePdf(
   doc.setTextColor(11, 12, 21);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('\u26A1', margin + 10, 48);
+  // The mark used to be a lightning emoji, which Helvetica cannot draw: it
+  // printed as '&¡' on every invoice.
+  doc.text('V', margin + 20, 48, { align: 'center' });
 
   // VETT wordmark
   doc.setTextColor(229, 231, 235);
@@ -132,16 +136,16 @@ export function generateInvoicePdf(
   if ((mission.targeting_surcharge_usd || 0) > 0) {
     rows.push([
       'Advanced targeting surcharge',
-      '—',
-      '—',
+      '-',
+      '-',
       `$${mission.targeting_surcharge_usd.toFixed(2)}`,
     ]);
   }
   if ((mission.extra_questions_cost_usd || 0) > 0) {
     rows.push([
       'Additional questions',
-      '—',
-      '—',
+      '-',
+      '-',
       `$${mission.extra_questions_cost_usd.toFixed(2)}`,
     ]);
   }
@@ -166,7 +170,7 @@ export function generateInvoicePdf(
     alternateRowStyles: { fillColor: [249, 250, 251] },
     columnStyles: {
       0: { cellWidth: 'auto' },
-      1: { halign: 'center', cellWidth: 70 },
+      1: { halign: 'center', cellWidth: 88 },
       2: { halign: 'right', cellWidth: 80 },
       3: { halign: 'right', cellWidth: 80, fontStyle: 'bold' },
     },
@@ -230,11 +234,10 @@ export function generateInvoicePdf(
   doc.setFontSize(9);
   doc.setTextColor(107, 114, 128);
   doc.setFont('helvetica', 'normal');
-  if (cardLast4) {
-    doc.text(`Paid via Stripe · Card ending ${cardLast4}`, margin, footerY);
-  } else {
-    doc.text('Paid via Stripe', margin, footerY);
-  }
+  // Stripe is named only when Stripe took the payment. A promo-covered or
+  // VETT-provided mission used to name Stripe too.
+  const payNote = mission.payment_note || 'Payment method not recorded';
+  doc.text(cardLast4 ? `${payNote} · Card ending ${cardLast4}` : payNote, margin, footerY);
   doc.text(
     'hello@vettit.ai · Dubai, UAE',
     pageWidth - margin,
@@ -244,7 +247,7 @@ export function generateInvoicePdf(
 
   doc.setFontSize(8);
   doc.text(
-    'Thank you for using VETT — AI Consumer Research',
+    'Thank you for using VETT - AI Consumer Research',
     pageWidth / 2,
     footerY + 16,
     { align: 'center' },
