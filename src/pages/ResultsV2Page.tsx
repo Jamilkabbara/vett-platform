@@ -52,6 +52,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react';
 
 import { api, ApiError } from '../lib/apiClient';
+import { settleSegment } from '../lib/loadOutcome.mjs';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/Toast';
 import type {
@@ -336,6 +337,7 @@ function SegmentExplorer({
   const [seg, setSeg] = useState('all');
   const [active, setActive] = useState<CanonicalReport | null>(null);
   const [loading, setLoading] = useState(false);
+  const [segError, setSegError] = useState<string | null>(null);
 
   const shown = active || baseReport;
   const view = useMemo(() => buildCenterpiece(shown).view, [shown]);
@@ -344,19 +346,23 @@ function SegmentExplorer({
 
   const onChange = async (key: string) => {
     setSeg(key);
+    setSegError(null);
     if (key === 'all') {
       setActive(null);
       return;
     }
     setLoading(true);
-    try {
-      const res = await api.get(`/api/results/${missionId}/report?segment=${encodeURIComponent(key)}`);
-      setActive(res.report || null);
-    } catch {
-      setActive(null);
-    } finally {
-      setLoading(false);
-    }
+    // A failed segment read used to leave the segment selected while every
+    // figure below fell back to all respondents: numbers under the wrong
+    // label. settleSegment resets the selector to "all" and says so.
+    const out = await settleSegment<CanonicalReport>(
+      key,
+      api.get(`/api/results/${missionId}/report?segment=${encodeURIComponent(key)}`),
+    );
+    setSeg(out.seg);
+    setActive(out.active);
+    setSegError(out.error);
+    setLoading(false);
   };
 
   const baseN = baseReport.header.sample.n ?? 0;
@@ -407,6 +413,11 @@ function SegmentExplorer({
           )}
         </span>
       </div>
+      {segError && (
+        <p role="alert" className="mt-3 text-[12.5px] text-[#F2748C]">
+          {segError}
+        </p>
+      )}
       {lowN && (
         <p className="mt-3 text-[12.5px] text-[#F2B24A]">
           n = {n}. This slice is too small to report on. The figures are withheld rather than
