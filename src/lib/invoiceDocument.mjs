@@ -7,12 +7,37 @@
  * vettit-backend src/services/invoices/buildInvoice.js). This used to read flat
  * base_cost_usd / discount_usd / promo_code / goal_type fields the API never
  * sent, so every invoice showed base = total with nothing else.
+ *
+ * Refunds: `total` is what was charged, `refunded` what Stripe gave back and
+ * `net` what was kept. A refunded invoice must never read PAID: 21 of 22
+ * Stripe charges were refunded and every invoice said PAID.
  */
+
+const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+/** Charged, refunded and net, from an API invoice (older responses have no refund fields). */
+export function refundFigures(inv) {
+  const total = money(typeof inv.total === 'number' ? inv.total : inv.amount);
+  const refunded = Math.min(money(inv.refunded), total);
+  const net = money(typeof inv.net === 'number' ? inv.net : total - refunded);
+  const status = refunded === 0 ? 'paid' : net === 0 ? 'refunded' : 'partially_refunded';
+  return { total, refunded, net, status };
+}
+
+/** The badge on the invoice list, PDF and PPT. */
+export function statusLabel(status) {
+  if (status === 'refunded') return { text: 'Refunded', badge: 'REFUNDED', tone: 'refunded' };
+  if (status === 'partially_refunded') return { text: 'Partly refunded', badge: 'PART REFUNDED', tone: 'partial' };
+  return { text: 'Paid', badge: 'PAID', tone: 'paid' };
+}
 
 /** The payment line printed at the foot of the invoice. */
 export function paymentNote(inv) {
+  const { status } = refundFigures(inv);
   switch (inv.paidVia) {
-    case 'stripe': return 'Paid by card via Stripe';
+    case 'stripe': return status === 'refunded' ? 'Paid by card via Stripe, refunded in full'
+      : status === 'partially_refunded' ? 'Paid by card via Stripe, partly refunded'
+        : 'Paid by card via Stripe';
     case 'promo':  return inv.total === 0
       ? `Covered in full by promo code ${inv.promoCode}`
       : `Paid with promo code ${inv.promoCode}`;
@@ -23,7 +48,8 @@ export function paymentNote(inv) {
 
 export function toInvoiceMission(inv) {
   const lines = inv.lines || { base: inv.amount || 0, targetingSurcharge: 0, extraQuestionsCost: 0, discount: 0 };
-  const total = typeof inv.total === 'number' ? inv.total : (inv.amount || 0);
+  const { total, refunded, net, status } = refundFigures(inv);
+  const label = statusLabel(status);
   return {
     id:                       inv.missionId,
     title:                    inv.missionStatement || 'Market Research Mission',
@@ -37,5 +63,10 @@ export function toInvoiceMission(inv) {
     paid_at:                  inv.date,
     goal_type:                inv.goalType || '',
     payment_note:             paymentNote({ ...inv, total }),
+    refunded_usd:             refunded,
+    net_usd:                  net,
+    status,
+    badge:                    label.badge,
+    total_label:              refunded > 0 ? 'NET PAID' : 'TOTAL PAID',
   };
 }

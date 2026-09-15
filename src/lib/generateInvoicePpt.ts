@@ -25,6 +25,10 @@ export interface InvoiceMissionPpt {
   goal_type?: string;
   /** The payment line at the foot, from paymentNote() in invoiceDocument.mjs. */
   payment_note?: string;
+  refunded_usd?: number;
+  net_usd?: number;
+  badge?: 'PAID' | 'REFUNDED' | 'PART REFUNDED';
+  total_label?: 'TOTAL PAID' | 'NET PAID';
 }
 
 export interface InvoiceProfilePpt {
@@ -128,15 +132,18 @@ export async function generateInvoicePpt(
     });
   }
 
-  // PAID badge
+  // Status badge: a refunded charge reads REFUNDED, never PAID
+  const badge = mission.badge ?? 'PAID';
+  const badgeColor = badge === 'REFUNDED' ? 'D1D5DB' : badge === 'PART REFUNDED' ? 'FBBF24' : C.grn;
+  const badgeW = badge === 'PAID' ? 1.3 : badge === 'REFUNDED' ? 1.9 : 2.6;
   slide.addShape(pptx.ShapeType.roundRect, {
-    x: 11.55, y: 1.55, w: 1.3, h: 0.48,
-    fill: { color: C.grn },
-    line: { color: C.grn, width: 0 },
+    x: 12.85 - badgeW, y: 1.55, w: badgeW, h: 0.48,
+    fill: { color: badgeColor },
+    line: { color: badgeColor, width: 0 },
     rectRadius: 0.06,
   });
-  slide.addText('PAID', {
-    x: 11.55, y: 1.55, w: 1.3, h: 0.48,
+  slide.addText(badge, {
+    x: 12.85 - badgeW, y: 1.55, w: badgeW, h: 0.48,
     fontSize: 16, bold: true, color: C.bg,
     align: 'center', valign: 'middle',
   });
@@ -224,17 +231,27 @@ export async function generateInvoicePpt(
     summaryY += 0.35;
   }
 
-  // Total bar (lime border, dark fill)
+  const refunded = mission.refunded_usd ?? 0;
+  if (refunded > 0) {
+    slide.addText('Total charged', { x: 8.5, y: summaryY, w: 2.5, h: 0.3, fontSize: 11, color: C.t2 });
+    slide.addText(`$${mission.total_price_usd.toFixed(2)}`, { x: 11.5, y: summaryY, w: 1.3, h: 0.3, fontSize: 11, color: C.t1, align: 'right' });
+    summaryY += 0.35;
+    slide.addText('Refunded', { x: 8.5, y: summaryY, w: 2.5, h: 0.3, fontSize: 11, color: C.t2 });
+    slide.addText(`-$${refunded.toFixed(2)}`, { x: 11.5, y: summaryY, w: 1.3, h: 0.3, fontSize: 11, color: 'F87171', align: 'right' });
+    summaryY += 0.35;
+  }
+
+  // Total bar (lime border, dark fill): the net after refunds when there were any
   slide.addShape(pptx.ShapeType.rect, {
     x: 8.5, y: summaryY + 0.1, w: 4.3, h: 0.65,
     fill: { color: C.bg },
     line: { color: C.lime, width: 1 },
   });
-  slide.addText('TOTAL PAID', {
+  slide.addText(mission.total_label ?? 'TOTAL PAID', {
     x: 8.7, y: summaryY + 0.1, w: 1.5, h: 0.65,
     fontSize: 10, bold: true, color: C.t2, valign: 'middle',
   });
-  slide.addText(`$${mission.total_price_usd.toFixed(2)}`, {
+  slide.addText(`$${(mission.net_usd ?? mission.total_price_usd).toFixed(2)}`, {
     x: 10.3, y: summaryY + 0.1, w: 2.4, h: 0.65,
     fontSize: 24, bold: true, color: C.lime, fontFace: 'Arial',
     align: 'right', valign: 'middle',

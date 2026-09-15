@@ -15,6 +15,11 @@ export interface InvoiceMission {
   goal_type: string;
   /** The payment line at the foot, from paymentNote() in invoiceDocument.mjs. */
   payment_note?: string;
+  /** From toInvoiceMission: refunded amount, what was kept, and the badge. */
+  refunded_usd?: number;
+  net_usd?: number;
+  badge?: 'PAID' | 'REFUNDED' | 'PART REFUNDED';
+  total_label?: 'TOTAL PAID' | 'NET PAID';
 }
 
 export interface InvoiceProfile {
@@ -112,14 +117,19 @@ export function generateInvoicePdf(
   }
   doc.text(profile.email, margin, y);
 
-  // PAID badge (right side, aligned with billed-to)
+  // Status badge (right side, aligned with billed-to). A refunded charge
+  // reads REFUNDED, never PAID.
+  const badge = mission.badge ?? 'PAID';
   const badgeY = 116;
-  doc.setFillColor(74, 222, 128);
-  doc.roundedRect(pageWidth - margin - 80, badgeY, 80, 24, 4, 4, 'F');
-  doc.setTextColor(17, 24, 39);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('PAID', pageWidth - margin - 40, badgeY + 15, { align: 'center' });
+  const badgeW = Math.max(80, doc.getTextWidth(badge) + 28);
+  if (badge === 'REFUNDED') doc.setFillColor(209, 213, 219);
+  else if (badge === 'PART REFUNDED') doc.setFillColor(251, 191, 36);
+  else doc.setFillColor(74, 222, 128);
+  doc.roundedRect(pageWidth - margin - badgeW, badgeY, badgeW, 24, 4, 4, 'F');
+  doc.setTextColor(17, 24, 39);
+  doc.text(badge, pageWidth - margin - badgeW / 2, badgeY + 15, { align: 'center' });
 
   // ── Line items table ──────────────────────────────────────────────────
   const tableStartY = Math.max(y + 30, 220);
@@ -210,17 +220,31 @@ export function generateInvoicePdf(
     summaryY += 18;
   }
 
-  // Total bar
+  const refunded = mission.refunded_usd ?? 0;
+  if (refunded > 0) {
+    doc.setTextColor(107, 114, 128);
+    doc.text('Total charged', summaryX, summaryY);
+    doc.setTextColor(17, 24, 39);
+    doc.text(`$${mission.total_price_usd.toFixed(2)}`, summaryX + summaryWidth, summaryY, { align: 'right' });
+    summaryY += 18;
+    doc.setTextColor(107, 114, 128);
+    doc.text('Refunded', summaryX, summaryY);
+    doc.setTextColor(185, 28, 28);
+    doc.text(`-$${refunded.toFixed(2)}`, summaryX + summaryWidth, summaryY, { align: 'right' });
+    summaryY += 18;
+  }
+
+  // Total bar: the net after refunds when there were any
   doc.setFillColor(11, 12, 21);
   doc.rect(summaryX, summaryY + 4, summaryWidth, 36, 'F');
   doc.setFontSize(10);
   doc.setTextColor(156, 163, 175);
   doc.setFont('helvetica', 'bold');
-  doc.text('TOTAL PAID', summaryX + 14, summaryY + 26);
+  doc.text(mission.total_label ?? 'TOTAL PAID', summaryX + 14, summaryY + 26);
   doc.setFontSize(16);
   doc.setTextColor(190, 242, 100);
   doc.text(
-    `$${mission.total_price_usd.toFixed(2)}`,
+    `$${(mission.net_usd ?? mission.total_price_usd).toFixed(2)}`,
     summaryX + summaryWidth - 14,
     summaryY + 26,
     { align: 'right' },
