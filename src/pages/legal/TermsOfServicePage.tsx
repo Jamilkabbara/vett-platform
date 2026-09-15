@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { LegalPage } from '../../components/legal/LegalPage';
 import termsMarkdown from '../../content/legal/terms-of-service.md?raw';
 import { usePricingTiers, type PricingTiersData } from '../../hooks/usePricingTiers';
-import { CREATIVE_ATTENTION_TIERS } from '../../utils/pricingEngine';
+import { BRAND_LIFT_TIERS, CREATIVE_ATTENTION_TIERS, MAX_SELF_SERVE_RESPONDENTS } from '../../utils/pricingEngine';
+import { BRAND_LIFT_MAX_RESPONDENTS, BRAND_LIFT_MAX_USD, brandLiftChargeAt } from '../../utils/priceCopy';
 
 /**
  * /terms route.
@@ -52,10 +53,20 @@ const PRICING_TABLE_HEAD = [
  * legal terms quoted a $39 video that checkout billed $49 for, and quoted a
  * respondent bracket the product had stopped asking the customer for.
  *
- * The Brand Lift rows below are still hand-typed, because GET
- * /api/pricing/tiers projects only the default ladder. Check them against
- * BRAND_LIFT_TIERS in the backend engine before editing anything here.
+ * The Brand Lift rows are PROJECTED from BRAND_LIFT_TIERS too. They used to
+ * be hand-typed and listed only Tracker ($300) and Wave ($600): the $150 entry
+ * tier was missing, and the section said Brand Lift was not sold above 1,250
+ * respondents while every other public page advertised 2,000 for $1,500.
+ * Checkout is the arbiter: MAX_SELF_SERVE_RESPONDENTS applies to Brand Lift,
+ * so a tier anchored above it is listed as a custom quote, and the self-serve
+ * top is stated at the price checkout charges for it.
  */
+const BRAND_LIFT_ROWS = [
+  ...BRAND_LIFT_TIERS.map((t) => (t.anchorCount > MAX_SELF_SERVE_RESPONDENTS
+    ? `- ${t.name}, ${t.anchorCount.toLocaleString('en-US')}+ respondents: custom quote (managed engagement)`
+    : `- ${t.name}, ${t.anchorCount.toLocaleString('en-US')} respondents: $${brandLiftChargeAt(t.anchorCount).toLocaleString('en-US')}`)),
+  `- Self-serve Brand Lift studies run up to ${BRAND_LIFT_MAX_RESPONDENTS.toLocaleString('en-US')} respondents ($${BRAND_LIFT_MAX_USD.toLocaleString('en-US')} at ${BRAND_LIFT_MAX_RESPONDENTS.toLocaleString('en-US')}); larger studies are a managed engagement, quoted on request`,
+];
 const PRICING_TABLE_TAIL = [
   '',
   '- Beyond 1,250 respondents: not sold self-serve; contact us for a custom quote',
@@ -64,9 +75,7 @@ const PRICING_TABLE_TAIL = [
   '100 respondents, the point at which the exposed and control cells can carry a',
   'comparison:',
   '',
-  '- Tracker, 200 respondents: $300',
-  '- Wave, 500 respondents: $600',
-  '- Beyond 1,250 respondents: not sold self-serve; contact us for a custom quote',
+  ...BRAND_LIFT_ROWS,
   '',
   '**Creative Attention Analysis missions** are charged a flat price per',
   'creative, by media type. One creative per mission; respondent count is not',

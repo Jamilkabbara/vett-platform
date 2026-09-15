@@ -27,6 +27,8 @@ import {
   MAX_SELF_SERVE_RESPONDENTS,
   BRAND_LIFT_MIN_RESPONDENTS,
   CA_MIN_RESPONDENTS,
+  respondentLadderBase,
+  roundChargeToWholeDollar,
 } from './pricingEngine';
 
 const usd = (n: number) => `$${n.toLocaleString('en-US')}`;
@@ -64,10 +66,31 @@ export const SELF_SERVE_RATE_RANGE =
 
 /** Brand Lift bounds. */
 const blLow = BRAND_LIFT_TIERS[0];
-const blHigh = BRAND_LIFT_TIERS[BRAND_LIFT_TIERS.length - 1];
 export const BRAND_LIFT_MIN_USD = blLow.packagePrice;
-export const BRAND_LIFT_MAX_USD = blHigh.packagePrice;
-export const BRAND_LIFT_MAX_RESPONDENTS = blHigh.anchorCount;
+
+/**
+ * What a customer can actually charge for a Brand Lift study at a count, the
+ * way checkout computes it: ladder base, then whole-dollar rounding.
+ */
+export function brandLiftChargeAt(count: number): number {
+  const tier = BRAND_LIFT_TIERS.find((t) => count <= t.maxCount) ?? BRAND_LIFT_TIERS[BRAND_LIFT_TIERS.length - 1];
+  return roundChargeToWholeDollar(respondentLadderBase(BRAND_LIFT_TIERS, tier, count, tier.ratePerResp));
+}
+
+/**
+ * The top of the Brand Lift range is the self-serve cap, not the last tier's
+ * anchor. The ladder's Enterprise tier is anchored at 2,000 respondents for
+ * $1,500, but checkout refuses every study above MAX_SELF_SERVE_RESPONDENTS
+ * (1,250), for every research type, as a managed engagement. Checked against
+ * POST /api/pricing/quote on 2026-09-15: brand_lift n=1,250 quotes $938,
+ * n=1,251 and n=2,000 return "contact sales". Publishing $1,500 advertised a
+ * price no customer could pay.
+ */
+export const BRAND_LIFT_MAX_RESPONDENTS = Math.min(
+  BRAND_LIFT_TIERS[BRAND_LIFT_TIERS.length - 1].anchorCount,
+  MAX_SELF_SERVE_RESPONDENTS,
+);
+export const BRAND_LIFT_MAX_USD = brandLiftChargeAt(BRAND_LIFT_MAX_RESPONDENTS);
 export const BRAND_LIFT_RANGE = `${usd(BRAND_LIFT_MIN_USD)} to ${usd(BRAND_LIFT_MAX_USD)}`;
 
 /** Creative Attention is per creative, not per respondent. */
