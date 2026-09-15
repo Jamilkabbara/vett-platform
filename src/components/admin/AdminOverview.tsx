@@ -499,7 +499,7 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
           {/* Total Revenue */}
           <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-4">
             <div className="flex items-start justify-between gap-2 mb-3">
-              <span className="text-t3 text-[11px] font-bold uppercase tracking-wider">Total Revenue</span>
+              <span className="text-t3 text-[11px] font-bold uppercase tracking-wider">Net Revenue</span>
               <DollarSign className="w-3.5 h-3.5 text-t4 shrink-0" />
             </div>
             <div className="font-display font-black text-lime text-[clamp(22px,3.5vw,30px)] leading-none tracking-display-l mb-2">
@@ -523,7 +523,7 @@ export function AdminOverview({ apiFetch }: AdminOverviewProps) {
           {/* Avg Mission Value */}
           <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-4">
             <div className="flex items-start justify-between gap-2 mb-3">
-              <span className="text-t3 text-[11px] font-bold uppercase tracking-wider">Avg Mission Value</span>
+              <span className="text-t3 text-[11px] font-bold uppercase tracking-wider">Avg Per Charge</span>
               <BarChart2 className="w-3.5 h-3.5 text-t4 shrink-0" />
             </div>
             <div className="font-display font-black text-lime text-[clamp(22px,3.5vw,30px)] leading-none tracking-display-l mb-2">

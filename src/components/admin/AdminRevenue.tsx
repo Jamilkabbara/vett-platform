@@ -304,7 +304,7 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
       {/* KPI Tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiTile
-          label="Revenue"
+          label="Net Revenue"
           value={data.revenue?.value ?? 0}
           delta_pct={data.revenue?.delta_pct ?? 0}
           prefix="$"
@@ -318,7 +318,7 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
           icon={<TrendingUp className="w-4 h-4" />}
         />
         <KpiTile
-          label="Avg Order"
+          label="Avg Per Charge"
           value={data.avg_order?.value ?? 0}
           delta_pct={data.avg_order?.delta_pct ?? 0}
           prefix="$"

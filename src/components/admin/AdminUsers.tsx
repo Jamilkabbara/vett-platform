@@ -41,6 +41,8 @@ interface UserMission {
   goal_type: string;
   brief: string;
   total_price_usd: number;
+  /** Money kept from the mission: the Stripe charge net of refunds. */
+  net_revenue_usd?: number;
   created_at: string;
 }
 
@@ -290,7 +292,7 @@ const UserDetailDrawer = ({ userId, apiFetch, onClose }: UserDetailDrawerProps) 
                     { label: 'LTV', value: fmtCurrency(detail.totals.ltv_usd) },
                     { label: 'Missions', value: detail.totals.mission_count },
                     { label: 'Paid', value: detail.totals.paid_count },
-                    { label: 'Avg Order', value: fmtCurrency(detail.totals.avg_order) },
+                    { label: 'Avg Per Charge', value: fmtCurrency(detail.totals.avg_order) },
                   ].map(({ label, value }) => (
                     <div
                       key={label}
@@ -336,7 +338,7 @@ const UserDetailDrawer = ({ userId, apiFetch, onClose }: UserDetailDrawerProps) 
                             </span>
                           </div>
                           <span className="text-primary font-black text-sm flex-shrink-0">
-                            ${m.total_price_usd}
+                            ${(m.net_revenue_usd ?? 0).toFixed(2)}
                           </span>
                         </div>
                         <p className="text-gray-300 text-sm leading-relaxed line-clamp-2">
