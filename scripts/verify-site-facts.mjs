@@ -102,6 +102,10 @@ const BANNED = [
   ['re-run credit', 'VETT cannot issue credits; the remedy is a re-run'],
   ['credit for an equivalent mission', 'VETT cannot issue credits; the remedy is a re-run'],
   ["Contact support and we'll prioritize a re-run", 'a failure alerts VETT automatically; use MISSION_FAILURE_REMEDY'],
+  // Creative Attention timing, measured 2026-09-15: about a minute per image,
+  // six to seven minutes for a 30-second video, capped at 30 frames.
+  ['30 seconds for an image', 'an image takes about a minute'],
+  ['longer videos take proportionally', 'video analysis stops at 30 frames'],
   ['usually 5-15 minutes', 'measured: median 2.1 min, mean 8.5 min across 40 missions; the range was never measured'],
 ];
 // Historical records that quote the site as it was. Rewriting them would
