@@ -12,6 +12,8 @@ interface AdminMission {
   goal_type: string;
   brief: string;
   total_price_usd: number;
+  /** Money kept from the mission: the Stripe charge net of refunds. */
+  net_revenue_usd?: number;
   ai_cost_usd: number;
   margin_usd: number;
   respondent_count: number;
@@ -367,7 +369,7 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
         <table className="w-full text-[12px]">
           <thead className="bg-gray-900/60">
             <tr className="text-gray-500 font-bold uppercase tracking-wider">
-              {['Brief', 'User', 'Status', 'Resp.', 'Revenue', 'AI Cost', 'Margin', 'Created', 'Actions'].map(h => (
+              {['Brief', 'User', 'Status', 'Resp.', 'Net Revenue', 'AI Cost', 'Margin', 'Created', 'Actions'].map(h => (
                 <th key={h} className="text-left px-4 py-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -391,7 +393,7 @@ export const AdminMissions = ({ apiFetch }: { apiFetch: (path: string, opts?: Re
                   <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{userName}</td>
                   <td className="px-4 py-3">{statusBadge(m.status)}</td>
                   <td className="px-4 py-3 text-gray-400">{m.respondent_count}</td>
-                  <td className="px-4 py-3 text-white font-semibold">${(m.total_price_usd || 0).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-white font-semibold">${(m.net_revenue_usd ?? 0).toFixed(2)}</td>
                   <td className="px-4 py-3 text-gray-400">${(m.ai_cost_usd || 0).toFixed(2)}</td>
                   <td className={`px-4 py-3 font-semibold ${(m.margin_usd || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     ${(m.margin_usd || 0).toFixed(2)}

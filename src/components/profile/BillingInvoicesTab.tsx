@@ -3,7 +3,7 @@ import { FileText, Download, DollarSign, Target, TrendingUp, Presentation } from
 import { api } from '../../lib/apiClient';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import toast from 'react-hot-toast';
-import { toInvoiceMission, type ApiInvoice } from '../../lib/invoiceDocument.mjs';
+import { toInvoiceMission, refundFigures, statusLabel, type ApiInvoice } from '../../lib/invoiceDocument.mjs';
 import { settleInvoices } from '../../lib/loadOutcome.mjs';
 
 // Pass 29 A2 — perf-LCP-001 follow-up. jspdf + jspdf-autotable were
@@ -15,6 +15,33 @@ import { settleInvoices } from '../../lib/loadOutcome.mjs';
 
 // The shape GET /api/profile/invoices sends; see src/lib/invoiceDocument.mjs.
 type Invoice = ApiInvoice;
+
+// A refunded charge reads Refunded, never Paid.
+const PILL_CLASS = {
+  paid:     'bg-green-500/10 text-green-400 border-green-500/20',
+  partial:  'bg-amber-500/10 text-amber-300 border-amber-500/20',
+  refunded: 'bg-gray-500/10 text-gray-300 border-gray-500/30',
+} as const;
+
+const StatusPill = ({ inv, className = '' }: { inv: Invoice; className?: string }) => {
+  const label = statusLabel(refundFigures(inv).status);
+  return (
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${PILL_CLASS[label.tone]} ${className}`}>
+      {label.text}
+    </span>
+  );
+};
+
+/** Charged and refunded, shown under the net when anything was refunded. */
+const RefundCaption = ({ inv }: { inv: Invoice }) => {
+  const f = refundFigures(inv);
+  if (f.refunded === 0) return null;
+  return (
+    <p className="text-xs font-normal text-gray-500 mt-1 whitespace-nowrap">
+      Charged ${f.total.toFixed(2)}, refunded ${f.refunded.toFixed(2)}
+    </p>
+  );
+};
 
 export const BillingInvoicesTab = () => {
   const [invoices, setInvoices]         = useState<Invoice[]>([]);
@@ -81,7 +108,8 @@ export const BillingInvoicesTab = () => {
     }
   };
 
-  const totalSpent   = invoices.reduce((s, i) => s + (i.total ?? i.amount ?? 0), 0);
+  // Net of refunds: a refunded mission cost the customer nothing.
+  const totalSpent   = invoices.reduce((s, i) => s + refundFigures(i).net, 0);
   const missionCount = invoices.length;
   const avgOrder     = missionCount > 0 ? totalSpent / missionCount : 0;
 
@@ -163,12 +191,11 @@ export const BillingInvoicesTab = () => {
                       <p className="text-xs text-gray-500 mt-1 truncate max-w-[200px]">{inv.missionStatement || 'Research mission'}</p>
                     </td>
                     <td className="px-6 py-5 text-right text-base font-bold text-white whitespace-nowrap">
-                      ${(inv.total ?? inv.amount ?? 0).toFixed(2)}
+                      ${refundFigures(inv).net.toFixed(2)}
+                      <RefundCaption inv={inv} />
                     </td>
                     <td className="px-6 py-5 text-center">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-500/10 text-green-400 border border-green-500/20">
-                        Paid
-                      </span>
+                      <StatusPill inv={inv} />
                     </td>
                     <td className="py-5 text-right pr-2">
                       <button
@@ -205,14 +232,13 @@ export const BillingInvoicesTab = () => {
                     <p className="font-bold text-white">{inv.invoiceId}</p>
                     <p className="text-xs text-gray-500 mt-1 truncate">{inv.missionStatement || 'Research mission'}</p>
                   </div>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-500/10 text-green-400 border border-green-500/20 flex-shrink-0">
-                    Paid
-                  </span>
+                  <StatusPill inv={inv} className="flex-shrink-0" />
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-gray-800">
                   <div>
                     <p className="text-xs text-gray-500">{new Date(inv.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                    <p className="text-xl font-black text-white mt-1">${(inv.total ?? inv.amount ?? 0).toFixed(2)}</p>
+                    <p className="text-xl font-black text-white mt-1">${refundFigures(inv).net.toFixed(2)}</p>
+                    <RefundCaption inv={inv} />
                   </div>
                   <div className="flex items-center gap-2">
                     <button
