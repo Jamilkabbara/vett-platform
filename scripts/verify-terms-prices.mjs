@@ -10,21 +10,11 @@
  * because checkout refuses it.
  */
 import { readFileSync, existsSync } from 'node:fs';
+import { respondentLadder, MAX_SELF_SERVE_RESPONDENTS as CAP } from './lib/ladder.mjs';
 
-const ENGINE = readFileSync(new URL('../src/utils/pricingEngine.ts', import.meta.url), 'utf8');
-const body = ENGINE.split('export const BRAND_LIFT_TIERS = [')[1].split('] as const;')[0];
-const tiers = [...body.matchAll(/name:\s*'([^']+)',\s*anchorCount:\s*(\d+),\s*maxCount:\s*(Number\.POSITIVE_INFINITY|\d+),\s*ratePerResp:\s*([\d.]+),\s*packagePrice:\s*(\d+)/g)]
-  .map((m) => ({ name: m[1], anchor: Number(m[2]), max: m[3].startsWith('Number') ? Infinity : Number(m[3]), rate: Number(m[4]), price: Number(m[5]) }));
-const CAP = Number(/export const MAX_SELF_SERVE_RESPONDENTS = (\d+)/.exec(ENGINE)[1]);
-if (tiers.length < 3) throw new Error(`verify-terms-prices: parsed only ${tiers.length} Brand Lift tiers`);
-
-const floors = []; let running = 0;
-for (const t of tiers) { floors.push(running); if (Number.isFinite(t.max)) running = Math.max(running, t.max * t.rate); }
-const chargeAt = (n) => {
-  const i = tiers.findIndex((t) => n <= t.max);
-  const base = Math.round(Math.max(n * tiers[i].rate, floors[i]) * 100) / 100;
-  return base <= 0 ? 0 : Math.max(1, Math.round(base));
-};
+const brand = respondentLadder('BRAND_LIFT_TIERS');
+const tiers = brand.tiers;
+const chargeAt = brand.chargeAt;
 const fmt = (v) => v.toLocaleString('en-US');
 
 const file = new URL('../dist/terms/index.html', import.meta.url);
