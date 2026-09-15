@@ -80,7 +80,8 @@ Brand Lift (exposed + control split, minimum 100 respondents):
 - Pulse       100 personas     $150
 - Tracker     200 personas     $300
 - Wave        500 personas     $600
-- Enterprise 2000 personas   $1,500
+- Self-serve top: $938 at 1,250 personas
+- Managed     above 1,250 personas  custom quote (not sold self-serve)
 
 Brand Lift splits the sample across an exposed and a control cell, so the
 smallest study is 100 respondents ($150). At 100 the minimum detectable

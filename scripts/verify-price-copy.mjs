@@ -24,37 +24,29 @@
  * Mirrors the shape of scripts/verify-sw-passthrough.mjs.
  */
 import { readFileSync } from 'node:fs';
+import { respondentLadder, creativeAttentionPrices, MAX_SELF_SERVE_RESPONDENTS, BRAND_LIFT_MIN_RESPONDENTS } from './lib/ladder.mjs';
 
-const ENGINE = readFileSync(new URL('../src/utils/pricingEngine.ts', import.meta.url), 'utf8');
-
-/** Pull a ladder's packagePrice list straight out of the engine source. */
-function tiers(name) {
-  const block = ENGINE.split(`export const ${name} = [`)[1];
-  if (!block) throw new Error(`verify-price-copy: ${name} not found in pricingEngine.ts`);
-  const body = block.split('] as const;')[0];
-  const prices = [...body.matchAll(/packagePrice:\s*([\d.]+)/g)].map((m) => Number(m[1]));
-  const counts = [...body.matchAll(/anchorCount:\s*(?:CA_MIN_RESPONDENTS|([\d.]+))/g)]
-    .map((m) => (m[1] === undefined ? 10 : Number(m[1])));
-  if (!prices.length) throw new Error(`verify-price-copy: no packagePrice in ${name}`);
-  return { prices, counts };
-}
-
-const volume = tiers('VOLUME_TIERS');
-const brand  = tiers('BRAND_LIFT_TIERS');
-const ca     = tiers('CREATIVE_ATTENTION_TIERS');
+// Published prices are what checkout will actually charge. A tier anchored
+// above the self-serve cap is refused at checkout, so it is not a price: until
+// 2026-09-15 this check REQUIRED index.html and llms.txt to advertise Brand
+// Lift at 2,000 respondents for $1,500, a study POST /api/pricing/quote
+// refuses ('Studies above 1,250 respondents are run as a managed engagement').
+const volume = respondentLadder('VOLUME_TIERS');
+const brand  = respondentLadder('BRAND_LIFT_TIERS');
+const caPrices = creativeAttentionPrices();
 
 const n = (v) => v.toLocaleString('en-US');
 const expected = {
-  selfServeLow:   volume.prices[0],
-  selfServeHigh:  volume.prices[volume.prices.length - 1],
-  selfServeMinN:  volume.counts[0],
-  selfServeMaxN:  Number(/MAX_SELF_SERVE_RESPONDENTS = (\d+)/.exec(ENGINE)[1]),
-  brandLow:       brand.prices[0],
-  brandHigh:      brand.prices[brand.prices.length - 1],
-  brandMinN:      Number(/BRAND_LIFT_MIN_RESPONDENTS = (\d+)/.exec(ENGINE)[1]),
-  brandMaxN:      brand.counts[brand.counts.length - 1],
-  caLow:          Math.min(...ca.prices),
-  caHigh:         Math.max(...ca.prices),
+  selfServeLow:   volume.low,
+  selfServeHigh:  volume.high,
+  selfServeMinN:  volume.tiers[0].anchor,
+  selfServeMaxN:  volume.topN,
+  brandLow:       brand.low,
+  brandHigh:      brand.high,
+  brandMinN:      BRAND_LIFT_MIN_RESPONDENTS,
+  brandMaxN:      brand.topN,
+  caLow:          Math.min(...caPrices),
+  caHigh:         Math.max(...caPrices),
 };
 const publishedHigh = Math.max(expected.selfServeHigh, expected.brandHigh, expected.caHigh);
 const publishedLow  = Math.min(expected.selfServeLow,  expected.brandLow,  expected.caLow);
@@ -86,9 +78,19 @@ check('index.html', 'offer description, one-time payment', 'Paid once per missio
 
 // ── public/llms.txt ────────────────────────────────────────────────────────
 const llms = readFileSync(new URL('../public/llms.txt', import.meta.url), 'utf8');
-for (const price of volume.prices) check('public/llms.txt', `self-serve tier $${n(price)} missing`, `$${n(price)}`, llms);
-for (const price of brand.prices)  check('public/llms.txt', `Brand Lift tier $${n(price)} missing`, `$${n(price)}`, llms);
-for (const price of ca.prices)     check('public/llms.txt', `Creative Attention price $${price} missing`, `$${price}`, llms);
+for (const t of volume.sellable) check('public/llms.txt', `self-serve tier $${n(t.price)} missing`, `$${n(t.price)}`, llms);
+for (const t of brand.sellable)  check('public/llms.txt', `Brand Lift tier $${n(t.price)} missing`, `$${n(t.price)}`, llms);
+check('public/llms.txt', 'Brand Lift self-serve top', `$${n(brand.high)} at ${n(brand.topN)}`, llms);
+for (const price of caPrices)    check('public/llms.txt', `Creative Attention price $${price} missing`, `$${price}`, llms);
+
+// A price checkout refuses must not be published anywhere a crawler reads.
+for (const t of [...volume.unsellable, ...brand.unsellable]) {
+  for (const [file, text] of [['index.html', jsonLd], ['public/llms.txt', llms]]) {
+    if (text.includes(`$${n(t.price)}`)) {
+      failures.push(`${file}: publishes $${n(t.price)}, the price of ${t.name} (${n(t.anchor)} respondents), which checkout refuses above ${n(MAX_SELF_SERVE_RESPONDENTS)}`);
+    }
+  }
+}
 if (/Creative Attention \(per-respondent/.test(llms))
   failures.push('public/llms.txt: still describes Creative Attention as per-respondent; it is priced per creative');
 
