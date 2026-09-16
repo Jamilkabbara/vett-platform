@@ -47,9 +47,9 @@
 /* ---- live-panel "recording" dot --------------------------------------- */
 
 @keyframes lv2Pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(190, 242, 100, 0.45); }
-  70%  { box-shadow: 0 0 0 8px rgba(190, 242, 100, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(190, 242, 100, 0); }
+  0%   { box-shadow: 0 0 0 0 theme('colors.lp.lime / 45%'); }
+  70%  { box-shadow: 0 0 0 8px theme('colors.lp.lime / 0%'); }
+  100% { box-shadow: 0 0 0 0 theme('colors.lp.lime / 0%'); }
 }
 .lv2-livedot { animation: lv2Pulse 1.8s infinite; }
 
