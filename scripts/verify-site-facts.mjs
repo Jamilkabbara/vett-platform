@@ -107,7 +107,30 @@ const BANNED = [
   ['30 seconds for an image', 'an image takes about a minute'],
   ['longer videos take proportionally', 'video analysis stops at 30 frames'],
   ['usually 5-15 minutes', 'measured: median 2.1 min, mean 8.5 min across 40 missions; the range was never measured'],
+  // Landing redesign, 2026-09-16: claims the owner could not attribute or the
+  // product cannot support.
+  ['Used by people at', 'no company on the old logo wall was confirmed as a user'],
+  ['Saved us 4 weeks', 'unattributed testimonial'],
+  ['category-defining work', 'unattributed testimonial'],
+  ['Four thousand answers', 'self-serve missions stop at 1,250 respondents'],
+  ['modelled first', 'nothing in persona generation is region-first'],
+  ['built from real VETT studies', 'the landing demo states which figures are real and which are illustrative'],
 ];
+// Checked on the landing page only. The sign-in page says the same thing
+// about creating an account, which is a different claim.
+const LANDING_BANNED = [
+  [/no credit card/i, 'the landing page makes no payment promises'],
+];
+{
+  const files = ['src/pages/LandingV2Page.tsx', ...readdirSync(join(ROOT, 'src/components/landing-v2')).map((f) => `src/components/landing-v2/${f}`)];
+  for (const rel of files) {
+    const src = readFileSync(join(ROOT, rel), 'utf8');
+    for (const [re, why] of LANDING_BANNED) {
+      const m = re.exec(src);
+      if (m) fail(`${rel}:${src.slice(0, m.index).split('\n').length} contains "${m[0]}" - ${why}`);
+    }
+  }
+}
 // Historical records that quote the site as it was. Rewriting them would
 // falsify the record; they are not published.
 const EXEMPT = [/^src\/pages\/__perf__\//];

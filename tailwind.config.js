@@ -1,3 +1,5 @@
+import { lpTailwindTheme } from './src/styles/landingTokens.mjs';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
@@ -72,6 +74,8 @@ export default {
         'background-dark': '#0B0C15',
         'glass-border':  'rgba(255, 255, 255, 0.08)',
         'glass-bg':      'rgba(255, 255, 255, 0.03)',
+        // Landing page palette (src/styles/landingTokens.mjs). Landing only.
+        ...lpTailwindTheme.colors,
       },
 
       fontFamily: {
@@ -79,6 +83,7 @@ export default {
         display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         body:    ['Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         sans:    ['Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        ...lpTailwindTheme.fontFamily,
       },
 
       fontWeight: {
@@ -126,6 +131,7 @@ export default {
         'float':     '0 20px 60px rgba(0,0,0,.6)',
         // Purple CTA glow (for hero/chat sends).
         'purple-glow': '0 8px 24px rgba(109,40,217,.35)',
+        ...lpTailwindTheme.boxShadow,
       },
 
       minHeight: {
@@ -159,6 +165,7 @@ export default {
       backgroundImage: {
         // "VETT IT" gradient — exact prototype values.
         'gradient-vett': 'linear-gradient(135deg, #6d28d9, #4f46e5)',
+        ...lpTailwindTheme.backgroundImage,
       },
     },
   },
