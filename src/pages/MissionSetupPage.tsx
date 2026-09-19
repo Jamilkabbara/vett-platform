@@ -1152,8 +1152,9 @@ export const MissionSetupPage = () => {
         // charged, and the customer's brief and answers stay on the page.
         console.error('Survey generation failed:', aiErr);
         const message = SURVEY_FAILED_MESSAGE;
+        // Shown inline under the generate button (role="alert"), not as a
+        // toast: a toast covered the Try again button at phone width.
         setSurveyError(message);
-        toast.error(message, 10000);
         inflightRef.current = false;
         setIsSubmitting(false);
         return;
@@ -1762,14 +1763,17 @@ export const MissionSetupPage = () => {
                 goals keep the existing clarify reveal. */}
             {isBrandLift ? (
               user ? (
-                <BrandLiftSetupSection
-                  userId={user.id}
-                  state={brandLiftState}
-                  onChange={setBrandLiftState}
-                  onGenerate={handleGenerate}
-                  submitting={isSubmitting}
-                  briefValid={isValid}
-                />
+                <>
+                  <BrandLiftSetupSection
+                    userId={user.id}
+                    state={brandLiftState}
+                    onChange={setBrandLiftState}
+                    onGenerate={handleGenerate}
+                    submitting={isSubmitting}
+                    briefValid={isValid}
+                  />
+                  <SurveyErrorBanner message={surveyError} onRetry={handleGenerate} busy={isSubmitting} />
+                </>
               ) : (
                 <div className="mt-5">
                   <button
@@ -2006,15 +2010,7 @@ export const MissionSetupPage = () => {
                       />
                     ))}
                 </AnimatePresence>
-                {surveyError && (
-                  <div role="alert" className="mt-4 rounded-xl border border-red/40 bg-red/10 px-4 py-3 font-body text-[13.5px] text-t1">
-                    <p className="font-bold">We couldn&apos;t build your survey.</p>
-                    <p className="mt-1 text-t2">{surveyError}</p>
-                    <button type="button" onClick={handleGenerate} disabled={isSubmitting} className="mt-2.5 font-bold text-lime hover:underline disabled:opacity-60">
-                      Try again
-                    </button>
-                  </div>
-                )}
+                <SurveyErrorBanner message={surveyError} onRetry={handleGenerate} busy={isSubmitting} />
               </>
             )}
           </div>
@@ -2034,5 +2030,19 @@ export const MissionSetupPage = () => {
     </div>
   );
 };
+
+/** Survey generation failed: say so where the customer is looking, with a retry. */
+function SurveyErrorBanner({ message, onRetry, busy }: { message: string | null; onRetry: () => void; busy: boolean }) {
+  if (!message) return null;
+  return (
+    <div role="alert" className="mt-4 rounded-xl border border-red/40 bg-red/10 px-4 py-3 font-body text-[13.5px] text-t1">
+      <p className="font-bold">We couldn&apos;t build your survey.</p>
+      <p className="mt-1 text-t2">{message}</p>
+      <button type="button" onClick={onRetry} disabled={busy} className="mt-2.5 font-bold text-lime hover:underline disabled:opacity-60">
+        Try again
+      </button>
+    </div>
+  );
+}
 
 export default MissionSetupPage;
