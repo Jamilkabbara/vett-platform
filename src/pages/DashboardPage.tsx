@@ -267,6 +267,28 @@ function hydrateTargeting(raw: unknown): TargetingConfig {
   };
 }
 
+/**
+ * Save the targeting the dashboard seeded from the AI suggestion or the market
+ * preset, so the mission row says what the customer sees.
+ *
+ * These writes used to be fire-and-forget (prefixed with `void`). A Supabase
+ * query builder only sends its request when it is awaited or `.then()`ed, so
+ * `void` sent NOTHING: 74 of 100 missions never had targeting saved, and
+ * persona generation (before backend #182) ran them as "Global". Only drafts
+ * are written: a paid mission cannot be edited, and a pending one should not
+ * have its open checkout cancelled by a page load.
+ */
+function persistSeededTargeting(missionId: string, status: string | null | undefined, targeting: TargetingConfig): void {
+  if (status !== 'draft') return;
+  supabase
+    .from('missions')
+    .update({ targeting })
+    .eq('id', missionId)
+    .then(({ error }) => {
+      if (error) console.warn('[dashboard] seeded targeting not saved', error.message);
+    });
+}
+
 export const DashboardPage = () => {
   const { missionId } = useParams();
   const navigate = useNavigate();
@@ -428,11 +450,7 @@ export const DashboardPage = () => {
             if (aiConfig.geography.countries.length > 0) {
               initialTargeting = aiConfig;
               aiWasApplied = true;
-              // Fire-and-forget persistence — if it fails, the UI still works.
-              void supabase
-                .from('missions')
-                .update({ targeting: initialTargeting })
-                .eq('id', mission.id);
+              persistSeededTargeting(mission.id, mission.status, initialTargeting);
             }
           }
 
@@ -449,10 +467,7 @@ export const DashboardPage = () => {
                   countries: preset,
                 },
               };
-              void supabase
-                .from('missions')
-                .update({ targeting: initialTargeting })
-                .eq('id', mission.id);
+              persistSeededTargeting(mission.id, mission.status, initialTargeting);
             }
           }
         }
