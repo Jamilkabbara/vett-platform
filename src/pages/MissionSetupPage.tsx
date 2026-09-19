@@ -114,6 +114,10 @@ import {
 import { ChatWidget } from '../components/chat/ChatWidget';
 import { describeMissionWriteError, isColumnPrivilegeDenied } from '../lib/missionWriteError';
 
+/** Shown when survey generation fails. No mission has been created. */
+const SURVEY_FAILED_MESSAGE =
+  'The survey builder is not responding right now. Nothing has been saved or charged, and your brief is still here. Please try again in a few minutes.';
+
 /**
  * Mission Setup — Commit 4 of the redesign (Prompt 3).
  *
@@ -301,6 +305,10 @@ export const MissionSetupPage = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Set when survey generation fails. The mission is NOT created: there used
+  // to be a local template that pasted the brief into fixed questions and a
+  // mission was saved around it, labelled "AI refined".
+  const [surveyError, setSurveyError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   // Upload state — Phase 10.5. The chip swaps between three modes:
   //   - idle (no asset)        → 🖼 Add image / video
@@ -785,6 +793,7 @@ export const MissionSetupPage = () => {
 
   /** Step 2 CTA — kicks off generation + persistence + redirect. */
   const handleGenerate = async () => {
+    setSurveyError(null);
     if (!isValid || !user) {
       // Shouldn't reach here — Step 1 gates this — but belt + braces.
       setShowClarify(false);
@@ -1139,8 +1148,15 @@ export const MissionSetupPage = () => {
           },
         });
       } catch (aiErr) {
-        // generateSurvey swallows its own errors — catch here is defensive.
-        console.warn('AI generation failed — continuing with defaults:', aiErr);
+        // Generation failed. Stop here: no mission is created, nothing is
+        // charged, and the customer's brief and answers stay on the page.
+        console.error('Survey generation failed:', aiErr);
+        const message = SURVEY_FAILED_MESSAGE;
+        setSurveyError(message);
+        toast.error(message, 10000);
+        inflightRef.current = false;
+        setIsSubmitting(false);
+        return;
       }
 
       // 2) Build the insert payload using ONLY columns that exist on
@@ -1990,6 +2006,15 @@ export const MissionSetupPage = () => {
                       />
                     ))}
                 </AnimatePresence>
+                {surveyError && (
+                  <div role="alert" className="mt-4 rounded-xl border border-red/40 bg-red/10 px-4 py-3 font-body text-[13.5px] text-t1">
+                    <p className="font-bold">We couldn&apos;t build your survey.</p>
+                    <p className="mt-1 text-t2">{surveyError}</p>
+                    <button type="button" onClick={handleGenerate} disabled={isSubmitting} className="mt-2.5 font-bold text-lime hover:underline disabled:opacity-60">
+                      Try again
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
