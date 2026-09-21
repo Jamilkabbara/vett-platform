@@ -42,6 +42,30 @@ for (const rel of FILES) {
   });
 }
 
+// A class like `text-lp-chart-amber` when the token is `lp-amber` is not a
+// typo Tailwind reports: it emits nothing, the element silently falls back to
+// inherited colours, and the diff looks right. The "Illustrative" badge shipped
+// white for exactly this reason, and only a screenshot caught it. Every lp-*
+// class used on the landing page must name a token that exists.
+const { lpTailwindTheme } = await import('../src/styles/landingTokens.mjs');
+const known = new Set();
+for (const k of Object.keys(lpTailwindTheme.colors.lp || {})) known.add(`lp-${k}`);
+for (const group of ['backgroundImage', 'boxShadow', 'fontFamily']) {
+  for (const k of Object.keys(lpTailwindTheme[group] || {})) known.add(k);
+}
+for (const rel of FILES) {
+  const src = readFileSync(join(ROOT, rel), 'utf8');
+  const lines = stripComments(src).split('\n');
+  lines.forEach((line, i) => {
+    for (const m of line.matchAll(/\b(?:text|bg|border|border-[trblxy]|from|via|to|shadow|font|fill|stroke|ring|decoration|outline)-(lp-[a-z0-9-]+)/g)) {
+      const name = m[1].replace(/-$/, '');
+      if (!known.has(name)) {
+        failures.push(`${rel}:${i + 1} uses "${m[0]}" but no token named "${name}" exists - it will render as nothing`);
+      }
+    }
+  });
+}
+
 if (failures.length) {
   console.error('\nverify-landing-tokens FAILED\n');
   for (const f of failures) console.error('  - ' + f);
