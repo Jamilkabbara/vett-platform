@@ -100,7 +100,7 @@ jobs:
           echo "::error::     node scripts/write-version.js before vite build"
           exit 1
 
-  question-metadata-roundtrip:
+  tests:
     # PR C follow-up — the question-metadata strip has now regressed TWICE
     # (mapQuestion, then normaliseQuestions re-stripping what PR #65 fixed),
     # each time silently, because nothing executed the proof. The repo has no
@@ -125,7 +125,12 @@ jobs:
       # locked dependency tree — it transpiles with esbuild, which the repo
       # gets transitively via vite.
       - run: npm ci
-      - name: question metadata survives create -> load -> edit -> persist
+      # The job id above is the name that appears as the required check, so it
+      # says what it covers. It used to be "question-metadata-roundtrip", which
+      # named ONE of the checks `npm test` runs; there are 21, including the
+      # landing figures, the storage-URL ban and the quality notice. A check
+      # whose name hides what it protects is how an unwired check goes unnoticed.
+      - name: npm test (every site check)
         run: npm test
 
   require-screenshot-in-pr:
