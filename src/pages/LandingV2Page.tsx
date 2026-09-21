@@ -70,7 +70,10 @@ const HERO_PHRASES = [
 // 8.5 minutes, so it is labelled as a median for small studies, not an average.
 const SPEED_STATS = [
   { value: SELF_SERVE_MIN_USD, decimals: 0, prefix: '$', suffix: '', label: 'Starting price per mission. No subscription, no seats.' },
-  { value: 2.1, decimals: 1, prefix: '', suffix: 'min', label: 'Median time from launch to full results on studies of 5 to 25 respondents.' },
+  // Measured 2026-09-21 over the 30 completed studies of 5 to 25 respondents:
+  // median 2.38 minutes from start to delivery (fastest 0.9, slowest 70.2).
+  // The 2.1 that used to sit here matched nothing in the data.
+  { value: 2.4, decimals: 1, prefix: '', suffix: 'min', label: 'Median time from launch to full results on studies of 5 to 25 respondents.' },
   { value: COUNTRY_COVERAGE_FLOOR, decimals: 0, prefix: '', suffix: '+', label: 'Countries you can target.' },
 ];
 
