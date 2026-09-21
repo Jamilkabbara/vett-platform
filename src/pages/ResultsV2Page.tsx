@@ -50,6 +50,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { QualityNotice } from '../components/results-v2/QualityNotice';
 
 import { api, ApiError } from '../lib/apiClient';
 import { settleSegment } from '../lib/loadOutcome.mjs';
@@ -812,6 +813,10 @@ export function ResultsV2Page() {
           </div>
         </div>
       </header>
+
+      {/* A study produced before the 20 September fixes says so, above its own
+          figures rather than in a footnote. */}
+      {h.quality ? <QualityNotice quality={h.quality} /> : null}
 
       {/* ── shell: ONE centred width, main + sticky rail ── */}
       <div className="relative z-[1] mx-auto grid max-w-[1340px] items-start gap-[34px] px-7 pb-[90px] pt-[42px] max-[1080px]:grid-cols-1 max-[680px]:px-4 min-[1081px]:grid-cols-[minmax(0,1fr)_320px]">
