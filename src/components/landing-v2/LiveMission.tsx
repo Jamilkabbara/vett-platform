@@ -55,9 +55,11 @@ const SCENARIOS: Scenario[] = [
     question: 'What is the right price for our chilled meal kit in the UAE?',
     gauge: { value: 58, caption: 'demand' },
     rows: [
-      { k: 'Price sweet spot', v: '$8 to 9', lime: true },
+      // demo-figure: what a meal kit's buyers would pay, invented for the
+      // example. Not a VETT price; VETT's own prices come from landingPrices.ts.
+      { k: 'Price sweet spot', v: '$8 to 9', lime: true }, // demo-figure
       { k: 'Intent at price', v: '71%' },
-      { k: 'Drop-off above', v: '$11' },
+      { k: 'Drop-off above', v: '$11' }, // demo-figure
     ],
     source: { kind: 'illustrative' },
   },
@@ -395,7 +397,7 @@ function SourceLine({ source }: { source: Scenario['source'] }) {
   }
   return (
     <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
-      <span className="rounded-full px-2 py-[3px] font-semibold text-lp-chart-amber bg-lp-chart-amber/[0.13] border border-lp-chart-amber/[0.28]">
+      <span className="rounded-full px-2 py-[3px] font-semibold text-lp-amber bg-lp-amber/[0.13] border border-lp-amber/[0.28]">
         Illustrative
       </span>
       <span className="text-lp-body">Example figures, not a VETT study</span>

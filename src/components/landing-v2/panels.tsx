@@ -65,7 +65,7 @@ export function CreativeAttentionPanel() {
   return (
     <DemoCard label="Emotion response, meal kit ad (30s)" innerRef={ref}>
       <div className="mb-3.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
-        <span className="rounded-full px-2 py-[3px] font-semibold text-lp-chart-amber bg-lp-chart-amber/[0.13] border border-lp-chart-amber/[0.28]">
+        <span className="rounded-full px-2 py-[3px] font-semibold text-lp-amber bg-lp-amber/[0.13] border border-lp-amber/[0.28]">
           Illustrative
         </span>
         <span className="text-lp-body">Example output, not a VETT measurement</span>
