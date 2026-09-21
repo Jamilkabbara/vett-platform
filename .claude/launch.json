@@ -4,20 +4,65 @@
     {
       "name": "vett-platform (frontend)",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173
     },
     {
       "name": "vett-platform (main worktree :5174)",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "cd /Users/jamilkabbara/Documents/GitHub/vett-platform && npx vite --port 5174 --host 127.0.0.1"],
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/jamilkabbara/Documents/GitHub/vett-platform && npx vite --port 5174 --host 127.0.0.1"
+      ],
       "port": 5174
     },
     {
       "name": "vettit-backend (API)",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3001
+    },
+    {
+      "name": "gate-branch (:5177)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /private/tmp/claude-501/-Users-jamilkabbara-Documents-GitHub-vett-platform--claude-worktrees-objective-chatterjee/03c6ffe4-be07-4559-8c63-3d7986e855cd/scratchpad/fe-gate && npx vite --port 5177 --host 127.0.0.1"
+      ],
+      "port": 5177
+    },
+    {
+      "name": "hero-branch (:5178)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /private/tmp/claude-501/-Users-jamilkabbara-Documents-GitHub-vett-platform--claude-worktrees-objective-chatterjee/03c6ffe4-be07-4559-8c63-3d7986e855cd/scratchpad/fe-hero && npx vite --port 5178 --host 127.0.0.1"
+      ],
+      "port": 5178
+    },
+    {
+      "name": "resp-audit (:5179)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /private/tmp/claude-501/-Users-jamilkabbara-Documents-GitHub-vett-platform--claude-worktrees-objective-chatterjee/03c6ffe4-be07-4559-8c63-3d7986e855cd/scratchpad/fe-resp && npx vite --port 5179 --host 127.0.0.1"
+      ],
+      "port": 5179
+    },
+    {
+      "name": "navbar-branch (:5183)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /private/tmp/claude-501/-Users-jamilkabbara-Documents-GitHub-vett-platform--claude-worktrees-objective-chatterjee/03c6ffe4-be07-4559-8c63-3d7986e855cd/scratchpad/fe-navbar && npx vite --port 5183 --host 127.0.0.1"
+      ],
+      "port": 5183
     }
   ]
 }
