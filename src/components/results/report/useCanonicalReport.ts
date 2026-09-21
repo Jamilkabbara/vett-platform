@@ -35,6 +35,19 @@ export interface CanonicalReport {
     brief: string;
     methodology: string | null;
     methodology_label: string;
+    /**
+     * Present only on a study produced before the quality fixes of 20
+     * September. The server decides this per study from its own stored data
+     * (backend services/report/qualityNotice.js); the page never infers it
+     * from a date.
+     */
+    quality?: {
+      notice: string;
+      flags: string[];
+      reasons: string[];
+      flagged_at: string | null;
+      excluded_from_public: boolean;
+    } | null;
     sample: {
       n: number | null; qualified: number | null; delivered: number | null;
       posture: string; completed_at: string | null; mission_id: string;
