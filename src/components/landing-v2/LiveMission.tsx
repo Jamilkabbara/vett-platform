@@ -42,7 +42,7 @@ const SCENARIOS: Scenario[] = [
   {
     chip: 'Market entry',
     question: LANDING_STUDY.question,
-    gauge: { value: 78, caption: 'intent %' },
+    gauge: { value: 88, caption: 'intent %' },
     rows: LANDING_STUDY.stats.map((s) => ({ k: s.label, v: s.value, lime: s.emphasis })),
     source: {
       kind: 'study',
