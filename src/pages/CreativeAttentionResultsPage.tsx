@@ -107,6 +107,17 @@ function TrendIcon({ value }: { value: number }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+/**
+ * The object path inside a stored Supabase Storage URL, public or signed.
+ * Older creative_attention rows stored a permanent public URL; the bucket is
+ * private now, so the path is what matters and the URL is re-minted per viewer.
+ */
+function pathFromStorageUrl(url: string): string | null {
+  const m = url.match(/\/storage\/v1\/object\/(?:public|sign|authenticated)\/vett-creatives\/(.+?)(?:\?|$)/);
+  if (!m) return null;
+  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+}
+
 export function CreativeAttentionResultsPage() {
   const { missionId } = useParams<{ missionId: string }>();
   const [mission,    setMission]    = useState<Record<string, unknown> | null>(null);
@@ -351,19 +362,34 @@ export function CreativeAttentionResultsPage() {
 
   const title = (mission?.title as string) || 'Creative Analysis';
 
-  // Pass 23 Bug 23.60/23.75 stamped a public URL into missions.media_url at
-  // INSERT time, but rows created before that (and any row whose stamp failed)
-  // carry only brief_attachment.path. vett-creatives is a PUBLIC bucket, so the
-  // path re-resolves to a working URL with no signing round-trip, which is what
-  // lets the hotspot overlay render on older missions at all.
+  // The creative is signed, not public.
+  //
+  // vett-creatives used to be a public bucket, which bypasses row level
+  // security on read: any ad creative a customer uploaded was readable by
+  // anyone holding the link. The bucket is private now, so the URL is minted
+  // for this viewer and expires.
+  //
+  // Two shapes have to resolve, because both exist in the data: rows stamped
+  // with a permanent public URL in missions.media_url, and older rows that
+  // carry only brief_attachment.path. The path is taken from whichever is
+  // present and signed through the viewer's own session, so RLS decides what
+  // they may see rather than the URL being a password.
   const briefAttachment = mission?.brief_attachment as
     { mimeType?: string; path?: string } | undefined;
   const storedUrl = (mission?.media_url as string | undefined) || null;
-  const storagePath = briefAttachment?.path || null;
-  const creativeUrl = storedUrl
-    || (storagePath
-      ? supabase.storage.from('vett-creatives').getPublicUrl(storagePath).data.publicUrl || null
-      : null);
+  const storagePath = briefAttachment?.path
+    || (storedUrl ? pathFromStorageUrl(storedUrl) : null);
+  const [creativeUrl, setCreativeUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!storagePath) { setCreativeUrl(null); return () => { cancelled = true; }; }
+    void supabase.storage
+      .from('vett-creatives')
+      .createSignedUrl(storagePath, 3600)
+      .then(({ data }) => { if (!cancelled) setCreativeUrl(data?.signedUrl ?? null); });
+    return () => { cancelled = true; };
+  }, [storagePath]);
   const creativeMime = (briefAttachment?.mimeType || '').toLowerCase();
   const creativeIsVideo = creativeMime.startsWith('video/')
     || (mission?.media_type as string) === 'video';

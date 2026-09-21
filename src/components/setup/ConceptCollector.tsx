@@ -79,9 +79,10 @@ export function ConceptCollector({ userId, state, onChange }: Props) {
       setUploading(false);
       return;
     }
-    const { data: urlData } = supabase.storage.from('mission-assets').getPublicUrl(path);
+    // Signed, not public: possession of a link must not be authorisation.
+    const { data: urlData } = await supabase.storage.from('mission-assets').createSignedUrl(path, 3600);
     update({
-      mediaUrl: urlData.publicUrl,
+      mediaUrl: urlData?.signedUrl ?? null,
       mediaPath: path,
       mediaType: file.type.startsWith('video/') ? 'video' : 'image',
     });

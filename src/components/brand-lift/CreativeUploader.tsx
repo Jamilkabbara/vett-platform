@@ -53,9 +53,10 @@ export function CreativeUploader({ userId, missionId, value, onChange }: Props) 
       setUploading(false);
       return;
     }
-    const { data: urlData } = supabase.storage.from('mission-assets').getPublicUrl(path);
+    // Signed, not public: possession of a link must not be authorisation.
+    const { data: urlData } = await supabase.storage.from('mission-assets').createSignedUrl(path, 3600);
     onChange({
-      url: urlData.publicUrl,
+      url: urlData?.signedUrl ?? '',
       path,
       mimeType: file.type,
       sizeBytes: file.size,

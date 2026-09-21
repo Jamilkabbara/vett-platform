@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import type { MissionAsset, MissionAssetMediaType } from '../types/missionAssets';
 
 /**
- * Upload a single user-selected File to the public `vettit-uploads` bucket
+ * Upload a single user-selected File to the private `vettit-uploads` bucket
  * under `<userId>/<timestamp>-<safeName>` and return a ready-to-persist
  * MissionAsset record.
  *
@@ -98,12 +98,16 @@ export async function uploadMissionAsset(
     );
   }
 
-  const { data: urlData } = supabase.storage
+  // A signed URL, not a public one: the bucket is private, so row level
+
+  // security decides who may read this rather than possession of the link.
+
+  const { data: urlData } = await supabase.storage
     .from('vettit-uploads')
-    .getPublicUrl(path);
+    .createSignedUrl(path, 3600);
 
   return {
-    url: urlData.publicUrl,
+    url: urlData?.signedUrl ?? '',
     path,
     type: mediaType,
     filename: file.name,
