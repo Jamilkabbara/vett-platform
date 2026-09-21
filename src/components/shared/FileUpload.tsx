@@ -107,23 +107,18 @@ export function FileUpload({
           return;
         }
 
-        // Pass 23 Bug 23.75 v2 — use getPublicUrl (no expiry) instead of
-        // createSignedUrl (1h expiry that could silently fail). The
-        // vett-creatives bucket is public; vett-uploads remains private
-        // and uses signed URLs. Filenames are user-id prefixed +
-        // timestamped so guess-attacks aren't viable. getPublicUrl is
-        // synchronous and never returns null, so missions.media_url is
-        // guaranteed to land non-null when this code path runs.
-        let url: string | undefined;
-        if (bucket === 'vett-creatives') {
-          const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-          url = data?.publicUrl;
-        } else {
-          const { data: signed } = await supabase.storage
-            .from(bucket)
-            .createSignedUrl(path, 3600);
-          url = signed?.signedUrl;
-        }
+        // Both buckets are private, so both get a signed URL.
+        //
+        // vett-creatives used to be public, on the reasoning that a permanent
+        // URL cannot silently expire and that user-id-prefixed filenames are
+        // hard to guess. But a public bucket bypasses row level security on
+        // read: the link WAS the authorisation, for anyone who obtained it.
+        // The path is what gets stored now, and every viewer mints their own
+        // URL, so expiry is the point rather than a hazard.
+        const { data: signed } = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(path, 3600);
+        const url: string | undefined = signed?.signedUrl;
 
         const result: UploadedFile = {
           path,

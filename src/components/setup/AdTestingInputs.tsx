@@ -105,9 +105,10 @@ export function AdTestingInputs({ userId, state, onChange }: Props) {
       setUploading(false);
       return;
     }
-    const { data: urlData } = supabase.storage.from('mission-assets').getPublicUrl(path);
+    // Signed, not public: possession of a link must not be authorisation.
+    const { data: urlData } = await supabase.storage.from('mission-assets').createSignedUrl(path, 3600);
     update({
-      creativeUrl: urlData.publicUrl,
+      creativeUrl: urlData?.signedUrl ?? null,
       creativePath: path,
       creativeMediaType: file.type.startsWith('video/') ? 'video' : 'image',
     });
