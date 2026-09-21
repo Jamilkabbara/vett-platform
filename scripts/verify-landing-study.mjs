@@ -75,23 +75,35 @@ const surface = [
 const BANNED = [
   [/\b85%/, 'the old run\'s 85% purchase intent'],
   [/\b79%/, 'the old run\'s 79% barrier figure'],
+  [/\b78%/, 'the 20 September run\'s purchase intent, superseded by the clean re-run'],
   [/halal/i, 'a barrier figure or barrier claim from the study'],
   [/iced coffee/i, 'the iced-coffee study, which is excluded entirely'],
   [/four thousand/i, 'the "four thousand answers" claim'],
   [/modelled first|modeled first/i, 'the "MENA modelled first" claim'],
 ];
-for (const [name, text] of surface) {
+/**
+ * Comments are stripped before the banned-figure scan: a comment that says
+ * "the 20 September run reported 78%, which is why it must not appear" is the
+ * documentation that keeps it out, not a reappearance of it. Only what renders
+ * is scanned.
+ */
+const stripComments = (src) => src
+  .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+  .replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+
+for (const [name, raw] of surface) {
+  const text = stripComments(raw);
   for (const [re, what] of BANNED) {
     if (re.test(text)) fail(`${name} contains ${what}`);
   }
-  if (/[—–]/.test(text.replace(/^\s*\*.*$/gm, ''))) {
+  if (/[—–]/.test(text)) {
     fail(`${name} uses an em or en dash in copy; customer copy uses hyphens`);
   }
 }
 
 // 6. The study's own figures must match the module, so a stale number cannot
 //    drift into the page.
-for (const [label, value] of [['Purchase intent', '78%'], ['Chose that price', '60%']]) {
+for (const [label, value] of [['Purchase intent', '88%'], ['Chose that price', '51%']]) {
   if (!study.includes(`label: '${label}', value: '${value}'`)) {
     fail(`landingStudy.ts no longer states ${label} as ${value}; if the study changed, change the page with it`);
   }
