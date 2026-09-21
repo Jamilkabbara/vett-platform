@@ -43,10 +43,10 @@ export function CreativeUploader({ userId, missionId, value, onChange }: Props) 
     }
     const folder = missionId || `draft-${Date.now()}`;
     const safeName = file.name.replace(/[^a-zA-Z0-9_.-]+/g, '_');
-    const path = `brand-lift-creatives/${userId}/${folder}/${safeName}`;
+    const path = `${userId}/brand-lift-creatives/${folder}/${safeName}`;
     setUploading(true);
     const { error: upErr } = await supabase.storage
-      .from('mission-assets')
+      .from('vett-creatives')
       .upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type });
     if (upErr) {
       setError(upErr.message);
@@ -54,7 +54,7 @@ export function CreativeUploader({ userId, missionId, value, onChange }: Props) 
       return;
     }
     // Signed, not public: possession of a link must not be authorisation.
-    const { data: urlData } = await supabase.storage.from('mission-assets').createSignedUrl(path, 3600);
+    const { data: urlData } = await supabase.storage.from('vett-creatives').createSignedUrl(path, 3600);
     onChange({
       url: urlData?.signedUrl ?? '',
       path,

@@ -96,9 +96,9 @@ export function AdTestingInputs({ userId, state, onChange }: Props) {
     }
     setUploading(true);
     const safeName = file.name.replace(/[^a-zA-Z0-9_.-]+/g, '_');
-    const path = `marketing-creatives/${userId}/${Date.now()}_${safeName}`;
+    const path = `${userId}/marketing-creatives/${Date.now()}_${safeName}`;
     const { error: upErr } = await supabase.storage
-      .from('mission-assets')
+      .from('vett-creatives')
       .upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type });
     if (upErr) {
       setUploadError(upErr.message);
@@ -106,7 +106,7 @@ export function AdTestingInputs({ userId, state, onChange }: Props) {
       return;
     }
     // Signed, not public: possession of a link must not be authorisation.
-    const { data: urlData } = await supabase.storage.from('mission-assets').createSignedUrl(path, 3600);
+    const { data: urlData } = await supabase.storage.from('vett-creatives').createSignedUrl(path, 3600);
     update({
       creativeUrl: urlData?.signedUrl ?? null,
       creativePath: path,
@@ -117,7 +117,7 @@ export function AdTestingInputs({ userId, state, onChange }: Props) {
 
   const clearCreative = () => {
     if (state.creativePath) {
-      void supabase.storage.from('mission-assets').remove([state.creativePath]);
+      void supabase.storage.from('vett-creatives').remove([state.creativePath]);
     }
     update({ creativeUrl: null, creativePath: null });
     if (fileRef.current) fileRef.current.value = '';
