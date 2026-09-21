@@ -111,7 +111,8 @@ export function useInView<T extends HTMLElement>(threshold = 0.14) {
  * Always ENDS on `target`, whatever happens to the animation frames - a
  * throttled or backgrounded tab must not leave a 0 on the page.
  */
-export function useCountUp(target: number, start: boolean, duration = 1100) {
+export function useCountUp(target: number, start: boolean, duration = 1100, decimals = 0) {
+  const scale = 10 ** decimals;
   const [value, setValue] = useState(0);
 
   useEffect(() => {
@@ -131,7 +132,7 @@ export function useCountUp(target: number, start: boolean, duration = 1100) {
       if (t0 === null) t0 = ts;
       const k = Math.min((ts - t0) / duration, 1);
       if (k >= 1) { setValue(target); return; }   // land exactly on target
-      setValue(Math.round(target * (1 - (1 - k) ** 3)));
+      setValue(Math.round(target * (1 - (1 - k) ** 3) * scale) / scale);
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
@@ -146,7 +147,21 @@ export function useCountUp(target: number, start: boolean, duration = 1100) {
       cancelAnimationFrame(raf);
       window.clearTimeout(settle);
     };
-  }, [target, start, duration]);
+  }, [target, start, duration, scale]);
 
   return value;
+}
+
+/** True when the visitor asked the OS for reduced motion. False on the server. */
+export function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mq.matches);
+    const on = () => setReduced(mq.matches);
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, []);
+  return reduced;
 }

@@ -6,8 +6,8 @@
  * added to src/components/ui/*, because the mock disagrees with the shared
  * primitives in ways that would visually change other pages if applied there:
  *
- *   ui/Button  -> pill radius, purple #6d28d9->#4f46e5 gradient, Inter 800/900
- *   mock .btn  -> 11px radius (13px at .lg), indigo #6366F1->#5457E8 gradient,
+ *   ui/Button  -> pill radius, the theme's purple gradient, Inter 800/900
+ *   mock .btn  -> 11px radius (13px at .lg), the landing indigo gradient,
  *                 Inter 700 at 14px with 0.02em tracking, plus `lime` and
  *                 `outline` variants the shared Button has no equivalent for.
  *
@@ -30,17 +30,16 @@ export interface V2ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const V2_VARIANT: Record<V2ButtonVariant, string> = {
   indigo:
-    'bg-[linear-gradient(135deg,#6366F1,#5457E8)] text-white ' +
-    'shadow-[0_10px_26px_rgba(99,102,241,0.34)] ' +
+    'bg-lp-btn-indigo text-white shadow-lp-btn-indigo ' +
     'hover:brightness-110 hover:-translate-y-px',
   ghost:
-    'text-[#F3F5EF] bg-white/[0.04] border-white/[0.13] ' +
+    'text-lp-text bg-white/[0.04] border-white/[0.13] ' +
     'hover:bg-white/[0.07]',
   outline:
-    'text-[#F3F5EF] bg-white/[0.025] border-white/[0.13] ' +
-    'hover:border-[#BEF264] hover:text-[#BEF264]',
+    'text-lp-text bg-white/[0.025] border-white/[0.13] ' +
+    'hover:border-lp-lime hover:text-lp-lime',
   lime:
-    'bg-[#BEF264] text-[#0B0C15] shadow-[0_10px_26px_rgba(190,242,100,0.24)] ' +
+    'bg-lp-lime text-lp-ink shadow-lp-btn-lime ' +
     'hover:brightness-105 hover:-translate-y-px',
 };
 
@@ -57,10 +56,10 @@ export function V2Button({
       type={type}
       className={[
         // .btn base: Inter 700 / 14px / 0.02em / 11px radius / 10px 18px
-        "font-['Inter',system-ui,sans-serif] font-bold tracking-[0.02em] cursor-pointer",
+        'font-lp-text font-bold tracking-[0.02em] cursor-pointer',
         'inline-flex items-center justify-center gap-2 border border-transparent',
         'transition-all duration-[180ms]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEF264]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0C15]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lp-lime/60 focus-visible:ring-offset-2 focus-visible:ring-offset-lp-ink',
         'disabled:opacity-60 disabled:pointer-events-none',
         size === 'lg'
           ? 'text-[15px] rounded-[13px] px-[26px] py-[15px]'
@@ -94,12 +93,12 @@ export function Eyebrow({
         'inline-flex items-center gap-[9px]',
         'text-[11px] font-bold tracking-[0.2em] uppercase',
         pill
-          ? 'bg-[rgba(99,102,241,0.12)] border border-[rgba(99,102,241,0.32)] rounded-full px-4 py-2 text-[#C8C9FB]'
-          : 'text-[#BEF264]',
+          ? 'bg-lp-indigo/[0.12] border border-lp-indigo/[0.32] rounded-full px-4 py-2 text-lp-indigo-soft'
+          : 'text-lp-lime',
         className,
       ].join(' ')}
     >
-      <span className="text-[#BEF264]" aria-hidden>
+      <span className="text-lp-lime" aria-hidden>
         &#10022;
       </span>
       {children}
@@ -133,13 +132,13 @@ export function SectionHead({
       ].join(' ')}
     >
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-      <h2 className="font-['Manrope',system-ui,sans-serif] font-extrabold tracking-[-0.025em] text-[clamp(32px,4.4vw,52px)] leading-[1.04] mt-4">
+      <h2 className="font-lp-head font-extrabold tracking-[-0.025em] text-[clamp(32px,4.4vw,52px)] leading-[1.04] mt-4">
         {title}
       </h2>
       {body && (
         <p
           className={[
-            'text-[#8B919C] text-[16.5px] mt-[18px]',
+            'text-lp-body text-[16.5px] leading-[1.6] mt-[18px]',
             center ? 'mx-auto' : '',
           ].join(' ')}
         >
@@ -215,8 +214,10 @@ export function Wrap({
   className = '',
   as: As = 'div',
   flush = true,
+  id,
 }: {
   children: ReactNode;
+  id?: string;
   className?: string;
   as?: 'div' | 'section' | 'header' | 'footer';
   /** Collapse the gutter at >=1200px, matching the mock's rendered geometry. */
@@ -224,6 +225,7 @@ export function Wrap({
 }) {
   return (
     <As
+      id={id}
       className={[
         'max-w-[1200px] mx-auto relative z-[2]',
         'px-4 min-[600px]:px-7',
@@ -255,7 +257,7 @@ export function DemoCard({
   className = '',
   innerRef,
 }: {
-  label: string;
+  label?: ReactNode;
   children: ReactNode;
   className?: string;
   innerRef?: React.Ref<HTMLDivElement>;
@@ -264,15 +266,42 @@ export function DemoCard({
     <div
       ref={innerRef}
       className={[
-        'bg-[linear-gradient(180deg,rgba(99,102,241,0.08),rgba(255,255,255,0.012))]',
+        'bg-lp-demo',
         'border border-white/[0.13] rounded-[22px] p-6',
         className,
       ].join(' ')}
     >
-      <div className="text-[10.5px] tracking-[0.16em] uppercase text-[#5C6470] font-semibold mb-[18px]">
-        {label}
-      </div>
+      {label && <Label className="mb-[18px] block">{label}</Label>}
       {children}
     </div>
   );
+}
+
+/** Small uppercase label (`.lbl`). */
+export function Label({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <span className={`text-[10.5px] font-bold tracking-[0.16em] uppercase text-lp-muted ${className}`}>
+      {children}
+    </span>
+  );
+}
+
+/** Glass panel with the indigo hairline along the top edge (`.glass`). */
+export function GlassPanel({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={[
+        'relative overflow-hidden rounded-[24px] border border-white/[0.13] bg-lp-glass shadow-lp-panel',
+        "after:content-[''] after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-lp-hairline",
+        className,
+      ].join(' ')}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Small note under a section, used for honesty caveats (`.note`). */
+export function Note({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <p className={`text-[12.5px] leading-[1.6] text-lp-muted mt-[22px] max-w-[76ch] ${className}`}>{children}</p>;
 }
