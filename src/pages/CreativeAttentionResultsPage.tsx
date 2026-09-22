@@ -216,6 +216,49 @@ export function CreativeAttentionResultsPage() {
     return () => clearInterval(interval);
   }, [polling, missionId]);
 
+  // Signing the creative is a HOOK, so it has to run on every render.
+  //
+  // This block sat below the loading/error/polling early returns, which
+  // meant the first render (loading) ran two hooks and the render after
+  // the data arrived ran four. React refuses that - "rendered more hooks
+  // than during the previous render" - and unmounts the tree, so every
+  // Creative Attention report rendered as a blank screen from the moment
+  // the bucket went private (#156) until this fix.
+  //
+  // It only reads `mission`, which is set by the fetch effect above, so it
+  // belongs here with the other hooks. Do not move it below a return.
+  // The creative is signed, not public.
+  //
+  // vett-creatives used to be a public bucket, which bypasses row level
+  // security on read: any ad creative a customer uploaded was readable by
+  // anyone holding the link. The bucket is private now, so the URL is minted
+  // for this viewer and expires.
+  //
+  // Two shapes have to resolve, because both exist in the data: rows stamped
+  // with a permanent public URL in missions.media_url, and older rows that
+  // carry only brief_attachment.path. The path is taken from whichever is
+  // present and signed through the viewer's own session, so RLS decides what
+  // they may see rather than the URL being a password.
+  const briefAttachment = mission?.brief_attachment as
+    { mimeType?: string; path?: string } | undefined;
+  const storedUrl = (mission?.media_url as string | undefined) || null;
+  const storagePath = briefAttachment?.path
+    || (storedUrl ? pathFromStorageUrl(storedUrl) : null);
+  const [creativeUrl, setCreativeUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!storagePath) { setCreativeUrl(null); return () => { cancelled = true; }; }
+    void supabase.storage
+      .from('vett-creatives')
+      .createSignedUrl(storagePath, 3600)
+      .then(({ data }) => { if (!cancelled) setCreativeUrl(data?.signedUrl ?? null); });
+    return () => { cancelled = true; };
+  }, [storagePath]);
+  const creativeMime = (briefAttachment?.mimeType || '').toLowerCase();
+  const creativeIsVideo = creativeMime.startsWith('video/')
+    || (mission?.media_type as string) === 'video';
+
   // ── Loading / error states ────────────────────────────────────────────────
 
   if (loading) {
@@ -362,37 +405,6 @@ export function CreativeAttentionResultsPage() {
 
   const title = (mission?.title as string) || 'Creative Analysis';
 
-  // The creative is signed, not public.
-  //
-  // vett-creatives used to be a public bucket, which bypasses row level
-  // security on read: any ad creative a customer uploaded was readable by
-  // anyone holding the link. The bucket is private now, so the URL is minted
-  // for this viewer and expires.
-  //
-  // Two shapes have to resolve, because both exist in the data: rows stamped
-  // with a permanent public URL in missions.media_url, and older rows that
-  // carry only brief_attachment.path. The path is taken from whichever is
-  // present and signed through the viewer's own session, so RLS decides what
-  // they may see rather than the URL being a password.
-  const briefAttachment = mission?.brief_attachment as
-    { mimeType?: string; path?: string } | undefined;
-  const storedUrl = (mission?.media_url as string | undefined) || null;
-  const storagePath = briefAttachment?.path
-    || (storedUrl ? pathFromStorageUrl(storedUrl) : null);
-  const [creativeUrl, setCreativeUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!storagePath) { setCreativeUrl(null); return () => { cancelled = true; }; }
-    void supabase.storage
-      .from('vett-creatives')
-      .createSignedUrl(storagePath, 3600)
-      .then(({ data }) => { if (!cancelled) setCreativeUrl(data?.signedUrl ?? null); });
-    return () => { cancelled = true; };
-  }, [storagePath]);
-  const creativeMime = (briefAttachment?.mimeType || '').toLowerCase();
-  const creativeIsVideo = creativeMime.startsWith('video/')
-    || (mission?.media_type as string) === 'video';
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)]">
