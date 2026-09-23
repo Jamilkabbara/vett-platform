@@ -23,6 +23,20 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+
+      // Lint had never run in CI, so 44 errors had accumulated and any attempt
+      // to switch it on failed immediately. Waiting for a clean sweep meant the
+      // rules that catch REAL defects stayed off too - including
+      // react-hooks/rules-of-hooks, which names the exact mistake that left
+      // every Creative Attention report blank in production (#156, fixed #160).
+      //
+      // So the backlog of stylistic findings is demoted to warnings and the rest
+      // of the config starts blocking now. These four are a debt to pay down,
+      // not a standard we accept: they still print on every run.
+      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'no-useless-escape': 'warn',
+      'prefer-const': 'warn',
     },
   }
 );

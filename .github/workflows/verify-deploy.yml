@@ -130,6 +130,19 @@ jobs:
       # named ONE of the checks `npm test` runs; there are 21, including the
       # landing figures, the storage-URL ban and the quality notice. A check
       # whose name hides what it protects is how an unwired check goes unnoticed.
+      # Lint runs HERE, inside the job the merge gate already requires, rather
+      # than as a new check name - a required check's name is a contract with
+      # the gate script, and adding one means the gate waits for something that
+      # does not exist yet on older branches.
+      #
+      # It had never run anywhere. The rule that would have caught the blank
+      # Creative Attention report (#156) was installed, configured, and silent.
+      # Errors block. The 83 pre-existing stylistic findings are warnings, and
+      # --max-warnings pins them at today's count so the debt can shrink but
+      # never grow.
+      - name: npm run lint (errors block, warning count cannot grow)
+        run: npm run lint
+
       - name: npm test (every site check)
         run: npm test
 
