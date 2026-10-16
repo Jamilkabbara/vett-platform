@@ -36,6 +36,7 @@ import { Eyebrow, Note, Reveal, SectionHead, V2Button, Wrap } from '../component
 import { useCountUp, useInView } from '../components/landing-v2/hooks';
 import { HeroStrip } from '../components/landing-v2/HeroStrip';
 import { LiveMission } from '../components/landing-v2/LiveMission';
+import { LANDING_STUDY } from '../components/landing-v2/landingStudy';
 import { CreativeAttentionPanel } from '../components/landing-v2/panels';
 import { PricingSection } from '../components/landing-v2/PricingSection';
 import {
@@ -47,7 +48,7 @@ import {
 
 import '../styles/landing-v2.css';
 import { COUNTRY_COVERAGE, COUNTRY_COVERAGE_FLOOR } from '../utils/siteFacts';
-import { SELF_SERVE_MIN_USD } from '../utils/priceCopy';
+import { SELF_SERVE_MIN_USD, SELF_SERVE_RANGE } from '../utils/priceCopy';
 
 /* ══════════════════════════════════════════════════════════════════════
    Content
@@ -118,7 +119,7 @@ const RESEARCH_TYPES: Array<{ title: string; desc: string; accent?: boolean; goa
 const LOOP_STEPS = [
   { n: 1, title: 'Describe', body: 'Drop your question in plain language. Upload an image or video for creative testing.' },
   { n: 2, title: 'Strategy', body: 'VETT clarifies your brief with three quick questions, then builds the survey and targeting.' },
-  { n: 3, title: 'Simulate', body: 'Distinct personas, each matched to your audience, answer the full survey independently.' },
+  { n: 3, title: 'Simulate', body: 'Distinct personas, each generated to your spec, answer the full survey independently.' },
   { n: 4, title: 'Insights', body: 'Charts, an executive summary, and two recommended next studies. PDF, PPT and XLS free.' },
 ];
 
@@ -324,7 +325,36 @@ export function LandingV2Page() {
           <span className="text-lp-muted">&middot;</span>
           <span>{COUNTRY_COVERAGE}</span>
           <span className="text-lp-muted">&middot;</span>
-          <span>Every respondent matches your audience</span>
+          <span>Every respondent generated to your spec</span>
+        </div>
+
+        {/* The one real study, in the first screen. Every figure reads from
+            LANDING_STUDY, so the page cannot drift from the source. Static on
+            first paint - this is prerendered, so no count-up and no timers. */}
+        <div className="lv2-heroup delay-[670ms] mt-[26px] mx-auto w-full max-w-[560px] rounded-[16px] border border-white/[0.09] bg-black/25 px-[18px] py-[15px] text-left">
+          <div className="flex items-baseline justify-between gap-3 flex-wrap">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-lp-lime">
+              {LANDING_STUDY.attribution}
+            </span>
+            <span className="text-[12px] text-lp-muted">{LANDING_STUDY.basis}</span>
+          </div>
+          <p className="mt-[9px] text-[14.5px] leading-snug text-lp-text">
+            {LANDING_STUDY.question}
+          </p>
+          <div className="mt-[13px] flex flex-wrap gap-x-7 gap-y-2.5">
+            {LANDING_STUDY.stats.map((stat) => (
+              <span key={stat.label} className="flex items-baseline gap-2">
+                <b className={stat.emphasis ? 'text-[19px] font-bold text-lp-lime' : 'text-[15px] font-semibold text-lp-text'}>
+                  {stat.value}
+                </b>
+                <span className="text-[12.5px] text-lp-body">{stat.label}</span>
+              </span>
+            ))}
+          </div>
+          <p className="mt-[11px] text-[11.5px] leading-relaxed text-lp-muted">
+            A directional read from synthetic respondents, not a recruited panel.
+            Purchase intent is the top two boxes of a five-point scale.
+          </p>
         </div>
 
         <Link
@@ -362,7 +392,7 @@ export function LandingV2Page() {
             center
             eyebrow="See it run"
             title="Watch a mission simulate live."
-            body="Pick a question. VETT generates your panel, every respondent matched to your audience, and reads the signal in seconds."
+            body="Pick a question. VETT generates your panel, every respondent built to your spec, and reads the signal in seconds."
           />
         </Reveal>
         <Reveal delay={1}>
@@ -470,6 +500,77 @@ export function LandingV2Page() {
             <CreativeAttentionPanel />
           </Reveal>
         </div>
+      </Section>
+
+      {/* ══ WHEN TO USE, AND WHEN NOT TO ══ */}
+      {/* Sits above the comparison table on purpose: a reader meets the limits
+          before the sales case. Every claim here is one the product can support;
+          the cost cell reads from the ladder, never a typed amount. */}
+      <Section id="fit">
+        <Reveal>
+          <SectionHead
+            center
+            eyebrow="Honest fit"
+            title={<>When to use VETT,<br />and when not to.</>}
+          />
+        </Reveal>
+        <Reveal delay={1}>
+          <div className="overflow-x-auto">
+            <table className="w-full border-separate border-spacing-0 border border-white/[0.07] rounded-[18px] overflow-hidden min-w-[320px]">
+              <caption className="sr-only">
+                Where VETT is reliable, and where a recruited panel is the right tool
+              </caption>
+              <thead>
+                <tr>
+                  <th className="px-[16px] py-[14px] border-b border-white/[0.07] bg-black/25" />
+                  <th scope="col" className="px-[16px] py-[14px] text-left text-[11px] font-bold tracking-[0.14em] uppercase border-b border-white/[0.07] text-lp-lime bg-lp-lime/[0.13]">VETT</th>
+                  <th scope="col" className="px-[16px] py-[14px] text-left text-[11px] font-bold tracking-[0.14em] uppercase border-b border-white/[0.07] text-lp-muted bg-black/25">A recruited panel</th>
+                </tr>
+              </thead>
+              <tbody>
+                  <tr key="Time to results">
+                    <th scope="row" className="px-[16px] py-[13px] text-left align-top text-[12.5px] font-semibold text-lp-muted border-b border-white/[0.07]">Time to results</th>
+                    <td className="px-[16px] py-[13px] align-top text-[13.5px] leading-snug text-lp-text bg-lp-lime/[0.07] border-b border-white/[0.07]">Minutes</td>
+                    <td className="px-[16px] py-[13px] align-top text-[13.5px] leading-snug text-lp-body border-b border-white/[0.07]">About a week</td>
+                  </tr>
+                  <tr key="Cost">
+                    <th scope="row" className="px-[16px] py-[13px] text-left align-top text-[12.5px] font-semibold text-lp-muted border-b border-white/[0.07]">Cost</th>
+                    <td className="px-[16px] py-[13px] align-top text-[13.5px] leading-snug text-lp-text bg-lp-lime/[0.07] border-b border-white/[0.07]">{SELF_SERVE_RANGE}</td>
+                    <td className="px-[16px] py-[13px] align-top text-[13.5px] leading-snug text-lp-body border-b border-white/[0.07]">Typically thousands</td>
+                  </tr>
+                  <tr key="Who answers">
+                    <th scope="row" className="px-[16px] py-[13px] text-left align-top text-[12.5px] font-semibold text-lp-muted border-b border-white/[0.07]">Who answers</th>
+                    <td className="px-[16px] py-[13px] align-top text-[13.5px] leading-snug text-lp-text bg-lp-lime/[0.07] border-b border-white/[0.07]">AI-simulated respondents</td>
+                    <td className="px-[16px] py-[13px] align-top text-[13.5px] leading-snug text-lp-body border-b border-white/[0.07]">Real people</td>
+                  </tr>
+                  <tr key="Reliable at">
+                    <th scope="row" className="px-[16px] py-[13px] text-left align-top text-[12.5px] font-semibold text-lp-muted border-b border-white/[0.07]">Reliable at</th>
+                    <td className="px-[16px] py-[13px] align-top text-[13.5px] leading-snug text-lp-text bg-lp-lime/[0.07] border-b border-white/[0.07]">Ranking options against each other, surfacing reasons you had not considered, killing bad ideas early</td>
+                    <td className="px-[16px] py-[13px] align-top text-[13.5px] leading-snug text-lp-body border-b border-white/[0.07]">Absolute numbers you will be held to</td>
+                  </tr>
+                  <tr key="Unreliable at">
+                    <th scope="row" className="px-[16px] py-[13px] text-left align-top text-[12.5px] font-semibold text-lp-muted">Unreliable at</th>
+                    <td className="px-[16px] py-[13px] align-top text-[13.5px] leading-snug text-lp-text bg-lp-lime/[0.07]">Exact willingness to pay, thin subgroups, anything genuinely novel</td>
+                    <td className="px-[16px] py-[13px] align-top text-[13.5px] leading-snug text-lp-body">Being affordable enough to run twice</td>
+                  </tr>
+              </tbody>
+            </table>
+          </div>
+        </Reveal>
+        <Reveal delay={2}>
+          <p className="mt-[18px] text-center text-[15px] leading-relaxed text-lp-body max-w-[640px] mx-auto">
+            Use VETT to work out what deserves a real panel. Then run the real panel on
+            the right thing, once, instead of the wrong thing, twice.
+          </p>
+        </Reveal>
+        <Reveal delay={3}>
+          <Note className="mt-[22px]">
+            <b className="text-lp-text">What isn&rsquo;t here yet.</b> No side-by-side against a
+            recruited panel. That test is what would settle whether these numbers track
+            reality, and it hasn&rsquo;t been run. When it has, it goes on this page whichever
+            way it lands.
+          </Note>
+        </Reveal>
       </Section>
 
       {/* ══ COMPARISON ══ */}

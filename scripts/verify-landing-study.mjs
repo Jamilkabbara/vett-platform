@@ -5,7 +5,8 @@
  *
  * Why this exists: the page's demo panels were invented figures that read as
  * findings ("Purchase intent 85%", "Top barrier: Halal certification"). The
- * real study that replaced them reports 78% purchase intent, and the study it
+ * real study that replaced them reports 88% purchase intent (the 20 September
+ * run's 78% was superseded by the 21 September clean re-run), and the study it
  * came from had to be re-run first because its panel repeated the same people.
  * A reader cannot tell a real figure from a shape unless the page says which
  * is which, every time.
@@ -80,6 +81,15 @@ const BANNED = [
   [/iced coffee/i, 'the iced-coffee study, which is excluded entirely'],
   [/four thousand/i, 'the "four thousand answers" claim'],
   [/modelled first|modeled first/i, 'the "MENA modelled first" claim'],
+  // Removed in #153 and #142. They were on the page for months and read as
+  // evidence: logos of companies that are not customers, quotes nobody said,
+  // and three figures with no source. Comments are stripped before this scan,
+  // so the line above that explains the old "150+ Markets" bug is not a hit.
+  [/\b(Uber|Airbnb|Careem)\b/i, 'a company logo from the retired "Powering decisions for builders at" strip'],
+  [/within \$?2\b/i, 'the testimonial claim that a VETT price matched launch data within $2'],
+  [/150\s*\+?\s*markets/i, 'the retired "150+ markets" figure, which contradicted the shipped coverage'],
+  [/research-grade/i, 'the "research-grade emotion mapping" overclaim'],
+  [/\$\s?10,000/, 'the unsourced "$10,000+ per study" agency figure'],
 ];
 /**
  * Comments are stripped before the banned-figure scan: a comment that says

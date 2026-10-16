@@ -272,7 +272,7 @@ export function LiveMission() {
             {status === 'idle' && 'Tap a question, then run the panel.'}
             {status === 'running' && (
               <>
-                Simulating <b className="text-lp-lime font-lp-text font-bold">80</b> respondents matched to your audience...
+                Simulating <b className="text-lp-lime font-lp-text font-bold">80</b> respondents generated to your spec...
               </>
             )}
             {status === 'done' && (
