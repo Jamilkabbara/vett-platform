@@ -21,7 +21,6 @@ import {
   CA_VIDEO_USD,
   LADDER,
   SELF_SERVE_CAP,
-  SLIDER_COUNTS,
   SLIDER_DEFAULT_INDEX,
   SLIDER_INDEX_MAX,
   SLIDER_INDEX_MIN,
@@ -71,14 +70,10 @@ export function PricingSection({ onCta }: { onCta: (goalId: string) => void }) {
           aria-valuetext={`${n.toLocaleString('en-US')} respondents`}
           className="w-full h-7 mt-[18px] mb-1 accent-lp-lime cursor-pointer"
         />
-        <div className="flex justify-between text-[11px] tabular-nums text-lp-muted" aria-hidden>
-          {SLIDER_COUNTS.map((c) => (
-            <span key={c} className={c === n ? 'text-lp-lime font-bold' : undefined}>
-              {c.toLocaleString('en-US')}
-            </span>
-          ))}
-        </div>
-
+        {/* No separate tick row. The slider's positions ARE the seven rungs,
+            and RateBars below already labels every rung with its count in the
+            same order and lights the active one, so a scale above the chart
+            would be the same seven numbers twice. */}
         <RateBars hot={hot} />
         <p className="text-[13.5px] text-lp-body mt-2.5">
           {usd(price)} for {n.toLocaleString('en-US')} respondents, before paid targeting or extra questions.
@@ -148,8 +143,10 @@ function PriceRow({ label, value, id }: { label: string; value: string; id: stri
 }
 
 /**
- * Rate per respondent at each rung. Heights are scaled between the cheapest
- * and dearest rate so the fall is visible; every label is the real rate.
+ * Rate per respondent at each rung, and the slider's scale: one bar per
+ * sellable count, in slider order, with the active rung lit. Heights are
+ * scaled between the cheapest and dearest rate so the fall is visible; every
+ * label is the real rate.
  */
 function RateBars({ hot }: { hot: number }) {
   const W = 560;
@@ -199,10 +196,11 @@ function RateBars({ hot }: { hot: number }) {
               y={H - 4}
               textAnchor="middle"
               fontSize={11}
-              fill={LP_COLORS.muted}
+              fontWeight={on ? 700 : 400}
+              fill={on ? LP_COLORS.lime : LP_COLORS.muted}
               fontFamily="Inter, system-ui, sans-serif"
             >
-              {r.anchor >= 1000 ? `${(r.anchor / 1000).toLocaleString('en-US')}k` : r.anchor}
+              {r.anchor.toLocaleString('en-US')}
             </text>
           </g>
         );
