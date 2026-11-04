@@ -15,6 +15,8 @@ import {
   calculatePricing,
   VOLUME_TIERS,
   MAX_SELF_SERVE_RESPONDENTS,
+  SELLABLE_RESPONDENT_COUNTS,
+  snapToPublishedCount,
   STARTING_PRICE_BRAND_LIFT_USD,
   creativeAttentionPrice,
   formatRatePerResp,
@@ -31,10 +33,72 @@ const NO_TARGETING: TargetingConfig = {
   technographics: { devices: [] },
 };
 
-export const SLIDER_MIN = VOLUME_TIERS[0].anchorCount;
-export const SLIDER_MAX = MAX_SELF_SERVE_RESPONDENTS;
-export const SLIDER_STEP = 5;
-export const SLIDER_DEFAULT = VOLUME_TIERS[1].anchorCount;
+/**
+ * The respondent counts the public slider offers: the ladder's own anchors,
+ * the same list the setup panel sells.
+ *
+ * -- Why the public slider snaps too, 2026-11 -------------------------------
+ *
+ * Only these seven counts can be bought - see SELLABLE_RESPONDENT_COUNTS in
+ * utils/pricingEngine for the derivation. This slider stepped by 5 from 5 to
+ * 1,250, so 243 of its 250 positions were counts setup will no longer sell. A
+ * visitor who priced a 120-respondent study here was moved to 100 or 250 on
+ * the setup page without being told.
+ *
+ * Nothing published here was wrong. quote() IS the engine, so the price shown
+ * at 120 was the price checkout charges. What was wrong is that the page
+ * offered a choice the rest of the funnel does not honour.
+ *
+ * NO PRICE MOVES. Every count still on the slider quotes exactly what it
+ * quoted before; the positions that no longer exist are the ones that could
+ * not be carried through to a mission.
+ */
+export const SLIDER_COUNTS: readonly number[] = SELLABLE_RESPONDENT_COUNTS;
+
+/**
+ * The slider's own domain is an INDEX over SLIDER_COUNTS, not a respondent
+ * count with a snap on change.
+ *
+ * The anchors are not evenly spaced, so a count-domain slider can only accept
+ * an unsellable count and then correct it. That reads fine under a mouse drag
+ * and badly everywhere else: an arrow key moves one step - 5 - which snaps
+ * straight back to the anchor it started from, leaving the control dead for
+ * keyboard users. One index step is one rung for mouse, touch and keyboard
+ * alike, and an unsellable count has no position to land on at all.
+ *
+ * The control therefore reports a position, so the input carries an
+ * aria-valuetext with the real respondent count.
+ */
+export const SLIDER_INDEX_MIN = 0;
+export const SLIDER_INDEX_MAX = SLIDER_COUNTS.length - 1;
+export const SLIDER_INDEX_STEP = 1;
+
+/** The respondent count at a slider position. */
+export function countAt(i: number): number {
+  const clamped = Math.min(
+    SLIDER_INDEX_MAX,
+    Math.max(SLIDER_INDEX_MIN, Math.round(Number(i) || 0)),
+  );
+  return SLIDER_COUNTS[clamped];
+}
+
+/**
+ * The slider position for a respondent count. Routed through the engine's own
+ * snapToPublishedCount, so a count that is not itself on the list - a ladder
+ * card whose anchor moved, a count carried in from elsewhere - resolves to a
+ * real position instead of -1.
+ */
+export function indexForCount(n: number): number {
+  const i = SLIDER_COUNTS.indexOf(snapToPublishedCount(n));
+  return i < 0 ? SLIDER_INDEX_MAX : i;
+}
+
+/** The count the page opens on, and the one the prerendered headline shows. */
+export const SLIDER_DEFAULT_COUNT = VOLUME_TIERS[1].anchorCount;
+export const SLIDER_DEFAULT_INDEX = indexForCount(SLIDER_DEFAULT_COUNT);
+
+/** The self-serve ceiling, for the card that hands bigger studies to sales. */
+export const SELF_SERVE_CAP = MAX_SELF_SERVE_RESPONDENTS;
 
 /** What checkout charges for n respondents, before targeting and extra questions. */
 export function quote(n: number): number {
