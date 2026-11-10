@@ -4,7 +4,7 @@ import { Lock, Rocket, ShieldCheck, Star } from 'lucide-react';
 
 import type { Question } from './QuestionEngine';
 import type { TargetingConfig } from './TargetingEngine';
-import { calculatePricing, getVolumeTier, VOLUME_TIERS, MAX_SELF_SERVE_RESPONDENTS, FREE_QUESTIONS, EXTRA_QUESTION_PRICE, formatRatePerResp } from '../../utils/pricingEngine';
+import { calculatePricing, getVolumeTier, VOLUME_TIERS, MAX_SELF_SERVE_RESPONDENTS, FREE_QUESTIONS, EXTRA_QUESTION_PRICE, formatRatePerResp, snapToPublishedCount, effectiveRatePerResp } from '../../utils/pricingEngine';
 import { LeadCaptureForm } from '../marketing/LeadCaptureForm';
 import { COUNTRIES } from '../../data/targetingOptions';
 import { SampleSizeGuidance } from '../setup/SampleSizeGuidance';
@@ -104,8 +104,15 @@ const MIN_RESPONDENTS = 5;
 // Above it we capture the lead instead of selling (see the block below the
 // slider). Single source of truth lives in utils/pricingEngine.ts.
 const MAX_RESPONDENTS = MAX_SELF_SERVE_RESPONDENTS;
-// Step of 5 lets the slider land on every anchor + interpolate between
-// them. Old step of 10 skipped 5 entirely.
+// The thumb still travels in fives so the control feels continuous and the
+// keyboard arrows do something, but handleSlide snaps whatever comes out to
+// the nearest PUBLISHED count before it reaches pricing or the parent.
+//
+// Interpolating between anchors is what this panel used to do, and it is why
+// three numbers disagreed beside a 120-respondent study: the ladder derives
+// each bracket's rate from its own anchor price, so `rate x count` only
+// reconciles AT an anchor. See SELLABLE_RESPONDENT_COUNTS in
+// utils/pricingEngine.ts for the whole derivation and the decision.
 const RESPONDENT_STEP = 5;
 
 interface MissionControlPricingProps {
@@ -244,7 +251,18 @@ export const MissionControlPricing = ({
     [respondentCount, questions, targeting, isScreeningActive],
   );
 
-  const perRespondent = respondentCount > 0 ? pricing.total / respondentCount : 0;
+  // The rate shown beside the base line, and beside the slider. base/count,
+  // NOT total/count: the line it labels reads "n x rate = base", so dividing
+  // the total in would make that equation false the moment any surcharge
+  // applies (250 respondents + $20 of extra questions used to render
+  // "250 x $1.276 = $299", and 250 x 1.276 is 319).
+  //
+  // And NOT the bracket's own ratePerResp either. The ladder derives each
+  // bracket rate from its anchor price, so the bracket rate only multiplies
+  // back to the base AT an anchor. The slider now snaps to anchors, where the
+  // two agree - but a mission saved at a non-anchor count can still be opened,
+  // and this is the rate that stays true there.
+  const perRespondent = effectiveRatePerResp(pricing.base, respondentCount) ?? 0;
 
   // Pass 23 Bug 23.14 — active volume tier driven by current respondentCount.
   // Used to label the slider header, drive the tick markers' active state,
@@ -260,8 +278,13 @@ export const MissionControlPricing = ({
         MIN_RESPONDENTS,
         Math.min(MAX_RESPONDENTS, Math.round(next)),
       );
-      onRespondentChange(clamped);
-      onPersist?.(clamped);
+      // Only published counts can be bought. Snapping here rather than in the
+      // input means it applies to the drag, the arrow keys and the tick
+      // markers alike, and the value that reaches pricing and the parent is
+      // always one the ladder states a price for.
+      const snapped = snapToPublishedCount(clamped);
+      onRespondentChange(snapped);
+      onPersist?.(snapped);
     },
     [onRespondentChange, onPersist],
   );
@@ -362,7 +385,7 @@ export const MissionControlPricing = ({
             Tier
           </span>
           <span className="font-display font-bold text-[11px] text-lime tabular-nums">
-            {activeTier.name} · {fmtRate(activeTier.ratePerResp)}/resp
+            {activeTier.name} · {fmtRate(perRespondent)}/resp
           </span>
         </div>
 
@@ -386,9 +409,12 @@ export const MissionControlPricing = ({
           aria-hidden
           role="presentation"
         >
-          {(['sniff_test', 'validate', 'confidence', 'deep_dive'] as const).map((id) => {
-            const tier = VOLUME_TIERS.find((v) => v.id === id);
-            if (!tier) return null;
+          {/* Every sellable anchor, not the first four. Since the slider snaps,
+              these dots ARE the set of counts a customer can buy, so leaving
+              Scale / Growth / Enterprise off the track would hide three of the
+              seven prices behind a drag. */}
+          {VOLUME_TIERS.filter((t) => t.anchorCount <= MAX_RESPONDENTS).map((tier) => {
+            const id = tier.id;
             const anchor = tier.anchorCount;
             const pct = Math.max(
               0,
@@ -452,7 +478,7 @@ export const MissionControlPricing = ({
         <div className="flex items-center justify-between mt-2 mb-3">
           <span className="font-body text-[11px] text-t3">
             <strong className="font-display font-bold text-t2 tabular-nums">
-              {fmtRate(activeTier.ratePerResp)}
+              {fmtRate(perRespondent)}
             </strong>{' '}
             / respondent at this volume
           </span>

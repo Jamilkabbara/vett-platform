@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Receipt, Clock } from 'lucide-react';
-import { PricingBreakdown } from '../../utils/pricingEngine';
+import { PricingBreakdown, effectiveRatePerResp, formatRatePerResp } from '../../utils/pricingEngine';
 import { TimeEstimate } from '../../utils/timeEstimation';
 
 interface PricingReceiptProps {
@@ -10,7 +10,16 @@ interface PricingReceiptProps {
 }
 
 export const PricingReceipt = ({ pricingBreakdown, respondentCount, timeEstimate }: PricingReceiptProps) => {
-  const costPerRespondent = pricingBreakdown.base / respondentCount;
+  // Four decimals, trailing zeros trimmed - not toFixed(2). The ladder derives
+  // its rates from round anchor prices, so most of them are not two-decimal
+  // numbers: 499/500 is $0.998, and toFixed(2) rendered "500 x $1.00 = $499"
+  // on a receipt. Same formatter the setup panel uses.
+  const costPerRespondent = formatRatePerResp(
+    effectiveRatePerResp(pricingBreakdown.base, respondentCount) ?? 0,
+  );
+  const allInPerRespondent = formatRatePerResp(
+    effectiveRatePerResp(pricingBreakdown.total, respondentCount) ?? 0,
+  );
 
   return (
     <motion.div
@@ -43,7 +52,7 @@ export const PricingReceipt = ({ pricingBreakdown, respondentCount, timeEstimate
       <div className="space-y-3">
         <div className="flex items-center justify-between text-sm">
           <span className="text-white/60">
-            Base Price ({respondentCount} × ${costPerRespondent.toFixed(2)})
+            Base Price ({respondentCount} × ${costPerRespondent})
           </span>
           <span className="text-white font-semibold">${pricingBreakdown.base}</span>
         </div>
@@ -77,7 +86,7 @@ export const PricingReceipt = ({ pricingBreakdown, respondentCount, timeEstimate
                 ${pricingBreakdown.total}
               </div>
               <div className="text-xs text-white/40">
-                ${(pricingBreakdown.total / respondentCount).toFixed(2)}/respondent
+                ${allInPerRespondent}/respondent
               </div>
             </div>
           </div>

@@ -285,6 +285,85 @@ export function respondentLadderBase(
  */
 export const MAX_SELF_SERVE_RESPONDENTS = 1250;
 
+/**
+ * The respondent counts a customer can buy: the ladder's own anchors.
+ *
+ * ── Why the slider snaps, 2026-11 ──────────────────────────────────────────
+ *
+ * The ladder picks a round PRICE at each anchor and derives that bracket's
+ * per-respondent rate from it (149 / 100 = $1.49). So `rate x count` equals
+ * the price only AT an anchor. The slider stepped by 5, which meant 243 of the
+ * 250 counts it accepted had no published price, and at those counts the panel
+ * put three numbers on screen that did not agree:
+ *
+ *   120 respondents -> tier "Deep Dive . $1.196/resp"
+ *                      "120 x $1.2417 = $149"
+ *                      total $149
+ *
+ * The charge was never wrong. price(120) is $149 because the tier price floor
+ * lifts the band after each boundary, and price(n) is monotonic non-decreasing
+ * across the whole range. What was wrong is the arithmetic a buyer can do
+ * themselves: 120 x $1.196 is $143.52, LESS than the $149 that 100 respondents
+ * cost. The panel was publishing a rate that implies the price falls as the
+ * study grows.
+ *
+ * Two ways to close it. Define price(n) for every integer - which means
+ * publishing a formula /pricing, /terms, index.html and llms.txt do not state,
+ * and re-charging every count between the anchors. Or sell only the counts we
+ * publish. The second is a UI constraint on one control; the first is a
+ * reprice. We snap.
+ *
+ * NOTE this is a constraint on what can be BOUGHT, not on what can be PRICED.
+ * calculatePricing still answers for every integer and must keep doing so:
+ * missions already in the database hold 120, 240, 885, and the backend run
+ * gate re-prices them from their own respondent_count.
+ */
+export const SELLABLE_RESPONDENT_COUNTS: readonly number[] = VOLUME_TIERS
+  .map((t) => t.anchorCount)
+  .filter((n) => n <= MAX_SELF_SERVE_RESPONDENTS)
+  .sort((a, b) => a - b);
+
+/**
+ * The nearest published count to `count`. Ties round DOWN, so a drag that
+ * lands exactly between two anchors never silently costs more.
+ *
+ * A count at or above the self-serve cap stays where it is: the cap is where
+ * the panel stops selling and captures the lead instead, and snapping it
+ * backwards would hide that affordance.
+ */
+export function snapToPublishedCount(count: number): number {
+  const n = Math.max(0, Number(count) || 0);
+  const anchors = SELLABLE_RESPONDENT_COUNTS;
+  if (n >= MAX_SELF_SERVE_RESPONDENTS) return MAX_SELF_SERVE_RESPONDENTS;
+  if (n <= anchors[0]) return anchors[0];
+  let best = anchors[0];
+  for (const a of anchors) {
+    if (Math.abs(a - n) < Math.abs(best - n)) best = a;
+  }
+  return best;
+}
+
+/**
+ * The per-respondent rate to SHOW beside a count: the base divided by the
+ * count, not the bracket's own rate.
+ *
+ * At a published anchor the two are the same number. They diverge exactly
+ * where the tier price floor is doing the work - the band just above each
+ * boundary, where the bracket rate would imply a price below what the tier
+ * underneath already costs. A snapped slider cannot land there, but a mission
+ * SAVED there can still be opened, so the panel needs a rate that is true at
+ * every count rather than only at the sellable ones.
+ *
+ * Returns null when there is no rate to show (zero respondents, or a ladder
+ * priced per creative rather than per respondent).
+ */
+export function effectiveRatePerResp(base: number, count: number): number | null {
+  const n = Math.max(0, Number(count) || 0);
+  const b = Number(base);
+  if (!n || !Number.isFinite(b) || b <= 0) return null;
+  return b / n;
+}
+
 /** Extra-question surcharge. Mirrors the backend engine. */
 export const EXTRA_QUESTION_PRICE = 5;
 export const FREE_QUESTIONS = 10;
