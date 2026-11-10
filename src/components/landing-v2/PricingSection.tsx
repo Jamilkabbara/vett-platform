@@ -6,6 +6,11 @@
  * Every number comes from ./landingPrices, which calls the app's own pricing
  * function. The initial render (slider at the Validate anchor) is the same on
  * the server and in the browser, so the prerendered page carries real prices.
+ *
+ * The slider's value is a POSITION on the published ladder, not a respondent
+ * count: only the ladder's seven anchors can be bought, so those are the only
+ * counts it offers. See SLIDER_COUNTS in ./landingPrices for why the domain is
+ * an index rather than a count that gets snapped on change.
  */
 import { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -15,20 +20,22 @@ import {
   CA_IMAGE_USD,
   CA_VIDEO_USD,
   LADDER,
-  SLIDER_DEFAULT,
-  SLIDER_MAX,
-  SLIDER_MIN,
-  SLIDER_STEP,
+  SELF_SERVE_CAP,
+  SLIDER_DEFAULT_INDEX,
+  SLIDER_INDEX_MAX,
+  SLIDER_INDEX_MIN,
+  SLIDER_INDEX_STEP,
+  countAt,
+  indexForCount,
   quote,
   rungIndexFor,
   usd,
 } from './landingPrices';
 import { LP_COLORS, lpAlpha } from '../../styles/landingTokens.mjs';
 
-const TICKS = [SLIDER_MIN, 250, 500, 750, SLIDER_MAX];
-
 export function PricingSection({ onCta }: { onCta: (goalId: string) => void }) {
-  const [n, setN] = useState<number>(SLIDER_DEFAULT);
+  const [pos, setPos] = useState<number>(SLIDER_DEFAULT_INDEX);
+  const n = countAt(pos);
   const price = quote(n);
   const hot = rungIndexFor(n);
   const sliderId = useId();
@@ -55,17 +62,18 @@ export function PricingSection({ onCta }: { onCta: (goalId: string) => void }) {
         <input
           id={sliderId}
           type="range"
-          min={SLIDER_MIN}
-          max={SLIDER_MAX}
-          step={SLIDER_STEP}
-          value={n}
-          onChange={(e) => setN(Number(e.target.value))}
+          min={SLIDER_INDEX_MIN}
+          max={SLIDER_INDEX_MAX}
+          step={SLIDER_INDEX_STEP}
+          value={pos}
+          onChange={(e) => setPos(Number(e.target.value))}
+          aria-valuetext={`${n.toLocaleString('en-US')} respondents`}
           className="w-full h-7 mt-[18px] mb-1 accent-lp-lime cursor-pointer"
         />
-        <div className="flex justify-between text-[11.5px] text-lp-muted" aria-hidden>
-          {TICKS.map((t) => <span key={t}>{t.toLocaleString('en-US')}</span>)}
-        </div>
-
+        {/* No separate tick row. The slider's positions ARE the seven rungs,
+            and RateBars below already labels every rung with its count in the
+            same order and lights the active one, so a scale above the chart
+            would be the same seven numbers twice. */}
         <RateBars hot={hot} />
         <p className="text-[13.5px] text-lp-body mt-2.5">
           {usd(price)} for {n.toLocaleString('en-US')} respondents, before paid targeting or extra questions.
@@ -81,7 +89,7 @@ export function PricingSection({ onCta }: { onCta: (goalId: string) => void }) {
               key={r.id}
               type="button"
               aria-pressed={i === hot}
-              onClick={() => setN(r.anchor)}
+              onClick={() => setPos(indexForCount(r.anchor))}
               className={[
                 'rounded-[18px] border px-[14px] py-[20px] text-center transition-all duration-200 cursor-pointer',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lp-lime/60',
@@ -106,7 +114,7 @@ export function PricingSection({ onCta }: { onCta: (goalId: string) => void }) {
             <div className="font-lp-head font-bold text-[14px] text-lp-body">Managed</div>
             <div className="font-lp-head font-extrabold text-[20px] mt-3.5">Talk to us</div>
             <div className="text-[11.5px] text-lp-muted mt-1.5">
-              Beyond {SLIDER_MAX.toLocaleString('en-US')}
+              Beyond {SELF_SERVE_CAP.toLocaleString('en-US')}
             </div>
           </Link>
         </div>
@@ -135,8 +143,10 @@ function PriceRow({ label, value, id }: { label: string; value: string; id: stri
 }
 
 /**
- * Rate per respondent at each rung. Heights are scaled between the cheapest
- * and dearest rate so the fall is visible; every label is the real rate.
+ * Rate per respondent at each rung, and the slider's scale: one bar per
+ * sellable count, in slider order, with the active rung lit. Heights are
+ * scaled between the cheapest and dearest rate so the fall is visible; every
+ * label is the real rate.
  */
 function RateBars({ hot }: { hot: number }) {
   const W = 560;
@@ -186,10 +196,11 @@ function RateBars({ hot }: { hot: number }) {
               y={H - 4}
               textAnchor="middle"
               fontSize={11}
-              fill={LP_COLORS.muted}
+              fontWeight={on ? 700 : 400}
+              fill={on ? LP_COLORS.lime : LP_COLORS.muted}
               fontFamily="Inter, system-ui, sans-serif"
             >
-              {r.anchor >= 1000 ? `${(r.anchor / 1000).toLocaleString('en-US')}k` : r.anchor}
+              {r.anchor.toLocaleString('en-US')}
             </text>
           </g>
         );

@@ -11,10 +11,14 @@ import { loadLandingPrices } from './lib/landingPrices.mjs';
 
 const API = process.argv[2] || 'https://vettit-backend-production.up.railway.app';
 const lp = await loadLandingPrices();
-const sizes = new Set([lp.SLIDER_MIN, lp.SLIDER_DEFAULT, lp.SLIDER_MAX, 101, 333, 777]);
-for (const r of lp.LADDER) for (const d of [-5, 0, 5]) {
+const lo = lp.SLIDER_COUNTS[0];
+const hi = lp.SLIDER_COUNTS[lp.SLIDER_COUNTS.length - 1];
+const sizes = new Set([...lp.SLIDER_COUNTS, 101, 333, 777]);
+// Either side of every boundary too: the slider no longer offers these counts,
+// but saved missions hold them and the backend still has to price them.
+for (const r of lp.LADDER) for (const d of [-5, 5]) {
   const n = r.anchor + d;
-  if (n >= lp.SLIDER_MIN && n <= lp.SLIDER_MAX) sizes.add(n);
+  if (n >= lo && n <= hi) sizes.add(n);
 }
 
 let bad = 0;
