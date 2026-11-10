@@ -33,11 +33,23 @@ interface DailyBucket {
   cost_usd: number;
 }
 
+// What the gross profit above was charged for. `unattributed_usd` is logged AI
+// spend with no mission_id - real money the per-mission rollup used to drop, so
+// it is shown as its own line rather than folded into a mission or implied away.
+interface AiSpend {
+  total_usd: number;
+  attributed_usd: number;
+  unattributed_usd: number;
+  unattributed_calls: number;
+  unattributed_pct: number;
+}
+
 interface RevenueData {
   period_days: number;
   revenue: KpiMetric;
   gross_profit: KpiMetric;
   avg_order: KpiMetric;
+  ai_spend?: AiSpend;
   mission_count: number;
   goal_breakdown: Record<string, number>;
   daily_buckets: DailyBucket[];
@@ -71,17 +83,31 @@ const KpiTile = ({ label, value, delta_pct, prefix = '', suffix = '', icon }: Kp
   const safeValue = Number.isFinite(value) ? value : 0;
   const safeDelta = Number.isFinite(delta_pct) ? delta_pct : 0;
   const positive = safeDelta >= 0;
+  const negative = safeValue < 0;
+  const magnitude = Math.abs(safeValue);
   return (
     <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">{label}</span>
         <span className="text-gray-600">{icon}</span>
       </div>
-      <div className="text-3xl font-black text-white tracking-tight">
+      <div className="text-3xl font-black text-white tracking-tight tabular-nums">
+        {/*
+          Sign OUTSIDE the currency symbol, and money to the cent.
+          `{prefix}{safeValue.toLocaleString()}` rendered a loss as "$-27.154":
+          the minus sat inside the dollar sign, and toLocaleString's default
+          three fraction digits put a third decimal on a money figure. Both were
+          invisible while gross profit happened to be a round positive number.
+        */}
+        {negative ? '-' : ''}
         {prefix}
-        {safeValue >= 1000
-          ? `${safeFormatter(safeValue / 1000, (n) => n.toFixed(1), '0.0')}k`
-          : safeFormatter(safeValue, (n) => n.toLocaleString(), '0')}
+        {magnitude >= 1000
+          ? `${safeFormatter(magnitude / 1000, (n) => n.toFixed(1), '0.0')}k`
+          : safeFormatter(
+            magnitude,
+            (n) => (prefix === '$' ? n.toFixed(2) : n.toLocaleString()),
+            prefix === '$' ? '0.00' : '0',
+          )}
         {suffix}
       </div>
       <div
@@ -339,6 +365,64 @@ export const AdminRevenue = ({ apiFetch }: AdminRevenueProps) => {
             {data.period_days}d period
           </div>
         </div>
+      </div>
+
+      {/* AI Spend — what the gross profit above was charged for. */}
+      <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-sm font-black text-white uppercase tracking-widest mb-6">
+          AI Spend In Period
+        </h2>
+        {data.ai_spend ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="rounded-xl border border-gray-800 bg-white/[0.03] p-4">
+                <div className="text-gray-400 text-[11px] font-bold uppercase tracking-widest">
+                  Total Logged Spend
+                </div>
+                <div className="mt-2 text-2xl font-black text-white tracking-tight tabular-nums">
+                  ${safeFormatter(data.ai_spend.total_usd, (n) => n.toFixed(2), '0.00')}
+                </div>
+                <div className="mt-1 text-[11px] font-bold text-gray-500">
+                  Deducted from gross profit
+                </div>
+              </div>
+              <div className="rounded-xl border border-gray-800 bg-white/[0.03] p-4">
+                <div className="text-gray-400 text-[11px] font-bold uppercase tracking-widest">
+                  Tied To A Mission
+                </div>
+                <div className="mt-2 text-2xl font-black text-white tracking-tight tabular-nums">
+                  ${safeFormatter(data.ai_spend.attributed_usd, (n) => n.toFixed(2), '0.00')}
+                </div>
+                <div className="mt-1 text-[11px] font-bold text-gray-500">
+                  Billable to a study
+                </div>
+              </div>
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-4">
+                <div className="text-amber-300/90 text-[11px] font-bold uppercase tracking-widest">
+                  Unattributed
+                </div>
+                <div className="mt-2 text-2xl font-black text-amber-300 tracking-tight tabular-nums">
+                  ${safeFormatter(data.ai_spend.unattributed_usd, (n) => n.toFixed(2), '0.00')}
+                </div>
+                <div className="mt-1 text-[11px] font-bold text-amber-300/70 tabular-nums">
+                  {safeFormatter(data.ai_spend.unattributed_pct, (n) => n.toFixed(1), '0.0')}% of spend
+                  {' · '}
+                  {safeFormatter(data.ai_spend.unattributed_calls, (n) => n.toLocaleString(), '0')} calls
+                </div>
+              </div>
+            </div>
+            <p className="mt-4 text-xs font-medium leading-relaxed text-gray-500">
+              Unattributed spend is money that left the business on calls the log
+              recorded without a study attached - chat, clarify, targeting and
+              retries. It counts in full against gross profit above; it just
+              cannot be charged to any one study.
+            </p>
+          </>
+        ) : (
+          <p className="text-xs font-bold text-gray-500">
+            This period&apos;s spend breakdown is unavailable.
+          </p>
+        )}
       </div>
 
       {/* Daily Revenue Chart */}
